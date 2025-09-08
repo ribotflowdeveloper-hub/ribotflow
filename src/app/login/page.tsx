@@ -138,7 +138,7 @@ export default function LoginPage() {
                 />
               </div>
               <Button type="submit" disabled={loading} className="w-full text-base py-6">
-                {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? <><UserPlus className="mr-2"/>Registrar-se</> : <><LogIn className="mr-2"/>Entrar</>)}
+                {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? <><UserPlus className="mr-2"/>Registrar-se</> : <><LogIn className="mr-2"/>Iniciar sessió</>)}
               </Button>
             </form>
 
@@ -150,7 +150,7 @@ export default function LoginPage() {
             <div className="space-y-4">
               <Button onClick={() => handleOAuthLogin('google')} variant="outline" className="w-full py-6">
                 <img className="w-5 h-5 mr-3" alt="Google logo" src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" />
-                Continuar amb Google
+                Inicia sessió amb Google
               </Button>
             </div>
 

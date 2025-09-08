@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import * as ToastPrimitives from "@radix-ui/react-toast"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -26,8 +28,7 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        // ✅ CORRECCIÓ: Fons i text per defecte per garantir el contrast.
-        default: "bg-gray-800 text-white",
+        default: "border bg-background text-foreground",
         destructive:
           "group destructive border-destructive bg-destructive text-destructive-foreground",
       },
@@ -110,17 +111,20 @@ const ToastDescription = React.forwardRef<
 ))
 ToastDescription.displayName = ToastPrimitives.Description.displayName
 
-// S'afegeix la definició del tipus ToastProps
+// ✅ AQUESTA ÉS LA CORRECCIÓ CLAU
 type ToastProps = React.ComponentPropsWithoutRef<typeof ToastPrimitives.Root> &
-  VariantProps<typeof toastVariants>;
+  VariantProps<typeof toastVariants>
+
+type ToastActionElement = React.ReactElement<typeof ToastAction>
 
 export {
-  Toast,
-  ToastAction,
-  ToastClose,
-  ToastDescription,
-  ToastProvider,
-  ToastTitle,
-  ToastViewport,
   type ToastProps,
+  type ToastActionElement,
+  ToastProvider,
+  ToastViewport,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
 }

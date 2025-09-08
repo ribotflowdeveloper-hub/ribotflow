@@ -1,37 +1,36 @@
 // src/lib/supabase/server.ts
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-export function createClient() {
-  const cookieStore = cookies();
-
+export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        // ✅ Aquestes funcions han de ser 'async' per poder utilitzar 'await'
+        get: async (name: string) => {
+          // No podem llegir de 'cookieStore' directament. Primer hem d'esperar la promesa.
+          return (await cookieStore).get(name)?.value
         },
-        set(name: string, value: string, options) {
+        set: async (name: string, value: string, options: CookieOptions) => {
           try {
-            cookieStore.set({ name, value, ...options });
+            // Esperem la promesa abans d'intentar escriure.
+            (await cookieStore).set({ name, value, ...options })
           } catch (error) {
-            // The `set` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+            // Aquest error pot passar si s'intenta escriure des d'un Server Component,
+            // la qual cosa és normal. El middleware s'encarregarà.
           }
         },
-        remove(name: string, options) {
+        remove: async (name: string, options: CookieOptions) => {
           try {
-            cookieStore.set({ name, value: '', ...options });
+            // Esperem la promesa abans d'intentar esborrar.
+            (await cookieStore).set({ name, value: '', ...options })
           } catch (error) {
-            // The `remove` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing
-            // user sessions.
+             // El mateix que a 'set'.
           }
         },
       },
     }
-  );
+  )
 }
