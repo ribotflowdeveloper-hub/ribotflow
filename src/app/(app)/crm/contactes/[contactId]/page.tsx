@@ -8,8 +8,7 @@ import { ContactDetailClient } from './_components/contact-detail-client';
 import type { Metadata } from 'next';
 import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm';
 
-// ✅ CORRECCIÓ DEFINITIVA: Canviem el nom del tipus a un de més específic
-// per evitar qualsevol conflicte amb un tipus global anomenat 'PageProps'.
+// Aquest tipus està perfecte.
 type ContactDetailPageProps = {
   params: {
     contactId: string;
@@ -25,7 +24,8 @@ export async function generateMetadata({ params }: ContactDetailPageProps): Prom
   return { title: `${contact?.nom || 'Contacte'} | Ribot` };
 }
 
-// ✅ APLIQUEM EL NOU NOM DEL TIPUS AQUÍ TAMBÉ
+// 👇👇👇 AQUESTA LÍNIA ÉS LA MÉS IMPORTANT! 👇👇👇
+// Assegura't que la teva funció es veu EXACTAMENT així, sense <...> després del nom.
 export default async function ContactDetailPage({ params }: ContactDetailPageProps) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);

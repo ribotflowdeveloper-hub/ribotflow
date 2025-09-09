@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { type Contact } from '../page'; // Importarem el tipus des de la pàgina
+import type { Contact } from '@/types/crm';
 
 export async function createContactAction(
   formData: FormData
