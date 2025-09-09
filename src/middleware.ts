@@ -1,3 +1,4 @@
+export const runtime = 'nodejs';
 import { createClient } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 

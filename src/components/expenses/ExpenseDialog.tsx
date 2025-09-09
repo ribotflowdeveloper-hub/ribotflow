@@ -70,7 +70,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
 
     const handleItemChange = (index: number, field: keyof ExpenseItem, value: string | number) => {
         const updatedItems = [...currentExpense.expense_items];
-        // @ts-ignore
+        // @ts-expect-error
         updatedItems[index][field] = value;
         setCurrentExpense(prev => ({ ...prev, expense_items: updatedItems }));
     };

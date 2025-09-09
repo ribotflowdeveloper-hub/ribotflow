@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Metadata } from 'next';
 import { motion } from 'framer-motion';
-
+import Image from 'next/image';
 // Importacions dels teus components i utilitats
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,7 +149,7 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <Button onClick={() => handleOAuthLogin('google')} variant="outline" className="w-full py-6">
-                <img className="w-5 h-5 mr-3" alt="Google logo" src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" />
+              <Image className="w-5 h-5 mr-3" alt="Google logo" src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" />
                 Inicia sessió amb Google
               </Button>
             </div>

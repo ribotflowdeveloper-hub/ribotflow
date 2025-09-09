@@ -11,7 +11,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {  Inbox, User, Building, RefreshCw, Trash2, ArrowLeft, Info, PenSquare, Reply, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { InitialData } from './ComposeDialog';
-import type { Ticket, Template, Contact } from '../page';
+import type { Ticket, Template } from '../page';
 import { deleteTicketAction, markTicketAsReadAction, saveSenderAsContactAction } from '../actions';
 import { ComposeDialog } from './ComposeDialog';
 

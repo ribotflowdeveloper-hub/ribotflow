@@ -114,7 +114,7 @@ export type InitialData = {
             return renderTemplate(selectedTemplate.body, debouncedVariableValues);
         }
         return editor?.getHTML() || '';
-    }, [selectedTemplate, debouncedVariableValues, editor, editor?.state]);
+    }, [selectedTemplate, debouncedVariableValues, editor]);
 
     const filteredContacts = useMemo(() => {
         if (!contactSearch) return contacts;
