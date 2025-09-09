@@ -3,6 +3,7 @@ import './globals.css'; // <--- AQUESTA LÍNIA ÉS LA MÉS IMPORTANT DE TOTES
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
+import 'prismjs/themes/prism-tomorrow.css'; // ✅ AFEGEIX AQUESTA LÍNIA
 
 const inter = Inter({ subsets: ['latin'] });
 

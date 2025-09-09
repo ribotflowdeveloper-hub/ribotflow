@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { type Contact } from '../page';
+import { type Contact } from '@/types/crm';
 
 // Server Action per actualitzar un contacte
 export async function updateContactAction(
@@ -57,4 +57,36 @@ export async function updateContactAction(
 
   revalidatePath(`/crm/contactes/${contactId}`);
   return { data, error: null };
+}
+
+// ✅ NEW: Server Action to delete a contact
+export async function deleteContactAction(
+  contactId: string
+): Promise<{ success: boolean; message: string }> {
+  
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "User not authenticated." };
+  }
+
+  // Delete all related records first (optional but good practice)
+  // await supabase.from('invoices').delete().eq('contact_id', contactId);
+  // await supabase.from('quotes').delete().eq('contact_id', contactId);
+
+  const { error } = await supabase
+    .from('contacts')
+    .delete()
+    .eq('id', contactId);
+
+  if (error) {
+    console.error("Error deleting contact:", error);
+    return { success: false, message: "Failed to delete contact." };
+  }
+
+  // Revalidate the main contacts list so it updates
+  revalidatePath('/crm/contactes');
+  return { success: true, message: "Contact deleted successfully." };
 }

@@ -32,8 +32,9 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
-, "tailwind.config.js"  ],
+    ".next/types/**/*.ts",
+    "src/types/**/*.ts" // <-- ADD THIS LINE
+, "tailwind.config.js", "src/components/ui/toggle.jsx"  ],
   "exclude": [
     "node_modules"
   ]

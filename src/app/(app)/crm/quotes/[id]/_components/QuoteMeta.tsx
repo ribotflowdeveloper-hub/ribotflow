@@ -19,8 +19,8 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
     const selectedContact = contacts.find(c => c.id === quote.contact_id);
 
     return (
-      <div className="glass-card p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="glass-card p-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <Label>Client</Label>
                 <Popover>

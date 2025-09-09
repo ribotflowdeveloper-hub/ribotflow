@@ -19,6 +19,8 @@ export function SettingsNav() {
 
   return (
     <nav>
+      <h1 className="text-3xl font-bold mb-8">Configuració</h1>
+
       <ul className="space-y-2">
         {settingsNavItems.map(item => (
           <li key={item.id}>

@@ -1,17 +1,28 @@
-// src/app/(app)/settings/profile/_components/ProfileForm.tsx
 "use client";
 
-import { useTransition } from 'react';
+import React, { useTransition } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { updateProfileAction } from '../actions';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input'; // Make sure Input is imported
 
-// Rep les dades inicials del Server Component
-export function ProfileForm({ profile, email }: { profile: { full_name: string, company_name: string }, email: string }) {
+// Props interface for the data coming from the server page
+interface ProfileFormProps {
+  profile: {
+    full_name: string | null;
+    company_name: string | null;
+  };
+  email: string;
+}
+
+export function ProfileForm({ profile, email }: ProfileFormProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
+  // This function is called when the form is submitted
   const handleSubmit = (formData: FormData) => {
     startTransition(async () => {
       const result = await updateProfileAction(formData);
@@ -24,43 +35,53 @@ export function ProfileForm({ profile, email }: { profile: { full_name: string, 
   };
 
   return (
-    <form action={handleSubmit} className="space-y-6">
-      <div>
-        <label htmlFor="fullName" className="block text-sm font-medium mb-2">Nom complet</label>
-        <input
-          id="fullName"
-          name="full_name" // El 'name' és crucial per a FormData
-          type="text"
-          defaultValue={profile?.full_name || ''}
-          className="search-input w-full"
-        />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="glass-effect rounded-xl p-8">
+        <h2 className="text-xl font-semibold mb-6">Configuració del Perfil</h2>
+        <form action={handleSubmit} className="space-y-6">
+          
+          <div>
+            <Label htmlFor="full_name" className="block text-sm font-medium text-muted-foreground mb-2">Nom complet</Label>
+            <Input
+              id="full_name"
+              name="full_name" // This 'name' is crucial for the Server Action
+              type="text"
+              defaultValue={profile.full_name || ''}
+              className="search-input w-full"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="company_name" className="block text-sm font-medium text-muted-foreground mb-2">Nom de l'empresa</Label>
+            <Input
+              id="company_name"
+              name="company_name" // This 'name' is crucial for the Server Action
+              type="text"
+              defaultValue={profile.company_name || ''}
+              className="search-input w-full"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="email" className="block text-sm font-medium text-muted-foreground mb-2">Correu electrònic</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              disabled
+              className="search-input w-full bg-muted/50 cursor-not-allowed"
+            />
+          </div>
+          
+          <div className="flex justify-end pt-4">
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              {isPending ? 'Desant...' : 'Desar Canvis'}
+            </Button>
+          </div>
+
+        </form>
       </div>
-      <div>
-        <label htmlFor="companyName" className="block text-sm font-medium mb-2">Nom de l'empresa</label>
-        <input
-          id="companyName"
-          name="company_name" // El 'name' és crucial per a FormData
-          type="text"
-          defaultValue={profile?.company_name || ''}
-          className="search-input w-full"
-        />
-      </div>
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium mb-2">Correu electrònic</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          disabled
-          className="search-input w-full bg-muted/50 cursor-not-allowed"
-        />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isPending}>
-          {isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-          {isPending ? 'Desant...' : 'Desar Canvis'}
-        </Button>
-      </div>
-    </form>
+    </motion.div>
   );
 }

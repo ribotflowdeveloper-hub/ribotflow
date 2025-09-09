@@ -1,6 +1,7 @@
+// Ruta del fitxer: src/app/(app)/crm/pipeline/_components/OpportunityDialog.tsx
 "use client";
 
-import React, { useState, useEffect, useTransition, useMemo } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -15,7 +16,8 @@ import { Check, ChevronsUpDown, Calendar as CalendarIcon, Loader2 } from 'lucide
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-import { saveOpportunityAction } from './opportunity-actions';
+
+import { saveOpportunityAction } from '../actions';
 import type { Opportunity, Contact, Stage } from '../page';
 
 interface OpportunityDialogProps {
@@ -24,18 +26,36 @@ interface OpportunityDialogProps {
   contacts: Contact[];
   stages: Stage[];
   onSuccess: () => void;
-  opportunityToEdit: Opportunity | null;
+  opportunityToEdit: Partial<Opportunity> | null;
 }
 
-export default function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: OpportunityDialogProps) {
+export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: OpportunityDialogProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const formKey = useMemo(() => opportunityToEdit?.id || 'new', [opportunityToEdit]);
+  
+  const [selectedContactId, setSelectedContactId] = useState(opportunityToEdit?.contact_id || '');
+  const [closeDate, setCloseDate] = useState<Date | undefined>(
+    opportunityToEdit?.close_date ? new Date(opportunityToEdit.close_date) : undefined
+  );
+
+  useEffect(() => {
+    // Resetejem els estats interns quan el diàleg s'obre amb una nova oportunitat
+    if (open) {
+      setSelectedContactId(opportunityToEdit?.contact_id || '');
+      setCloseDate(opportunityToEdit?.close_date ? new Date(opportunityToEdit.close_date) : undefined);
+    }
+  }, [open, opportunityToEdit]);
+
 
   const handleSubmit = (formData: FormData) => {
-    // Afegim l'ID al formData si estem editant
-    if (opportunityToEdit) {
+    if (opportunityToEdit?.id) {
       formData.set('id', opportunityToEdit.id);
+    }
+    formData.set('contact_id', selectedContactId);
+    if (closeDate) {
+        formData.set('close_date', closeDate.toISOString());
+    } else {
+        formData.delete('close_date');
     }
 
     startTransition(async () => {
@@ -49,15 +69,40 @@ export default function OpportunityDialog({ open, onOpenChange, contacts, stages
       }
     });
   };
+  
+  const selectedContact = contacts.find(c => c.id === selectedContactId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-effect">
-        <DialogHeader><DialogTitle>{opportunityToEdit ? 'Editar Oportunitat' : 'Nova Oportunitat'}</DialogTitle></DialogHeader>
-        <form key={formKey} action={handleSubmit} className="grid gap-4 pt-4">
+        <DialogHeader><DialogTitle>{opportunityToEdit?.id ? 'Editar Oportunitat' : 'Nova Oportunitat'}</DialogTitle></DialogHeader>
+        <form action={handleSubmit} className="grid gap-4 pt-4">
           <Input name="name" placeholder="Nom de l'oportunitat..." defaultValue={opportunityToEdit?.name || ''} required />
-          <Textarea name="description" placeholder="Descripció i notes..." defaultValue={opportunityToEdit?.description || ''} />
-          <input type="hidden" name="contact_id" value={opportunityToEdit?.contact_id || ''} />
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" className="w-full justify-between search-input text-left font-normal">
+                {selectedContact ? selectedContact.nom : "Selecciona un contacte..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-effect">
+              <Command>
+                <CommandInput placeholder="Buscar contacte..." />
+                <CommandList>
+                  <CommandEmpty>No s'ha trobat cap contacte.</CommandEmpty>
+                  <CommandGroup>
+                    {contacts.map(contact => (
+                      <CommandItem key={contact.id} value={contact.nom} onSelect={() => setSelectedContactId(contact.id)}>
+                         <Check className={cn("mr-2 h-4 w-4", selectedContactId === contact.id ? "opacity-100" : "opacity-0")} />
+                         {contact.nom}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
 
           <Select name="stage_name" defaultValue={opportunityToEdit?.stage_name || stages[0]?.name}>
             <SelectTrigger><SelectValue placeholder="Selecciona una etapa" /></SelectTrigger>
@@ -67,17 +112,23 @@ export default function OpportunityDialog({ open, onOpenChange, contacts, stages
           </Select>
           
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Valor (€)</Label><Input name="value" type="number" step="0.01" placeholder="0.00" defaultValue={opportunityToEdit?.value || 0} /></div>
+            <div><Label>Valor (€)</Label><Input name="value" type="number" step="0.01" placeholder="0.00" defaultValue={opportunityToEdit?.value || ''} /></div>
             <div><Label>Data de Tancament</Label>
               <Popover>
-                {/* Aquest component de data necessita ser gestionat amb estat per a la UI */}
-                <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !opportunityToEdit?.close_date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{opportunityToEdit?.close_date ? format(new Date(opportunityToEdit.close_date), "PPP", { locale: ca }) : <span>Tria una data</span>}</Button></PopoverTrigger>
-                <PopoverContent className="w-auto p-0"><Calendar name="close_date" mode="single" selected={opportunityToEdit?.close_date ? new Date(opportunityToEdit.close_date) : undefined} className={undefined} classNames={undefined} formatters={undefined} components={undefined} /></PopoverContent>
+                <PopoverTrigger asChild>
+                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !closeDate && "text-muted-foreground")}>
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {closeDate ? format(closeDate, "PPP", { locale: ca }) : <span>Tria una data</span>}
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={closeDate} onSelect={setCloseDate} className={undefined} classNames={undefined} formatters={undefined} components={undefined} /></PopoverContent>
               </Popover>
             </div>
           </div>
+          <Textarea name="description" placeholder="Descripció i notes..." defaultValue={opportunityToEdit?.description || ''} />
+
           <DialogFooter className="pt-4">
-            <DialogClose asChild><Button type="button" variant="ghost">Cancel·lar</Button></DialogClose>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel·lar</Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Desar
@@ -88,3 +139,4 @@ export default function OpportunityDialog({ open, onOpenChange, contacts, stages
     </Dialog>
   );
 }
+

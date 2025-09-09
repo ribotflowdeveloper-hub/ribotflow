@@ -15,11 +15,10 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createClient } from '@/lib/supabase/client';
 
-// Importem accions i tipus
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
 import type { Quote, Contact, Product, CompanyProfile, Opportunity, QuoteItem } from '../page';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Importem els sub-components
 import { CompanyProfileDialog } from './CompanyProfileDialog';
 import { QuoteMeta } from './QuoteMeta';
 import { QuoteItems } from './QuoteItems';
@@ -72,17 +71,55 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     });
   };
 
-  const handleDelete = () => startSaveTransition(() => {
-    deleteQuoteAction(quote.id);
-  });
+  const handleDelete = () => {
+    startSaveTransition(async () => {
+        await deleteQuoteAction(quote.id);
+    });
+  };
   
+  // ✅ LÒGICA D'ENVIAMENT COMPLETA
   const handleSend = () => {
     if (quote.id === 'new') {
         toast({ variant: 'destructive', title: "Acció no permesa", description: "Desa el pressupost abans d'enviar-lo." });
         return;
     }
+
     startSendTransition(async () => {
-      //... Lògica d'enviament...
+        try {
+            setSendingStatus('generating');
+            toast({ title: "Preparant enviament...", description: "Generant el PDF del pressupost." });
+            
+            const quotePreviewElement = document.getElementById('quote-preview-for-pdf');
+            if (!quotePreviewElement) throw new Error("No s'ha trobat l'element de previsualització.");
+
+            const canvas = await html2canvas(quotePreviewElement, { scale: 2 });
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            const pdfBlob = pdf.output('blob');
+
+            setSendingStatus('uploading');
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Usuari no trobat per a la pujada de l'arxiu.");
+            
+            const filePath = `${user.id}/${quote.id}.pdf`;
+            const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
+            if (uploadError) throw uploadError;
+
+            setSendingStatus('sending');
+            const result = await sendQuoteAction(quote.id);
+            if (!result.success) throw new Error(result.message);
+            
+            setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
+            toast({ variant: "default", title: "Èxit!", description: result.message, className: "bg-green-500 text-white" });
+
+        } catch (error: any) {
+            toast({ variant: "destructive", title: "Error en l'enviament", description: error.message });
+        } finally {
+            setSendingStatus('idle');
+        }
     });
   };
 
@@ -121,8 +158,8 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
                 {isSending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {sendingStatus === 'generating' && 'Generant...'}
-                    {sendingStatus === 'uploading' && 'Pujant...'}
+                    {sendingStatus === 'generating' && 'Generant PDF...'}
+                    {sendingStatus === 'uploading' && 'Pujant arxiu...'}
                     {sendingStatus === 'sending' && 'Enviant...'}
                   </>
                 ) : (
@@ -137,30 +174,47 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         </header>
         
         {quote.sent_at && (
-          <div className="mb-4 p-3 text-center bg-green-100 text-green-800 rounded-md text-sm">
-            Pressupost enviat el {new Date(quote.sent_at).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' })}.
-          </div>
+            <div className="mb-4 p-2 text-center bg-green-100 text-green-800 rounded-md text-sm">
+                Pressupost enviat el {new Date(quote.sent_at).toLocaleDateString('ca-ES', { day: '2-digit', month: 'long', year: 'numeric' })}.
+            </div>
         )}
 
+        {/* ✅ DISSENY RESTAURAT: Tornem a l'estructura de targetes separades */}
         <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
-          <section className="flex flex-col gap-6 overflow-y-auto pr-4">
-            <QuoteMeta quote={quote} setQuote={setQuote} contacts={contacts} />
-            <div className="glass-card p-6">
-                <Label>Oportunitats del client</Label>
-                {contactOpportunities.length > 0 ? (
-                    <select 
-                        className="mt-1 w-full border rounded px-2 py-1 bg-transparent search-input" 
-                        value={quote.opportunity_id || ''} 
-                        onChange={(e) => setQuote(q => ({ ...q, opportunity_id: Number(e.target.value) || null }))}
-                        disabled={!quote.contact_id}
-                    >
-                        <option value="">Cap oportunitat associada</option>
-                        {contactOpportunities.map(o => (<option key={o.id} value={o.id}>{o.name} ({o.stage_name})</option>))}
-                    </select>
-                ) : (<p className="mt-1 text-sm text-muted-foreground">Aquest client no té oportunitats obertes.</p>)}
+          <section className="flex flex-col gap-2 overflow-y-auto pr-4">
+            <div className="glass-card p-2">
+                <QuoteMeta quote={quote} setQuote={setQuote} contacts={contacts} />
             </div>
-            <div className="glass-card p-6">
-                <QuoteItems 
+
+            <div className="">
+  <Label>Oportunitats del client</Label>
+  {contactOpportunities.length > 0 ? (
+    <Select 
+      value={quote.opportunity_id?.toString() || ''} 
+      onValueChange={(value) => setQuote(q => ({ ...q, opportunity_id: Number(value) || null }))}
+      disabled={!quote.contact_id}
+    >
+      <SelectTrigger className="mt-2 w-full bg-transparent search-input h-auto py-1.5 ">
+        <SelectValue placeholder="Cap oportunitat associada" />
+      </SelectTrigger>
+      <SelectContent className="glass-effect">
+        {contactOpportunities.map(o => (
+          <SelectItem 
+            key={o.id} 
+            value={o.id.toString()}
+            // ✅ CORRECCIÓ: Afegim 'text-foreground' per al color per defecte.
+            className="text-foreground focus:bg-transparent focus:text-background"
+          >
+            {o.name} ({o.stage_name})
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ) : (<p className="mt-2 text-sm text-muted-foreground">Aquest client no té oportunitats obertes.</p>)}
+</div>
+
+            <div className="glass-card p-2">
+                 <QuoteItems 
                     items={quote.items} 
                     setItems={(newItems: QuoteItem[]) => setQuote(q => ({...q, items: newItems}))} 
                     products={products} 
@@ -174,9 +228,10 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
                     total={total} 
                 />
             </div>
-            <div className="glass-card p-6">
+
+            <div className="glass-card p-2">
               <Label>Notes Addicionals</Label>
-              <Textarea value={quote.notes} onChange={(e) => setQuote(q => ({...q, notes: e.target.value}))} className="mt-1" />
+              <Textarea value={quote.notes} onChange={(e) => setQuote(q => ({...q, notes: e.target.value}))} className="mt-2" />
             </div>
           </section>
           
@@ -211,4 +266,3 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     </>
   );
 }
-

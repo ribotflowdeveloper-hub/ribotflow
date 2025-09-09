@@ -67,21 +67,23 @@ export async function deleteQuoteAction(quoteId: string) {
   redirect('/crm/quotes');
 }
 
-export async function sendQuoteAction(quoteId: string, pdfBlob: Blob) {
+//  ✅ LÒGICA D'ENVIAMENT RESTAURADA
+export async function sendQuoteAction(quoteId: string) {
+    if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
+    
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
 
     try {
-        const filePath = `${user.id}/${quoteId}.pdf`;
-        const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { cacheControl: '3600', upsert: true });
-        if (uploadError) throw uploadError;
-
+        // La pujada del PDF es fa al client. Aquesta acció només invoca la funció i actualitza l'estat.
         const { error: functionError } = await supabase.functions.invoke('send-quote-pdf', { body: { quoteId } });
         if (functionError) throw functionError;
-
+        
         await supabase.from('quotes').update({ status: 'Sent', sent_at: new Date().toISOString() }).eq('id', quoteId);
+
         revalidatePath(`/crm/quotes/${quoteId}`);
         return { success: true, message: "Pressupost enviat correctament." };
     } catch (error: any) {

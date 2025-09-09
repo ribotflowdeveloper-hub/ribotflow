@@ -5,9 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Plus, Trash, GripVertical } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
-
-type Stage = { id: string; name: string; };
-type Tag = { id: string; name: string; color: string; };
+import { type Stage, type Tag } from '../page'; // Importem els tipus
 
 export function CustomizationClient({ initialStages, initialTags }: { initialStages: Stage[], initialTags: Tag[] }) {
   const { toast } = useToast();

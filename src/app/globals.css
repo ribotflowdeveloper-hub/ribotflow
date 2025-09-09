@@ -1,12 +1,36 @@
+/* === FONT & TAILWIND === */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* === LES TEVES VARIABLES DE COLOR === */
+/* === COLORS I VARIABLES === */
 @layer base {
   :root {
+    --background: 0 0% 98%;
+    --foreground: 230 15% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 230 15% 10%;
+    --popover: 0 0% 97%;
+    --popover-foreground: 230 15% 15%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 230 25% 90%;
+    --secondary-foreground: 230 15% 20%;
+    --muted: 230 15% 88%;
+    --muted-foreground: 230 10% 35%;
+    --accent: 262 70% 75%;
+    --accent-foreground: 262 70% 25%;
+    --destructive: 0 84.2% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 230 15% 75%;
+    --input: 230 15% 85%;
+    --ring: 262 83% 58%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
     --background: 230 15% 8%;
     --foreground: 230 15% 92%;
     --card: 230 15% 10%;
@@ -26,29 +50,33 @@
     --border: 230 15% 22%;
     --input: 230 15% 22%;
     --ring: 262 83% 58%;
-    --radius: 0.75rem;
   }
 
-  .dark {
-    /* El teu tema per defecte ja és fosc, no cal afegir res aquí. */
+  /* ===== LA SOLUCIÓ ÉS AQUÍ ===== */
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden; /* Evita el scroll horitzontal no desitjat */
   }
-}
+  /* ================================ */
 
-@layer base {
   * {
-    @apply border-border;
+    @apply border-border scroll-smooth;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
+    /* Hem tret min-h-screen perquè ara tenim height: 100% a dalt */
   }
 }
 
-/* === TOTES LES TEVES CLASSES PERSONALITZADES === */
+/* === GLASS & GRADIENTS === */
 .glass-effect {
-  @apply backdrop-blur-xl border border-white/10 rounded-xl bg-white/5;
+  @apply backdrop-blur-xl border border-black/10 rounded-xl bg-white/5;
 }
-
 .dark .glass-effect {
   @apply bg-white/5 border-white/10;
 }
@@ -57,10 +85,15 @@
   @apply bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 bg-clip-text text-transparent;
 }
 
-.card-hover {
-  @apply transition-all duration-300 hover:scale-105 hover:shadow-lg;
+.futuristic-shadow {
+  @apply shadow-[0_4px_30px_rgba(0,0,0,0.1)];
 }
 
+.card-hover {
+  @apply transition-all duration-300 hover:scale-105 hover:shadow-[0_15px_30px_rgba(102,126,234,0.3)];
+}
+
+/* === SIDEBAR === */
 .sidebar-item {
   @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 bg-white/5 hover:bg-white/10 cursor-pointer;
 }
@@ -68,6 +101,7 @@
   @apply bg-gradient-to-r from-purple-500 to-blue-500 text-white;
 }
 
+/* === COMPONENTS VISUALS === */
 .metric-card {
   @apply glass-effect p-6 card-hover;
 }
@@ -76,10 +110,15 @@
   @apply glass-effect p-4 card-hover cursor-pointer;
 }
 
+.search-input {
+  @apply glass-effect px-4 py-3 w-full text-white placeholder-gray-300 border-0 focus:ring-2 focus:ring-purple-500 focus:outline-none;
+}
+
 .empty-state {
   @apply flex flex-col items-center justify-center py-16 text-center text-muted-foreground;
 }
 
+/* === BADGES === */
 .status-badge {
   @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
 }
@@ -96,6 +135,7 @@
   @apply bg-yellow-500/10 text-yellow-400 border border-yellow-400/30;
 }
 
+/* === EFECTES ANIMATS === */
 .floating-animation {
   animation: floating 6s ease-in-out infinite;
 }
@@ -103,7 +143,6 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
 }
-
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite alternate;
 }
@@ -112,6 +151,7 @@
   to { box-shadow: 0 0 25px rgba(102, 126, 234, 0.8); }
 }
 
+/* === BOTONS DE FILTRE === */
 .filter-button {
   @apply px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium;
 }
@@ -120,4 +160,82 @@
 }
 .filter-button:not(.active) {
   @apply bg-white/10 text-gray-300 hover:bg-white/20;
+}
+
+/* === SLIDERS FUTURISTES === */
+input[type="range"].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: ew-resize;
+}
+input[type="range"].slider::-webkit-slider-runnable-track {
+  background: hsl(var(--muted));
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+input[type="range"].slider::-moz-range-track {
+  background: hsl(var(--muted));
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+input[type="range"].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  background: hsl(var(--primary));
+  height: 1rem;
+  width: 1rem;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--primary-foreground));
+  margin-top: -0.25rem;
+  transition: all 0.2s ease;
+}
+input[type="range"].slider::-moz-range-thumb {
+  background: hsl(var(--primary));
+  height: 1rem;
+  width: 1rem;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--primary-foreground));
+  transition: all 0.2s ease;
+}
+
+.text-muted-strong {
+  color: hsl(220, 10%, 35%);
+}
+
+@layer components {
+  .prose-email {
+    /* NOU: Forcem que les paraules llargues es puguin trencar */
+    @apply break-words;
+  }
+  .prose-email a {
+    @apply text-blue-500 hover:underline;
+  }
+  .prose-email p {
+    @apply mb-4 leading-relaxed;
+  }
+  .prose-email blockquote {
+    @apply border-l-4 border-border pl-4 italic text-muted-foreground;
+  }
+  .prose-email ul, .prose-email ol {
+    @apply list-inside list-disc pl-4;
+  }
+
+  /* ===== NOU: Regles per domesticar el contingut intern ===== */
+
+  /* Imatges, vídeos i iframes mai seran més amples que el contenidor */
+  .prose-email img,
+  .prose-email video,
+  .prose-email iframe {
+    @apply max-w-full h-auto rounded-md;
+  }
+
+  /* Les taules ocuparan el 100% de l'amplada i no més */
+  .prose-email table {
+    @apply w-full table-fixed;
+  }
+
+  /* El text pre-formatat (sovint codi) farà salts de línia */
+  .prose-email pre {
+    @apply whitespace-pre-wrap break-words;
+  }
 }

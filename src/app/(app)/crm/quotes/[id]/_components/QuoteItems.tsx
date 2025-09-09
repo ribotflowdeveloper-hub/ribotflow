@@ -1,6 +1,3 @@
-// Ruta del fitxer: src/app/(app)/crm/quotes/[id]/_components/QuoteItems.tsx
-"use client";
-
 import React, { useState, useTransition } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
@@ -31,9 +28,7 @@ export const QuoteItems = ({ items, setItems, products }: {
         setItems(newItems);
     };
 
-    // ✅ CORRECCIÓ: Definim el tipus del paràmetre per incloure totes les propietats de QuoteItem.
     const handleAddItem = (itemData: Partial<QuoteItem> = {}) => {
-        // Creem un nou ítem complet amb valors per defecte per assegurar la consistència del tipus.
         const newItem: QuoteItem = {
             description: itemData.description || '',
             quantity: itemData.quantity || 1,
@@ -71,9 +66,15 @@ export const QuoteItems = ({ items, setItems, products }: {
     }
 
     return (
-        <div className="glass-card p-6">
+        <div>
             <h3 className="font-semibold text-lg mb-4">Conceptes</h3>
-            <div className="space-y-4">
+            {/* ✅ DISSENY MILLORAT: Reduïm l'espaiat vertical de 1rem (y-4) a 0.5rem (y-2) */}
+            <div className="space-y-2">
+                {items.length === 0 && (
+                    <div className="text-center text-sm text-muted-foreground py-4 border border-dashed rounded-lg">
+                        Afegeix el primer concepte al pressupost.
+                    </div>
+                )}
                 {items.map((item, index) => (
                     <div key={index} className="flex items-start gap-2">
                         <TextareaAutosize
@@ -128,4 +129,3 @@ export const QuoteItems = ({ items, setItems, products }: {
         </div>
     );
 };
-

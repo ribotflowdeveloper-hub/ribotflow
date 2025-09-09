@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { notFound } from 'next/navigation';
 import { ContactDetailClient } from './_components/contact-detail-client';
 import type { Metadata } from 'next';
-import { Contact } from '@/types/crm'; // ✅ CANVI: Importem el tipus central
 
 
 export type Quote = { id: string; quote_number: string; status: string; total: number; };

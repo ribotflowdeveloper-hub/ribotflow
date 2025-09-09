@@ -1,9 +1,18 @@
-import React from 'react';
+"use client";
+
+import React, { FC } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format } from "date-fns";
 import { Paperclip } from 'lucide-react';
+import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-export const ExpenseTable = ({ expenses, onViewDetails }) => {
+import { type Expense } from '@/types/finances';
+
+interface ExpenseTableProps {
+  expenses: Expense[];
+  onViewDetails: (expense: Expense) => void;
+}
+
+export const ExpenseTable: FC<ExpenseTableProps> = ({ expenses, onViewDetails }) => {
     return (
         <div className="glass-effect rounded-xl overflow-hidden">
             <Table>
@@ -21,7 +30,6 @@ export const ExpenseTable = ({ expenses, onViewDetails }) => {
                         <TableRow key={expense.id} className="cursor-pointer hover:bg-white/10 border-b-white/10" onClick={() => onViewDetails(expense)}>
                             <TableCell className="font-medium flex items-center gap-2">
                                 {expense.suppliers?.nom || expense.description || 'N/A'}
-                                {/* NOU: Icona si hi ha adjunts */}
                                 {expense.expense_attachments && expense.expense_attachments.length > 0 && (
                                     <Paperclip className="h-4 w-4 text-muted-foreground" />
                                 )}
