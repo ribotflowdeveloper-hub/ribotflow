@@ -1,41 +1,48 @@
 // src/app/auth/callback/route.ts
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
-  // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get('next') ?? '/'
+  const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get('code');
+  const next = searchParams.get('next') ?? '/dashboard';
 
   if (code) {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options })
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: '', ...options })
-          },
-        },
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (!exchangeError) {
+      // ✅ NOU PAS CRUCIAL: Un cop la sessió és vàlida, obtenim les dades i les desem.
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session && session.provider_refresh_token) {
+        // Preparem les dades per a la nostra taula personalitzada
+        const credentialData = {
+          user_id: session.user.id,
+          provider: session.user.app_metadata.provider,
+          refresh_token: session.provider_refresh_token,
+        };
+
+        // Fem un 'upsert' per si l'usuari ja tenia una credencial d'aquest proveïdor
+        const { error: upsertError } = await supabase
+          .from('user_credentials')
+          .upsert(credentialData, { onConflict: 'user_id, provider' });
+        
+        if (upsertError) {
+          console.error("Error en desar la credencial a user_credentials:", upsertError);
+          // Opcional: redirigir amb un error específic
+        }
       }
-    )
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      // Un cop la sessió s'ha creat correctament, redirigim al dashboard
-      return NextResponse.redirect(`${origin}/dashboard`)
+      
+      return NextResponse.redirect(`${origin}${next}`);
     }
   }
 
-  // Si hi ha un error o no hi ha codi, redirigim a una pàgina d'error
-  return NextResponse.redirect(`${origin}/login?error=Could not authenticate user`)
+  // Si hi ha un error, retornem a la pàgina de login.
+  console.error("Error en el callback d'autenticació:", searchParams.get('error_description'));
+  return NextResponse.redirect(`${origin}/login?error=Authentication failed`);
 }

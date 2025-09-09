@@ -6,64 +6,100 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
-import { connectGoogleAction, disconnectGoogleAction } from '../actions'; // Importem les Server Actions
+import { connectGoogleAction, disconnectGoogleAction, connectMicrosoftAction, disconnectMicrosoftAction } from '../actions';
 
-export function IntegrationsClient({ isInitiallyConnected }: { isInitiallyConnected: boolean }) {
+interface IntegrationsClientProps {
+  initialConnectionStatuses: {
+    google: boolean;
+    microsoft: boolean;
+  };
+}
+
+export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsClientProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const [isGoogleConnected, setIsGoogleConnected] = useState(isInitiallyConnected);
   
-  // Hook `useTransition` per gestionar estats de càrrega amb Server Actions
-  const [isPending, startTransition] = useTransition();
+  const [connections, setConnections] = useState(initialConnectionStatuses);
+  const [isPendingGoogle, startGoogleTransition] = useTransition();
+  const [isPendingMicrosoft, startMicrosoftTransition] = useTransition();
 
-  const handleConnect = async () => {
-    startTransition(async () => {
-      // Les redireccions dins de les Server Actions s'han de gestionar així
-      await connectGoogleAction(); 
-    });
+  const handleConnect = (provider: 'google' | 'microsoft') => {
+    if (provider === 'google') {
+      startGoogleTransition(async () => { await connectGoogleAction(); });
+    } else {
+      startMicrosoftTransition(async () => { await connectMicrosoftAction(); });
+    }
   };
 
-  const handleDisconnect = () => {
-    startTransition(async () => {
-      const result = await disconnectGoogleAction();
-      if (result.success) {
-        toast({ title: "Èxit!", description: result.message });
-        setIsGoogleConnected(false); // Actualitzem l'estat localment
-        router.refresh(); // Refresquem les dades del servidor per si de cas
-      } else {
-        toast({ variant: 'destructive', title: "Error", description: result.message });
-      }
-    });
+  const handleDisconnect = (provider: 'google' | 'microsoft') => {
+    if (provider === 'google') {
+      startGoogleTransition(async () => {
+        const result = await disconnectGoogleAction();
+        if (result.success) {
+          toast({ title: "Èxit!", description: result.message });
+          setConnections(prev => ({...prev, google: false}));
+          router.refresh();
+        } else {
+          toast({ variant: 'destructive', title: "Error", description: result.message });
+        }
+      });
+    } else {
+      startMicrosoftTransition(async () => {
+        const result = await disconnectMicrosoftAction();
+        if (result.success) {
+          toast({ title: "Èxit!", description: result.message });
+          setConnections(prev => ({...prev, microsoft: false}));
+          router.refresh();
+        } else {
+          toast({ variant: 'destructive', title: "Error", description: result.message });
+        }
+      });
+    }
   };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-      <div className="glass-card p-8">
-        <h2 className="text-xl font-semibold mb-6">Integracions</h2>
+      <div className="glass-card p-8 space-y-4">
+        <h2 className="text-xl font-semibold mb-2">Integracions de Correu</h2>
+        
+        {/* Google / Gmail */}
         <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
           <div className="flex items-center gap-4">
             <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" className="w-6 h-6" alt="Google logo"/>
             <div>
               <h3 className="font-semibold">Google / Gmail</h3>
-              <p className="text-sm text-muted-foreground">Sincronitza el teu correu.</p>
+              <p className="text-sm text-muted-foreground">Sincronitza el teu correu de Gmail.</p>
             </div>
           </div>
-          
-          {isPending ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : isGoogleConnected ? (
+          {isPendingGoogle ? <Loader2 className="w-5 h-5 animate-spin" /> : connections.google ? (
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-2 text-green-500 font-semibold text-sm">
-                <CheckCircle className="w-5 h-5" /> Connectat
-              </span>
-              <Button variant="destructive" size="sm" onClick={handleDisconnect}>
-                <XCircle className="w-4 h-4 mr-2"/> Desconnectar
-              </Button>
+              <span className="flex items-center gap-2 text-green-500 font-semibold text-sm"><CheckCircle className="w-5 h-5" /> Connectat</span>
+              <Button variant="destructive" size="sm" onClick={() => handleDisconnect('google')}><XCircle className="w-4 h-4 mr-2"/> Desconnectar</Button>
             </div>
           ) : (
-            <Button onClick={handleConnect}>Connectar Compte</Button>
+            <Button onClick={() => handleConnect('google')}>Connectar</Button>
           )}
         </div>
+        
+        {/* Microsoft / Outlook */}
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-center gap-4">
+            <img src="https://img.icons8.com/?size=100&id=117562&format=png&color=000000" className="w-6 h-6" alt="Microsoft logo"/>
+            <div>
+              <h3 className="font-semibold">Microsoft / Outlook</h3>
+              <p className="text-sm text-muted-foreground">Sincronitza el teu correu d'Outlook.</p>
+            </div>
+          </div>
+          {isPendingMicrosoft ? <Loader2 className="w-5 h-5 animate-spin" /> : connections.microsoft ? (
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-2 text-green-500 font-semibold text-sm"><CheckCircle className="w-5 h-5" /> Connectat</span>
+              <Button variant="destructive" size="sm" onClick={() => handleDisconnect('microsoft')}><XCircle className="w-4 h-4 mr-2"/> Desconnectar</Button>
+            </div>
+          ) : (
+            <Button onClick={() => handleConnect('microsoft')}>Connectar</Button>
+          )}
+        </div>
+
       </div>
     </motion.div>
   );

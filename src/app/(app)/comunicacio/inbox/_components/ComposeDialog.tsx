@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Toggle } from '@/components/ui/toggle';
 import { Loader2, Send, FileText, Variable, Bold, Italic, Strikethrough, List, ListOrdered, Heading2, User, Mail, Search } from 'lucide-react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, Editor } from '@tiptap/react'; // ✅ CORRECCIÓ: Importem el tipus 'Editor'
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { createClient } from '@/lib/supabase/client';
@@ -18,7 +18,8 @@ import { createClient } from '@/lib/supabase/client';
 import { sendEmailAction } from '../actions';
 import type { Template, Contact } from '../page';
 
-const EmailEditorToolbar = ({ editor }: { editor: any }) => {
+// ✅ CORRECCIÓ: Tipem correctament el 'editor' per evitar 'any'
+const EmailEditorToolbar = ({ editor }: { editor: Editor | null }) => {
     if (!editor) return null;
     return (
         <div className="border border-input bg-transparent rounded-md p-1 flex gap-1 flex-wrap">
@@ -81,7 +82,8 @@ export const ComposeDialog = ({ open, onOpenChange, onEmailSent, initialData, te
                 if(!user) return;
 
                 const { data } = await supabase.from('contacts').select('id, nom, email').eq('user_id', user.id);
-                const sortedData = (data as any[] || []).sort((a, b) => a.nom.localeCompare(b.nom));
+                // ✅ CORRECCIÓ: Tipem 'sortedData' per evitar 'any'
+                const sortedData = (data as Contact[] || []).sort((a, b) => a.nom.localeCompare(b.nom));
                 setContacts(sortedData);
                 
                 setSelectedContactId(initialData?.contactId || '');
@@ -112,7 +114,8 @@ export const ComposeDialog = ({ open, onOpenChange, onEmailSent, initialData, te
             return renderTemplate(selectedTemplate.body, debouncedVariableValues);
         }
         return editor?.getHTML() || '';
-    }, [selectedTemplate, debouncedVariableValues, editor?.state]);
+    // ✅ CORRECCIÓ: Afegim 'editor' com a dependència del hook.
+    }, [selectedTemplate, debouncedVariableValues, editor]);
 
     const filteredContacts = useMemo(() => {
         if (!contactSearch) return contacts;
@@ -157,7 +160,6 @@ export const ComposeDialog = ({ open, onOpenChange, onEmailSent, initialData, te
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            {/* ✅ DISSENY MILLORAT: Apliquem les classes per a un diàleg més ample */}
             <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Escriure un Correu</DialogTitle>
@@ -238,4 +240,3 @@ export const ComposeDialog = ({ open, onOpenChange, onEmailSent, initialData, te
         </Dialog>
     );
 };
-

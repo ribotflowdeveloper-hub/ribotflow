@@ -4,63 +4,81 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-// Acció per començar el procés de connexió amb Google
+// --- GOOGLE ACTIONS ---
 export async function connectGoogleAction() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
+
+  // Construïm la URL de retorn, indicant que volem tornar a la pàgina d'integracions.
+  const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/settings/integrations`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       scopes: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/settings/integrations`, // URL on tornarà Google
-      queryParams: {
-        access_type: 'offline',
-        prompt: 'consent',
-      }
+      redirectTo, // ✅ CORRECCIÓ: Utilitzem la nova URL
+      queryParams: { access_type: 'offline', prompt: 'consent' }
     },
   });
 
   if (error) {
-    console.error("Error en iniciar OAuth:", error);
+    console.error("Error en iniciar OAuth amb Google:", error);
     return { error: "No s'ha pogut obtenir la URL de Google." };
   }
-
-  // Si tot va bé, redirigim l'usuari a la URL d'autenticació de Google
   if (data.url) {
     redirect(data.url);
   }
 }
 
-// Acció per desconnectar de Google
 export async function disconnectGoogleAction() {
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuari no trobat." };
+
+    await supabase.functions.invoke('google-revoke-token');
+    
+    const { error } = await supabase.from('user_credentials').delete().match({ user_id: user.id, provider: 'google' });
+    if (error) return { success: false, message: "No s'ha pogut desconnectar el compte de Google." };
+
+    return { success: true, message: "Compte de Gmail desconnectat correctament." };
+}
+
+// --- MICROSOFT ACTIONS ---
+export async function connectMicrosoftAction() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
-  
-  // Primer, obtenim l'usuari de forma segura
+
+  // Fem el mateix per a Microsoft.
+  const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=/settings/integrations`;
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'azure',
+    options: {
+      scopes: 'openid email offline_access User.Read Mail.Read Mail.Send',
+      redirectTo, // ✅ CORRECCIÓ: Utilitzem la nova URL
+    },
+  });
+
+  if (error) {
+    console.error("Error en iniciar OAuth amb Microsoft:", error);
+    return { error: "No s'ha pogut obtenir la URL de Microsoft." };
+  }
+  if (data.url) {
+    redirect(data.url);
+  }
+}
+
+export async function disconnectMicrosoftAction() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, message: "Usuari no trobat." };
-  }
-
-  // Invoquem la funció per revocar el token a Google
-  const { error: invokeError } = await supabase.functions.invoke('google-revoke-token');
-  if (invokeError) {
-    console.error("Error en invocar google-revoke-token:", invokeError);
-    // No aturem el procés, ja que igualment volem esborrar la credencial
-  }
-
-  // Finalment, esborrem la credencial de la nostra base de dades
-  const { error: deleteError } = await supabase
-    .from('user_credentials')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('provider', 'google');
+  if (!user) return { success: false, message: "Usuari no trobat." };
   
-  if (deleteError) {
-    console.error("Error en esborrar la credencial:", deleteError);
-    return { success: false, message: "No s'ha pogut desconnectar el compte." };
-  }
+  await supabase.functions.invoke('microsoft-revoke-token');
+  
+  const { error } = await supabase.from('user_credentials').delete().match({ user_id: user.id, provider: 'azure' });
+  if (error) return { success: false, message: "No s'ha pogut desconnectar el compte de Microsoft." };
 
-  return { success: true, message: "Compte de Gmail desconnectat correctament." };
+  return { success: true, message: "Compte de Microsoft/Outlook desconnectat correctament." };
 }

@@ -105,4 +105,3 @@ export async function sendEmailAction({ contactId, subject, htmlBody, isReply }:
         return { success: false, message: `Error en la Server Action: ${error.message}` };
     }
 }
-

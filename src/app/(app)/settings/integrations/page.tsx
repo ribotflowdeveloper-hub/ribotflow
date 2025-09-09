@@ -7,28 +7,26 @@ export default async function IntegrationsPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // Comprovació segura de l'usuari per evitar errors
-  const { data: authData, error } = await supabase.auth.getUser();
-  if (error || !authData?.user) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     redirect('/login');
   }
-  const user = authData.user;
 
-  // Comprovem al servidor si l'usuari ja té una credencial de Google
-  const { data } = await supabase
-    .from('user_credentials')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('provider', 'google')
-    .maybeSingle();
-    
-  const isConnected = !!data;
+  // Comprovem l'estat de les dues connexions en paral·lel
+  const [googleStatus, microsoftStatus] = await Promise.all([
+    supabase.from('user_credentials').select('id').eq('user_id', user.id).eq('provider', 'google').maybeSingle(),
+    supabase.from('user_credentials').select('id').eq('user_id', user.id).eq('provider', 'azure').maybeSingle()
+  ]);
+  
+  const connectionStatuses = {
+    google: !!googleStatus.data,
+    microsoft: !!microsoftStatus.data,
+  };
   
   return (
     <div>
       <h1 className="text-3xl font-bold mb-8">Integracions</h1>
-      <IntegrationsClient isInitiallyConnected={isConnected} />
+      <IntegrationsClient initialConnectionStatuses={connectionStatuses} />
     </div>
   ); 
 }
-
