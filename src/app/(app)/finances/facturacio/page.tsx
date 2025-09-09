@@ -18,13 +18,12 @@ export type Contact = {
 };
 
 export type Invoice = {
-  id: number;
+  id: string; // Ha de ser string
   contact_id: string;
   issue_date: string;
-  due_date: string | null;
   total_amount: number;
-  status: 'Draft' | 'Sent' | 'Paid' | 'Overdue';
-  contacts: Contact | null;
+  status: string;
+  contacts?: { nom: string }; 
 };
 
 export default async function FacturacioPage() {

@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ContactsClient } from './_components/contacts-client';
 import type { Metadata } from 'next';
-import { Contact } from '@/types/crm'; // ✅ CANVI: Importem el tipus central
 
 export const metadata: Metadata = {
   title: 'Contactes | Ribot',

@@ -1,18 +1,19 @@
-// Ruta del fitxer: src/app/(app)/finances/facturacio/actions.ts
+// Ruta: src/app/(app)/finances/facturacio/actions.ts
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-// Tipus per a les dades que rebem del formulari
-type InvoiceFormData = {
-    id?: number;
+// Aquest tipus defineix les dades que el formulari pot enviar.
+// És específic per a aquesta acció.
+export type InvoiceFormData = {
+    id?: string;
     contact_id: string;
-    issue_date: Date;
+    issue_date: string;
     total_amount: number;
-    status: 'Draft' | 'Sent' | 'Paid' | 'Overdue';
-}
+    status: 'Paid' | 'Sent' | 'Overdue' | 'Draft';
+};
 
 export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
     const cookieStore = cookies();
@@ -20,10 +21,6 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
-
-    if (!invoiceData.contact_id || !invoiceData.total_amount) {
-        return { success: false, message: "El client i l'import són obligatoris." };
-    }
     
     const dataToUpsert = {
         ...invoiceData,
@@ -31,12 +28,15 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
     };
 
     try {
-        const { error } = await supabase.from('invoices').upsert(dataToUpsert);
+        const { error } = await supabase
+            .from('invoices')
+            .upsert(dataToUpsert, { onConflict: 'id' });
+
         if (error) throw error;
         
         revalidatePath('/finances/facturacio');
         return { success: true, message: `Factura ${invoiceData.id ? 'actualitzada' : 'creada'} correctament.` };
-    } catch (error: unknown) { // ✅ CORRECCIÓ: Tipem l'error com a 'unknown'
+    } catch (error: unknown) {
         if (error instanceof Error) {
             return { success: false, message: error.message };
         }
@@ -44,8 +44,8 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
     }
 }
 
-
-export async function deleteInvoiceAction(invoiceId: number) {
+// Aquesta funció ara espera un 'string' per ser coherent.
+export async function deleteInvoiceAction(invoiceId: string) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
 
@@ -58,7 +58,7 @@ export async function deleteInvoiceAction(invoiceId: number) {
         
         revalidatePath('/finances/facturacio');
         return { success: true, message: "Factura eliminada." };
-    } catch (error: unknown) { // ✅ CORRECCIÓ: Tipem l'error com a 'unknown'
+    } catch (error: unknown) {
         if (error instanceof Error) {
             return { success: false, message: error.message };
         }

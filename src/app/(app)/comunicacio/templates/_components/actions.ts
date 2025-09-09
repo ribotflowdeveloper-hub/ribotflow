@@ -34,7 +34,7 @@ export async function saveTemplateAction(
   }
   
   let data: EmailTemplate | null = null;
-  let error: any = null;
+  let error: PostgrestError | null = null; // Tipus correcte
 
   if (templateId && templateId !== 'new') { // Update
     ({ data, error } = await supabase

@@ -3,7 +3,6 @@
 import React, { useState, FC, ElementType, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Sparkles, List, Calendar, Target, BarChart2, CheckCircle } from 'lucide-react';
 import { type Campaign, type Kpis } from '../page';

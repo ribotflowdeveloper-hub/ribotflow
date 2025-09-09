@@ -15,8 +15,14 @@ import {
 
 // Tipus per a les dades que venen del servidor
 type Task = { id: string; title: string; is_completed: boolean; contact_id: string; created_at: string; };
-type Contact = { id: string; nom: string; last_interaction_at: string; created_at: string; };
-type Invoice = { id: string; due_date: string; contacts: { nom: string } | null };
+// Afegeix aquests tipus a dalt del teu component (necessitaràs els tipus Invoice i Contact)
+// Suposant que ja tens tipus similars a aquests:
+type Invoice = { id: string; due_date: string; contacts?: { nom: string } };
+type Contact = {
+  created_at: string | number | Date; id: string; nom: string 
+};
+
+type ActivityFeedItem = (Invoice & { type: 'invoice' }) | (Contact & { type: 'contact' });
 
 export interface DashboardStats {
   totalContacts: number;
@@ -176,8 +182,20 @@ export function DashboardClient({ initialData }: { initialData: DashboardInitial
           <div className="space-y-6">
             <div className="rounded-2xl p-6 ring-1 ring-white/10 bg-white/5">
                 <h2 className="text-xl font-bold text-white mb-4">Radar</h2>
-                <div className="space-y-3">{initialData.attentionContacts.length > 0 || initialData.overdueInvoices.length > 0 ? [...initialData.overdueInvoices.map(inv => ({...inv, type: 'invoice'})), ...initialData.attentionContacts.map(c => ({...c, type: 'contact'}))].map((item: any) => item.type === 'invoice' ? <ActivityItem key={item.id} href="/finances/facturacio" icon={FileWarning} tone={{bg: 'bg-red-500/15', text: 'text-red-300'}} title={`Factura vençuda: ${item.contacts?.nom}`} meta={`Vencia el ${new Date(item.due_date).toLocaleDateString()}`} /> : <ActivityItem key={item.id} href="/crm/contactes" icon={MessageSquare} tone={{bg: 'bg-blue-500/15', text: 'text-blue-300'}} title={`Contacte refredant-se: ${item.nom}`} meta="Sense interaccions en +7 dies"/>) : <p className="text-sm text-white/70">Tot en ordre.</p>}</div>
-            </div>
+                <div className="space-y-3">
+                  {initialData.attentionContacts.length > 0 || initialData.overdueInvoices.length > 0 ? (
+                      [...initialData.overdueInvoices.map(inv => ({...inv, type: 'invoice' as const})), ...initialData.attentionContacts.map(c => ({...c, type: 'contact' as const}))]
+                      .map((item: ActivityFeedItem) => // <-- Tipus aplicat aquí
+                          item.type === 'invoice' ? (
+                              <ActivityItem key={item.id} href="/finances/facturacio" icon={FileWarning} tone={{bg: 'bg-red-500/15', text: 'text-red-300'}} title={`Factura vençuda: ${item.contacts?.nom}`} meta={`Vencia el ${new Date(item.due_date).toLocaleDateString()}`} />
+                          ) : (
+                              <ActivityItem key={item.id} href="/crm/contactes" icon={MessageSquare} tone={{bg: 'bg-blue-500/15', text: 'text-blue-300'}} title={`Contacte refredant-se: ${item.nom}`} meta="Sense interaccions en +7 dies"/>
+                          )
+                      )
+                  ) : (
+                      <p className="text-sm text-white/70">Tot en ordre.</p>
+                  )}
+              </div>            </div>
             <div className="rounded-2xl p-6 ring-1 ring-white/10 bg-gradient-to-br from-white/10 to-white/5">
                 <h2 className="text-xl font-bold text-white mb-3">Oracle d’IA</h2>
                 <div className="space-y-3"><div className="p-3 rounded-lg bg-white/5 ring-1 ring-white/10"><p className="text-sm font-semibold text-white/90 mb-1">Resum</p><p className="text-sm text-white/80">{initialData.aiInsights.summary || '—'}</p></div><div className="p-3 rounded-lg bg-white/5 ring-1 ring-white/10"><p className="text-sm font-semibold text-white/90 mb-1">Suggeriment</p><p className="text-sm text-white/80">{initialData.aiInsights.suggestion || '—'}</p></div><Button variant="outline" className="w-full">Parlar amb l’assistent</Button></div>

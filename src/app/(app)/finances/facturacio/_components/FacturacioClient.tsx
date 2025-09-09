@@ -17,10 +17,10 @@ import { Loader2, Plus, Calendar as CalendarIcon, Check, ChevronsUpDown, Edit, T
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-import type { DateRange } from "react-day-picker"; // o `Date` directament
 import type { Invoice, Contact } from '../page';
 import { createOrUpdateInvoiceAction, deleteInvoiceAction } from '../actions';
-
+// ✅ AFEGEIX AQUESTA LÍNIA!
+import { type InvoiceFormData } from '../actions';
 // Component intern per al formulari
 const InvoiceForm = ({ 
     invoice, 
@@ -115,8 +115,8 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
     const [isSaving, startSaveTransition] = useTransition();
     
     const [isFormOpen, setIsFormOpen] = useState(false);
+// Ara aquesta línia ja no donarà error
     const [editingInvoice, setEditingInvoice] = useState<Partial<Invoice> | null>(null);
-
     const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
 
     const handleOpenForm = (invoice: Invoice | null = null) => {
@@ -135,6 +135,8 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
     };
 
     const handleSave = () => {
+        const [editingInvoice, setEditingInvoice] = useState<InvoiceFormData | null>(null);
+
         if (!editingInvoice) return;
         startSaveTransition(async () => {
             const result = await createOrUpdateInvoiceAction(editingInvoice as any);
