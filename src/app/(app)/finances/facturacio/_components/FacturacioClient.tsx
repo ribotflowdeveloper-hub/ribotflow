@@ -17,7 +17,7 @@ import { Loader2, Plus, Calendar as CalendarIcon, Check, ChevronsUpDown, Edit, T
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-
+import type { DateRange } from "react-day-picker"; // o `Date` directament
 import type { Invoice, Contact } from '../page';
 import { createOrUpdateInvoiceAction, deleteInvoiceAction } from '../actions';
 
@@ -80,7 +80,12 @@ const InvoiceForm = ({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                        <Calendar mode="single" selected={invoice.issue_date ? new Date(invoice.issue_date) : undefined} onSelect={(date: { toISOString: () => any; }) => setInvoice(p => p ? ({ ...p, issue_date: date?.toISOString() }) : null)} initialFocus className={undefined} classNames={undefined} formatters={undefined} components={undefined} />
+                    
+
+                        <Calendar
+                            mode="single"
+                            selected={invoice.issue_date ? new Date(invoice.issue_date) : undefined}
+                            onSelect={(date: Date | undefined) => setInvoice(p => p ? ({ ...p, issue_date: date?.toISOString() }) : null)} className={undefined} classNames={undefined} formatters={undefined} components={undefined}                        />
                     </PopoverContent>
                 </Popover>
             </div>

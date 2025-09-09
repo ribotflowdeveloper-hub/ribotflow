@@ -17,7 +17,33 @@ import {
 type Task = { id: string; title: string; is_completed: boolean; contact_id: string; created_at: string; };
 type Contact = { id: string; nom: string; last_interaction_at: string; created_at: string; };
 type Invoice = { id: string; due_date: string; contacts: { nom: string } | null };
-type DashboardInitialData = { stats: any; tasks: Task[]; contacts: Contact[]; overdueInvoices: Invoice[]; attentionContacts: Contact[]; aiInsights: any; };
+
+export interface DashboardStats {
+  totalContacts: number;
+  activeClients: number;
+  opportunities: number;
+  invoiced: number;
+  pending: number;
+  expenses: number;
+  invoicedChange: string;
+  expensesChange: string;
+  invoicedIsPositive: boolean;
+  expensesIsPositive: boolean;
+}
+
+export interface AiInsights {
+  summary: string;
+  suggestion: string;
+}
+
+export interface DashboardInitialData {
+  stats: DashboardStats;
+  tasks: Task[];
+  contacts: Contact[];
+  overdueInvoices: Invoice[];
+  attentionContacts: Contact[];
+  aiInsights: AiInsights;
+}
 
 // Sub-components interns del Dashboard (migrats i tipats)
 const StatCard: FC<{ href: string, icon: ElementType, title: string, value: string, color: string }> = ({ href, icon: Icon, title, value, color }) => (

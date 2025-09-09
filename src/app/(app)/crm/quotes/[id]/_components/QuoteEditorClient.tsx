@@ -115,9 +115,15 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
             setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
             toast({ variant: "default", title: "Èxit!", description: result.message, className: "bg-green-500 text-white" });
 
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error en l'enviament", description: error.message });
-        } finally {
+          } catch (error: unknown) {
+            const message =
+              error instanceof Error ? error.message : "Error desconegut en l'enviament";
+            toast({
+              variant: "destructive",
+              title: "Error en l'enviament",
+              description: message,
+            });
+          } finally {
             setSendingStatus('idle');
         }
     });
@@ -186,7 +192,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
                 <QuoteMeta quote={quote} setQuote={setQuote} contacts={contacts} />
             </div>
 
-            <div className="">
+<div className="">
   <Label>Oportunitats del client</Label>
   {contactOpportunities.length > 0 ? (
     <Select 

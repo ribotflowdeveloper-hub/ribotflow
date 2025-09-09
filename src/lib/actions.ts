@@ -7,20 +7,26 @@ export interface ServerActionResult<T = unknown> {
   success: boolean;
   message?: string;
   data?: T;
+  newId?: string;   // 🔥 opcional
 }
 
 export async function withUser<T>(
-  action: (supabase: ReturnType<typeof createClient>, userId: string) => Promise<ServerActionResult<T>>,
+  action: (
+    supabase: ReturnType<typeof createClient>,
+    userId: string
+  ) => Promise<ServerActionResult<T>>,
   pathsToRevalidate?: string[]
 ): Promise<ServerActionResult<T>> {
   const supabase = createClient(cookies());
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) return { success: false, message: "Usuari no autenticat." };
 
   try {
     const result = await action(supabase, user.id);
-    if (pathsToRevalidate) pathsToRevalidate.forEach(p => revalidatePath(p));
+    if (pathsToRevalidate) pathsToRevalidate.forEach((p) => revalidatePath(p));
     return result;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error desconegut";

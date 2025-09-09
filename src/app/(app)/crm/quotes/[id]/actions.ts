@@ -73,9 +73,10 @@ export async function sendQuoteAction(quoteId: string) {
 
         revalidatePath(`/crm/quotes/${quoteId}`);
         return { success: true, message: "Pressupost enviat correctament." };
-    } catch (error: any) {
-        return { success: false, message: `Error en l'acció del servidor: ${error.message}` };
-    }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { success: false, message };
+      }
 }
 
 // --- ACCIONS DE SUB-COMPONENTS ---
@@ -92,9 +93,10 @@ export async function updateCompanyProfileAction(profileData: CompanyProfile) {
         
         revalidatePath(`/crm/quotes/[id]`, 'layout');
         return { success: true, message: 'Perfil d\'empresa actualitzat.', updatedProfile: data };
-    } catch(error: any) {
-        return { success: false, message: error.message };
-    }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { success: false, message };
+      }
 }
 
 export async function createProductAction(newProduct: { name: string, price: number }) {
@@ -112,8 +114,9 @@ export async function createProductAction(newProduct: { name: string, price: num
 
         revalidatePath(`/crm/quotes/[id]`, 'page');
         return { success: true, message: 'Nou producte desat.', newProduct: data };
-    } catch(error: any) {
-        return { success: false, message: error.message };
-    }
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { success: false, message };
+      }
 }
 

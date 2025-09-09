@@ -7,6 +7,13 @@ import { DashboardClient } from './dashboard-client'
 export const metadata: Metadata = {
   title: 'Tauler Principal | Ribot',
 }
+export interface Contact {
+  id: string;
+  nom: string;
+  email?: string;
+  phone?: string;
+  last_interaction_at?: string | null;
+}
 
 // Funció d'ajuda per calcular canvis percentuals (s'executa al servidor)
 const calculatePercentageChange = (current: number, previous: number) => {
@@ -76,9 +83,9 @@ export default async function DashboardPage() {
     contacts: contactsData,
     // ✅ CANVI: Utilitzem les dades ja transformades
     overdueInvoices: transformedOverdueInvoices,
-    attentionContacts: contactsData
-      .filter((c: any) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
-      .slice(0, 5),
+    attentionContacts: contactsData
+      .filter((c: Contact) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
+      .slice(0, 5),
     aiInsights: aiInsightsRes.data || { summary: 'No disponible.', suggestion: 'Intenta-ho més tard.' },
   }
 

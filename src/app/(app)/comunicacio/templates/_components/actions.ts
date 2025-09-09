@@ -4,20 +4,33 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { type EmailTemplate } from '../page'; // Importarem el tipus des de la pàgina
+import type { PostgrestError } from "@supabase/supabase-js";
 
 // Acció per desar (crear o actualitzar) una plantilla
 export async function saveTemplateAction(
-  templateData: Omit<EmailTemplate, 'id' | 'created_at' | 'user_id'>,
+  templateData: Omit<EmailTemplate, "id" | "created_at" | "user_id">,
   templateId: string | null
-): Promise<{ data: EmailTemplate | null; error: any }> {
+): Promise<{ data: EmailTemplate | null; error: PostgrestError | null }> {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { message: "Not authenticated" } };
+  if (!user) return { data: null, error: {
+    message: "Not authenticated",
+    details: "",
+    hint: "",
+    code: "",
+    name: ""
+  } };
 
   if (!templateData.name) {
-    return { data: null, error: { message: "El nom de la plantilla és obligatori." } };
+    return { data: null, error: {
+      message: "El nom de la plantilla és obligatori.",
+      details: "",
+      hint: "",
+      code: "",
+      name: ""
+    } };
   }
   
   let data: EmailTemplate | null = null;
@@ -48,12 +61,20 @@ export async function saveTemplateAction(
 }
 
 // Acció per eliminar una plantilla
-export async function deleteTemplateAction(templateId: string): Promise<{ error: any }> {
+export async function deleteTemplateAction(
+  templateId: string
+): Promise<{ error: PostgrestError | null }> {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: { message: "Not authenticated" } };
+  if (!user) return { error: {
+    message: "Not authenticated",
+    details: "",
+    hint: "",
+    code: "",
+    name: ""
+  } };
 
   const { error } = await supabase.from('email_templates').delete().match({ id: templateId, user_id: user.id });
 

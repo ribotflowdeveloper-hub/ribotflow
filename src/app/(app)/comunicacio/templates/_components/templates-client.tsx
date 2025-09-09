@@ -135,12 +135,14 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
                 {editorView === 'code' ? (
                   <div className="flex-1 overflow-y-auto font-mono text-sm editor-container">
                     <Editor
-                      value={selectedTemplate.body || ''}
-                      onValueChange={(code: any) => setSelectedTemplate(t => t ? { ...t, body: code } : null)}
-                      highlight={(code: any) => highlight(code, languages.markup!, 'markup')}
+                      value={selectedTemplate.body || ""}
+                      onValueChange={(code: string) =>
+                        setSelectedTemplate((t) => (t ? { ...t, body: code } : null))
+                      }
+                      highlight={(code: string) => highlight(code, languages.markup!, "markup")}
                       padding={16}
                       className="bg-transparent h-full"
-                      style={{ minHeight: '100%' }}
+                      style={{ minHeight: "100%" }}
                     />
                   </div>
                 ) : (

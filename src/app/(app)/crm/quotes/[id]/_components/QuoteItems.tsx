@@ -22,11 +22,16 @@ export const QuoteItems = ({ items, setItems, products }: {
     const [newProduct, setNewProduct] = useState({ name: '', price: '' });
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    const handleItemChange = (index: number, field: keyof QuoteItem, value: any) => {
+    const handleItemChange = <K extends keyof QuoteItem>(
+        index: number,
+        field: K,
+        value: QuoteItem[K]
+      ) => {
         const newItems = [...items];
         newItems[index] = { ...newItems[index], [field]: value };
         setItems(newItems);
-    };
+      };
+      
 
     const handleAddItem = (itemData: Partial<QuoteItem> = {}) => {
         const newItem: QuoteItem = {

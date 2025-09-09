@@ -93,8 +93,18 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
     const supabase = createClient();
     const router = useRouter();
     const [data, setData] = useState(initialData);
-    const [composeState, setComposeState] = useState<{ open: boolean; initialData: any | null }>({ open: false, initialData: null });
-
+    interface ComposeInitialData {
+        contactId: string;
+        to: string;
+        subject: string;
+        body: string;
+      }
+      
+      const [composeState, setComposeState] = useState<{
+        open: boolean;
+        initialData: ComposeInitialData | null;
+      }>({ open: false, initialData: null });
+      
     const handleMarkAsRead = async (activityId: string) => {
         setData(prevData => prevData ? ({ ...prevData, unreadActivities: prevData.unreadActivities.filter(a => a.id !== activityId) }) : null);
         const { error } = await supabase.from('activities').update({ is_read: true }).eq('id', activityId);
@@ -195,10 +205,16 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
             
             <ComposeEmailDialog 
                 open={composeState.open}
-                onOpenChange={(isOpen) => setComposeState({ open: isOpen, initialData: isOpen ? composeState.initialData : null })}
+                onOpenChange={(isOpen) =>
+                    setComposeState({
+                    open: isOpen,
+                    initialData: isOpen ? composeState.initialData : null,
+                    })
+                }
                 initialData={composeState.initialData}
                 onEmailSent={() => {}}
-            />
+                />
+
         </>
     );
 }

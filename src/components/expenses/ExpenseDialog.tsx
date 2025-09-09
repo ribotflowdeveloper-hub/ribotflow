@@ -84,14 +84,36 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
         
         startOcrTransition(async () => {
             const { data, error } = await processOcrAction(formData);
+        
             if (error) {
                 toast({ variant: 'destructive', title: "Error processing invoice", description: error.message });
-            } else {
-                const newItems = data.expense_items?.length > 0 ? data.expense_items : [{ description: '', quantity: 1, unit_price: 0 }];
-                setCurrentExpense(prev => ({...prev, ...data, expense_items: newItems, expense_date: data.issue_date ? new Date(data.issue_date).toISOString() : prev.expense_date,}));
+            } else if (data) {
+                // Garantim tipus correcte
+                const newItems: ExpenseItem[] = Array.isArray(data.expense_items)
+                    ? data.expense_items.map(item => ({
+                        description: String(item.description || ''),
+                        quantity: Number(item.quantity || 1),
+                        unit_price: Number(item.unit_price || 0),
+                    }))
+                    : [{ description: '', quantity: 1, unit_price: 0 }];
+        
+                setCurrentExpense(prev => ({
+                    ...prev,
+                    ...data,
+                    expense_items: newItems,
+                    expense_date: data.issue_date && typeof data.issue_date === 'string'
+                        ? new Date(data.issue_date).toISOString()
+                        : prev.expense_date,
+                }));
+        
                 toast({ title: 'Data extracted successfully!', description: 'Please review and complete the form.' });
+            } else {
+                toast({ variant: 'destructive', title: "No data extracted" });
             }
         });
+        
+        
+
     };
 
     const handleAttachmentUpload = (file: File | undefined) => {
@@ -139,7 +161,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                        <div className='grid md:grid-cols-2 gap-4'>
                             <div className="space-y-2"><Label>Proveïdor</Label><Popover open={comboboxOpen} onOpenChange={setComboboxOpen}><PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between text-left font-normal">{selectedSupplier?.nom || "Selecciona un proveïdor..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-effect"><Command><CommandInput placeholder="Buscar proveïdor..." /><CommandList><CommandEmpty>No s'ha trobat.</CommandEmpty><CommandGroup>{suppliers.map((s) => (<CommandItem key={s.id} value={s.nom} onSelect={() => {setSelectedSupplier(s); setCurrentExpense(p => ({...p, supplier_id: s.id})); setComboboxOpen(false);}}><Check className={cn("mr-2 h-4 w-4", currentExpense.supplier_id === s.id ? "opacity-100" : "opacity-0")} />{s.nom}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover></div>
                             <div className="space-y-2"><Label>Nº Factura / Tiquet</Label><Input value={currentExpense.invoice_number || ''} onChange={e => setCurrentExpense(p => ({...p, invoice_number: e.target.value}))} /></div>
-                            <div className="space-y-2"><Label>Data de la Despesa</Label><Popover><PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !currentExpense.expense_date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{currentExpense.expense_date ? format(new Date(currentExpense.expense_date), "PPP", { locale: ca }) : <span>Tria data</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={currentExpense.expense_date ? new Date(currentExpense.expense_date) : undefined} onSelect={(d: { toISOString: () => any; }) => setCurrentExpense(p => ({ ...p, expense_date: d?.toISOString() || '' }))} initialFocus className={undefined} classNames={undefined} formatters={undefined} components={undefined} /></PopoverContent></Popover></div>
+                            <div className="space-y-2"><Label>Data de la Despesa</Label><Popover><PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !currentExpense.expense_date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{currentExpense.expense_date ? format(new Date(currentExpense.expense_date), "PPP", { locale: ca }) : <span>Tria data</span>}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={currentExpense.expense_date ? new Date(currentExpense.expense_date) : undefined} onSelect={(d: Date | undefined) =>setCurrentExpense(p => ({ ...p, expense_date: d?.toISOString() || "" }))} initialFocus className={undefined} classNames={undefined} formatters={undefined} components={undefined} /></PopoverContent></Popover></div>
                             <div className="space-y-2"><Label>Categoria</Label><Input placeholder="Ex: Software, Material..." value={currentExpense.category || ''} onChange={e => setCurrentExpense(p => ({...p, category: e.target.value}))} /></div>
                        </div>
                        
