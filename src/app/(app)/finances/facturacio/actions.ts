@@ -36,8 +36,11 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
         
         revalidatePath('/finances/facturacio');
         return { success: true, message: `Factura ${invoiceData.id ? 'actualitzada' : 'creada'} correctament.` };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) { // ✅ CORRECCIÓ: Tipem l'error com a 'unknown'
+        if (error instanceof Error) {
+            return { success: false, message: error.message };
+        }
+        return { success: false, message: "Ha ocorregut un error inesperat." };
     }
 }
 
@@ -55,7 +58,10 @@ export async function deleteInvoiceAction(invoiceId: number) {
         
         revalidatePath('/finances/facturacio');
         return { success: true, message: "Factura eliminada." };
-    } catch (error: any) {
-        return { success: false, message: error.message };
+    } catch (error: unknown) { // ✅ CORRECCIÓ: Tipem l'error com a 'unknown'
+        if (error instanceof Error) {
+            return { success: false, message: error.message };
+        }
+        return { success: false, message: "Ha ocorregut un error inesperat." };
     }
 }

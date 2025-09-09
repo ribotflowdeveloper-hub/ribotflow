@@ -1,16 +1,16 @@
 // Ruta del fitxer: src/app/(app)/comunicacio/inbox/_components/InboxClient.tsx
 "use client";
 
-import React, { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useTransition} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { Loader2, Inbox, User, Building, RefreshCw, Trash2, ArrowLeft, Info, PenSquare, Reply, UserPlus } from 'lucide-react';
+import {  Inbox, User, Building, RefreshCw, Trash2, ArrowLeft, Info, PenSquare, Reply, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
+import type { InitialData } from './ComposeDialog';
 import type { Ticket, Template, Contact } from '../page';
 import { deleteTicketAction, markTicketAsReadAction, saveSenderAsContactAction } from '../actions';
 import { ComposeDialog } from './ComposeDialog';
@@ -41,7 +41,22 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
     const isDesktop = useMediaQuery('(min-width: 1024px)');
     const [activeFilter, setActiveFilter] = useState('rebuts');
-    const [composeState, setComposeState] = useState<{ open: boolean, initialData: any }>({ open: false, initialData: null });
+    
+    type ComposeInitialData = {
+        contactId: string | null;
+        to: string | null;
+        subject: string | null;
+        body: string | null;
+      } | null;
+      
+      
+    const [composeState, setComposeState] = useState<{
+    open: boolean;
+    initialData: InitialData | null;
+    }>({
+    open: false,
+    initialData: null
+    });       
     const [isPending, startTransition] = useTransition();
 
     useEffect(() => {
@@ -56,7 +71,7 @@ export function InboxClient({ initialTickets, initialTemplates }: {
         } else {
             setSelectedTicket(null);
         }
-    }, [isDesktop, tickets]);
+    }, [isDesktop, tickets, selectedTicket]);
     
     const handleSelectTicket = (ticket: Ticket) => {
         setSelectedTicket(ticket);
@@ -99,7 +114,17 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     const handleReply = (ticket: Ticket) => {
         if (!ticket) return;
         const quotedBody = `<br><br><br><p>--- El ${new Date(ticket.sent_at).toLocaleString('ca-ES')} ${ticket.contacts?.nom || ticket.sender_name || ''} va escriure ---</p><blockquote>${ticket.body}</blockquote>`;
-        setComposeState({ open: true, initialData: { contactId: ticket.contact_id, to: ticket.contacts?.email || ticket.sender_email, subject: ticket.subject.toLowerCase().startsWith('re:') ? ticket.subject : `Re: ${ticket.subject}`, body: quotedBody } });
+        setComposeState({ 
+            open: true, 
+            initialData: { 
+              contactId: ticket.contact_id ?? '',    
+              to: ticket.contacts?.email ?? ticket.sender_email ?? '',
+              subject: ticket.subject.toLowerCase().startsWith('re:') ? ticket.subject : `Re: ${ticket.subject}`,
+              body: quotedBody ?? ''   
+            } 
+          });
+          
+          
     };
 
     const handleRefresh = () => {
