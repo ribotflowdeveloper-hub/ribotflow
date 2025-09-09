@@ -1,9 +1,9 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-// Definim el tipus de les propietats que rep el component
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+// 1. Canviem la interfície buida per un 'type'.
+// 2. Renombrem a 'TextareaProps' i heretem de les propietats correctes: React.TextareaHTMLAttributes.
+export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, ...props }, ref) => {
