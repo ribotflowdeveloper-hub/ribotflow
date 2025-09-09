@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+    // AFEGEIX O MODIFICA AQUEST BLOC
+    experimental: {
+      typedRoutes: false,
+    },
 };
 
 export default nextConfig;
