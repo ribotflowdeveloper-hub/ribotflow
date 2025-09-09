@@ -1,11 +1,13 @@
-// Ruta del fitxer: src/app/(app)/finances/facturacio/_components/FacturacioClient.tsx
+// Ruta: src/app/(app)/finances/facturacio/_components/FacturacioClient.tsx
+// REEMPLAÇA EL TEU FITXER SENCER AMB AQUEST CODI
+
 "use client";
 
 import React, { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -19,19 +21,10 @@ import { format } from "date-fns";
 import { ca } from "date-fns/locale";
 import type { Invoice, Contact } from '../page';
 import { createOrUpdateInvoiceAction, deleteInvoiceAction } from '../actions';
-// ✅ AFEGEIX AQUESTA LÍNIA!
 import { type InvoiceFormData } from '../actions';
-// Component intern per al formulari
-const InvoiceForm = ({ 
-    invoice, 
-    setInvoice,
-    contacts, 
-    onSave,
-    isSaving,
-    onClose
-}: {
+
+const InvoiceForm = ({ invoice, setInvoice, contacts, onSave, isSaving, onClose }: {
     invoice: Partial<Invoice>;
-    // ✅ CORRECCIÓ: El tipus de setInvoice ara accepta 'null' per coincidir amb el seu estat pare.
     setInvoice: React.Dispatch<React.SetStateAction<Partial<Invoice> | null>>;
     contacts: Contact[];
     onSave: () => void;
@@ -45,67 +38,42 @@ const InvoiceForm = ({
             <div className="space-y-2">
                 <Label>Client</Label>
                 <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between search-input text-left font-normal">
-                            {selectedContact ? selectedContact.nom : "Selecciona un client..."}
-                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                    </PopoverTrigger>
+                    <PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between search-input text-left font-normal">{selectedContact ? selectedContact.nom : "Selecciona un client..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-effect">
-                        <Command>
-                            <CommandInput placeholder="Buscar client..." />
-                            <CommandList>
-                                <CommandEmpty>No s'ha trobat cap client.</CommandEmpty>
-                                <CommandGroup>
-                                    {contacts.map((contact) => (
-                                        <CommandItem key={contact.id} value={contact.nom} onSelect={() => setInvoice(prev => prev ? ({...prev, contact_id: contact.id}) : null)}>
-                                            <Check className={cn("mr-2 h-4 w-4", invoice.contact_id === contact.id ? "opacity-100" : "opacity-0")} />
-                                            {contact.nom}
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
+                        <Command><CommandInput placeholder="Buscar client..." /><CommandList><CommandEmpty>No s'ha trobat cap client.</CommandEmpty><CommandGroup>
+                            {contacts.map((contact) => (
+                                <CommandItem key={contact.id} value={contact.nom} onSelect={() => setInvoice(prev => prev ? ({...prev, contact_id: contact.id}) : null)}>
+                                    <Check className={cn("mr-2 h-4 w-4", invoice.contact_id === contact.id ? "opacity-100" : "opacity-0")} />{contact.nom}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup></CommandList></Command>
                     </PopoverContent>
                 </Popover>
             </div>
-
             <div className="space-y-2">
                 <Label>Data d'Emissió</Label>
                 <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal search-input", !invoice.issue_date && "text-muted-foreground")}>
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {invoice.issue_date ? format(new Date(invoice.issue_date), "PPP", { locale: ca }) : <span>Tria una data</span>}
-                        </Button>
-                    </PopoverTrigger>
+                    <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal search-input", !invoice.issue_date && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{invoice.issue_date ? format(new Date(invoice.issue_date), "PPP", { locale: ca }) : <span>Tria una data</span>}</Button></PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                    
-
-                        <Calendar
+                    <Calendar
                             mode="single"
                             selected={invoice.issue_date ? new Date(invoice.issue_date) : undefined}
-                            onSelect={(date: Date | undefined) => setInvoice(p => p ? ({ ...p, issue_date: date?.toISOString() }) : null)} className={undefined} classNames={undefined} formatters={undefined} components={undefined}                        />
-                    </PopoverContent>
+                            // ✅ CORRECCIÓ: Utilitzem el tipus correcte (Date | undefined) que ens proporciona el component.
+                            onSelect={(date: Date | undefined) => setInvoice(p => p ? { ...p, issue_date: date?.toISOString() } : null)} className={undefined} classNames={undefined} formatters={undefined} components={undefined}                        // ✅ CORRECCIÓ: Hem eliminat totes les propietats redundants que tenien 'undefined'.
+                    />                    </PopoverContent>
                 </Popover>
             </div>
-
             <div className="space-y-2">
                 <Label>Import Total (€)</Label>
                 <Input type="number" step="0.01" placeholder="0.00" value={invoice.total_amount || ''} onChange={(e) => setInvoice(p => p ? ({...p, total_amount: parseFloat(e.target.value) || undefined}) : null)} className="search-input" />
             </div>
-
             <DialogFooter className="pt-4">
                 <Button type="button" variant="ghost" onClick={onClose}>Cancel·lar</Button>
-                <Button type="submit" disabled={isSaving}>
-                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {invoice.id ? "Actualitzar" : "Desar Factura"}
-                </Button>
+                <Button type="submit" disabled={isSaving}>{isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{invoice.id ? "Actualitzar" : "Desar Factura"}</Button>
             </DialogFooter>
         </form>
     );
 };
-
 
 export function FacturacioClient({ initialInvoices, initialContacts }: {
     initialInvoices: Invoice[];
@@ -113,19 +81,12 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
 }) {
     const { toast } = useToast();
     const [isSaving, startSaveTransition] = useTransition();
-    
     const [isFormOpen, setIsFormOpen] = useState(false);
-// Ara aquesta línia ja no donarà error
     const [editingInvoice, setEditingInvoice] = useState<Partial<Invoice> | null>(null);
     const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
 
     const handleOpenForm = (invoice: Invoice | null = null) => {
-        if (invoice) {
-            setEditingInvoice(invoice);
-        } else {
-            // ✅ CORRECCIÓ: 'contact_id' s'inicialitza com a 'undefined' per complir amb el tipus.
-            setEditingInvoice({ contact_id: undefined, issue_date: new Date().toISOString(), total_amount: undefined, status: 'Draft' });
-        }
+        setEditingInvoice(invoice ? invoice : { issue_date: new Date().toISOString(), status: 'Draft' });
         setIsFormOpen(true);
     };
 
@@ -135,11 +96,23 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
     };
 
     const handleSave = () => {
-        const [editingInvoice, setEditingInvoice] = useState<InvoiceFormData | null>(null);
-
         if (!editingInvoice) return;
+
+        if (!editingInvoice.contact_id || !editingInvoice.issue_date || editingInvoice.total_amount === undefined || !editingInvoice.status) {
+             toast({ variant: 'destructive', title: 'Camps incomplets', description: 'Si us plau, omple tots els camps requerits.' });
+            return;
+        }
+
+        const invoiceDataToSend: InvoiceFormData = {
+            id: editingInvoice.id,
+            contact_id: editingInvoice.contact_id,
+            issue_date: editingInvoice.issue_date,
+            total_amount: editingInvoice.total_amount,
+            status: editingInvoice.status as InvoiceFormData['status'],
+        };
+
         startSaveTransition(async () => {
-            const result = await createOrUpdateInvoiceAction(editingInvoice as any);
+            const result = await createOrUpdateInvoiceAction(invoiceDataToSend);
             if (result.success) {
                 toast({ title: 'Èxit!', description: result.message });
                 handleCloseForm();
@@ -153,7 +126,7 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         if (!invoiceToDelete) return;
         startSaveTransition(async () => {
             const result = await deleteInvoiceAction(invoiceToDelete.id);
-             if (result.success) {
+            if (result.success) {
                 toast({ title: 'Èxit!', description: result.message });
                 setInvoiceToDelete(null);
             } else {
@@ -162,12 +135,12 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         });
     };
     
-    const getStatusClass = (status?: string) => {
-        switch(status?.toLowerCase()) {
-          case 'paid': return 'bg-green-500/10 text-green-400 border border-green-400/30';
-          case 'sent': return 'bg-blue-500/10 text-blue-400 border border-blue-400/30';
-          case 'overdue': return 'bg-red-500/10 text-red-400 border border-red-400/30';
-          default: return 'bg-gray-500/10 text-gray-400 border border-gray-400/30';
+    const getStatusClass = (status: string) => {
+        switch(status.toLowerCase()) {
+            case 'paid': return 'bg-green-500/10 text-green-400 border border-green-400/30';
+            case 'sent': return 'bg-blue-500/10 text-blue-400 border border-blue-400/30';
+            case 'overdue': return 'bg-red-500/10 text-red-400 border border-red-400/30';
+            default: return 'bg-gray-500/10 text-gray-400 border border-gray-400/30';
         }
     };
 
@@ -182,15 +155,7 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
             
             <div className="glass-card overflow-hidden">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Data Emissió</TableHead>
-                            <TableHead>Import</TableHead>
-                            <TableHead>Estat</TableHead>
-                            <TableHead className="text-right">Accions</TableHead>
-                        </TableRow>
-                    </TableHeader>
+                    <TableHeader><TableRow><TableHead>Client</TableHead><TableHead>Data Emissió</TableHead><TableHead>Import</TableHead><TableHead>Estat</TableHead><TableHead className="text-right">Accions</TableHead></TableRow></TableHeader>
                     <TableBody>
                         {initialInvoices.map(invoice => (
                             <TableRow key={invoice.id}>
@@ -208,43 +173,22 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
                 </Table>
             </div>
 
-            {/* Diàleg per Crear/Editar */}
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                 <DialogContent className="glass-effect">
-                    <DialogHeader>
-                        <DialogTitle className="text-2xl">{editingInvoice?.id ? "Editar Factura" : "Crear Nova Factura"}</DialogTitle>
-                    </DialogHeader>
-                    {editingInvoice && (
-                        <InvoiceForm 
-                            invoice={editingInvoice}
-                            setInvoice={setEditingInvoice}
-                            contacts={initialContacts}
-                            onSave={handleSave}
-                            isSaving={isSaving}
-                            onClose={handleCloseForm}
-                        />
-                    )}
+                    <DialogHeader><DialogTitle className="text-2xl">{editingInvoice?.id ? "Editar Factura" : "Crear Nova Factura"}</DialogTitle></DialogHeader>
+                    {editingInvoice && <InvoiceForm invoice={editingInvoice} setInvoice={setEditingInvoice} contacts={initialContacts} onSave={handleSave} isSaving={isSaving} onClose={handleCloseForm} />}
                 </DialogContent>
             </Dialog>
 
-            {/* Diàleg per Confirmar Esborrat */}
             <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
                 <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Estàs segur?</AlertDialogTitle>
-                        <AlertDialogDescription>Aquesta acció no es pot desfer. S'esborrarà permanentment la factura.</AlertDialogDescription>
-                    </AlertDialogHeader>
+                    <AlertDialogHeader><AlertDialogTitle>Estàs segur?</AlertDialogTitle><AlertDialogDescription>Aquesta acció no es pot desfer. S'esborrarà permanentment la factura.</AlertDialogDescription></AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isSaving}>Cancel·lar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>
-                            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Sí, esborra-la
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>{isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Sí, esborra-la</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
         </motion.div>
     );
 }
-

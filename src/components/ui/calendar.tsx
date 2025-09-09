@@ -4,10 +4,15 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayPicker, getDefaultClassNames } from "react-day-picker";
+// ✅ 1. IMPORTEM 'CalendarDay' I CANVIEM 'DayModifiers' PER 'Modifiers'
+import { DayPicker, getDefaultClassNames, Modifiers, CalendarDay } from "react-day-picker";
 
 import { cn } from "@/lib/utils"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants, type VariantProps } from "@/components/ui/button"
+
+export type CalendarProps = React.ComponentProps<typeof DayPicker> & {
+  buttonVariant?: VariantProps<typeof buttonVariants>["variant"];
+};
 
 function Calendar({
   className,
@@ -18,7 +23,7 @@ function Calendar({
   formatters,
   components,
   ...props
-}) {
+}: CalendarProps) {
   const defaultClassNames = getDefaultClassNames()
 
   return (
@@ -102,22 +107,25 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return (<div data-slot="calendar" ref={rootRef} className={cn(className)} {...props} />);
+        Root: ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+          return (<div data-slot="calendar" className={cn(className)} {...props} />);
         },
-        Chevron: ({ className, orientation, ...props }) => {
+        // ✅ 2. AFEGIM "up" A LES ORIENTACIONS PERMESES
+        Chevron: ({ className, orientation }: { className?: string; orientation?: "left" | "right" | "down" | "up" }) => {
           if (orientation === "left") {
-            return (<ChevronLeftIcon className={cn("size-4", className)} {...props} />);
+            return (<ChevronLeftIcon className={cn("size-4", className)} />);
           }
-
           if (orientation === "right") {
-            return (<ChevronRightIcon className={cn("size-4", className)} {...props} />);
+            return (<ChevronRightIcon className={cn("size-4", className)} />);
           }
-
-          return (<ChevronDownIcon className={cn("size-4", className)} {...props} />);
+          if (orientation === "up") {
+             // Pots canviar aquesta icona si vols una fletxa cap amunt
+            return (<ChevronDownIcon className={cn("size-4 rotate-180", className)} />);
+          }
+          return (<ChevronDownIcon className={cn("size-4", className)} />);
         },
         DayButton: CalendarDayButton,
-        WeekNumber: ({ children, ...props }) => {
+        WeekNumber: ({ children, ...props }: { children?: React.ReactNode }) => {
           return (
             <td {...props}>
               <div
@@ -132,25 +140,36 @@ function Calendar({
       {...props} />
   );
 }
+Calendar.displayName = "Calendar";
+
+
+interface CalendarDayButtonProps extends React.HTMLAttributes<HTMLButtonElement> {
+  // ✅ 3. CANVIEM 'Date' PER 'CalendarDay'
+  day: CalendarDay;
+  modifiers: Modifiers;
+}
 
 function CalendarDayButton({
   className,
   day,
   modifiers,
   ...props
-}) {
+}: CalendarDayButtonProps) {
   const defaultClassNames = getDefaultClassNames()
+  const ref = React.useRef<HTMLButtonElement>(null);
 
-  const ref = React.useRef(null)
   React.useEffect(() => {
-    if (modifiers.focused) ref.current?.focus()
-  }, [modifiers.focused])
+    if (modifiers.focused && ref.current) {
+      ref.current.focus();
+    }
+  }, [modifiers.focused]);
 
   return (
     <Button
       ref={ref}
       variant="ghost"
       size="icon"
+      // ✅ 4. ACCEDIM A LA DATA REAL A TRAVÉS DE 'day.date'
       data-day={day.date.toLocaleDateString()}
       data-selected-single={
         modifiers.selected &&
@@ -169,5 +188,6 @@ function CalendarDayButton({
       {...props} />
   );
 }
+CalendarDayButton.displayName = "CalendarDayButton";
 
 export { Calendar, CalendarDayButton }
