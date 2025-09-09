@@ -70,7 +70,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
 
     const handleItemChange = (index: number, field: keyof ExpenseItem, value: string | number) => {
         const updatedItems = [...currentExpense.expense_items];
-        // @ts-expect-error
+        // @ts-expect-error: La propietat 'form' existeix a l'event, però el tipus no la inclou.
         updatedItems[index][field] = value;
         setCurrentExpense(prev => ({ ...prev, expense_items: updatedItems }));
     };
