@@ -6,17 +6,17 @@ import { redirect } from 'next/navigation';
 import { notFound } from 'next/navigation';
 import { ContactDetailClient } from './_components/contact-detail-client';
 import type { Metadata } from 'next';
-import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm'; // Assegura't que la ruta a 'types' és correcta
+import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm';
 
-// ✅ 1. AQUEST ÉS L'ÚNIC TIPUS QUE NECESSITEM PER A LES PROPS D'AQUESTA PÀGINA
-type Props = {
+// ✅ CORRECCIÓ DEFINITIVA: Canviem el nom del tipus a un de més específic
+// per evitar qualsevol conflicte amb un tipus global anomenat 'PageProps'.
+type ContactDetailPageProps = {
   params: {
     contactId: string;
   };
 };
 
-// La funció de metadades ja hauria d'estar correcta així
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: ContactDetailPageProps): Promise<Metadata> {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
@@ -25,9 +25,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `${contact?.nom || 'Contacte'} | Ribot` };
 }
 
-// ✅ 2. AQUESTA ÉS LA SIGNATURA CORRECTA I SIMPLE DE LA PÀGINA
-// Assegura't que la teva funció es vegi exactament així, sense tipus genèrics com <PageProps>.
-export default async function ContactDetailPage({ params }: Props) {
+// ✅ APLIQUEM EL NOU NOM DEL TIPUS AQUÍ TAMBÉ
+export default async function ContactDetailPage({ params }: ContactDetailPageProps) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
