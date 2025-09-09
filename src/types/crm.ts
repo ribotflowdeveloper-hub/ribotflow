@@ -6,7 +6,7 @@ export type Contact = {
     created_at: string;
     nom: string;
     empresa: string | null;
-    email: string;
+    email: string | null; // ✅ CORREGIT
     telefon: string | null;
     estat: 'Lead' | 'Actiu' | 'Client';
     valor: number | null;
