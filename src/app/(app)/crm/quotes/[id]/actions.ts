@@ -5,28 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { Quote, CompanyProfile, Product } from './page';
+import type { Quote, CompanyProfile } from './page';
+import { withUser } from "@/lib/actions";
 
 // --- ACCIONS DE PRESSUPOSTOS ---
 
 export async function saveQuoteAction(quoteData: Quote) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  return withUser(async (supabase, userId) => {
+    if (!quoteData.contact_id) return { success: false, message: "Si us plau, selecciona un client." };
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuari no autenticat." };
+    const { items, id, ...quoteFields } = quoteData;
+    let finalQuoteId = id;
 
-  if (!quoteData.contact_id) {
-    return { success: false, message: "Si us plau, selecciona un client." };
-  }
-
-  const { items, id, ...quoteFields } = quoteData;
-
-  let finalQuoteId = id;
-
-  try {
     if (id === 'new') {
-      const { data: newQuote, error } = await supabase.from('quotes').insert({ ...quoteFields, user_id: user.id }).select('id').single();
+      const { data: newQuote, error } = await supabase.from('quotes').insert({ ...quoteFields, user_id: userId }).select('id').single();
       if (error || !newQuote) throw error || new Error("No s'ha pogut crear el pressupost.");
       finalQuoteId = newQuote.id;
     } else {
@@ -34,38 +26,33 @@ export async function saveQuoteAction(quoteData: Quote) {
       await supabase.from('quote_items').delete().eq('quote_id', id);
     }
 
-    if (items && items.length > 0) {
+    if (items?.length) {
       const itemsToInsert = items.map(item => ({
-        quote_id: finalQuoteId, user_id: user.id, product_id: item.product_id || null, description: item.description,
+        quote_id: finalQuoteId, user_id: userId, product_id: item.product_id || null, description: item.description,
         quantity: item.quantity, unit_price: item.unit_price, total: (item.quantity || 0) * (item.unit_price || 0),
       }));
       await supabase.from('quote_items').insert(itemsToInsert);
     }
-    
+
     if (quoteFields.opportunity_id) {
       await supabase.from('opportunities').update({ stage_name: 'Proposta Enviada' }).eq('id', quoteFields.opportunity_id);
     }
 
-    revalidatePath(`/crm/quotes`);
-    revalidatePath(`/crm/quotes/${finalQuoteId}`);
-    return { success: true, message: "Pressupost desat correctament.", newId: finalQuoteId };
-
-  } catch (error: any) {
-    return { success: false, message: error.message };
-  }
+    return { success: true, message: "Pressupost desat correctament.", data: finalQuoteId };
+  }, [`/crm/quotes`, `/crm/quotes/${quoteData.id}`]);
 }
+
 
 export async function deleteQuoteAction(quoteId: string) {
   if (!quoteId || quoteId === 'new') return { success: false, message: "ID de pressupost invàlid." };
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuari no autenticat." };
-  await supabase.from('quote_items').delete().eq('quote_id', quoteId).eq('user_id', user.id);
-  await supabase.from('quotes').delete().eq('id', quoteId).eq('user_id', user.id);
-  revalidatePath('/crm/quotes');
-  redirect('/crm/quotes');
+
+  return withUser(async (supabase, userId) => {
+    await supabase.from('quote_items').delete().eq('quote_id', quoteId).eq('user_id', userId);
+    await supabase.from('quotes').delete().eq('id', quoteId).eq('user_id', userId);
+    return { success: true, message: "Pressupost eliminat." };
+  }, ['/crm/quotes']);
 }
+
 
 //  ✅ LÒGICA D'ENVIAMENT RESTAURADA
 export async function sendQuoteAction(quoteId: string) {
