@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-    // AFEGEIX O MODIFICA AQUEST BLOC
-    experimental: {
-      typedRoutes: false,
-    },
+    // ✅ CORRECCIÓ: Aquesta és la manera correcta de desactivar-ho
+  typedRoutes: false, 
 };
 
 export default nextConfig;
