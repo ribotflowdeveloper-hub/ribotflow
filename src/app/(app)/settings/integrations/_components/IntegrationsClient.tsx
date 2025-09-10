@@ -66,7 +66,9 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
         {/* Google / Gmail */}
         <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
           <div className="flex items-center gap-4">
-          <Image src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" className="w-6 h-6" alt="Google logo"/>
+          <Image 
+          src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" className="w-6 h-6" alt="Google logo"    width={24}
+          height={24}/>
             <div>
               <h3 className="font-semibold">Google / Gmail</h3>
               <p className="text-sm text-muted-foreground">Sincronitza el teu correu de Gmail.</p>
@@ -85,7 +87,8 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
         {/* Microsoft / Outlook */}
         <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
           <div className="flex items-center gap-4">
-          <Image  src="https://img.icons8.com/?size=100&id=117562&format=png&color=000000" className="w-6 h-6" alt="Microsoft logo"/>
+          <Image  src="https://img.icons8.com/?size=100&id=117562&format=png&color=000000" className="w-6 h-6" alt="Microsoft logo"    width={24}
+              height={24}/>
             <div>
               <h3 className="font-semibold">Microsoft / Outlook</h3>
               <p className="text-sm text-muted-foreground">Sincronitza el teu correu d'Outlook.</p>

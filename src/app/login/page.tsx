@@ -30,7 +30,9 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createClient();
-
+  // Obtenim la URL del lloc des de les variables d'entorn
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  
   // Gestor unificat per al formulari
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,7 +44,8 @@ export default function LoginPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${location.origin}/auth/callback`,
+          // ✅ CORRECCIÓ: Fem servir la variable d'entorn
+          emailRedirectTo: `${siteUrl}/auth/callback`,
         },
       });
       if (error) {
@@ -149,8 +152,14 @@ export default function LoginPage() {
 
             <div className="space-y-4">
               <Button onClick={() => handleOAuthLogin('google')} variant="outline" className="w-full py-6">
-              <Image className="w-5 h-5 mr-3" alt="Google logo" src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" />
-                Inicia sessió amb Google
+              <Image
+                className="w-5 h-5 mr-3"
+                alt="Google logo"
+                src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+                width={20}  // ✅ AFEGEIX AIXÒ
+                height={20} // ✅ AFEGEIX AIXÒ
+              />              
+              Inicia sessió amb Google
               </Button>
             </div>
 

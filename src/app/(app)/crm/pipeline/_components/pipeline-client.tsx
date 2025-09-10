@@ -1,4 +1,3 @@
-// Ruta del fitxer: src/app/(app)/crm/pipeline/_components/PipelineClient.tsx
 "use client";
 
 import React, { useState } from 'react';
@@ -159,7 +158,17 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
 
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
+
+    // Aturada si es deixa anar fora d'una columna
     if (!destination) return;
+
+    // ✅ CORRECCIÓ: Aturada si es deixa anar exactament al mateix lloc
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
 
     const originalState = JSON.parse(JSON.stringify(opportunitiesByStage));
     const sourceOpportunities = Array.from(opportunitiesByStage[source.droppableId]);
@@ -194,65 +203,48 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
     setEditingOpportunity(initialData);
     setIsDialogOpen(true);
   };
-
-  // --- Vista en files (amb Drag&Drop) ---
+  
   const RowView = () => {
     const stageColors: Record<string, string> = {
-      'Prospecte': 'border-blue-500',
-      'Contactat': 'border-cyan-500',
-      'Proposta Enviada': 'border-purple-500',
-      'Negociació': 'border-yellow-500',
-      'Guanyat': 'border-green-500',
-      'Perdut': 'border-red-500'
+      'Prospecte': 'border-blue-500', 'Contactat': 'border-cyan-500', 'Proposta Enviada': 'border-purple-500',
+      'Negociació': 'border-yellow-500', 'Guanyat': 'border-green-500', 'Perdut': 'border-red-500'
     };
-
     return (
       <div className="flex-1 overflow-y-auto pr-2 -mr-4">
         <Accordion type="multiple" defaultValue={stages.map(s => s.id)} className="w-full space-y-4">
           {stages.map(stage => {
             const opportunities = opportunitiesByStage[stage.name] || [];
             const totalValue = opportunities.reduce((sum, op) => sum + (op.value || 0), 0);
-
             return (
               <AccordionItem
-                key={stage.id}
-                value={stage.id}
+                key={stage.id} value={stage.id}
                 className={cn("bg-muted/20 rounded-xl overflow-hidden border-l-4", stageColors[stage.name] || "border-gray-500")}
               >
-                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                  <div className="w-full flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold text-lg text-foreground">{stage.name}</h3>
-                      <p className="text-xs text-muted-foreground text-left">
-                        {opportunities.length} oportunitat{opportunities.length !== 1 ? "s" : ""} • €
-                        {totalValue.toLocaleString("ca-ES")}
-                      </p>
-                    </div>
+                <div className="flex justify-between items-center w-full px-4">
+                    <AccordionTrigger className="flex-1 text-left py-3 hover:no-underline">
+                        <div>
+                            <h3 className="font-bold text-lg text-foreground">{stage.name}</h3>
+                            <p className="text-xs text-muted-foreground text-left">
+                                {opportunities.length} oportunitat{opportunities.length !== 1 ? "s" : ""} • €
+                                {totalValue.toLocaleString("ca-ES")}
+                            </p>
+                        </div>
+                    </AccordionTrigger>
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenCreateDialog(stage.name);
-                      }}
-                      className="mr-2"
+                        size="sm" variant="ghost"
+                        onClick={() => handleOpenCreateDialog(stage.name)}
+                        className="ml-4"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Afegir
+                        <Plus className="w-4 h-4 mr-2" />
+                        Afegir
                     </Button>
-                  </div>
-                </AccordionTrigger>
-
+                </div>
                 <AccordionContent className="px-2 pb-2">
                   <Droppable droppableId={stage.name}>
                     {(provided, snapshot) => (
                       <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={cn(
-                          "space-y-2 p-2 rounded-md transition-colors",
-                          snapshot.isDraggingOver ? "bg-primary/5" : ""
-                        )}
+                        ref={provided.innerRef} {...provided.droppableProps}
+                        className={cn("space-y-2 p-2 rounded-md transition-colors", snapshot.isDraggingOver ? "bg-primary/5" : "")}
                       >
                         {opportunities.length > 0 ? (
                           opportunities.map((op, index) => (
@@ -279,31 +271,18 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
   return (
     <>
       <OpportunityDialog
-        open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        contacts={initialContacts}
-        stages={stages}
-        onSuccess={() => router.refresh()}
-        opportunityToEdit={editingOpportunity}
+        open={isDialogOpen} onOpenChange={setIsDialogOpen} contacts={initialContacts}
+        stages={stages} onSuccess={() => router.refresh()} opportunityToEdit={editingOpportunity}
       />
-
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
         <div className="flex justify-between items-center mb-6 flex-shrink-0">
           <h1 className="text-3xl font-bold">Pipeline de Vendes</h1>
           <div className="flex items-center gap-2">
             <div className="bg-muted p-1 rounded-lg">
-              <Button
-                variant={viewMode === 'columns' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('columns')}
-              >
+              <Button variant={viewMode === 'columns' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('columns')}>
                 <LayoutGrid className="w-4 h-4" />
               </Button>
-              <Button
-                variant={viewMode === 'rows' ? 'secondary' : 'ghost'}
-                size="icon"
-                onClick={() => setViewMode('rows')}
-              >
+              <Button variant={viewMode === 'rows' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('rows')}>
                 <Rows className="w-4 h-4" />
               </Button>
             </div>
@@ -312,14 +291,12 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
             </Button>
           </div>
         </div>
-
         <DragDropContext onDragEnd={onDragEnd}>
           {viewMode === 'columns' ? (
             <div className="flex-1 grid grid-cols-6 gap-4 min-h-0">
               {stages.map(stage => (
                 <StageColumn
-                  key={stage.id}
-                  stage={stage}
+                  key={stage.id} stage={stage}
                   opportunities={opportunitiesByStage[stage.name] || []}
                   onEditOpportunity={handleOpenEditDialog}
                   onAddClick={() => handleOpenCreateDialog(stage.name)}

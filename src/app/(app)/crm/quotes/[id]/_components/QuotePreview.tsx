@@ -2,9 +2,10 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image'; // ✅ CORRECCIÓ: Importem el component Image de Next.js
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { Quote, Contact, CompanyProfile } from '../page';
-import Image from 'next/image';
- 
+
 export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discountAmount, tax, total }: {
     quote: Quote;
     contacts: Contact[];
@@ -21,8 +22,19 @@ export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discou
         <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
             <div id="quote-preview-for-pdf">
                 <div className="bg-white text-gray-900 p-8 rounded-lg shadow-lg font-sans text-sm min-h-full">
-                    <header className="flex justify-between items-start pb-6 border-b-2 border-gray-200">
-                        {companyProfile?.logo_url ? <Image src={companyProfile.logo_url} alt="Logo" className="h-16 max-w-[150px] object-contain" /> : <div className="h-16 w-32 bg-gray-200 flex items-center justify-center text-sm text-gray-400">El teu Logo</div>}
+                    <header className="flex justify-between items-start border-b-2 border-gray-200">
+                        {companyProfile?.logo_url ? (
+                            // ✅ CORRECCIÓ: Afegim 'width' i 'height' i eliminem les classes de mida.
+                            <Image 
+                                src={companyProfile.logo_url} 
+                                alt="Logo" 
+                                width={90}
+                                height={44}
+                                className="object-contain" 
+                            />
+                        ) : (
+                            <div className="h-14 w-32 bg-gray-200 flex items-center justify-center text-sm text-gray-400">El teu Logo</div>
+                        )}
                         <div className="text-right">
                             <p className="font-bold text-xl">{companyProfile?.company_name || 'La Teva Empresa'}</p>
                             <p className="text-gray-500 mt-1"># {quote.quote_number || 'Pendent'}</p>
@@ -71,4 +83,3 @@ export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discou
         </aside>
     );
 };
-
