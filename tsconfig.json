@@ -38,6 +38,8 @@
     "src/components/ui/toggle.jsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "supabase" // ✅ AFEGEIX AQUESTA LÍNIA
+
   ]
 }

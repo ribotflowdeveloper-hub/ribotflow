@@ -8,18 +8,22 @@ import { ContactDetailClient } from './_components/contact-detail-client';
 import type { Metadata } from 'next';
 import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm';
 
-// Aquest tipus local assegura que la pàgina sigui robusta i explícita.
+// ✅ PAS 1: Definim el tipus de les props dient que 'params' és una Promise.
 type ContactDetailPageProps = {
-  params: {
+  params: Promise<{
     contactId: string;
-  };
+  }>;
 };
 
+// La funció de metadades també ha d'esperar la Promise.
 export async function generateMetadata({ params }: ContactDetailPageProps): Promise<Metadata> {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   
-  const { data: contact } = await supabase.from('contacts').select('nom').eq('id', params.contactId).single();
+  // Resolem la promesa per obtenir els paràmetres.
+  const resolvedParams = await params;
+  
+  const { data: contact } = await supabase.from('contacts').select('nom').eq('id', resolvedParams.contactId).single();
   
   return { title: `${contact?.nom || 'Contacte'} | Ribot` };
 }
@@ -28,12 +32,14 @@ export default async function ContactDetailPage({ params }: ContactDetailPagePro
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
+  // ✅ PAS 2: El primer que fem a la funció és resoldre la Promise amb 'await'.
+  const resolvedParams = await params;
+  const { contactId } = resolvedParams;
+
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
     redirect('/login');
   }
-
-  const { contactId } = params;
 
   const { data: contact, error } = await supabase.from('contacts').select('*').eq('id', contactId).single();
   
