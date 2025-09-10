@@ -36,19 +36,13 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     const { toast } = useToast();
     const router = useRouter();
     const [tickets, setTickets] = useState(initialTickets);
-    const [templates, setTemplates] = useState(initialTemplates);
+    const [templates] = useState(initialTemplates);
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [ticketToDelete, setTicketToDelete] = useState<Ticket | null>(null);
     const isDesktop = useMediaQuery('(min-width: 1024px)');
     const [activeFilter, setActiveFilter] = useState('rebuts');
     
-    type ComposeInitialData = {
-        contactId: string | null;
-        to: string | null;
-        subject: string | null;
-        body: string | null;
-      } | null;
-      
+
       
     const [composeState, setComposeState] = useState<{
     open: boolean;

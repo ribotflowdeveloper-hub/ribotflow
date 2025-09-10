@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Metadata } from 'next';
+
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 // Importacions dels teus components i utilitats

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useTransition, FC } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
@@ -24,7 +24,6 @@ type NewContactForm = {
   valor: number;
 };
 
-const newContactInitialState: NewContactForm = { nom: '', empresa: '', email: '', telefon: '', estat: 'Lead', valor: 0 };
 
 export function ContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
     const router = useRouter();

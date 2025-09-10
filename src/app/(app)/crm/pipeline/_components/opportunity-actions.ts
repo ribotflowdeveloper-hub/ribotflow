@@ -3,10 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { type Opportunity } from '../page';
 
-// Tipus per a les dades del formulari
-type OpportunityFormData = Omit<Opportunity, 'id' | 'created_at' | 'user_id' | 'contacts'>;
 
 export async function saveOpportunityAction(
   formData: FormData

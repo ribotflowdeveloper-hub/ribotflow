@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition, FC, useRef } from 'react';
+import React, { useState, useEffect, useTransition, FC } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Calendar as CalendarIcon, Check, ChevronsUpDown, Trash2, UploadCloud, Paperclip, Download, BrainCircuit } from 'lucide-react';
+import { Loader2, Plus, Calendar as CalendarIcon, Check, ChevronsUpDown, Trash2, UploadCloud, Paperclip, BrainCircuit } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";

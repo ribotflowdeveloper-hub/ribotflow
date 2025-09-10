@@ -11,6 +11,7 @@ import { Loader2, Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateCompanyProfileAction } from '../actions';
 import type { CompanyProfile } from '../page';
+import Image from 'next/image';
 
 type EditableProfile = Partial<CompanyProfile>;
 
@@ -91,7 +92,7 @@ export const CompanyProfileDialog = ({ open, onOpenChange, profile, onProfileUpd
                             <Label>Logo de l'Empresa</Label>
                             <div className="mt-1 flex items-center gap-4">
                                 {/* ✅ APLIQUEM ?. PER ACCEDIR DE FORMA SEGURA */}
-                                {localProfile?.logo_url ? <img src={localProfile.logo_url} alt="Logo" className="h-16 w-16 object-contain rounded-lg bg-white/10 p-1" /> : <div className="h-16 w-16 bg-muted rounded-lg"/>}
+                                {localProfile?.logo_url ? <Image src={localProfile.logo_url} alt="Logo" className="h-16 w-16 object-contain rounded-lg bg-white/10 p-1" /> : <div className="h-16 w-16 bg-muted rounded-lg"/>}
                                 <Button asChild variant="outline">
                                     <label htmlFor="logo-upload" className="cursor-pointer flex items-center gap-2">
                                         {isUploading ? <Loader2 className="animate-spin" /> : <Upload className="w-4 h-4" />} Pujar Logo

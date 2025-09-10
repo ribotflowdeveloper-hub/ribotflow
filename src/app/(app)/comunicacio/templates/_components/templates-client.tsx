@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useTransition, FC } from 'react';
+import React, { useState, useEffect, useTransition} from 'react';
 import { motion } from 'framer-motion';
 import { useToast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';

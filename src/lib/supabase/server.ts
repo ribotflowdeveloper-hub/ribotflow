@@ -17,7 +17,7 @@ export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
           try {
             // Esperem la promesa abans d'intentar escriure.
             (await cookieStore).set({ name, value, ...options })
-          } catch (error) {
+          } catch {
             // Aquest error pot passar si s'intenta escriure des d'un Server Component,
             // la qual cosa és normal. El middleware s'encarregarà.
           }
@@ -26,7 +26,7 @@ export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
           try {
             // Esperem la promesa abans d'intentar esborrar.
             (await cookieStore).set({ name, value: '', ...options })
-          } catch (error) {
+          } catch {
              // El mateix que a 'set'.
           }
         },

@@ -4,7 +4,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+
 import type { Quote, CompanyProfile } from './page';
 import { withUser } from "@/lib/actions";
 

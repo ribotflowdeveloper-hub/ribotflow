@@ -9,8 +9,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { createClient } from '@/lib/supabase/client';
 import AddTaskDialog from '@/components/dashboard/AddTaskDialog';
 import {
-  Users, Target, Euro, BadgePercent, Plus, Loader2, FileWarning, CheckCircle2, Clock3,
-  TrendingUp, Mail, MessageSquare, ArrowRight, Sparkles, FileText, FolderOpen, Workflow, BookOpen
+  Users, Target, Euro, BadgePercent, Plus, FileWarning, CheckCircle2, Clock3,
+  Mail, MessageSquare, ArrowRight, Sparkles, FileText, FolderOpen, Workflow, BookOpen
 } from 'lucide-react';
 
 // Tipus per a les dades que venen del servidor

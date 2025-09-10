@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, FC, ElementType } from 'react';
+import React, { useState, FC, ElementType } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
