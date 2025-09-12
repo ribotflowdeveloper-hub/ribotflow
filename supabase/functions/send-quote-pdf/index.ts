@@ -64,7 +64,7 @@ serve(async (req) => {
     const pdfBase64 = encodeBase64(pdfArrayBuffer);
 
     // PAS 4: Construir l'enllaç al portal del client
-    const baseUrl = Deno.env.get('APP_BASE_URL') || 'http://localhost:5173';
+    const baseUrl = Deno.env.get('APP_BASE_URL') || 'http://localhost:3000';
     const clientPortalUrl = `${baseUrl}/quote/${quote.secure_id}`;
 
     // PAS 5: Autenticació amb Google

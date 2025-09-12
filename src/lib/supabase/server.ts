@@ -1,7 +1,10 @@
 // src/lib/supabase/server.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
 
+/**
+ * Client Supabase normal amb ANON KEY.
+ */
 export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,3 +32,31 @@ export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
     }
   )
 }
+
+
+/**
+ * Client administratiu amb SERVICE_ROLE_KEY (només ús servidor).
+ */
+export const createAdminClient = () => {
+  // No cal ni gestionar cookies perquè fem servir Service Role Key
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        get: () => undefined,
+        set: () => {},
+        remove: () => {},
+      },
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      global: {
+        headers: {
+          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+      },
+    }
+  );
+};

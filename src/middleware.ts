@@ -1,39 +1,48 @@
-export const runtime = 'nodejs';
+// middleware.ts
 import { createClient } from '@/lib/supabase/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  // Aquesta funció ara ens retorna el client i la resposta correcta.
-  const { supabase, response } = createClient(request)
-
-  // Aquesta línia és clau: refresca la sessió i s'assegura que la cookie
-  // (el "passaport") estigui actualitzada a la 'response'.
-  await supabase.auth.getSession()
-
-  const { data: { session } } = await supabase.auth.getSession();
   const { pathname } = request.nextUrl;
+  const { supabase, response } = createClient(request);
+  const { data: { session } } = await supabase.auth.getSession();
 
-  const protectedRoutes = ['/dashboard', '/settings', '/crm'] // Les teves rutes protegides
+  const publicRoutes = ['/login'];
+  const isOnboardingPage = pathname === '/onboarding';
 
-  // Si l'usuari està logat i intenta anar a /login, el portem al dashboard
-  if (session && pathname === '/login') {
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+  // Si no hi ha sessió, només pot accedir a /login
+  if (!session) {
+    if (publicRoutes.includes(pathname)) {
+      return NextResponse.next();
+    }
+    return NextResponse.rewrite(new URL('/login', request.url));
   }
 
-  // Si l'usuari NO està logat i intenta anar a una ruta protegida, el portem al login
-  if (!session && protectedRoutes.some(route => pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL('/login', request.url));
+  // Si hi ha sessió, comprovem l'estat d'onboarding
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarding_completed')
+    .eq('id', session.user.id)
+    .single();
+
+  const onboardingCompleted = profile?.onboarding_completed || false;
+
+  if (!onboardingCompleted && !isOnboardingPage) {
+    // Si no ha completat l'onboarding i NO està a la pàgina d'onboarding, el redirigim forçosament.
+    return NextResponse.rewrite(new URL('/onboarding', request.url));
   }
   
-  // Si algú va a la pàgina principal "/", redirigeix-lo
+  if (onboardingCompleted && isOnboardingPage) {
+    // Si ja ha completat l'onboarding i intenta anar a la pàgina d'onboarding, el portem al dashboard.
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+  
+  // Si hi ha sessió i intenta anar a la home, el portem al dashboard.
   if (pathname === '/') {
-    return session 
-      ? NextResponse.redirect(new URL('/dashboard', request.url))
-      : NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Retornem la 'response' que pot contenir la cookie actualitzada.
-  return response
+  return response;
 }
 
 export const config = {

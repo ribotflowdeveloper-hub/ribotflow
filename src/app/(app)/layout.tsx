@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react'; // ✅ 1. IMPORTEM SUSPENSE
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { navModules } from '@/config/navigation';
 import { MainSidebar } from './_components/main-sidebar';
 import { ModuleSidebar } from './_components/module-sidebar';
+import Loading from './loading'; // ✅ 2. IMPORTEM EL TEU COMPONENT DE CÀRREGA
 import type { NavItem } from '@/config/navigation';
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +47,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
             <motion.div
                 className="overflow-hidden flex-shrink-0"
                 initial={false}
-                animate={{ width: isModuleSidebarOpen && activeModule ? '16rem' : '0rem' }} // 16rem = w-64
+                animate={{ width: isModuleSidebarOpen && activeModule ? '16rem' : '0rem' }}
                 transition={{ type: 'spring', stiffness: 400, damping: 40 }}
             >
                 {activeModule && (
@@ -59,7 +60,10 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
 
             <main className="flex-1 flex flex-col overflow-y-auto">
                 <div className="h-full p-4 sm:p-6 md:p-8">
-                    {children}
+                    {/* ✅ 3. EMBOLCALLEM ELS FILLS AMB SUSPENSE */}
+                    <Suspense fallback={<Loading />}>
+                        {children}
+                    </Suspense>
                 </div>
             </main>
         </div>

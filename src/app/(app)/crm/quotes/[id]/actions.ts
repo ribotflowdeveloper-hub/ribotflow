@@ -54,29 +54,29 @@ export async function deleteQuoteAction(quoteId: string) {
 }
 
 
-//  ✅ LÒGICA D'ENVIAMENT RESTAURADA
 export async function sendQuoteAction(quoteId: string) {
-    if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
+  if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
+  
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: "Usuari no autenticat." };
+
+  try {
+    // La pujada del PDF es fa al client. Aquesta acció només invoca la funció.
+    const { error: functionError } = await supabase.functions.invoke('send-quote-pdf', { body: { quoteId } });
+    if (functionError) throw functionError;
     
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    // ❌ ELIMINAT: Aquesta línia la gestiona ara la Edge Function.
+    // await supabase.from('quotes').update({ status: 'Sent', sent_at: new Date().toISOString() }).eq('id', quoteId);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
-
-    try {
-        // La pujada del PDF es fa al client. Aquesta acció només invoca la funció i actualitza l'estat.
-        const { error: functionError } = await supabase.functions.invoke('send-quote-pdf', { body: { quoteId } });
-        if (functionError) throw functionError;
-        
-        await supabase.from('quotes').update({ status: 'Sent', sent_at: new Date().toISOString() }).eq('id', quoteId);
-
-        revalidatePath(`/crm/quotes/${quoteId}`);
-        return { success: true, message: "Pressupost enviat correctament." };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { success: false, message };
-      }
+    revalidatePath(`/crm/quotes/${quoteId}`);
+    return { success: true, message: "S'ha iniciat l'enviament del pressupost." };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut";
+    return { success: false, message };
+  }
 }
 
 // --- ACCIONS DE SUB-COMPONENTS ---

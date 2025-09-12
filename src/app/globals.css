@@ -139,6 +139,7 @@
 .floating-animation {
   animation: floating 6s ease-in-out infinite;
 }
+
 @keyframes floating {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
@@ -161,7 +162,56 @@
 .filter-button:not(.active) {
   @apply bg-white/10 text-gray-300 hover:bg-white/20;
 }
+/* src/app/globals.css */
+.mapboxgl-popup-content {
+  background-color: #1f2937; /* Un gris fosc, ajusta'l al teu color */
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
 
+.mapboxgl-popup-tip {
+  border-top-color: #1f2937 !important;
+}
+
+.mapboxgl-popup-close-button {
+  color: #ffffff !important;
+}
+/* src/app/globals.css */
+
+/* Estil per al popup de Mapbox en tema fosc */
+.popup-dark .mapboxgl-popup-content {
+  background-color: #1f2937; /* gray-800 */
+  color: #d1d5db; /* gray-300 */
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  font-family: inherit;
+}
+.popup-dark .mapboxgl-popup-tip {
+  border-top-color: #1f2937 !important;
+}
+.popup-dark .mapboxgl-popup-close-button {
+  color: #9ca3af; /* gray-400 */
+}
+.popup-dark .mapboxgl-popup-close-button:hover {
+  background-color: #374151; /* gray-700 */
+}
+
+/* Estil personalitzat per a la barra de desplaçament */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563; /* gray-600 */
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280; /* gray-500 */
+}
 /* === SLIDERS FUTURISTES === */
 input[type="range"].slider {
   -webkit-appearance: none;

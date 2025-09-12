@@ -11,7 +11,8 @@ import {
   Columns,
   Receipt,
   Bot,
-  Settings
+  Settings,
+  Users
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -73,6 +74,13 @@ export const navModules: NavItem[] = [
       { id: 'templates', label: 'Plantilles', icon: LayoutTemplate, path: '/comunicacio/templates', isSingle: true },
       { id: 'marketing', label: 'Màrqueting', icon: Mail, path: '/comunicacio/marketing', isSingle: true },
     ]
+  },
+  {
+    id: 'network',
+    label: 'Xarxa Professional',
+    icon: Users, // O una altra icona que t'agradi
+    path: '/network',
+    isSingle: true
   },
 ];
 

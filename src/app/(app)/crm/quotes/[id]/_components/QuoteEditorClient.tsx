@@ -85,47 +85,49 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     }
 
     startSendTransition(async () => {
-        try {
-            setSendingStatus('generating');
-            toast({ title: "Preparant enviament...", description: "Generant el PDF del pressupost." });
-            
-            const quotePreviewElement = document.getElementById('quote-preview-for-pdf');
-            if (!quotePreviewElement) throw new Error("No s'ha trobat l'element de previsualització.");
-
-            const canvas = await html2canvas(quotePreviewElement, { scale: 2 });
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            const pdfBlob = pdf.output('blob');
-
-            setSendingStatus('uploading');
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Usuari no trobat per a la pujada de l'arxiu.");
-            
-            const filePath = `${user.id}/${quote.id}.pdf`;
-            const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
-            if (uploadError) throw uploadError;
-
-            setSendingStatus('sending');
-            const result = await sendQuoteAction(quote.id);
-            if (!result.success) throw new Error(result.message);
-            
-            setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
-            toast({ variant: "default", title: "Èxit!", description: result.message, className: "bg-green-500 text-white" });
-
-          } catch (error: unknown) {
-            const message =
-              error instanceof Error ? error.message : "Error desconegut en l'enviament";
-            toast({
-              variant: "destructive",
-              title: "Error en l'enviament",
-              description: message,
-            });
-          } finally {
-            setSendingStatus('idle');
-        }
+      try {
+        // PAS 1: Generar el PDF al client (AMB OPTIMITZACIONS)
+        setSendingStatus('generating');
+        toast({ title: "Preparant enviament...", description: "Generant el PDF optimitzat." });
+        const element = document.getElementById('quote-preview-for-pdf');
+        if (!element) throw new Error("Element de previsualització no trobat.");
+        
+        // ✅ OPTIMITZACIÓ: Reduïm l'escala i fem servir 'window.devicePixelRatio' per a pantalles retina
+        const canvas = await html2canvas(element, { 
+            scale: 1.5, // Reduït des de 2 per a una mida d'arxiu molt més petita
+            useCORS: true 
+        });
+  
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+  
+        // ✅ OPTIMITZACIÓ: Utilitzem JPEG amb compressió en lloc de PNG
+        const imgData = canvas.toDataURL('image/jpeg', 0.90); // 0.90 és el nivell de qualitat (bo)
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        
+        const pdfBlob = pdf.output('blob');
+  
+        // ... (la resta de la funció continua igual: pujada a Storage i crida a la Server Action)
+        setSendingStatus('uploading');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Usuari no autenticat.");
+        const filePath = `${user.id}/${quote.id}.pdf`;
+        const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
+        if (uploadError) throw uploadError;
+  
+        setSendingStatus('sending');
+        const result = await sendQuoteAction(quote.id);
+        if (!result.success) throw new Error(result.message);
+        
+        setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
+        toast({ title: "Èxit!", description: result.message });
+  
+      } catch (error: any) {
+        toast({ variant: "destructive", title: "Error en l'enviament", description: error.message });
+      } finally {
+        setSendingStatus('idle');
+      }
     });
   };
 

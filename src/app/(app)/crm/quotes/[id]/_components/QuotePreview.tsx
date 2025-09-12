@@ -3,8 +3,7 @@
 
 import React from 'react';
 import Image from 'next/image'; // ✅ CORRECCIÓ: Importem el component Image de Next.js
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { Quote, Contact, CompanyProfile } from '../page';
+import type { Quote, Contact, CompanyProfile } from '@/types/crm';
 
 export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discountAmount, tax, total }: {
     quote: Quote;
