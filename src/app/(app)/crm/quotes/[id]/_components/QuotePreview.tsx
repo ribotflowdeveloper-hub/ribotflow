@@ -2,28 +2,33 @@
 "use client";
 
 import React from 'react';
-import Image from 'next/image'; // ✅ CORRECCIÓ: Importem el component Image de Next.js
+import Image from 'next/image';
 import type { Quote, Contact, CompanyProfile } from '@/types/crm';
 
-export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discountAmount, tax, total }: {
+// Definim les props del component
+interface QuotePreviewProps {
     quote: Quote;
     contacts: Contact[];
-    companyProfile: CompanyProfile;
+    // ✅ CORRECCIÓ: Indiquem que companyProfile pot ser de tipus CompanyProfile O null.
+    companyProfile: CompanyProfile | null; 
     subtotal: number;
     discountAmount: number;
     tax: number;
     total: number;
-}) => {
+}
+
+export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discountAmount, tax, total }: QuotePreviewProps) => {
     const contact = contacts.find(c => c.id === quote.contact_id);
     const base = subtotal - discountAmount;
     
+    // El 'return' i tota la lògica JSX es queden exactament igual,
+    // ja que l'ús de '?.' ja gestionava correctament el cas de 'null'.
     return (
         <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
             <div id="quote-preview-for-pdf">
                 <div className="bg-white text-gray-900 p-8 rounded-lg shadow-lg font-sans text-sm min-h-full">
-                    <header className="flex justify-between items-start border-b-2 border-gray-200">
+                    <header className="flex justify-between items-start border-b-2 border-gray-200 pb-4">
                         {companyProfile?.logo_url ? (
-                            // ✅ CORRECCIÓ: Afegim 'width' i 'height' i eliminem les classes de mida.
                             <Image 
                                 src={companyProfile.logo_url} 
                                 alt="Logo" 
@@ -67,7 +72,7 @@ export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discou
                     <section className="flex justify-end mt-6">
                         <div className="w-full max-w-xs space-y-2">
                             <div className="flex justify-between"><p className="text-gray-600">Subtotal:</p><p>{subtotal.toFixed(2)} €</p></div>
-                            {quote.discount > 0 && (<div className="flex justify-between text-green-600"><p>Descompte:</p><p>-€{discountAmount.toFixed(2)} ({quote.discount}%)</p></div>)}
+                            {quote.discount > 0 && (<div className="flex justify-between text-green-600"><p>Descompte:</p><p>-{discountAmount.toFixed(2)} € ({quote.discount}%)</p></div>)}
                             <div className="flex justify-between"><p className="text-gray-600">Base Imposable:</p><p>{base.toFixed(2)} €</p></div>
                             <div className="flex justify-between"><p className="text-gray-600">Impostos (21%):</p><p>{tax.toFixed(2)} €</p></div>
                             <div className="flex justify-between font-bold text-xl mt-2 pt-2 border-t-2 border-gray-800"><p>TOTAL:</p><p>{total.toFixed(2)} €</p></div>

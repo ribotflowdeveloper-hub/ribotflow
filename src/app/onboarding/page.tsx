@@ -68,7 +68,6 @@ export default function OnboardingPage() {
       const fullAddressForGeocoding = `${street}, ${postalCode} ${city}, ${country}`;
       const servicesArray = servicesInput.split(',').map(s => s.trim()).filter(Boolean);
 
-      // Aquest objecte conté TOTES les dades que la nostra Edge Function necessita
       const profileData = {
         full_name: fullName,
         company_name: companyName,
@@ -80,8 +79,6 @@ export default function OnboardingPage() {
         onboarding_completed: true,
       };
 
-      // ✅ CORRECCIÓ DEFINITIVA: Invoquem l'Edge Function en lloc de l'update directe.
-      // Això garanteix que la geocodificació s'executi.
       const { error } = await supabase.functions.invoke('submit-onboarding', {
         body: { profileData, userId: user.id },
       });
@@ -90,8 +87,18 @@ export default function OnboardingPage() {
       
       toast({ title: "Perfil completat!", description: "Benvingut! Redirigint..." });
       router.push('/redirecting');
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Error en desar el perfil", description: error.message });
+    
+    // ✅ CORRECCIÓ: Canviem 'any' per 'unknown' per a Vercel
+    } catch (error: unknown) {
+      let errorMessage = "Hi ha hagut un error inesperat.";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      toast({ 
+        variant: "destructive", 
+        title: "Error en desar el perfil", 
+        description: errorMessage 
+      });
     } finally {
       setLoading(false);
     }

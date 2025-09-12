@@ -32,7 +32,7 @@ export function PublicQuoteClient({
   initialQuoteData: QuoteDataFromServer;
 }) {
   const { toast } = useToast();
-  const [quoteData, setQuoteData] = useState(initialQuoteData);
+  const [quoteData] = useState(initialQuoteData);
   const [isPending, startTransition] = useTransition();
   const [finalStatus, setFinalStatus] = useState<"accepted" | "declined" | null>(
     quoteData.status === "Accepted"
@@ -53,7 +53,7 @@ export function PublicQuoteClient({
         });
         if (error) throw new Error(error.message);
         setFinalStatus("accepted");
-      } catch (err: unknown) {
+      } catch (err) {
         const e = err instanceof Error ? err : new Error("Error desconegut");
         toast({
           variant: "destructive",
@@ -82,7 +82,7 @@ export function PublicQuoteClient({
         if (error) throw new Error(error.message);
         setFinalStatus("declined");
         setIsRejecting(false);
-      } catch (err: unknown) {
+      } catch (err) {
         const e = err instanceof Error ? err : new Error("Error desconegut");
         toast({
           variant: "destructive",
@@ -106,7 +106,7 @@ export function PublicQuoteClient({
         <h1 className="text-3xl text-black font-bold mb-2">
           Pressupost Acceptat!
         </h1>
-        <p className="text-lg text-black ">
+        <p className="text-lg text-black">
           Gràcies per la teva confiança, {quoteData.contacts.nom}.
         </p>
         <p className="text-lg text-black">
@@ -122,7 +122,7 @@ export function PublicQuoteClient({
       <div className="flex flex-col h-screen w-full justify-center items-center bg-gray-100 text-center p-4">
         <XCircle className="w-24 h-24 text-red-500 mb-4" />
         <h1 className="text-3xl text-black font-bold mb-2">Feedback rebut</h1>
-        <p className="text-lg text-black ">Gràcies pels teus comentaris.</p>
+        <p className="text-lg text-black">Gràcies pels teus comentaris.</p>
       </div>
     );
   }
@@ -201,7 +201,9 @@ export function PublicQuoteClient({
               placeholder="Ex: El preu és massa alt, falten funcionalitats..."
               className="mt-2"
               value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                setRejectionReason(e.target.value)
+              }
             />
           </div>
           <AlertDialogFooter>

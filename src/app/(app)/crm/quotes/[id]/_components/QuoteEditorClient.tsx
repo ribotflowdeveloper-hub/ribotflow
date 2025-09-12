@@ -123,9 +123,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
         toast({ title: "Èxit!", description: result.message });
   
-      } catch (error: any) {
-        toast({ variant: "destructive", title: "Error en l'enviament", description: error.message });
-      } finally {
+      }  finally {
         setSendingStatus('idle');
       }
     });

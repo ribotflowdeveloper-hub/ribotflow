@@ -27,12 +27,11 @@ export default async function PublicQuotePage({
     .eq("secure_id", secureId)
     .single();
 
-  if (error) {
-    console.error("Error carregant les dades del pressupost:", error.message);
-    notFound();
-  }
-
-  if (!quoteData) {
+  if (error || !quoteData) {
+    console.error(
+      "Error carregant les dades del pressupost:",
+      error?.message || "Dades no trobades"
+    );
     notFound();
   }
 
