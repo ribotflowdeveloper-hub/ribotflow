@@ -9,10 +9,13 @@ export default function RedirectingPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Després de 3 segons, redirigim l'usuari al dashboard
     const timer = setTimeout(() => {
+      // 1. Forcem a Next.js a refrescar les dades del servidor.
+      router.refresh(); 
+
+      // 2. Un cop les dades estan actualitzades, naveguem al dashboard.
       router.push('/dashboard');
-    }, 3000); // 3000ms = 3 segons
+    }, 3000); // 3 segons d'espera
 
     // Netejem el temporitzador si el component es desmunta abans de temps
     return () => clearTimeout(timer);
