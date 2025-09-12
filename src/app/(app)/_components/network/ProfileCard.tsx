@@ -1,6 +1,7 @@
 // src/app/_components/network/ProfileCard.tsx
 import { Building2 } from 'lucide-react';
 import { PublicProfile } from '@/types';
+import Image from 'next/image'; // Afegeix aquest import a dalt del fitxer
 
 interface ProfileCardProps {
   profile: PublicProfile;
@@ -18,8 +19,13 @@ export default function ProfileCard({ profile, isSelected, onClick }: ProfileCar
     >
       <div className="flex items-center gap-4">
         {profile.logo_url ? (
-          <img src={profile.logo_url} alt={profile.company_name} className="w-12 h-12 rounded-full object-cover bg-gray-700" />
-        ) : (
+          <Image 
+    src={profile.logo_url} 
+    alt={`Logo de ${profile.company_name}`}
+    width={48} // ✅ Mida en píxels (equivalent a w-12)
+    height={48} // ✅ Mida en píxels (equivalent a h-12)
+    className="rounded-full object-cover bg-gray-700"
+/>        ) : (
           <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
             <Building2 className="w-6 h-6 text-gray-400" />
           </div>

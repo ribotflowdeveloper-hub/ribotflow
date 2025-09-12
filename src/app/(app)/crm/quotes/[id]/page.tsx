@@ -1,4 +1,3 @@
-// Ruta del fitxer: src/app/(app)/crm/quotes/[id]/page.tsx
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -8,11 +7,10 @@ import type { Metadata } from 'next';
 // Forcem el renderitzat dinàmic per a més seguretat.
 export const dynamic = 'force-dynamic';
 
-// ✅ Fix a generateMetadata
 export async function generateMetadata(
   props: { params: Promise<{ id: string }> }
 ): Promise<Metadata> {
-  const { id } = await props.params; // 👈 Await abans d'accedir-hi
+  const { id } = await props.params;
 
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
@@ -33,7 +31,6 @@ export async function generateMetadata(
 
   return { title: `${title} | Ribot` };
 }
-
 
 // Definim tipus per a les dades que mourem entre servidor i client
 export type QuoteItem = {
@@ -58,6 +55,9 @@ export type Quote = {
   total: number;
   sent_at?: string | null;
   items: QuoteItem[];
+  // Camps opcionals que poden no existir en un pressupost nou
+  user_id?: string;
+  secure_id?: string;
 };
 export type Contact = { id: string; nom: string; empresa: string | null; };
 export type Product = { id: number; name: string; description?: string | null; price: number; };
@@ -65,11 +65,10 @@ export type CompanyProfile = { id: string; user_id: string; company_name?: strin
 export type Opportunity = { id: number; name: string; stage_name: string; };
 
 
-// ✅ Fix a la page
 export default async function QuoteEditorPage(
   props: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await props.params; // 👈 Await abans d'usar-lo
+  const { id } = await props.params;
 
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
@@ -129,7 +128,7 @@ export default async function QuoteEditorPage(
       .single();
 
     if (quoteData) {
-      initialQuote = quoteData;
+      initialQuote = quoteData as unknown as Quote; // Cast per assegurar la compatibilitat
       if (quoteData.contact_id) {
         const { data: opportunitiesData } = await supabase
           .from('opportunities')
@@ -152,3 +151,4 @@ export default async function QuoteEditorPage(
     />
   );
 }
+

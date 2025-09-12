@@ -6,6 +6,7 @@ import { useRef, useEffect } from 'react';
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
 import type { PublicProfile } from '@/types';
 import { Building2 } from 'lucide-react';
+import Image from 'next/image'; // Afegeix aquest import a dalt del fitxer
 
 interface MapContainerProps {
   profiles: PublicProfile[];
@@ -50,8 +51,13 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
         >
           <div className="transform transition-transform duration-200 hover:scale-125">
             {profile.logo_url ? (
-              <img src={profile.logo_url} className="w-8 h-8 rounded-full border-2 border-purple-500 object-cover" />
-            ) : (
+              <Image 
+    src={profile.logo_url} 
+    alt={`Logo de ${profile.company_name}`} // ✅ Alt text per accessibilitat
+    width={32} // ✅ Mida en píxels (equivalent a w-8)
+    height={32} // ✅ Mida en píxels (equivalent a h-8)
+    className="rounded-full border-2 border-purple-500 object-cover"
+/>            ) : (
               <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-purple-500 flex items-center justify-center">
                 <Building2 className="w-4 h-4 text-purple-300" />
               </div>

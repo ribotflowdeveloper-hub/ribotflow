@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import type { Quote, Contact, CompanyProfile, QuoteItem } from "@/types/crm";
 
-type QuoteDataFromServer = Quote & {
+export type QuoteDataFromServer = Quote & {
   contacts: Contact;
   profiles: CompanyProfile;
   quote_items: QuoteItem[];
@@ -92,30 +92,30 @@ export function PublicQuoteClient({
       }
     });
   };
+ // Adaptem l'objecte per a QuotePreview, assegurant la compatibilitat
+ const quoteForPreview: Quote = {
+  ...quoteData,
+  items: quoteData.quote_items,
+};
 
-  const quoteForPreview: Quote = {
-    ...quoteData,
-    quote_number: String(quoteData.quote_number),
-    items: quoteData.quote_items,
-  };
-
-  if (finalStatus === "accepted") {
-    return (
-      <div className="flex flex-col h-screen w-full justify-center items-center bg-gray-100 text-center p-4">
-        <CheckCircle className="w-24 h-24 text-green-500 mb-4" />
-        <h1 className="text-3xl text-black font-bold mb-2">
-          Pressupost Acceptat!
-        </h1>
-        <p className="text-lg text-black">
-          Gràcies per la teva confiança, {quoteData.contacts.nom}.
-        </p>
-        <p className="text-lg text-black">
-          Hem notificat a {quoteData.profiles.company_name} i es posaran en
-          contacte amb tu aviat.
-        </p>
-      </div>
-    );
-  }
+if (finalStatus === "accepted") {
+  return (
+    <div className="flex flex-col h-screen w-full justify-center items-center bg-gray-100 text-center p-4">
+      <CheckCircle className="w-24 h-24 text-green-500 mb-4" />
+      <h1 className="text-3xl text-black font-bold mb-2">
+        Pressupost Acceptat!
+      </h1>
+      <p className="text-lg text-black">
+        Gràcies per la teva confiança, {quoteData.contacts?.nom}.
+      </p>
+      <p className="text-lg text-black">
+        {/* ✅ CORRECCIÓ 2: Utilitzem l'encadenament opcional (?.) per seguretat */}
+        Hem notificat a {quoteData.profiles?.company_name || 'l\'empresa'} i es posaran en
+        contacte amb tu aviat.
+      </p>
+    </div>
+  );
+}
 
   if (finalStatus === "declined") {
     return (

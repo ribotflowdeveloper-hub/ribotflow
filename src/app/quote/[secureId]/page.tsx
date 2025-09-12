@@ -1,21 +1,23 @@
-import { createClient } from "@supabase/supabase-js";
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server'; 
 import { notFound } from "next/navigation";
 import { PublicQuoteClient } from "./PublicQuoteClient";
+import type { QuoteDataFromServer } from './PublicQuoteClient';
 
-type PublicQuotePageProps = {
-  params: { secureId: string };
-};
+// ✅ CORRECCIÓ DEFINITIVA: Definim el tipus correcte per a la nova API asíncrona de Next.js
+interface PublicQuotePageProps {
+  params: Promise<{ secureId: string }>;
+}
 
-export default async function PublicQuotePage({
-  params,
-}: PublicQuotePageProps) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+export default async function PublicQuotePage(props: PublicQuotePageProps) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
+  // Esperem la promesa per resoldre els paràmetres, com indica la nova versió de Next.js
+  const params = await props.params;
   const { secureId } = params;
 
+  // La consulta a la base de dades és correcta
   const { data: quoteData, error } = await supabase
     .from("quotes")
     .select(`
@@ -35,5 +37,9 @@ export default async function PublicQuotePage({
     notFound();
   }
 
-  return <PublicQuoteClient initialQuoteData={quoteData} />;
+  // Assegurem que el tipus de dades és el que el component client espera
+  const initialData = quoteData as unknown as QuoteDataFromServer;
+
+  return <PublicQuoteClient initialQuoteData={initialData} />;
 }
+

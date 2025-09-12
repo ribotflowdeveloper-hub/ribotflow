@@ -1,4 +1,3 @@
-// Ruta del fitxer: src/app/(app)/crm/quotes/[id]/_components/QuoteEditorClient.tsx
 "use client";
 
 import React, { useState, useMemo, useTransition, useEffect } from 'react';
@@ -16,6 +15,7 @@ import html2canvas from 'html2canvas';
 import { createClient } from '@/lib/supabase/client';
 
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
+// Aquest import ara rebrà el tipus 'Quote' complet i correcte des de page.tsx
 import type { Quote, Contact, Product, CompanyProfile, Opportunity, QuoteItem } from '../page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -55,6 +55,9 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     return { subtotal: sub, discountAmount: calculatedDiscountAmount, tax: taxAmount, total: subAfterDiscount + taxAmount };
   }, [quote?.items, quote?.discount]);
   
+  // Aquesta funció ja no és necessària perquè el tipus 'Quote' que rebem ja és correcte.
+  // const quoteForPreview: Quote = { ... };
+
   const handleSave = () => {
     startSaveTransition(async () => {
       const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
@@ -77,7 +80,6 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     });
   };
   
-  // ✅ LÒGICA D'ENVIAMENT COMPLETA
   const handleSend = () => {
     if (quote.id === 'new') {
         toast({ variant: 'destructive', title: "Acció no permesa", description: "Desa el pressupost abans d'enviar-lo." });
@@ -86,15 +88,13 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
 
     startSendTransition(async () => {
       try {
-        // PAS 1: Generar el PDF al client (AMB OPTIMITZACIONS)
         setSendingStatus('generating');
         toast({ title: "Preparant enviament...", description: "Generant el PDF optimitzat." });
         const element = document.getElementById('quote-preview-for-pdf');
         if (!element) throw new Error("Element de previsualització no trobat.");
         
-        // ✅ OPTIMITZACIÓ: Reduïm l'escala i fem servir 'window.devicePixelRatio' per a pantalles retina
         const canvas = await html2canvas(element, { 
-            scale: 1.5, // Reduït des de 2 per a una mida d'arxiu molt més petita
+            scale: 1.5,
             useCORS: true 
         });
   
@@ -102,13 +102,11 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         const pdfWidth = pdf.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
   
-        // ✅ OPTIMITZACIÓ: Utilitzem JPEG amb compressió en lloc de PNG
-        const imgData = canvas.toDataURL('image/jpeg', 0.90); // 0.90 és el nivell de qualitat (bo)
+        const imgData = canvas.toDataURL('image/jpeg', 0.90);
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         
         const pdfBlob = pdf.output('blob');
   
-        // ... (la resta de la funció continua igual: pujada a Storage i crida a la Server Action)
         setSendingStatus('uploading');
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Usuari no autenticat.");
@@ -123,7 +121,10 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
         toast({ title: "Èxit!", description: result.message });
   
-      }  finally {
+      } catch(error) {
+        const e = error instanceof Error ? error : new Error("Error desconegut");
+        toast({ variant: "destructive", title: "Error en l'enviament", description: e.message });
+      } finally {
         setSendingStatus('idle');
       }
     });
@@ -185,39 +186,37 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
             </div>
         )}
 
-        {/* ✅ DISSENY RESTAURAT: Tornem a l'estructura de targetes separades */}
         <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
           <section className="flex flex-col gap-2 overflow-y-auto pr-4">
             <div className="glass-card p-2">
                 <QuoteMeta quote={quote} setQuote={setQuote} contacts={contacts} />
             </div>
 
-<div className="">
-  <Label>Oportunitats del client</Label>
-  {contactOpportunities.length > 0 ? (
-    <Select 
-      value={quote.opportunity_id?.toString() || ''} 
-      onValueChange={(value) => setQuote(q => ({ ...q, opportunity_id: Number(value) || null }))}
-      disabled={!quote.contact_id}
-    >
-      <SelectTrigger className="mt-2 w-full bg-transparent search-input h-auto py-1.5 ">
-        <SelectValue placeholder="Cap oportunitat associada" />
-      </SelectTrigger>
-      <SelectContent className="glass-effect">
-        {contactOpportunities.map(o => (
-          <SelectItem 
-            key={o.id} 
-            value={o.id.toString()}
-            // ✅ CORRECCIÓ: Afegim 'text-foreground' per al color per defecte.
-            className="text-foreground focus:bg-transparent focus:text-background"
-          >
-            {o.name} ({o.stage_name})
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  ) : (<p className="mt-2 text-sm text-muted-foreground">Aquest client no té oportunitats obertes.</p>)}
-</div>
+            <div className="">
+              <Label>Oportunitats del client</Label>
+              {contactOpportunities.length > 0 ? (
+                <Select 
+                  value={quote.opportunity_id?.toString() || ''} 
+                  onValueChange={(value) => setQuote(q => ({ ...q, opportunity_id: Number(value) || null }))}
+                  disabled={!quote.contact_id}
+                >
+                  <SelectTrigger className="mt-2 w-full bg-transparent search-input h-auto py-1.5 ">
+                    <SelectValue placeholder="Cap oportunitat associada" />
+                  </SelectTrigger>
+                  <SelectContent className="glass-effect">
+                    {contactOpportunities.map(o => (
+                      <SelectItem 
+                        key={o.id} 
+                        value={o.id.toString()}
+                        className="text-foreground focus:bg-transparent focus:text-background"
+                      >
+                        {o.name} ({o.stage_name})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (<p className="mt-2 text-sm text-muted-foreground">Aquest client no té oportunitats obertes.</p>)}
+            </div>
 
             <div className="glass-card p-2">
                  <QuoteItems 
@@ -243,6 +242,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
           
           <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
              <div id="quote-preview-for-pdf">
+                {/* Ara passem l'estat 'quote' directament, ja que el seu tipus és correcte */}
                 <QuotePreview 
                     quote={quote} 
                     contacts={contacts} 
@@ -272,3 +272,4 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     </>
   );
 }
+
