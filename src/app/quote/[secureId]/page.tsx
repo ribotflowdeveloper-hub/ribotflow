@@ -1,32 +1,30 @@
-// fitxer: src/app/quote/[secureId]/page.tsx
-
-import { createClient } from '@supabase/supabase-js';
-import { notFound } from 'next/navigation';
-import { PublicQuoteClient } from './PublicQuoteClient';
+import { createClient } from "@supabase/supabase-js";
+import { notFound } from "next/navigation";
+import { PublicQuoteClient } from "./PublicQuoteClient";
 
 type PublicQuotePageProps = {
-  params: Promise<{ secureId: string }>;
+  params: { secureId: string };
 };
 
-export default async function PublicQuotePage({ params }: PublicQuotePageProps) {
-  
-  // Creem un client públic i directe per carregar les dades inicials
+export default async function PublicQuotePage({
+  params,
+}: PublicQuotePageProps) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  const { secureId } = await params;
+  const { secureId } = params;
 
   const { data: quoteData, error } = await supabase
-    .from('quotes')
+    .from("quotes")
     .select(`
       *,
       contacts (*),
       profiles (*),
       quote_items (*)
     `)
-    .eq('secure_id', secureId)
+    .eq("secure_id", secureId)
     .single();
 
   if (error) {
@@ -38,6 +36,5 @@ export default async function PublicQuotePage({ params }: PublicQuotePageProps) 
     notFound();
   }
 
-  // @ts-ignore
   return <PublicQuoteClient initialQuoteData={quoteData} />;
 }

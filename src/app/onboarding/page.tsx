@@ -28,6 +28,7 @@ export default function OnboardingPage() {
   
   const [loading, setLoading] = useState(false);
 
+  // Dades del formulari
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [summary, setSummary] = useState('');
@@ -49,11 +50,9 @@ export default function OnboardingPage() {
   }, [supabase]);
 
   const handleAddressSelect = (address: DetailedAddress) => {
-    // Aquesta funció rep les dades de l'autocompletat i actualitza l'estat
     setStreet(address.street);
     setCity(address.city);
-    // El codi postal el deixem en blanc perquè l'usuari l'ompli manualment, com has demanat
-    setPostalCode(''); 
+    setPostalCode(address.postcode);
     setRegion(address.region);
     setCountry(address.country);
   };
@@ -69,8 +68,8 @@ export default function OnboardingPage() {
       const fullAddressForGeocoding = `${street}, ${postalCode} ${city}, ${country}`;
       const servicesArray = servicesInput.split(',').map(s => s.trim()).filter(Boolean);
 
-      const updates = {
-        id: user.id,
+      // Aquest objecte conté TOTES les dades que la nostra Edge Function necessita
+      const profileData = {
         full_name: fullName,
         company_name: companyName,
         summary: summary,
@@ -81,7 +80,12 @@ export default function OnboardingPage() {
         onboarding_completed: true,
       };
 
-      const { error } = await supabase.from('profiles').update(updates).eq('id', user.id);
+      // ✅ CORRECCIÓ DEFINITIVA: Invoquem l'Edge Function en lloc de l'update directe.
+      // Això garanteix que la geocodificació s'executi.
+      const { error } = await supabase.functions.invoke('submit-onboarding', {
+        body: { profileData, userId: user.id },
+      });
+      
       if (error) throw error;
       
       toast({ title: "Perfil completat!", description: "Benvingut! Redirigint..." });
@@ -109,15 +113,13 @@ export default function OnboardingPage() {
           </div>
           
           <div className="space-y-4">
-            {/* ✅ AQUEST ÉS L'ÚNIC CAMP DE CERCA */}
             <AddressAutocomplete 
               value={street}
               onChange={(e) => setStreet(e.target.value)}
               onAddressSelect={handleAddressSelect} 
             />
-            {/* ✅ Aquests camps s'ompliran sols i l'usuari els pot editar */}
             <InputWithIcon icon={MapPin} placeholder="Població" value={city} onChange={(e) => setCity(e.target.value)} required />
-            <InputWithIcon icon={MapPin} placeholder="Codi Postal (manual)" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required />
+            <InputWithIcon icon={MapPin} placeholder="Codi Postal" value={postalCode} onChange={(e) => setPostalCode(e.target.value)} required />
             <div className="grid grid-cols-2 gap-4">
               <InputWithIcon icon={MapPin} placeholder="Província" value={region} onChange={(e) => setRegion(e.target.value)} required />
               <InputWithIcon icon={MapPin} placeholder="País" value={country} onChange={(e) => setCountry(e.target.value)} required />

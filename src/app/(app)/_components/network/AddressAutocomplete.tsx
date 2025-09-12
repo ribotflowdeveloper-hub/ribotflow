@@ -3,11 +3,12 @@
 
 import { ChangeEvent } from 'react';
 import { AddressAutofill } from '@mapbox/search-js-react';
-import type { MapboxRetrieveResponse } from '@mapbox/search-js-react';
+import type { MapboxRetrieveResponse, MapboxContext } from '@mapbox/search-js-react';
+
+
 import { MapPin } from 'lucide-react';
 import type { DetailedAddress } from './onboarding-types';
 
-// Aquesta interfície ara inclou 'value' i 'onChange'
 interface AddressAutocompleteProps {
   value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -22,11 +23,18 @@ export default function AddressAutocomplete({ value, onChange, onAddressSelect }
 
     const context = feature.properties.context;
     
+    // ✅ CORRECCIÓ CLAU: Definim el tipus de 'ctx' com a 'MapboxContext' per eliminar l'error de 'any'
+    const findContext = (idPrefix: string): string => {
+      if (!context) return '';
+      const found = context.find((ctx: MapboxContext) => ctx.id.startsWith(idPrefix));
+      return found?.name || '';
+    };
+
     const street = feature.properties.address || '';
-    const city = context?.find((ctx: any) => ctx.id.startsWith('place'))?.name || '';
-    const postcode = context?.find((ctx: any) => ctx.id.startsWith('postcode'))?.name || '';
-    const region = context?.find((ctx: any) => ctx.id.startsWith('region'))?.name || '';
-    const country = context?.find((ctx: any) => ctx.id.startsWith('country'))?.name || '';
+    const city = findContext('place');
+    const postcode = findContext('postcode');
+    const region = findContext('region');
+    const country = findContext('country');
     
     onAddressSelect({ street, city, postcode, region, country });
   };
@@ -34,10 +42,7 @@ export default function AddressAutocomplete({ value, onChange, onAddressSelect }
   return (
     <div className="space-y-1">
       <label className="block text-sm font-medium text-muted-foreground">Carrer (amb cercador)</label>
-      <AddressAutofill
-        accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!}
-        onRetrieve={handleRetrieve}
-      >
+      <AddressAutofill accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!} onRetrieve={handleRetrieve}>
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input

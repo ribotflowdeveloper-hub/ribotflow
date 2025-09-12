@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
  // ✅ Correcció: desactivar typedRoutes si no el necessites
  typedRoutes: false,
+ 
 
  images: {
    remotePatterns: [
@@ -20,6 +21,7 @@ const nextConfig: NextConfig = {
      },
    ],
  },
+ 
 };
 
 export default nextConfig;
