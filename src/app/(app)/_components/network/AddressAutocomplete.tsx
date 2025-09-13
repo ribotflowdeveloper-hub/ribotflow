@@ -1,13 +1,31 @@
-// src/app/_components/network/AddressAutocomplete.tsx
 "use client";
 
-import { ChangeEvent } from 'react';
-import { AddressAutofill } from '@mapbox/search-js-react';
-import type { MapboxRetrieveResponse, MapboxContext } from '@mapbox/search-js-react';
+import { ChangeEvent } from "react";
+import dynamic from "next/dynamic";
+import { MapPin } from "lucide-react";
 
+// Import official Mapbox types
+import type { 
+  MapboxRetrieveResponse,
+  MapboxContext,
+  MapboxFeature
+} from '@mapbox/search-js-react';
 
-import { MapPin } from 'lucide-react';
-import type { DetailedAddress } from './onboarding-types';
+// Import our custom address type
+import type { DetailedAddress } from "@/types/DetailedAddress";
+
+// The official Mapbox types can be incomplete. For example, 'context' items
+// and 'feature' objects sometimes contain a 'text' property that is not in the
+// official type definition. We create extended types to handle this safely
+// without disabling ESLint rules.
+type MapboxContextWithText = MapboxContext & { text?: string };
+type MapboxFeatureWithText = MapboxFeature & { text?: string };
+
+// Dynamically import the Mapbox component to prevent SSR issues
+const AddressAutofill = dynamic(
+  () => import("@mapbox/search-js-react").then((mod) => mod.AddressAutofill),
+  { ssr: false }
+);
 
 interface AddressAutocompleteProps {
   value: string;
@@ -17,32 +35,67 @@ interface AddressAutocompleteProps {
 
 export default function AddressAutocomplete({ value, onChange, onAddressSelect }: AddressAutocompleteProps) {
   
-  const handleRetrieve = (res: MapboxRetrieveResponse) => { 
-    const feature = res.features[0];
-    if (!feature?.properties) return;
+  const handleRetrieve = (res: MapboxRetrieveResponse) => {
+    console.log("🔎 Resposta rebuda de Mapbox:", res);
 
-    const context = feature.properties.context;
+    // Let TypeScript infer the type of 'feature' to be more resilient
+    // against conflicting type definitions in the project.
+    const feature = res.features[0];
     
-    // ✅ CORRECCIÓ CLAU: Definim el tipus de 'ctx' com a 'MapboxContext' per eliminar l'error de 'any'
+    // Defensive check in case the response is empty or invalid
+    if (!feature?.properties || !feature?.geometry?.coordinates) {
+      console.warn("⚠️ Mapbox response feature is missing properties or geometry.", feature);
+      return;
+    }
+
+    const props = feature.properties;
+    const context = props.context || [];
+
     const findContext = (idPrefix: string): string => {
-      if (!context) return '';
-      const found = context.find((ctx: MapboxContext) => ctx.id.startsWith(idPrefix));
-      return found?.name || '';
+      const found = context.find((ctx: MapboxContext) => {
+        // Defensive check: Ensure 'id' exists and is a string before calling startsWith
+        return typeof ctx?.id === 'string' && ctx.id.startsWith(idPrefix);
+      });
+      
+      // Use our extended type to safely access 'text', with a fallback to the official 'name' property.
+      return (found as MapboxContextWithText | undefined)?.text || found?.name || "";
     };
 
-    const street = feature.properties.address || '';
-    const city = findContext('place');
-    const postcode = findContext('postcode');
-    const region = findContext('region');
-    const country = findContext('country');
+    const [longitude, latitude] = feature.geometry.coordinates;
+
+    // Use our extended type to safely access the 'text' property on the feature
+    const street = props.address || (feature as MapboxFeatureWithText).text || "";
+    const city = findContext("place");
+    const postcode = findContext("postcode");
+    const region = findContext("region");
+    const country = findContext("country");
+
+    const parsedAddress: DetailedAddress = {
+      street,
+      city,
+      postcode,
+      region,
+      country,
+      latitude,
+      longitude,
+    };
     
-    onAddressSelect({ street, city, postcode, region, country });
+    console.log("✅ Adreça processada:", parsedAddress);
+    onAddressSelect(parsedAddress);
   };
+
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+  if (!mapboxToken) {
+    console.error("❌ ERROR: El token d'accés de Mapbox no està configurat (NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN).");
+    return <div className="text-red-500 p-4 bg-red-900/20 rounded-md">Error de configuració: Falta el token de Mapbox.</div>;
+  }
 
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-muted-foreground">Carrer (amb cercador)</label>
-      <AddressAutofill accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!} onRetrieve={handleRetrieve}>
+      <label className="block text-sm font-medium text-muted-foreground">
+        Carrer (amb cercador)
+      </label>
+      <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
@@ -58,3 +111,4 @@ export default function AddressAutocomplete({ value, onChange, onAddressSelect }
     </div>
   );
 }
+
