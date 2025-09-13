@@ -1,6 +1,7 @@
+// ✅ LA LÍNIA CLAU: Declarem aquest fitxer com un Component de Client.
 "use client";
 
-import { useState, useEffect, ChangeEvent } from "react";
+import { useState, useEffect } from "react"; // Hem eliminat 'ChangeEvent' que no s'utilitzava
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import dynamic from "next/dynamic";
@@ -227,3 +228,4 @@ const InputWithIcon = ({ icon: Icon, ...props }: InputWithIconProps) => (
     <Input className="pl-10" {...props} />
   </div>
 );
+
