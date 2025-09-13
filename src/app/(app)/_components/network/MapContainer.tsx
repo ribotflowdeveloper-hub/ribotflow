@@ -1,4 +1,3 @@
-// src/app/_components/network/MapContainer.tsx
 "use client";
 
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -6,7 +5,7 @@ import { useRef, useEffect } from 'react';
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
 import type { PublicProfile } from '@/types';
 import { Building2 } from 'lucide-react';
-import Image from 'next/image'; // Afegeix aquest import a dalt del fitxer
+import Image from 'next/image';
 
 interface MapContainerProps {
   profiles: PublicProfile[];
@@ -16,6 +15,9 @@ interface MapContainerProps {
 
 export default function MapContainer({ profiles, selectedProfile, onSelectProfile }: MapContainerProps) {
   const mapRef = useRef<MapRef>(null);
+
+  // ✅ MILLORA: Guardem el token en una variable per comprovar-lo
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
   useEffect(() => {
     if (selectedProfile && mapRef.current) {
@@ -27,14 +29,22 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
     }
   }, [selectedProfile]);
 
+  // Si no hi ha token, mostrem un error clar en lloc d'un mapa en blanc
+  if (!mapboxToken) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-gray-800 text-red-400 p-4">
+        Error: La clau d'API de Mapbox no està configurada correctament a les variables d'entorn.
+      </div>
+    );
+  }
+
   return (
     <Map
       ref={mapRef}
       initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }}
       style={{ width: '100%', height: '100%' }}
       mapStyle="mapbox://styles/mapbox/dark-v11"
-      mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!}
-      // 👇 LÍNIA CORREGIDA: onInteractionStateChange -> onDragStart
+      mapboxAccessToken={mapboxToken}
       onDragStart={() => onSelectProfile(null)}
     >
       <NavigationControl position="top-right" />
@@ -52,12 +62,13 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
           <div className="transform transition-transform duration-200 hover:scale-125">
             {profile.logo_url ? (
               <Image 
-    src={profile.logo_url} 
-    alt={`Logo de ${profile.company_name}`} // ✅ Alt text per accessibilitat
-    width={32} // ✅ Mida en píxels (equivalent a w-8)
-    height={32} // ✅ Mida en píxels (equivalent a h-8)
-    className="rounded-full border-2 border-purple-500 object-cover"
-/>            ) : (
+                src={profile.logo_url} 
+                alt={`Logo de ${profile.company_name}`}
+                width={32}
+                height={32}
+                className="rounded-full border-2 border-purple-500 object-cover"
+              />
+            ) : (
               <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-purple-500 flex items-center justify-center">
                 <Building2 className="w-4 h-4 text-purple-300" />
               </div>
