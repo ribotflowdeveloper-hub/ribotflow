@@ -85,6 +85,9 @@ export default function OnboardingPage() {
       
       if (error) throw error;
       
+      // ✅ LA SOLUCIÓ ÉS AQUÍ
+      // 1. Refresca la sessió del servidor i neteja la cau del client.
+      router.refresh(); 
       toast({ title: "Perfil completat!", description: "Benvingut! Redirigint..." });
       router.push('/redirecting');
     
