@@ -1,24 +1,13 @@
+// src/app/_components/network/AddressAutocomplete.tsx
 "use client";
 
-import { ChangeEvent } from "react";
-import dynamic from "next/dynamic";
-import { MapPin } from "lucide-react";
+import { ChangeEvent } from 'react';
+import { AddressAutofill } from '@mapbox/search-js-react';
+import type { MapboxRetrieveResponse, MapboxContext } from '@mapbox/search-js-react';
 
-// Importem els tipus oficials de Mapbox des del nostre fitxer de declaració
-import type { 
-  MapboxRetrieveResponse,
-  MapboxContext,
-  MapboxFeature
-} from '@mapbox/search-js-react';
 
-// Importem el nostre tipus personalitzat
-import type { DetailedAddress } from "@/types/DetailedAddress";
-
-// Carreguem dinàmicament el component de Mapbox
-const AddressAutofill = dynamic(
-  () => import("@mapbox/search-js-react").then((mod) => mod.AddressAutofill),
-  { ssr: false }
-);
+import { MapPin } from 'lucide-react';
+import type { DetailedAddress } from '@/types/DetailedAddress';
 
 interface AddressAutocompleteProps {
   value: string;
@@ -28,49 +17,32 @@ interface AddressAutocompleteProps {
 
 export default function AddressAutocomplete({ value, onChange, onAddressSelect }: AddressAutocompleteProps) {
   
-  const handleRetrieve = (res: MapboxRetrieveResponse) => {
+  const handleRetrieve = (res: MapboxRetrieveResponse) => { 
     const feature = res.features[0];
+    if (!feature?.properties) return;
+
+    const context = feature.properties.context;
     
-    if (!feature?.properties) {
-      console.warn("⚠️ La resposta de Mapbox no té 'properties'.", feature);
-      return;
-    }
-
-    const props = feature.properties;
-    const context = props.context || [];
-
+    // ✅ CORRECCIÓ CLAU: Definim el tipus de 'ctx' com a 'MapboxContext' per eliminar l'error de 'any'
     const findContext = (idPrefix: string): string => {
+      if (!context) return '';
       const found = context.find((ctx: MapboxContext) => ctx.id.startsWith(idPrefix));
-      return found?.name || "";
+      return found?.name || '';
     };
 
-    // ✅ CORRECCIÓ CLAU: Extreiem la latitud i longitud directament de la geometria
-    const [longitude, latitude] = feature.geometry?.coordinates || [null, null];
-
-    const parsedAddress: DetailedAddress = {
-      street: props.address || "",
-      city: findContext("place"),
-      postcode: findContext("postcode"),
-      region: findContext("region"),
-      country: findContext("country"),
-      latitude,
-      longitude,
-    };
+    const street = feature.properties.address || '';
+    const city = findContext('place');
+    const postcode = findContext('postcode');
+    const region = findContext('region');
+    const country = findContext('country');
     
-    onAddressSelect(parsedAddress);
+    onAddressSelect({ street, city, postcode, region, country, latitude:null, longitude:null });
   };
-
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-  if (!mapboxToken) {
-    return <div className="text-red-500 p-4 bg-red-900/20 rounded-md">Error de configuració: Falta el token de Mapbox.</div>;
-  }
 
   return (
     <div className="space-y-1">
-      <label className="block text-sm font-medium text-muted-foreground">
-        Carrer (amb cercador)
-      </label>
-      <AddressAutofill accessToken={mapboxToken} onRetrieve={handleRetrieve}>
+      <label className="block text-sm font-medium text-muted-foreground">Carrer (amb cercador)</label>
+      <AddressAutofill accessToken={process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN!} onRetrieve={handleRetrieve}>
         <div className="relative">
           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <input
