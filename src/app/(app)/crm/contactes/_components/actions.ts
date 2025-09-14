@@ -29,7 +29,7 @@ export async function createContactAction(
     email,
     empresa: formData.get('empresa') as string,
     telefon: formData.get('telefon') as string,
-    estat: formData.get('estat') as 'Lead' | 'Actiu' | 'Client',
+    estat: formData.get('estat') as 'Lead' | 'Proveidor' | 'Client',
     valor: parseFloat(formData.get('valor') as string) || 0,
     user_id: user.id,
   };

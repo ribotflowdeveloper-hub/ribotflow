@@ -20,7 +20,7 @@ type NewContactForm = {
   empresa: string;
   email: string;
   telefon: string;
-  estat: 'Lead' | 'Actiu' | 'Client';
+  estat: 'Lead' | 'Proveidor' | 'Client';
   valor: number;
 };
 
