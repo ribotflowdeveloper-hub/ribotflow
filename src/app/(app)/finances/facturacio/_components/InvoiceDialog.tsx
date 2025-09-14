@@ -1,0 +1,156 @@
+"use client";
+
+import React, { useState, useEffect, useTransition } from 'react';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, Plus, Trash2, Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { format } from "date-fns";
+import { ca } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { type Invoice, type Contact, type InvoiceItem } from '../page';
+import { createOrUpdateInvoiceAction, type InvoiceFormData } from '../actions';
+
+interface InvoiceDialogProps {
+    isOpen: boolean;
+    onClose: () => void;
+    contacts: Contact[];
+    initialInvoice: Partial<Invoice>;
+    onSaveSuccess: () => void;
+}
+
+export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSaveSuccess }: InvoiceDialogProps) {
+    const [invoice, setInvoice] = useState(initialInvoice);
+    const [isSaving, startSaveTransition] = useTransition();
+    const [comboboxOpen, setComboboxOpen] = useState(false);
+
+    useEffect(() => {
+        const items = invoice.invoice_items || [];
+        const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 1) * Number(item.unit_price || 0)), 0);
+        const taxAmount = subtotal * 0.21;
+        const totalAmount = subtotal + taxAmount;
+        setInvoice(prev => ({ ...prev, subtotal, tax_amount: taxAmount, total_amount: totalAmount }));
+    }, [invoice.invoice_items]);
+
+    const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
+        const updatedItems = [...(invoice.invoice_items || [])];
+        updatedItems[index] = { ...updatedItems[index], [field]: value };
+        setInvoice(prev => ({ ...prev, invoice_items: updatedItems }));
+    };
+
+    const addItem = () => {
+        const newItem: InvoiceItem = { description: '', quantity: 1, unit_price: 0 };
+        setInvoice(prev => ({ ...prev, invoice_items: [...(prev.invoice_items || []), newItem] }));
+    };
+
+    const removeItem = (index: number) => {
+        setInvoice(prev => ({ ...prev, invoice_items: (prev.invoice_items || []).filter((_, i) => i !== index) }));
+    };
+
+    const handleSave = () => {
+        if (!invoice.contact_id || !invoice.issue_date) {
+            toast.error("Falten dades", { description: "Si us plau, selecciona un client i una data d'emissió." });
+            return;
+        }
+        
+        const invoiceDataToSend: InvoiceFormData = {
+            id: invoice.id,
+            contact_id: invoice.contact_id,
+            issue_date: invoice.issue_date,
+            due_date: invoice.due_date || null,
+            status: 'Draft',
+            subtotal: invoice.subtotal ?? 0,
+            tax_amount: invoice.tax_amount ?? 0,
+            total_amount: invoice.total_amount ?? 0,
+            notes: invoice.notes || null,
+            invoice_items: invoice.invoice_items || [],
+        };
+        
+        startSaveTransition(async () => {
+            const result = await createOrUpdateInvoiceAction(invoiceDataToSend);
+            if (result.success) {
+                toast.success('Èxit!', { description: result.message });
+                onSaveSuccess();
+            } else {
+                toast.error('Error', { description: result.message });
+            }
+        });
+    };
+    
+    const selectedContact = contacts.find(c => c.id === invoice.contact_id);
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="glass-effect max-w-4xl h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle className="text-2xl">{invoice.id ? "Editar Esborrany" : "Crear Nou Esborrany"}</DialogTitle>
+                    <DialogDescription>Afegeix o modifica els detalls de la factura.</DialogDescription>
+                </DialogHeader>
+                
+                <div className="flex-1 overflow-y-auto pr-4 -mr-6 space-y-6 py-4">
+                    {/* ✅ AQUÍ ESTÀ EL CONTINGUT COMPLET DEL FORMULARI */}
+                    
+                    {/* Dades del client i dates */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                            <Label>Client</Label>
+                            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}><PopoverTrigger asChild><Button variant="outline" role="combobox" className="w-full justify-between text-left font-normal">{selectedContact ? selectedContact.nom : "Selecciona..."}<ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" /></Button></PopoverTrigger><PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command><CommandInput /><CommandList><CommandEmpty>No s'ha trobat.</CommandEmpty><CommandGroup>{contacts.map(c => (<CommandItem key={c.id} value={c.nom} onSelect={() => {setInvoice(p => ({...p, contact_id: c.id})); setComboboxOpen(false);}}><Check className={cn("mr-2 h-4 w-4", invoice.contact_id === c.id ? "opacity-100" : "opacity-0")} />{c.nom}</CommandItem>))}</CommandGroup></CommandList></Command></PopoverContent></Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Data d'Emissió</Label>
+                            <Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal">{invoice.issue_date ? format(new Date(invoice.issue_date), "PPP", { locale: ca }) : <span>Tria data</span>}<CalendarIcon className="ml-auto h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={invoice.issue_date ? new Date(invoice.issue_date) : undefined} onSelect={(d) => setInvoice(p => ({...p, issue_date: d?.toISOString()}))} /></PopoverContent></Popover>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Data de Venciment</Label>
+                            <Popover><PopoverTrigger asChild><Button variant="outline" className="w-full justify-start text-left font-normal">{invoice.due_date ? format(new Date(invoice.due_date), "PPP", { locale: ca }) : <span>Tria data</span>}<CalendarIcon className="ml-auto h-4 w-4" /></Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={invoice.due_date ? new Date(invoice.due_date) : undefined} onSelect={(d) => setInvoice(p => ({...p, due_date: d?.toISOString()}))} /></PopoverContent></Popover>
+                        </div>
+                    </div>
+
+                    {/* Llista de conceptes */}
+                    <div>
+                        <Label className="font-semibold text-lg">Conceptes</Label>
+                        <div className="mt-2 space-y-2">
+                            {(invoice.invoice_items || []).map((item, index) => (
+                                <div key={index} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                                    <Input placeholder="Descripció del concepte" value={item.description || ''} onChange={e => handleItemChange(index, 'description', e.target.value)} className="flex-grow" />
+                                    <Input type="number" placeholder="Quant." value={item.quantity || 1} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} className="w-20 text-center" />
+                                    <Input type="number" placeholder="Preu" value={item.unit_price || 0} onChange={e => handleItemChange(index, 'unit_price', Number(e.target.value))} className="w-24 text-right" />
+                                    <span className="w-24 text-right font-mono text-sm">€{(Number(item.quantity || 1) * Number(item.unit_price || 0)).toFixed(2)}</span>
+                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                </div>
+                            ))}
+                        </div>
+                        <Button type="button" variant="outline" size="sm" onClick={addItem} className="mt-3"><Plus className="w-4 h-4 mr-2" />Afegir concepte</Button>
+                    </div>
+
+                    {/* Totals i notes */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+                        <div className="space-y-2">
+                           <Label>Notes Addicionals</Label>
+                           <Textarea placeholder="Termes de pagament, agraïments, etc." value={invoice.notes || ''} onChange={e => setInvoice(p => ({...p, notes: e.target.value}))} rows={5}/>
+                        </div>
+                        <div className="space-y-2 bg-muted/30 p-4 rounded-lg">
+                            <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">Subtotal</p><p className='font-mono'>€{invoice.subtotal?.toFixed(2) || '0.00'}</p></div>
+                            <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">IVA (21%)</p><p className='font-mono'>€{invoice.tax_amount?.toFixed(2) || '0.00'}</p></div>
+                            <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2"><p>Total</p><p className='font-mono'>€{invoice.total_amount?.toFixed(2) || '0.00'}</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter className="border-t pt-4">
+                    <Button type="button" variant="ghost" onClick={onClose}>Cancel·lar</Button>
+                    <Button onClick={handleSave} disabled={isSaving}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {invoice.id ? 'Desar Canvis' : 'Crear Esborrany'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}

@@ -17,14 +17,36 @@ export type Contact = {
   nom: string;
 };
 
-export type Invoice = {
-  id: string; // Ha de ser string
-  contact_id: string;
-  issue_date: string;
-  total_amount: number;
-  status: string;
-  contacts?: { nom: string }; 
+export type InvoiceItem = {
+  id?: string; // L'ID només existirà si ja està a la BD
+  description: string;
+  quantity: number;
+  unit_price: number;
 };
+
+// El tipus principal de la factura, ara inclou un array de 'invoice_items'
+export type Invoice = {
+  id: string;
+  user_id: string;
+  contact_id: string;
+  invoice_number: string | null;
+  issue_date: string;
+  due_date: string | null;
+  status: 'Draft' | 'Issued' | 'Paid' | 'Overdue';
+  subtotal: number | null;
+  tax_amount: number | null;
+  total_amount: number | null;
+  notes: string | null;
+  created_at: string;
+  // Dades del client i empresa desades per a la consistència
+  company_name: string | null;
+  client_name: string | null;
+  // ... altres camps de Verifactu ...
+  // Relacions
+  contacts: Contact | null;
+  invoice_items: InvoiceItem[];
+};
+
 
 export default async function FacturacioPage() {
   const cookieStore = cookies();
