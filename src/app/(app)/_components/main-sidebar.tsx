@@ -19,6 +19,8 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { NavItem } from '@/config/navigation';
+import logo from '@/../public/icon1.png';
+import Image from 'next/image';
 
 export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavItem) => void }) {
     const pathname = usePathname();
@@ -81,8 +83,14 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
         <>
             <aside className="w-24 h-full glass-effect border-r border-border p-4 flex flex-col items-center">
                 <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                        <Sparkles className="w-7 h-7 text-white" />
+                    <div className="w-12 h-12 bg-gradient-to-r  to-pink-500 rounded-lg flex items-center justify-center">
+                    <Image 
+                            src={logo} 
+                            alt="Logo RibotFlow" 
+                            
+                            className="object-cover" 
+                            priority
+                        />
                     </div>
                 </div>
                 <nav className="flex-1 flex flex-col items-center gap-4">
