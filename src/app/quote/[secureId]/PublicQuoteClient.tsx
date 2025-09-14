@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, Send } from "lucide-react";
 import { QuotePreview } from "@/app/(app)/crm/quotes/[id]/_components/QuotePreview";
@@ -31,7 +31,6 @@ export function PublicQuoteClient({
 }: {
   initialQuoteData: QuoteDataFromServer;
 }) {
-  const { toast } = useToast();
   const [quoteData] = useState(initialQuoteData);
   const [isPending, startTransition] = useTransition();
   const [finalStatus, setFinalStatus] = useState<"accepted" | "declined" | null>(
@@ -55,23 +54,17 @@ export function PublicQuoteClient({
         setFinalStatus("accepted");
       } catch (err) {
         const e = err instanceof Error ? err : new Error("Error desconegut");
-        toast({
-          variant: "destructive",
-          title: "Error en acceptar",
-          description: e.message,
-        });
+        toast.error("Error en acceptar", { description: e.message });
+
       }
     });
   };
 
   const handleRejectionSubmit = () => {
     if (rejectionReason.trim() === "") {
-      toast({
-        variant: "destructive",
-        title: "Motiu requerit",
-        description:
-          "Si us plau, explica breument per què rebutges el pressupost.",
-      });
+      toast.error("Motiu requerit", {
+        description: "Si us plau, explica breument per què rebutges el pressupost.",
+    });
       return;
     }
     startTransition(async () => {
@@ -84,11 +77,8 @@ export function PublicQuoteClient({
         setIsRejecting(false);
       } catch (err) {
         const e = err instanceof Error ? err : new Error("Error desconegut");
-        toast({
-          variant: "destructive",
-          title: "Error en rebutjar",
-          description: e.message,
-        });
+        toast.error("Error en rebutjar", { description: e.message });
+
       }
     });
   };

@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ Canviem la importació
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,7 @@ export const CompanyProfileDialog = ({ open, onOpenChange, profile, onProfileUpd
     const [localProfile, setLocalProfile] = useState<EditableProfile | null>(profile);
     const [isSaving, startSaveTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
-    const { toast } = useToast();
+
     const supabase = createClient();
 
     useEffect(() => { setLocalProfile(profile); }, [profile]);
@@ -39,7 +39,7 @@ export const CompanyProfileDialog = ({ open, onOpenChange, profile, onProfileUpd
         const { error } = await supabase.storage.from('logos').upload(filePath, file, { upsert: true });
 
         if (error) {
-            toast({ variant: 'destructive', title: 'Error', description: 'No s\'ha pogut pujar el logo.' });
+            toast.error('Error', { description: 'No s\'ha pogut pujar el logo.' });
         } else {
             const { data } = supabase.storage.from('logos').getPublicUrl(filePath);
             setLocalProfile(p => p ? { ...p, logo_url: data.publicUrl } : null);
@@ -50,7 +50,7 @@ export const CompanyProfileDialog = ({ open, onOpenChange, profile, onProfileUpd
     const handleSaveProfile = () => {
         // Comprovem tant el perfil original com el local
         if (!profile?.id || !profile?.user_id || !localProfile) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Falten dades essencials del perfil.' });
+            toast.error('Error', { description: 'Falten dades essencials del perfil.' });
             return;
         }
 
@@ -69,11 +69,11 @@ export const CompanyProfileDialog = ({ open, onOpenChange, profile, onProfileUpd
             const result = await updateCompanyProfileAction(profileToSend);
             
             if (result.success && result.updatedProfile) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 onProfileUpdate(result.updatedProfile);
                 onOpenChange(false);
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
+                toast.error('Error', { description: result.message });
             }
         });
     };

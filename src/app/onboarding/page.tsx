@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input, type InputProps } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Loader2, User, Building, Phone, Briefcase, MapPin } from 'lucide-react';
 import type { DetailedAddress } from '@/types/DetailedAddress';
 
@@ -24,7 +24,6 @@ const AddressAutocomplete = dynamic(
 export default function OnboardingPage() {
   const supabase = createClient();
   const router = useRouter();
-  const { toast } = useToast();
   
   const [loading, setLoading] = useState(false);
 
@@ -88,7 +87,7 @@ export default function OnboardingPage() {
       // ✅ LA SOLUCIÓ ÉS AQUÍ
       // 1. Refresca la sessió del servidor i neteja la cau del client.
       router.refresh(); 
-      toast({ title: "Perfil completat!", description: "Benvingut! Redirigint..." });
+      toast.success("Perfil completat!", { description: "Benvingut! Redirigint..." });
       router.push('/redirecting');
     
     // ✅ CORRECCIÓ: Canviem 'any' per 'unknown' per a Vercel
@@ -97,11 +96,8 @@ export default function OnboardingPage() {
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      toast({ 
-        variant: "destructive", 
-        title: "Error en desar el perfil", 
-        description: errorMessage 
-      });
+      toast.error("Error en desar el perfil", { description: errorMessage });
+
     } finally {
       setLoading(false);
     }

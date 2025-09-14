@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ Canviem la importació
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,6 @@ type NewContactForm = {
 
 export function ContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
     const router = useRouter();
-    const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [contacts, setContacts] = useState<Contact[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState('');
@@ -48,9 +47,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
         startTransition(async () => {
             const result = await createContactAction(formData);
             if (result.error) {
-                toast({ variant: 'destructive', title: 'Error en desar', description: result.error.message });
+                toast.error('Error', { description: result.error.message  });
             } else if (result.data) {
-                toast({ title: 'Èxit!', description: 'El contacte s\'ha desat correctament.' });
+                toast.success('Èxit!',{description: 'El contacte s\'ha desat correctament.'}  );
                 setContacts(prev => [result.data as Contact, ...prev]);
                 setIsDialogOpen(false);
             }

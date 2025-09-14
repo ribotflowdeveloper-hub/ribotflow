@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, FC } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -48,7 +48,7 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
   onOpenChange,
   onCampaignCreated,
 }) => {
-  const { toast } = useToast();
+  
   const [step, setStep] = useState(1);
   const [goal, setGoal] = useState("");
   const [strategies, setStrategies] = useState<Strategy[]>([]);
@@ -71,11 +71,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     startTransition(async () => {
       const { data, error } = await generateStrategiesAction(goal);
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error d'IA",
-          description: error,
-        });
+        toast.error("Error d'IA", { description: error });
+
       } else {
         setStrategies(data as Strategy[]);
         setStep(2);
@@ -88,11 +85,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     startTransition(async () => {
       const { data, error } = await draftContentAction(goal, strategy);
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error d'IA",
-          description: error,
-        });
+        toast.error("Error d'IA", { description: error });
+
       } else {
         setSelectedStrategy({ ...strategy, content: data as string });
         setStep(3);
@@ -106,14 +100,10 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     startTransition(async () => {
       const { error } = await saveCampaignAction(selectedStrategy, goal);
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No s'ha pogut desar la campanya.",
-        });
+        toast.error("Error", { description: "No s'ha pogut desar la campanya." });
+
       } else {
-        toast({
-          title: "Campanya Creada!",
+        toast.success("Campanya Creada!", {
           description: "La teva nova campanya està a la llista.",
         });
         onCampaignCreated();

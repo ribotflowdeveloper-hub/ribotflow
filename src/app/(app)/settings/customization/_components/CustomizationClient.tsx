@@ -2,19 +2,18 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Plus, Trash, GripVertical } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { type Stage, type Tag } from '../page'; // Importem els tipus
 
 export function CustomizationClient({ initialStages, initialTags }: { initialStages: Stage[], initialTags: Tag[] }) {
-  const { toast } = useToast();
+  
 
   const handleNotImplemented = () => {
-    toast({
-      title: "🚧 Funcionalitat no implementada",
+    toast.info("Funcionalitat no implementada", {
       description: "Aviat podràs gestionar etapes i etiquetes des d'aquí."
-    });
+  });
   };
 
   return (

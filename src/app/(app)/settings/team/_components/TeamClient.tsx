@@ -3,20 +3,20 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Plus, User } from 'lucide-react';
 
 // Si li passes dades des del Server Component, les reps com a props
 // export function TeamClient({ members }: { members: any[] }) {
 export function TeamClient() {
-  const { toast } = useToast();
+ 
 
   const handleInvite = () => {
-    toast({
-      title: "Funció no implementada",
-      description: "La opció d'invitar membres aviat estarà disponible.",
+    // ✅ 3. Actualitzem la crida a toast
+    toast.info("Funció no implementada", {
+        description: "La opció d'invitar membres aviat estarà disponible.",
     });
-  };
+};
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

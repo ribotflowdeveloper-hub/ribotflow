@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useTransition } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,7 +55,6 @@ export type InitialData = {
     initialData: InitialData | null; // ← permet null
     templates: Template[];
 }) => {
-    const { toast } = useToast();
     const editor = useEditor({
         immediatelyRender: false, 
         extensions: [StarterKit, TextAlign.configure({ types: ['heading', 'paragraph'] })],
@@ -138,8 +137,9 @@ export type InitialData = {
     
     const handleSend = async () => {
         if (!selectedContactId || !subject || !finalHtmlBody.replace(/<p><\/p>/g, '').trim()) {
-            toast({ variant: 'destructive', title: 'Camps obligatoris', description: 'Has d\'omplir el destinatari, l\'assumpte i el cos.' });
-            return;
+            toast.error('Camps obligatoris', { 
+                description: 'Has d\'omplir el destinatari, l\'assumpte i el cos.' 
+            });            return;
         }
         
         startSendTransition(async () => {
@@ -148,11 +148,11 @@ export type InitialData = {
             });
 
             if (result.success) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 onOpenChange(false);
                 if (onEmailSent) onEmailSent();
             } else {
-                toast({ variant: 'destructive', title: 'Error en l\'enviament', description: result.message });
+                toast.error('Error en l\'enviament', { description: result.message });
             }
         });
     };

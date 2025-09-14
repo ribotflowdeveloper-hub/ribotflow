@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { 
     Users, TrendingUp, DollarSign, UserCheck, AlertTriangle, Crown, Calendar, 
     BarChart3, Activity, BookOpen, Check, Mail, 
@@ -89,7 +89,7 @@ const ActivityItem: FC<{ activity: CrmData['unreadActivities'][0]; onMarkAsRead:
 };
 
 export function CrmClient({ initialData }: { initialData: CrmData | null }) {
-    const { toast } = useToast();
+
     const supabase = createClient();
     const router = useRouter();
     const [data, setData] = useState(initialData);
@@ -109,7 +109,7 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
         setData(prevData => prevData ? ({ ...prevData, unreadActivities: prevData.unreadActivities.filter(a => a.id !== activityId) }) : null);
         const { error } = await supabase.from('activities').update({ is_read: true }).eq('id', activityId);
         if (error) {
-            toast({ variant: 'destructive', title: 'Error', description: "No s'ha pogut marcar com a llegida." });
+            toast.error('Error', { description: "No s'ha pogut marcar com a llegida." });
             router.refresh();
         }
     };

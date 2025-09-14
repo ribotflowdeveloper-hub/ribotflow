@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -39,7 +39,6 @@ const PlanIcon = ({ name, className }: { name: string; className?: string }) => 
 };
 
 export function BillingClient({ plans }: { plans: Plan[] }) {
-  const { toast } = useToast();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
   const currentPlan = plans.find(p => p.isCurrent);
@@ -48,25 +47,21 @@ export function BillingClient({ plans }: { plans: Plan[] }) {
   renewalDate.setDate(new Date().getDate() + 21);
 
   const handleSelectPlan = (planName: string) => {
-    toast({
-      title: "🚧 Funcionalitat no implementada",
+    toast.info("Funcionalitat no implementada", {
       description: `Aviat podràs canviar al pla ${planName}.`,
-    });
+  });
   };
 
   const handleManageBilling = () => {
-    toast({
-      title: "🚧 Redireccionant...",
+    toast.info("Redireccionant...", {
       description: "Aviat podràs gestionar les teves dades de facturació a través de Stripe.",
-    });
+  });
   };
 
   const handleCancelSubscription = () => {
-    toast({
-      variant: "destructive",
-      title: "🚧 Pàgina de cancel·lació",
+    toast.error("Pàgina de cancel·lació", {
       description: "Aviat podràs cancel·lar la teva subscripció des d'aquí.",
-    });
+  });
   };
 
   return (

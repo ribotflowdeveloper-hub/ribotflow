@@ -1,5 +1,5 @@
 import React, { useState, useTransition } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ Canviem la importació
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -15,7 +15,7 @@ export const QuoteItems = ({ items, setItems, products }: {
     setItems: (newItems: QuoteItem[]) => void;
     products: Product[];
 }) => {
-    const { toast } = useToast();
+    
     const router = useRouter();
     const [isSavingProduct, startSaveProductTransition] = useTransition();
     const [isCreating, setIsCreating] = useState(false);
@@ -53,19 +53,22 @@ export const QuoteItems = ({ items, setItems, products }: {
     
     const handleSaveNewProduct = () => {
         if (!newProduct.name || !newProduct.price) {
-            toast({ variant: 'destructive', title: 'Camps requerits', description: 'El nom i el preu són obligatoris.' });
+            // ✅ Actualitzem la crida a toast
+            toast.error('Camps requerits', { description: 'El nom i el preu són obligatoris.' });
             return;
         }
         startSaveProductTransition(async () => {
             const result = await createProductAction({ name: newProduct.name, price: parseFloat(newProduct.price) });
             if(result.success && result.newProduct) {
-                toast({ title: "Producte creat!", description: "S'ha afegit a la teva llista de productes."});
+                // ✅ Actualitzem la crida a toast
+                toast.success("Producte creat!", { description: "S'ha afegit a la teva llista de productes."});
                 handleAddProduct(result.newProduct);
                 setNewProduct({ name: '', price: '' });
                 setIsCreating(false);
                 router.refresh();
             } else {
-                toast({ variant: 'destructive', title: "Error", description: result.message });
+                // ✅ Actualitzem la crida a toast
+                toast.error("Error", { description: result.message });
             }
         });
     }

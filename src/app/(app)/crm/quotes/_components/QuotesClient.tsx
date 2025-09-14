@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
@@ -21,7 +21,7 @@ import type { QuoteWithContact } from '../page'; // Importem el tipus definit a 
 import { deleteQuoteAction } from '../actions'; // Importem la nostra Server Action
 
 export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContact[] }) {
-  const { toast } = useToast();
+
   // Estat per controlar quin pressupost es vol esborrar i mostrar el diàleg
   const [quoteToDelete, setQuoteToDelete] = useState<QuoteWithContact | null>(null);
   // Hook per gestionar l'estat de càrrega de la Server Action
@@ -33,9 +33,9 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
     startTransition(async () => {
       const result = await deleteQuoteAction(quoteToDelete.id);
       if (result.success) {
-        toast({ title: 'Èxit!', description: result.message });
+        toast.success('Èxit!',{description: result.message}  );
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
+        toast.error('Error', {description: result.message });
       }
       setQuoteToDelete(null); // Tanquem el diàleg
     });

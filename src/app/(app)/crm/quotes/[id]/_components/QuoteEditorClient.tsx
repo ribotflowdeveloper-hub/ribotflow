@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' directament de 'sonner'
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, Send, Trash2, Building } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,7 +33,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
   initialOpportunities: Opportunity[];
 }) {
   const router = useRouter();
-  const { toast } = useToast();
+
   const supabase = createClient();
   
   const [quote, setQuote] = useState<Quote>(initialQuote);
@@ -57,39 +57,47 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
   
   // Aquesta funció ja no és necessària perquè el tipus 'Quote' que rebem ja és correcte.
   // const quoteForPreview: Quote = { ... };
-
   const handleSave = () => {
     startSaveTransition(async () => {
-      const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
-      if (result.success) {
-        toast({ title: 'Èxit!', description: result.message });
-        if (quote.id === 'new' && result.newId) {
-          router.replace(`/crm/quotes/${result.newId}`);
+        const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
+        if (result.success) {
+            // ✅ 3. Canviem la crida a 'toast' per la de 'sonner'
+            toast.success('Èxit!', { description: result.message });
+            if (quote.id === 'new' && result.newId) {
+                router.replace(`/crm/quotes/${result.newId}`);
+            } else {
+                router.refresh(); 
+            }
         } else {
-          router.refresh(); 
+            // ✅ 4. Canviem la crida a 'toast' per la d'error de 'sonner'
+            toast.error('Error', { description: result.message });
         }
-      } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
-      }
     });
-  };
+};
 
-  const handleDelete = () => {
-    startSaveTransition(async () => {
-        await deleteQuoteAction(quote.id);
-    });
-  };
+const handleDelete = () => {
+  startSaveTransition(async () => {
+      const result = await deleteQuoteAction(quote.id);
+      if (result.success) {
+          toast.success('Esborrat!', { description: result.message });
+          router.push('/crm/quotes');
+      } else {
+          toast.error('Error', { description: result.message });
+      }
+  });
+};
   
   const handleSend = () => {
     if (quote.id === 'new') {
-        toast({ variant: 'destructive', title: "Acció no permesa", description: "Desa el pressupost abans d'enviar-lo." });
+        // ✅ 6. Canviem la crida a 'toast'
+        toast.error("Acció no permesa", { description: "Desa el pressupost abans d'enviar-lo." });
         return;
     }
 
     startSendTransition(async () => {
       try {
         setSendingStatus('generating');
-        toast({ title: "Preparant enviament...", description: "Generant el PDF optimitzat." });
+        toast.info("Preparant enviament...", { description: "Generant el PDF optimitzat." });
         const element = document.getElementById('quote-preview-for-pdf');
         if (!element) throw new Error("Element de previsualització no trobat.");
         
@@ -119,11 +127,11 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         if (!result.success) throw new Error(result.message);
         
         setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
-        toast({ title: "Èxit!", description: result.message });
+        toast.success("Èxit!", { description: result.message });
   
       } catch(error) {
         const e = error instanceof Error ? error : new Error("Error desconegut");
-        toast({ variant: "destructive", title: "Error en l'enviament", description: e.message });
+        toast.error("Error en l'enviament", { description: e.message });
       } finally {
         setSendingStatus('idle');
       }

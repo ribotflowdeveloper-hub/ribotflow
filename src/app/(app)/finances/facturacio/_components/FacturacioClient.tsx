@@ -5,7 +5,7 @@
 
 import React, { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -79,7 +79,7 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
     initialInvoices: Invoice[];
     initialContacts: Contact[];
 }) {
-    const { toast } = useToast();
+    
     const [isSaving, startSaveTransition] = useTransition();
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<Partial<Invoice> | null>(null);
@@ -99,7 +99,7 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         if (!editingInvoice) return;
 
         if (!editingInvoice.contact_id || !editingInvoice.issue_date || editingInvoice.total_amount === undefined || !editingInvoice.status) {
-             toast({ variant: 'destructive', title: 'Camps incomplets', description: 'Si us plau, omple tots els camps requerits.' });
+            toast.error('Camps incomplets', { description: 'Si us plau, omple tots els camps requerits.' });
             return;
         }
 
@@ -114,10 +114,10 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         startSaveTransition(async () => {
             const result = await createOrUpdateInvoiceAction(invoiceDataToSend);
             if (result.success) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 handleCloseForm();
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
+                toast.error('Error', { description: result.message });
             }
         });
     };
@@ -127,10 +127,10 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         startSaveTransition(async () => {
             const result = await deleteInvoiceAction(invoiceToDelete.id);
             if (result.success) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 setInvoiceToDelete(null);
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
+                toast.error('Error', { description: result.message });
             }
         });
     };

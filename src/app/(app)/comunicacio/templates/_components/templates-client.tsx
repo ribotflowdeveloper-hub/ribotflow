@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useTransition} from 'react';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Plus, FileText, Variable, Code, Eye, Trash2 } from 'lucide-react';
@@ -19,7 +19,6 @@ import { type EmailTemplate } from '../page';
 import { saveTemplateAction, deleteTemplateAction } from './actions';
 
 export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailTemplate[] }) {
-  const { toast } = useToast();
   const [isSaving, startSaveTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
 
@@ -61,10 +60,10 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
     startSaveTransition(async () => {
         const { data, error } = await saveTemplateAction(templateData, selectedTemplate.id);
         if (error) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
+          toast.error('Error', { description: error.message });
         } else if (data) {
-            toast({ title: 'Èxit!', description: 'Plantilla desada correctament.' });
-            // Actualitzem l'estat local per una experiència més ràpida
+          toast.success('Èxit!', { description: 'Plantilla desada correctament.' });
+          // Actualitzem l'estat local per una experiència més ràpida
             if (selectedTemplate.id === 'new') {
                 setTemplates(prev => [data, ...prev]);
             } else {
@@ -81,10 +80,10 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
     startDeleteTransition(async () => {
         const { error } = await deleteTemplateAction(templateToDelete.id);
         if (error) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
+          toast.error('Error', { description: error.message });
         } else {
-            toast({ title: 'Èxit!', description: 'Plantilla eliminada.' });
-            const newTemplates = templates.filter(t => t.id !== templateToDelete.id);
+          toast.success('Èxit!', { description: 'Plantilla eliminada.' });
+          const newTemplates = templates.filter(t => t.id !== templateToDelete.id);
             setTemplates(newTemplates);
             setSelectedTemplate(newTemplates[0] || null);
         }
@@ -164,7 +163,8 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
               <p className="text-xs text-muted-foreground">La plataforma detecta automàticament les variables.</p>
               <div className="flex flex-wrap gap-2">
                 {detectedVariables.length > 0 ? detectedVariables.map(v => (
-                  <Button key={v} variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(`{{${v}}}`); toast({title: "Copiat!", description: `Variable {{${v}}} copiada.`})}}>
+                  <Button key={v} variant="outline" size="sm" onClick={() => { navigator.clipboard.writeText(`{{${v}}}`);                 toast.success("Copiat!", { description: `Variable {{${v}}} copiada.` });
+                }}>
                     {`{{${v}}}`}
                   </Button>
                 )) : <p className="text-xs text-muted-foreground italic">No s'ha detectat cap variable.</p>}

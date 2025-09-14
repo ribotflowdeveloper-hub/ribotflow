@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, FC } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ interface CampaignDetailDialogProps {
 }
 
 export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, open, onOpenChange, onCampaignUpdated }) => {
-    const { toast } = useToast();
+   
     const [editedCampaign, setEditedCampaign] = useState(campaign);
     const [isPending, startTransition] = useTransition();
 
@@ -33,10 +33,10 @@ export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, 
         startTransition(async () => {
             const { error } = await updateCampaignAction(editedCampaign.id, editedCampaign.name, editedCampaign.content);
             if (error) {
-                toast({ variant: 'destructive', title: 'Error', description: 'No s\'ha pogut actualitzar la campanya.' });
+              toast.error('Error', { description: 'No s\'ha pogut actualitzar la campanya.' });
             } else {
-                toast({ title: 'Èxit!', description: 'Campanya actualitzada.' });
-                onCampaignUpdated();
+              toast.success('Èxit!', { description: 'Campanya actualitzada.' });
+              onCampaignUpdated();
                 onOpenChange(false);
             }
         });

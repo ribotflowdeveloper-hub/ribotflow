@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Plus, User, Euro, Calendar, LayoutGrid, Rows } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -148,7 +148,7 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
   initialOpportunitiesByStage: Record<string, Opportunity[]>; 
   initialContacts: Contact[];
 }) {
-  const { toast } = useToast();
+
   const router = useRouter();
   const [stages] = useState(initialStages);
   const [opportunitiesByStage, setOpportunitiesByStage] = useState(initialOpportunitiesByStage);
@@ -187,9 +187,9 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
     const updateResult = await updateOpportunityStageAction(draggableId, destination.droppableId);
     if (updateResult.error) {
       setOpportunitiesByStage(originalState);
-      toast({ variant: 'destructive', title: 'Error', description: updateResult.error.message });
+      toast.error('Error', { description: updateResult.error.message });
     } else {
-      toast({ title: 'Èxit!', description: `Oportunitat moguda a "${destination.droppableId}".` });
+      toast.success('Èxit!', { description: `Oportunitat moguda a "${destination.droppableId}".` });
     }
   };
 

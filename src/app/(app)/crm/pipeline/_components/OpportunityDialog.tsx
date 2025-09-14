@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,6 @@ interface OpportunityDialogProps {
 }
 
 export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: OpportunityDialogProps) {
-  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   
   const [selectedContactId, setSelectedContactId] = useState(opportunityToEdit?.contact_id || '');
@@ -61,9 +60,9 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
     startTransition(async () => {
       const result = await saveOpportunityAction(formData);
       if (result.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error.message });
+        toast.error('Error', { description: result.error.message });
       } else {
-        toast({ title: 'Èxit!', description: "L'oportunitat s'ha desat correctament." });
+        toast.success('Èxit!', { description: "L'oportunitat s'ha desat correctament." });
         onSuccess();
         onOpenChange(false);
       }

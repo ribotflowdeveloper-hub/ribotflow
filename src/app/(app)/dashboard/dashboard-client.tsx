@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { createClient } from '@/lib/supabase/client';
 import AddTaskDialog from '@/components/dashboard/AddTaskDialog';
 import {
@@ -95,7 +95,6 @@ const MONTHLY_GOAL = 50000;
 
 export function DashboardClient({ initialData }: { initialData: DashboardInitialData }) {
   const router = useRouter();
-  const { toast } = useToast();
   const supabase = createClient();
   const [tasks, setTasks] = useState(initialData.tasks);
   const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -105,7 +104,7 @@ export function DashboardClient({ initialData }: { initialData: DashboardInitial
     setTasks(currentTasks => currentTasks.map(t => (t.id === taskId ? { ...t, is_completed: !currentStatus } : t)));
     const { error } = await supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', taskId);
     if (error) {
-      toast({ variant: 'destructive', title: 'Error', description: "No s'ha pogut actualitzar la tasca." });
+      toast.error('Error', { description: "No s'ha pogut actualitzar la tasca." });
       setTasks(originalTasks);
     }
   };
@@ -203,7 +202,8 @@ export function DashboardClient({ initialData }: { initialData: DashboardInitial
           </div>
         </div>
       </div>
-      <AddTaskDialog open={isTaskDialogOpen} onOpenChange={setTaskDialogOpen} contacts={initialData.contacts} onTaskCreated={() => { router.refresh(); toast({ title: 'Tasca creada!' }); }} />
+      <AddTaskDialog open={isTaskDialogOpen} onOpenChange={setTaskDialogOpen} contacts={initialData.contacts} onTaskCreated={() => { router.refresh();                    toast.success('Tasca creada!'); 
+ }} />
     </>
   );
 }

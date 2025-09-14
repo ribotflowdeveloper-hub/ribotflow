@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Paperclip, Edit, Download } from 'lucide-react';
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { type Expense } from '@/types/finances';
 
 interface ExpenseDetailDrawerProps {
@@ -26,7 +26,6 @@ type AttachmentWithUrl = {
 };
 
 export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isOpen, onClose, onEdit }) => {
-  const { toast } = useToast();
   const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
   const supabase = createClient();
 
@@ -55,11 +54,9 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch {
-      toast({
-        variant: 'destructive',
-        title: 'Error de descàrrega',
+      toast.error('Error de descàrrega', {
         description: 'No s\'ha pogut descarregar l\'arxiu.'
-      });
+    });
     }
   };
 

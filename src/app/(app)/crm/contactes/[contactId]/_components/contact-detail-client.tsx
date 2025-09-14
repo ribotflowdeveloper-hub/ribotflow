@@ -4,7 +4,7 @@ import React, { useState, useTransition, FC, ElementType } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ Canviem la importació
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,7 +63,6 @@ interface ContactDetailClientProps {
 
 export function ContactDetailClient({ initialContact, initialRelatedData }: ContactDetailClientProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [contact, setContact] = useState(initialContact);
@@ -73,9 +72,9 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
     startTransition(async () => {
       const { data, error } = await updateContactAction(contact.id, formData);
       if (error) {
-        toast({ variant: 'destructive', title: 'Error', description: error.message });
+        toast.error('Error',{ description: error.message} );
       } else if (data) {
-        toast({ title: 'Èxit!', description: 'Contacte actualitzat.' });
+        toast.success('Èxit!',{description: 'Contacte actualitzat.'}  );
         setContact(data as Contact);
         setIsEditing(false);
       }
@@ -89,9 +88,9 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
     startTransition(async () => {
       const res = await deleteContactAction(contact.id);
       if (!res.success) {
-        toast({ variant: 'destructive', title: 'Error', description: res.message });
+        toast.error('Error', {description: res.message });
       } else {
-        toast({ title: 'Contacte eliminat', description: 'El contacte ha estat eliminat correctament.' });
+        toast.success('Èxit!', {description: 'El contacte ha estat eliminat correctament.' });
         router.push('/crm/contactes');
       }
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useTransition, FC } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,6 @@ const getInitialExpenseState = (): ExpenseFormState => ({
 });
 
 export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initialData, suppliers }) => {
-    const { toast } = useToast();
     const [isSaving, startSaveTransition] = useTransition();
     const [isProcessingOcr, startOcrTransition] = useTransition();
     const [isUploading, startUploadTransition] = useTransition();
@@ -86,7 +85,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
             const { data, error } = await processOcrAction(formData);
         
             if (error) {
-                toast({ variant: 'destructive', title: "Error processing invoice", description: error.message });
+                toast.error("Error processant la factura", { description: error.message });
             } else if (data) {
                 // Garantim tipus correcte
                 const newItems: ExpenseItem[] = Array.isArray(data.expense_items)
@@ -106,9 +105,9 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                         : prev.expense_date,
                 }));
         
-                toast({ title: 'Data extracted successfully!', description: 'Please review and complete the form.' });
+                toast.success('Dades extretes!', { description: 'Revisa i completa el formulari.' });
             } else {
-                toast({ variant: 'destructive', title: "No data extracted" });
+                toast.error("No s'han pogut extreure dades");
             }
         });
         
@@ -124,9 +123,9 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
         startUploadTransition(async () => {
             const { error } = await uploadAttachmentAction(initialData.id, formData);
             if (error) {
-                toast({ variant: 'destructive', title: "Error uploading attachment", description: error.message });
+                toast.error("Error en pujar l'adjunt", { description: error.message });
             } else {
-                toast({ title: "Success", description: "Attachment uploaded successfully." });
+                toast.success("Èxit", { description: "S'ha pujat l'adjunt correctament." });
                 window.location.reload();
             }
         });
@@ -136,9 +135,9 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
         startSaveTransition(async () => {
             const { error } = await saveExpenseAction(currentExpense, initialData?.id || null);
             if (error) {
-                toast({ variant: 'destructive', title: 'Error saving', description: error.message });
+                toast.error('Error en desar', { description: error.message });
             } else {
-                toast({ title: 'Success!', description: 'Expense saved successfully.' });
+                toast.success('Èxit!', { description: 'Despesa desada correctament.' });
                 setIsOpen(false);
                 window.location.reload();
             }

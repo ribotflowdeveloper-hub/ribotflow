@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
@@ -24,7 +24,7 @@ interface AddTaskDialogProps {
 }
 
 const AddTaskDialog: FC<AddTaskDialogProps> = ({ open, onOpenChange, contacts, onTaskCreated }) => {
-  const { toast } = useToast();
+
   const supabase = createClient();
   
   const [title, setTitle] = useState('');
@@ -35,7 +35,7 @@ const AddTaskDialog: FC<AddTaskDialogProps> = ({ open, onOpenChange, contacts, o
   const handleSaveTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
-      toast({ variant: 'destructive', title: 'Error', description: 'El títol de la tasca no pot estar buit.' });
+      toast.error('Error', { description: 'El títol de la tasca no pot estar buit.' });
       return;
     }
 
@@ -43,8 +43,8 @@ const AddTaskDialog: FC<AddTaskDialogProps> = ({ open, onOpenChange, contacts, o
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Usuari no autenticat.' });
-        setIsSaving(false);
+      toast.error('Error', { description: 'Usuari no autenticat.' });
+      setIsSaving(false);
         return;
     }
     
@@ -57,9 +57,9 @@ const AddTaskDialog: FC<AddTaskDialogProps> = ({ open, onOpenChange, contacts, o
     setIsSaving(false);
 
     if (error) {
-      toast({ variant: 'destructive', title: 'Error en desar la tasca', description: error.message });
+      toast.error('Error en desar la tasca', { description: error.message });
     } else {
-      toast({ title: 'Èxit!', description: 'La tasca s\'ha creat correctament.' });
+      toast.success('Èxit!', { description: 'La tasca s\'ha creat correctament.' });
       onTaskCreated(); // Avisem al component pare
       
       // Resetejem l'estat i tanquem

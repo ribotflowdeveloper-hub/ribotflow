@@ -9,7 +9,7 @@ import Image from 'next/image';
 // Importacions dels teus components i utilitats
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { createClient } from '@/lib/supabase/client';
 
 // Importacions d'icones
@@ -28,7 +28,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   
   const router = useRouter();
-  const { toast } = useToast();
+
   const supabase = createClient();
   // Obtenim la URL del lloc des de les variables d'entorn
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -49,16 +49,11 @@ export default function LoginPage() {
         },
       });
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error en el registre",
-          description: error.message,
-        });
+        toast.error("Error en el registre", { description: error.message });
+
       } else {
-        toast({
-          title: "Registre completat!",
-          description: "Revisa el teu correu per verificar el compte.",
-        });
+        toast.success("Registre completat!", { description: "Revisa el teu correu per verificar el compte." });
+
         setIsSignUp(false); // Torna a la vista de login
       }
     } else {
@@ -68,11 +63,8 @@ export default function LoginPage() {
         password,
       });
       if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error d'inici de sessió",
-          description: "Les credencials són incorrectes.",
-        });
+        toast.error("Error d'inici de sessió", { description: "Les credencials són incorrectes." });
+
       } else {
         // Redirigim i refresquem la sessió del servidor
         router.push('/dashboard');

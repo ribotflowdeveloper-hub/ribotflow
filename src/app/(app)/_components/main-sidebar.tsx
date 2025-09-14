@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { createClient } from '@/lib/supabase/client';
 import { Sparkles, LogOut } from 'lucide-react';
 import { navModules, bottomItems } from '@/config/navigation';
@@ -22,7 +22,7 @@ import type { NavItem } from '@/config/navigation';
 
 export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavItem) => void }) {
     const pathname = usePathname();
-    const { toast } = useToast();
+    
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
     const supabase = createClient();
 
@@ -33,8 +33,10 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
 
     const handleNotImplemented = (e: React.MouseEvent) => {
       e.preventDefault();
-      toast({ title: "🚧 No implementat encara" });
-    };
+  // ✅ 3. Canviem la crida al nou sistema de 'toast'
+        toast.info("Pròximament", {
+            description: "🚧 Aquesta funcionalitat encara no està disponible.",
+        });    };
     
     const NavItemComponent = ({ item }: { item: NavItem }) => {
         const activeCheckPath = item.basePath || item.path;

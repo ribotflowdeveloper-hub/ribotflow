@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
 import { connectGoogleAction, disconnectGoogleAction, connectMicrosoftAction, disconnectMicrosoftAction } from '../actions';
 import Image from 'next/image';
@@ -17,7 +17,7 @@ interface IntegrationsClientProps {
 }
 
 export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsClientProps) {
-  const { toast } = useToast();
+
   const router = useRouter();
   
   const [connections, setConnections] = useState(initialConnectionStatuses);
@@ -37,22 +37,22 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
       startGoogleTransition(async () => {
         const result = await disconnectGoogleAction();
         if (result.success) {
-          toast({ title: "Èxit!", description: result.message });
+          toast.success("Èxit!", { description: result.message });
           setConnections(prev => ({...prev, google: false}));
           router.refresh();
         } else {
-          toast({ variant: 'destructive', title: "Error", description: result.message });
+          toast.error("Error", { description: result.message });
         }
       });
     } else {
       startMicrosoftTransition(async () => {
         const result = await disconnectMicrosoftAction();
         if (result.success) {
-          toast({ title: "Èxit!", description: result.message });
+          toast.success("Èxit!", { description: result.message });
           setConnections(prev => ({...prev, microsoft: false}));
           router.refresh();
         } else {
-          toast({ variant: 'destructive', title: "Error", description: result.message });
+          toast.error("Error", { description: result.message });
         }
       });
     }

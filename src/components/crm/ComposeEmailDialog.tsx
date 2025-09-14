@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Loader2, Send } from 'lucide-react';
-import { useToast } from '../ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { sendEmailWithGmailAction } from '@/app/(app)/crm/general/_components/send-email-action';
 
 interface ComposeEmailDialogProps {
@@ -19,7 +19,7 @@ interface ComposeEmailDialogProps {
 }
 
 const ComposeEmailDialog: React.FC<ComposeEmailDialogProps> = ({ open, onOpenChange, initialData, onEmailSent }) => {
-    const { toast } = useToast();
+
     const [contactId, setContactId] = useState('');
     const [to, setTo] = useState('');
     const [subject, setSubject] = useState('');
@@ -38,16 +38,16 @@ const ComposeEmailDialog: React.FC<ComposeEmailDialogProps> = ({ open, onOpenCha
     const handleSend = () => {
         startTransition(async () => {
             if (!contactId) {
-                toast({ variant: 'destructive', title: 'Error', description: "Falta l'ID del contacte." });
+                toast.error('Error', { description: "Falta l'ID del contacte." });
                 return;
             }
             const result = await sendEmailWithGmailAction(contactId, subject, body);
             if (result.success) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 onEmailSent();
                 onOpenChange(false);
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
+                toast.error('Error', { description: result.message });
             }
         });
     };

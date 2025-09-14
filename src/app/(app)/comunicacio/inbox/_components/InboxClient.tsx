@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useMemo, useTransition} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -33,7 +33,7 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     initialTickets: Ticket[];
     initialTemplates: Template[];
 }) {
-    const { toast } = useToast();
+    
     const router = useRouter();
     const [tickets, setTickets] = useState(initialTickets);
     const [templates] = useState(initialTemplates);
@@ -82,11 +82,11 @@ export function InboxClient({ initialTickets, initialTemplates }: {
         startTransition(async () => {
             const result = await deleteTicketAction(ticketToDelete.id);
             if (result.success) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 setTicketToDelete(null);
                 router.refresh(); 
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
+                toast.error('Error', { description: result.message });
             }
         });
     };
@@ -95,10 +95,10 @@ export function InboxClient({ initialTickets, initialTemplates }: {
         startTransition(async () => {
             const result = await saveSenderAsContactAction(ticket);
              if (result.success) {
-                toast({ title: 'Èxit!', description: result.message });
+                toast.success('Èxit!', { description: result.message });
                 router.refresh();
             } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
+                toast.error('Error', { description: result.message });
             }
         });
     };
@@ -124,7 +124,7 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     const handleRefresh = () => {
         startTransition(() => {
             router.refresh();
-            toast({ title: 'Safata actualitzada' });
+            toast.info('Safata actualitzada');
         });
     };
 

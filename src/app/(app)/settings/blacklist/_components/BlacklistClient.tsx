@@ -5,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Trash2 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { addRuleAction, deleteRuleAction } from '../action';
 import { motion } from 'framer-motion';
 
 type Rule = { id: string; value: string; rule_type: 'email' | 'domain' };
 
 export function BlacklistClient({ initialRules }: { initialRules: Rule[] }) {
-  const { toast } = useToast();
+
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -20,10 +20,10 @@ export function BlacklistClient({ initialRules }: { initialRules: Rule[] }) {
     startTransition(async () => {
       const result = await addRuleAction(formData);
       if (result.success) {
-        toast({ title: 'Èxit!', description: result.message });
+        toast.success('Èxit!', { description: result.message });
         formRef.current?.reset();
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
+        toast.error('Error', { description: result.message });
       }
     });
   };
@@ -32,9 +32,9 @@ export function BlacklistClient({ initialRules }: { initialRules: Rule[] }) {
     startTransition(async () => {
       const result = await deleteRuleAction(id);
        if (result.success) {
-        toast({ title: 'Èxit!', description: result.message });
+        toast.success('Èxit!', { description: result.message });
       } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.message });
+        toast.error('Error', { description: result.message });
       }
     });
   };

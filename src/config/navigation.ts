@@ -11,6 +11,7 @@ import {
   Columns,
   Receipt,
   Bot,
+  BookPlus,
   Settings,
   Users
 } from 'lucide-react';
@@ -47,6 +48,8 @@ export const navModules: NavItem[] = [
       { id: 'contactes', label: 'Contactes', icon: Contact, path: '/crm/contactes', isSingle: true },
       { id: 'pipeline', label: 'Pipeline', icon: Columns, path: '/crm/pipeline', isSingle: true },
       { id: 'pressupostos', label: 'Pressupostos', icon: FileText, path: '/crm/quotes', isSingle: true },
+      { id: 'conceptes', label: 'Conceptes', icon: BookPlus, path: '/crm/products', isSingle: true },
+
       { id: 'activitats', label: 'Activitats', icon: Activity, path: '/crm/activitats', isSingle: true }
     ]
   },
