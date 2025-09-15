@@ -1,0 +1,22 @@
+{
+  "CustomizationPage": {
+    "languageTitle": "Language",
+    "languageDescription": "Select your preferred language.",
+    "themeTitle": "Application Theme",
+    "themeDescription": "Choose how you want to see the interface.",
+    "pipelineTitle": "Customize Pipeline Stages",
+    "newStageButton": "New Stage",
+    "tagsTitle": "Manage Contact Tags",
+    "newTagButton": "New Tag"
+  },
+  "ThemeSwitcher": {
+    "lightTheme": "Light",
+    "darkTheme": "Dark"
+  },
+  "Metadata": {
+    "siteName": "Ribot",
+    "defaultTitle": "Ribot - Your Smart CRM",
+    "description": "Efficiently manage your clients, projects, and invoices with Ribot.",
+    "ogImageAlt": "Ribot CRM Dashboard"
+  }
+}

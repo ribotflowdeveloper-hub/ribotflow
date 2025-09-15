@@ -1,80 +1,74 @@
 /**
- * @file middleware.ts
- * @summary Aquest fitxer defineix el middleware de Next.js per a l'aplicació.
- * El middleware és una funció que s'executa al servidor *abans* que una petició arribi a una pàgina.
- * La seva funció principal aquí és gestionar la seguretat i les redireccions, actuant com un
- * vigilant a la porta d'entrada de les teves rutes.
+ * @file src/middleware.ts
+ * @summary Middleware que gestiona la internacionalització (i18n) i la seguretat.
  */
+import { createClient } from '@/lib/supabase/middleware';
+import { NextResponse, type NextRequest } from 'next/server';
+import createIntlMiddleware from 'next-intl/middleware';
+import { locales, defaultLocale } from './i18n';
 
-import { createClient } from '@/lib/supabase/middleware'
-import { NextResponse, type NextRequest } from 'next/server'
-
-// Forcem l'execució en l'entorn de Node.js per a una màxima compatibilitat, especialment a Vercel.
 export const runtime = 'nodejs';
 
-/**
- * @function middleware
- * @summary La funció principal del middleware que s'executa a cada petició que coincideix amb el 'matcher'.
- */
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl; // Obtenim la ruta a la qual l'usuari intenta accedir.
-  const { supabase, response } = createClient(request); // Inicialitzem un client de Supabase específic per a middleware.
+  // --- PAS 1: GESTIÓ DE LA INTERNACIONALITZACIÓ (i18n) ---
+  // El middleware de next-intl s'encarrega de detectar l'idioma i
+  // reescriure la URL amb el prefix de l'idioma correcte (/ca, /es, /en).
+  const handleI18nRouting = createIntlMiddleware({
+    locales,
+    defaultLocale
+  });
+  const response = handleI18nRouting(request);
 
-  // Obtenim l'usuari directament des del servidor de Supabase utilitzant el token de la cookie de la petició.
-  // Aquest mètode és segur i sempre proporciona l'estat d'autenticació més recent.
-  const { data: { user } } = await supabase.auth.getUser();
+  // --- PAS 2: GESTIÓ DE L'AUTENTICACIÓ (SUPABASE) ---
+  // Un cop la ruta ja té l'idioma correcte, apliquem la nostra lògica de seguretat.
+  
+  // La llibreria 'next-intl' elimina el prefix de l'idioma de 'pathname'
+  // perquè la nostra lògica no s'hagi de preocupar per ell.
+  // Per tant, podem comprovar '/login' directament en lloc de '/ca/login'.
+  const { pathname } = request.nextUrl;
+  const { supabase } = createClient(request);
 
-  // --- CAS 1: L'USUARI NO ESTÀ AUTENTICAT ---
-  if (!user) {
-    // Si l'usuari no està connectat i no està intentant anar a la pàgina de login,
-    // el redirigim forçosament a '/login'.
-    if (pathname !== '/login') {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    // Si ja està a '/login', el deixem continuar.
-    return NextResponse.next();
-  }
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // --- CAS 2: L'USUARI ESTÀ AUTENTICAT ---
-  
-  // Comprovem el seu perfil per veure si ha completat el procés d'onboarding.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('onboarding_completed')
-    .eq('id', user.id)
-    .single();
+  // Rutes públiques que no requereixen autenticació
+  // Afegim la ruta de pressupostos públics que m'has mostrat.
+  const publicPaths = ['/login', '/quote'];
 
-  const onboardingCompleted = profile?.onboarding_completed || false;
-  
-  // Definim les rutes a les quals un usuari NOU (sense onboarding) té permís per accedir.
-  const allowedPathsForNewUser = ['/onboarding', '/redirecting', '/settings'];
+  // Si l'usuari no està autenticat i intenta accedir a una ruta protegida
+  if (!user && !publicPaths.some(p => pathname.startsWith(p))) {
+    // Redirigim a la pàgina de login, conservant l'idioma actual.
+    const loginUrl = new URL(`/${defaultLocale}/login`, request.url);
+    // Podríem afegir un 'redirectedFrom' per tornar l'usuari on era.
+    // loginUrl.searchParams.set('redirectedFrom', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
 
-  // Si l'usuari NO HA COMPLETAT l'onboarding...
-  if (!onboardingCompleted) {
-    // ...i intenta accedir a una ruta que NO està a la llista de permeses...
-    if (!allowedPathsForNewUser.some(p => pathname.startsWith(p))) {
-      // ...el redirigim forçosament a '/onboarding'.
-      return NextResponse.redirect(new URL('/onboarding', request.url));
-    }
-  } 
-  // Si l'usuari JA HA COMPLETAT l'onboarding...
-  else {
-    // ...i intenta accedir a les pàgines de login, onboarding o a l'arrel...
-    if (pathname === '/login' || pathname === '/onboarding' || pathname === '/') {
-      // ...el redirigim al seu dashboard, que és la seva pàgina d'inici.
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
+  // Si l'usuari està autenticat...
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('onboarding_completed')
+      .eq('id', user.id)
+      .single();
 
-  // Si cap de les condicions de redirecció es compleix, deixem que la petició continuï el seu curs normal.
-  return response;
+    const onboardingCompleted = profile?.onboarding_completed || false;
+    const allowedPathsForNewUser = ['/onboarding', '/redirecting', '/settings'];
+
+    if (!onboardingCompleted && !allowedPathsForNewUser.some(p => pathname.startsWith(p))) {
+      const onboardingUrl = new URL(`/${defaultLocale}/onboarding`, request.url);
+      return NextResponse.redirect(onboardingUrl);
+    } 
+    else if (onboardingCompleted && (pathname === '/login' || pathname === '/onboarding' || pathname === '/')) {
+      const dashboardUrl = new URL(`/${defaultLocale}/dashboard`, request.url);
+      return NextResponse.redirect(dashboardUrl);
+    }
+  }
+
+  // Si no es compleix cap condició, deixem passar la petició processada per i18n.
+  return response;
 }
 
-// L'objecte 'config' defineix a quines rutes s'ha d'aplicar aquest middleware.
 export const config = {
-  matcher: [
-    // Aquesta expressió regular aplica el middleware a TOTES les rutes, excepte a les que són
-    // fitxers estàtics, imatges, el favicon o les rutes internes d'autenticació de Next.js.
-    '/((?!_next/static|_next/image|favicon.ico|auth).*)',
-  ],
-}
+  // Apliquem el middleware a totes les rutes excepte les de fitxers estàtics.
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|auth).*)'],
+};

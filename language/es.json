@@ -1,0 +1,22 @@
+{
+  "CustomizationPage": {
+    "languageTitle": "Idioma",
+    "languageDescription": "Selecciona tu idioma de preferencia.",
+    "themeTitle": "Tema de la Aplicación",
+    "themeDescription": "Elige cómo quieres ver la interfaz.",
+    "pipelineTitle": "Personalizar Fases del Pipeline",
+    "newStageButton": "Nueva Fase",
+    "tagsTitle": "Gestionar Etiquetas de Contacto",
+    "newTagButton": "Nueva Etiqueta"
+  },
+  "ThemeSwitcher": {
+    "lightTheme": "Claro",
+    "darkTheme": "Oscuro"
+  },
+  "Metadata": {
+    "siteName": "Ribot",
+    "defaultTitle": "Ribot - Tu CRM Inteligente",
+    "description": "Gestiona tus clientes, proyectos y facturas de forma eficiente con Ribot.",
+    "ogImageAlt": "Panel de control de Ribot CRM"
+  }
+}

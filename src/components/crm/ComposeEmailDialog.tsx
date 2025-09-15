@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 // Aquesta és la Server Action que s'encarregarà de la lògica d'enviament.
-import { sendEmailWithGmailAction } from '@/app/(app)/crm/general/_components/send-email-action';
+import { sendEmailWithGmailAction } from '@/app/[locale]/(app)/crm/general/_components/send-email-action';
 
 // Propietats que el diàleg espera rebre.
 interface ComposeEmailDialogProps {

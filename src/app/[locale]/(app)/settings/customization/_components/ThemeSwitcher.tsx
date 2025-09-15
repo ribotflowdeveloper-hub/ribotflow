@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Sun, Moon } from "lucide-react";
+import { useTranslations } from 'next-intl'; // ✅ 1. Importem el hook
 
 export function ThemeSwitcher() {
   // Aquest estat 'mounted' és una pràctica recomanada amb 'next-themes'.
@@ -18,6 +19,7 @@ export function ThemeSwitcher() {
   // (un problema conegut com a "hydration mismatch").
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme(); // Hook de la llibreria per obtenir i canviar el tema.
+  const t = useTranslations('ThemeSwitcher'); // ✅ 2. Cridem el hook amb un nou espai de noms
 
   // Quan el component es munta al client, actualitzem l'estat.
   useEffect(() => {
@@ -43,7 +45,8 @@ export function ThemeSwitcher() {
         className="flex flex-col h-24 gap-2"
       >
         <Sun className="w-6 h-6" />
-        <span>Clar</span>
+         {/* ✅ 3. Utilitzem la traducció */}
+         <span>{t('lightTheme')}</span>
       </Button>
       <Button
         variant={theme === 'dark' ? 'default' : 'outline'}
@@ -51,7 +54,7 @@ export function ThemeSwitcher() {
         className="flex flex-col h-24 gap-2"
       >
         <Moon className="w-6 h-6" />
-        <span>Fosc</span>
+        <span>{t('darkTheme')}</span>
       </Button>
     </div>
   );

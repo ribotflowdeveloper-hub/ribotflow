@@ -8,7 +8,7 @@
 
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
-import NetworkLoader from '@/app/(app)/_components/network/NetworkLoader'; // Component "pont" que gestiona la càrrega de la UI del client.
+import NetworkLoader from '@/app/[locale]/(app)/_components/network/NetworkLoader'; // Component "pont" que gestiona la càrrega de la UI del client.
 
 // Aquesta variable de Next.js indica que el contingut d'aquesta pàgina es pot mantenir en memòria cau (cache)
 // per a un màxim de 3600 segons (1 hora). Això millora el rendiment, ja que no es torna a carregar

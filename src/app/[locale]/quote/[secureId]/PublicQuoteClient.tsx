@@ -4,7 +4,7 @@ import React, { useState, useTransition } from "react";
 import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, Send } from "lucide-react";
-import { QuotePreview } from "@/app/(app)/crm/quotes/[id]/_components/QuotePreview";
+import { QuotePreview } from "@/app/[locale]/(app)/crm/quotes/[id]/_components/QuotePreview";
 import {
   AlertDialog,
   AlertDialogCancel,
