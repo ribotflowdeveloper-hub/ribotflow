@@ -1,38 +1,55 @@
+"use client";
+
 import React, { useState, useTransition } from 'react';
-import { toast } from "sonner"; // ✅ Canviem la importació
+import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Trash2, BookPlus, Save } from 'lucide-react';
+// TextareaAutosize és una llibreria útil que fa que l'alçada del camp de text
+// creixi i decreixi automàticament amb el contingut.
 import TextareaAutosize from 'react-textarea-autosize';
+// Aquesta Server Action es crida per crear un nou producte desable.
 import { createProductAction } from '../actions';
 import { useRouter } from 'next/navigation';
 import type { QuoteItem, Product } from '../page';
 
+/**
+ * Component per gestionar la llista de conceptes (línies de producte/servei) d'un pressupost.
+ * Permet a l'usuari afegir, editar i eliminar conceptes, ja sigui manualment
+ * o seleccionant-los d'una llista de productes predefinits.
+ */
 export const QuoteItems = ({ items, setItems, products }: {
-    items: QuoteItem[];
-    setItems: (newItems: QuoteItem[]) => void;
-    products: Product[];
+    items: QuoteItem[]; // L'array de conceptes actuals del pressupost.
+    setItems: (newItems: QuoteItem[]) => void; // Funció per actualitzar l'estat del pressupost al component pare.
+    products: Product[]; // Llista de productes predefinits disponibles per afegir.
 }) => {
-    
     const router = useRouter();
-    const [isSavingProduct, startSaveProductTransition] = useTransition();
-    const [isCreating, setIsCreating] = useState(false);
-    const [newProduct, setNewProduct] = useState({ name: '', price: '' });
-    const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+    const [isSavingProduct, startSaveProductTransition] = useTransition(); // Estat de càrrega per a desar un nou producte.
+    const [isCreating, setIsCreating] = useState(false); // Controla la UI per mostrar el formulari de nou producte.
+    const [newProduct, setNewProduct] = useState({ name: '', price: '' }); // Emmagatzema les dades del nou producte que s'està creant.
+    const [isPopoverOpen, setIsPopoverOpen] = useState(false); // Controla la visibilitat del menú desplegable.
 
+    /**
+     * Gestiona els canvis en qualsevol camp d'un concepte de la llista (descripció, quantitat, preu).
+     * És una funció genèrica que funciona per a qualsevol camp del tipus 'QuoteItem'.
+     */
     const handleItemChange = <K extends keyof QuoteItem>(
         index: number,
         field: K,
         value: QuoteItem[K]
       ) => {
-        const newItems = [...items];
+        const newItems = [...items]; // Creem una còpia de l'array per no mutar l'estat directament.
         newItems[index] = { ...newItems[index], [field]: value };
-        setItems(newItems);
+        setItems(newItems); // Cridem la funció del pare per actualitzar l'estat global del pressupost.
       };
       
 
+    /**
+     * Afegeix un nou concepte (una nova fila) a la llista del pressupost.
+     * Pot ser un concepte buit (manual) o un basat en un producte existent.
+     */
     const handleAddItem = (itemData: Partial<QuoteItem> = {}) => {
         const newItem: QuoteItem = {
             description: itemData.description || '',
@@ -41,37 +58,44 @@ export const QuoteItems = ({ items, setItems, products }: {
             product_id: itemData.product_id || null,
         };
         setItems([...items, newItem]);
-        setIsPopoverOpen(false);
+        setIsPopoverOpen(false); // Tanca el menú desplegable després d'afegir.
     };
 
+    /**
+     * Funció específica per afegir un concepte basat en un producte predefinit de la llista.
+     */
     const handleAddProduct = (product: Product) => {
         const description = product.name || product.description || '';
         handleAddItem({ description, quantity: 1, unit_price: product.price, product_id: product.id });
     };
 
+    // Elimina un concepte de la llista basant-se en el seu índex.
     const handleRemoveItem = (index: number) => setItems(items.filter((_, i) => i !== index));
     
+    /**
+     * Desa un nou producte a la base de dades a través d'una Server Action
+     * i l'afegeix immediatament al pressupost actual.
+     */
     const handleSaveNewProduct = () => {
         if (!newProduct.name || !newProduct.price) {
-            // ✅ Actualitzem la crida a toast
             toast.error('Camps requerits', { description: 'El nom i el preu són obligatoris.' });
             return;
         }
         startSaveProductTransition(async () => {
             const result = await createProductAction({ name: newProduct.name, price: parseFloat(newProduct.price) });
             if(result.success && result.newProduct) {
-                // ✅ Actualitzem la crida a toast
                 toast.success("Producte creat!", { description: "S'ha afegit a la teva llista de productes."});
-                handleAddProduct(result.newProduct);
+                handleAddProduct(result.newProduct); // Afegeix el producte acabat de crear al pressupost.
+                // Neteja els estats del formulari.
                 setNewProduct({ name: '', price: '' });
                 setIsCreating(false);
-                router.refresh();
+                router.refresh(); // Refresca les dades per si un altre component depèn de la llista de productes.
             } else {
-                // ✅ Actualitzem la crida a toast
                 toast.error("Error", { description: result.message });
             }
         });
     }
+
 
     return (
         <div>

@@ -1,24 +1,28 @@
+/**
+ * @file QuoteEditorClient.tsx
+ * @summary Aquest és el component de client principal i més complex per a la creació i edició de pressupostos.
+ * Orquestra diversos subcomponents i gestiona tot l'estat del pressupost, els càlculs, la generació de PDF,
+ * i la comunicació amb les Server Actions per desar, eliminar i enviar el pressupost.
+ */
+
 "use client";
 
 import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { toast } from "sonner"; // ✅ 1. Importem 'toast' directament de 'sonner'
+import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowLeft, Send, Trash2, Building } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+// Llibreries per a la generació de PDF des del client.
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createClient } from '@/lib/supabase/client';
-
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
-// Aquest import ara rebrà el tipus 'Quote' complet i correcte des de page.tsx
 import type { Quote, Contact, Product, CompanyProfile, Opportunity, QuoteItem } from '../page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+// Importació de subcomponents per mantenir aquest fitxer més net i organitzat.
 import { CompanyProfileDialog } from './CompanyProfileDialog';
 import { QuoteMeta } from './QuoteMeta';
 import { QuoteItems } from './QuoteItems';
@@ -26,54 +30,60 @@ import { QuoteTotals } from './QuoteTotals';
 import { QuotePreview } from './QuotePreview';
 
 export function QuoteEditorClient({ initialQuote, contacts, products, companyProfile, initialOpportunities }: {
-  initialQuote: Quote;
-  contacts: Contact[];
-  products: Product[];
-  companyProfile: CompanyProfile;
-  initialOpportunities: Opportunity[];
+  initialQuote: Quote;
+  contacts: Contact[];
+  products: Product[];
+  companyProfile: CompanyProfile;
+  initialOpportunities: Opportunity[];
 }) {
-  const router = useRouter();
+  const router = useRouter();
+  const supabase = createClient();
+  
+  // --- Gestió de l'Estat ---
+  const [quote, setQuote] = useState<Quote>(initialQuote); // L'estat principal amb totes les dades del pressupost.
+  const [currentCompanyProfile, setCurrentCompanyProfile] = useState<CompanyProfile>(companyProfile); // Dades de l'empresa (pot canviar si s'editen al diàleg).
+  const [contactOpportunities, setContactOpportunities] = useState<Opportunity[]>(initialOpportunities); // Oportunitats del contacte seleccionat.
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [isSaving, startSaveTransition] = useTransition();
+  const [isSending, startSendTransition] = useTransition();
+  const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'uploading' | 'sending'>('idle'); // Estat detallat per al procés d'enviament.
 
-  const supabase = createClient();
-  
-  const [quote, setQuote] = useState<Quote>(initialQuote);
-  const [currentCompanyProfile, setCurrentCompanyProfile] = useState<CompanyProfile>(companyProfile);
-  const [contactOpportunities, setContactOpportunities] = useState<Opportunity[]>(initialOpportunities);
-  
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-  const [isSaving, startSaveTransition] = useTransition();
-  const [isSending, startSendTransition] = useTransition();
-  const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'uploading' | 'sending'>('idle');
+  // 'useMemo' s'utilitza per a càlculs que poden ser costosos. Aquest hook només recalcula
+  // els totals quan les partides (items) o el descompte canvien, millorant el rendiment.
+  const { subtotal, discountAmount, tax, total } = useMemo(() => {
+    if (!quote?.items) return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
+    const sub = quote.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0), 0);
+    const calculatedDiscountAmount = sub * ((quote.discount || 0) / 100);
+    const subAfterDiscount = sub - calculatedDiscountAmount;
+    const taxAmount = subAfterDiscount * 0.21; // IVA del 21%
+    return { subtotal: sub, discountAmount: calculatedDiscountAmount, tax: taxAmount, total: subAfterDiscount + taxAmount };
+  }, [quote?.items, quote?.discount]);
+  
+  /**
+   * @summary Gestor per desar el pressupost. Crida a la Server Action 'saveQuoteAction'.
+   */
+  const handleSave = () => {
+    startSaveTransition(async () => {
+        const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
+        if (result.success) {
+            toast.success('Èxit!', { description: result.message });
+            // Si és un pressupost nou, fem un 'replace' de la URL per incloure el nou ID.
+            // Això evita que l'usuari pugui crear duplicats si refresca la pàgina.
+            if (quote.id === 'new' && result.newId) {
+                router.replace(`/crm/quotes/${result.newId}`);
+            } else {
+                router.refresh(); // Si és una edició, només refresquem les dades del servidor.
+            }
+        } else {
+            toast.error('Error', { description: result.message });
+        }
+    });
+  };
 
-  const { subtotal, discountAmount, tax, total } = useMemo(() => {
-    if (!quote?.items) return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
-    const sub = quote.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0), 0);
-    const calculatedDiscountAmount = sub * ((quote.discount || 0) / 100);
-    const subAfterDiscount = sub - calculatedDiscountAmount;
-    const taxAmount = subAfterDiscount * 0.21;
-    return { subtotal: sub, discountAmount: calculatedDiscountAmount, tax: taxAmount, total: subAfterDiscount + taxAmount };
-  }, [quote?.items, quote?.discount]);
-  
-  // Aquesta funció ja no és necessària perquè el tipus 'Quote' que rebem ja és correcte.
-  // const quoteForPreview: Quote = { ... };
-  const handleSave = () => {
-    startSaveTransition(async () => {
-        const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
-        if (result.success) {
-            // ✅ 3. Canviem la crida a 'toast' per la de 'sonner'
-            toast.success('Èxit!', { description: result.message });
-            if (quote.id === 'new' && result.newId) {
-                router.replace(`/crm/quotes/${result.newId}`);
-            } else {
-                router.refresh(); 
-            }
-        } else {
-            // ✅ 4. Canviem la crida a 'toast' per la d'error de 'sonner'
-            toast.error('Error', { description: result.message });
-        }
-    });
-};
+  /**
+   * @summary Gestor per eliminar el pressupost.
+   */
 
 const handleDelete = () => {
   startSaveTransition(async () => {
@@ -86,7 +96,9 @@ const handleDelete = () => {
       }
   });
 };
-  
+   /**
+   * @summary Gestor per enviar el pressupost. Aquest és un procés complex de múltiples passos.
+   */
   const handleSend = () => {
     if (quote.id === 'new') {
         // ✅ 6. Canviem la crida a 'toast'
@@ -95,6 +107,8 @@ const handleDelete = () => {
     }
 
     startSendTransition(async () => {
+      // 1. Generar el PDF a partir del HTML de la previsualització.
+
       try {
         setSendingStatus('generating');
         toast.info("Preparant enviament...", { description: "Generant el PDF optimitzat." });
@@ -114,18 +128,20 @@ const handleDelete = () => {
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
         
         const pdfBlob = pdf.output('blob');
-  
+        
+        // 2. Pujar el PDF generat a Supabase Storage.
         setSendingStatus('uploading');
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Usuari no autenticat.");
         const filePath = `${user.id}/${quote.id}.pdf`;
         const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
         if (uploadError) throw uploadError;
-  
+        
+        // 3. Cridar a la Server Action 'sendQuoteAction' que enviarà el correu.
         setSendingStatus('sending');
         const result = await sendQuoteAction(quote.id);
         if (!result.success) throw new Error(result.message);
-        
+        // 4. Actualitzar l'estat local i mostrar notificació d'èxit.
         setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
         toast.success("Èxit!", { description: result.message });
   
@@ -137,7 +153,7 @@ const handleDelete = () => {
       }
     });
   };
-
+// Efecte per carregar les oportunitats del contacte seleccionat.
   useEffect(() => {
     const fetchOpportunities = async () => {
         if (!quote.contact_id) {
@@ -152,6 +168,7 @@ const handleDelete = () => {
 
   return (
     <>
+    {/* ... (Renderització dels diàlegs i la capçalera) ... */}
       <CompanyProfileDialog 
         open={isProfileDialogOpen} 
         onOpenChange={setIsProfileDialogOpen} 

@@ -1,27 +1,31 @@
-"use client";
+/**
+ * @file DashboardClient.tsx
+ * @summary Aquest fitxer conté el component de client que gestiona tota la interfície interactiva
+ * del Tauler Principal (Dashboard). S'encarrega de renderitzar les estadístiques, les tasques,
+ * les activitats recents i de gestionar les interaccions de l'usuari, com marcar tasques com a completades.
+ */
+
+"use client"; // És un component de client per la seva alta interactivitat i gestió d'estat.
 
 import React, { useState, useMemo, FC, ElementType } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import AddTaskDialog from '@/components/dashboard/AddTaskDialog';
 import {
-  Users, Target, Euro, BadgePercent, Plus, FileWarning, CheckCircle2, Clock3,
-  Mail, MessageSquare, ArrowRight, Sparkles, FileText, FolderOpen, Workflow, BookOpen
+  Users, Target, Euro, BadgePercent, Plus, FileWarning, CheckCircle2, Clock3,
+  Mail, MessageSquare, ArrowRight, Sparkles, FileText, FolderOpen, Workflow, BookOpen
 } from 'lucide-react';
 
-// Tipus per a les dades que venen del servidor
+// --- Definició de Tipus de Dades ---
+// Aquests tipus defineixen l'estructura de les dades que el component rep del servidor.
+// És crucial que coincideixin amb els tipus del fitxer 'page.tsx' del servidor.
 type Task = { id: string; title: string; is_completed: boolean; contact_id: string; created_at: string; };
-// Afegeix aquests tipus a dalt del teu component (necessitaràs els tipus Invoice i Contact)
-// Suposant que ja tens tipus similars a aquests:
 type Invoice = { id: string; due_date: string; contacts?: { nom: string } };
-type Contact = {
-  created_at: string | number | Date; id: string; nom: string 
-};
-
+type Contact = { created_at: string | number | Date; id: string; nom: string };
 type ActivityFeedItem = (Invoice & { type: 'invoice' }) | (Contact & { type: 'contact' });
 
 export interface DashboardStats {
@@ -52,6 +56,8 @@ export interface DashboardInitialData {
 }
 
 // Sub-components interns del Dashboard (migrats i tipats)
+/** @summary Targeta per mostrar una estadística clau (KPI) amb un enllaç. */
+
 const StatCard: FC<{ href: string, icon: ElementType, title: string, value: string, color: string }> = ({ href, icon: Icon, title, value, color }) => (
   <Link href={href} className="group block">
     <div className={`rounded-2xl p-5 text-white shadow-xl transition-all ring-1 ring-white/10 hover:-translate-y-0.5 hover:shadow-2xl ${color}`}>
@@ -64,6 +70,7 @@ const StatCard: FC<{ href: string, icon: ElementType, title: string, value: stri
     </div>
   </Link>
 );
+/** @summary Element individual per al feed d'activitats recents. */
 
 const ActivityItem: FC<{ icon: ElementType, tone: {bg: string, text: string}, title: string, meta: string, href: string }> = ({ icon: Icon, tone, title, meta, href }) => (
   <Link href={href} className="block">
@@ -76,6 +83,7 @@ const ActivityItem: FC<{ icon: ElementType, tone: {bg: string, text: string}, ti
     </div>
   </Link>
 );
+/** @summary Targeta petita per a la secció d'accés ràpid. */
 
 const QuickTile: FC<{ href: string, icon: ElementType, label: string, desc: string }> = ({ href, icon: Icon, label, desc }) => (
   <Link href={href} className="group">
@@ -91,31 +99,44 @@ const QuickTile: FC<{ href: string, icon: ElementType, label: string, desc: stri
   </Link>
 );
 
-const MONTHLY_GOAL = 50000;
+const MONTHLY_GOAL = 50000;// Objectiu de facturació mensual.
 
 export function DashboardClient({ initialData }: { initialData: DashboardInitialData }) {
   const router = useRouter();
   const supabase = createClient();
-  const [tasks, setTasks] = useState(initialData.tasks);
+  const [tasks, setTasks] = useState(initialData.tasks);// Estat local per a les tasques, per poder actualitzar-les a la UI.
   const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
-
+ /**
+   * @summary Gestor per marcar/desmarcar una tasca com a completada.
+   * Aquesta funció implementa un patró de UI Optimista (Optimistic UI Update).
+   */
   const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
+    // 1. Guardem l'estat original per si l'operació falla.
     const originalTasks = tasks;
+    // 2. Actualitzem la UI immediatament, sense esperar la resposta del servidor.
     setTasks(currentTasks => currentTasks.map(t => (t.id === taskId ? { ...t, is_completed: !currentStatus } : t)));
+    // 3. Cridem a la base de dades en segon pla.
     const { error } = await supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', taskId);
+    // 4. Si hi ha un error, revertim la UI a l'estat original i mostrem una notificació.
     if (error) {
       toast.error('Error', { description: "No s'ha pogut actualitzar la tasca." });
       setTasks(originalTasks);
     }
   };
+  // --- Dades Derivades amb 'useMemo' ---
+  // 'useMemo' és un hook de React que memoritza el resultat d'un càlcul.
+  // Això evita que es tornin a calcular aquestes dades a cada renderització, optimitzant el rendiment.
 
+  /** @summary Filtra les tasques per mostrar només les pendents. */
   const pendingTasks = useMemo(() => tasks.filter(t => !t.is_completed), [tasks]);
   
+  /** @summary Calcula el percentatge de l'objectiu de facturació assolit. */
   const percentGoal = useMemo(() => {
     if (!initialData.stats) return 0;
     return Math.max(0, Math.min(100, Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)));
   }, [initialData.stats]);
 
+  /** @summary Combina diferents tipus de dades (factures, tasques, contactes) en un sol feed d'activitats. */
   const activities = useMemo(() => {
     const a: { icon: ElementType; tone: { bg: string; text: string; }; title: string; meta: string; href: string; }[] = [];
     initialData.overdueInvoices.forEach((inv) => a.push({ icon: FileWarning, tone: { bg: 'bg-red-500/15', text: 'text-red-300' }, title: `Factura vençuda de ${inv.contacts?.nom ?? 'client'}`, meta: `Vencia el ${new Date(inv.due_date).toLocaleDateString()}`, href: '/finances/facturacio' }));
@@ -126,9 +147,10 @@ export function DashboardClient({ initialData }: { initialData: DashboardInitial
 
   return (
     <>
+    {/* Fons decoratiu de la pàgina. */}
       <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
       <div className="space-y-8">
-        {/* KPIs */}
+        {/* Secció de KPIs (Estadístiques Clau) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
           <StatCard href="/crm/contactes" icon={Users} title="Contactes Totals" value={initialData.stats.totalContacts.toLocaleString()} color="bg-[#2d7ef7]" />
           <StatCard href="/crm/pipeline" icon={Target} title="Oportunitats Actives" value={initialData.stats.opportunities.toLocaleString()} color="bg-[#12a150]" />
