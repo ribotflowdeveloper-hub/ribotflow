@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
 import { type Expense, type Supplier, type ExpenseItem } from '@/types/finances';
-import { saveExpenseAction, processOcrAction, uploadAttachmentAction } from '@/app/(app)/finances/despeses/_components/actions';
+import { saveExpenseAction, processOcrAction, uploadAttachmentAction } from '@/app/[locale]/(app)/finances/despeses/_components/actions';
 // Definim les propietats que el component espera rebre.
 interface ExpenseDialogProps {
     isOpen: boolean;

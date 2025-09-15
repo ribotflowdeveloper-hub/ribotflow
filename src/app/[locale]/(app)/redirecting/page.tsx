@@ -10,7 +10,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import RedirectAnimation from '@/app/(app)/_components/ui/redirect-animation';
+import RedirectAnimation from '@/app/[locale]/(app)/_components/ui/redirect-animation';
 
 /**
  * @function RedirectingPage

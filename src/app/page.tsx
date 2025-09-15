@@ -1,24 +1,14 @@
 /**
- * @file page.tsx (Home Page)
- * @summary Aquest fitxer defineix la pàgina d'inici arrel de l'aplicació (`/`).
- * En una aplicació com aquesta, on l'accés principal és a través d'un panell de control
- * per a usuaris autenticats, aquesta pàgina sovint no té contingut visible.
- * La seva funció principal és actuar com a punt d'entrada mentre el 'middleware'
- * de Next.js s'executa, comprova l'estat d'autenticació de l'usuari i el redirigeix
- * a la pàgina de login (`/login`) o al dashboard (`/dashboard`).
+ * @file src/app/page.tsx (Root Redirect Page)
+ * @summary Aquesta pàgina no mostra contingut. La seva única funció
+ * és redirigir l'usuari a la ruta de l'idioma per defecte.
  */
+import { redirect } from 'next/navigation';
+import { defaultLocale } from '@/../src/i18n'; // Importem l'idioma per defecte
 
-import { Loader2 } from "lucide-react";
-
-/**
- * @function HomePage
- * @summary Mostra un indicador de càrrega simple. Aquesta pàgina normalment
- * només es veu durant un instant (o gens) mentre es produeix la redirecció.
- */
-export default function HomePage() {
-  return (
-    <div className="flex h-screen w-full items-center justify-center">
-      <Loader2 className="h-10 w-10 animate-spin" />
-    </div>
-  );
+export default function RootPage() {
+  // Redirigim a la pàgina d'inici amb l'idioma per defecte.
+  // El middleware ja fa això, però aquesta és una bona pràctica
+  // com a fallback.
+  redirect(`/${defaultLocale}`);
 }

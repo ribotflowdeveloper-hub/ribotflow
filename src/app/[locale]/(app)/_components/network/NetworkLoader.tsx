@@ -10,7 +10,7 @@ import { PublicProfile } from '@/types';
 
 // Aquí fem la importació dinàmica del component principal que conté el mapa i la interactivitat.
 // Aquest component (NetworkClient) probablement utilitza llibreries que només funcionen al navegador.
-const NetworkClient = dynamic(() => import('@/app/(app)/_components/network/NetworkClient'), {
+const NetworkClient = dynamic(() => import('@/app/[locale]/(app)/_components/network/NetworkClient'), {
   // Aquesta opció és crucial: 'ssr: false' (Server-Side Rendering: false).
   // Evita que Next.js intenti renderitzar aquest component al servidor. Si el component
   // utilitza objectes com 'window' o llibreries de mapes, fallaria al servidor.
