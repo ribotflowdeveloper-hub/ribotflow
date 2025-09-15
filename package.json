@@ -67,6 +67,7 @@
     "react-map-gl": "^7.0.21",
     "react-simple-code-editor": "^0.14.1",
     "react-textarea-autosize": "^8.5.9",
+    "reactflow": "^11.11.4",
     "resend": "^6.0.2",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
