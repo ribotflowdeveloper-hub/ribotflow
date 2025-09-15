@@ -1,93 +1,93 @@
-// src/app/login/page.tsx
-"use client"; // Marca aquest component per executar-se només al navegador
+/**
+ * @file page.tsx (Login)
+ * @summary Aquest fitxer defineix la pàgina d'inici de sessió i registre de l'aplicació.
+ * És un Component de Client, ja que necessita gestionar l'estat del formulari
+ * (email, contrasenya), la interacció de l'usuari (clics) i la comunicació
+ * amb Supabase des del navegador.
+ */
+
+"use client"; // Marca aquest component per executar-se només al navegador.
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-// Importacions dels teus components i utilitats
+// Importacions dels components d'UI de shadcn/ui.
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
-import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner'; // Llibreria per a notificacions (toasts).
+import { createClient } from '@/lib/supabase/client'; // Client de Supabase per al costat del client.
 
-// Importacions d'icones
+// Importacions d'icones de la llibreria lucide-react.
 import { Loader2, Sparkles, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
 
-// Metadata: La forma correcta de gestionar el <head> a Next.js
-// Això només funciona a Server Components, així que el posarem al layout o pàgina pare si calgués
-// export const metadata: Metadata = {
-//   title: 'Inici de Sessió | Ribot',
-// };
-
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  
-  const router = useRouter();
+  // --- Gestió de l'Estat del Component ---
+  const [email, setEmail] = useState(''); // Estat per al camp d'email.
+  const [password, setPassword] = useState(''); // Estat per al camp de contrasenya.
+  const [loading, setLoading] = useState(false); // Estat per mostrar indicadors de càrrega.
+  const [isSignUp, setIsSignUp] = useState(false); // Estat per canviar entre la vista de Login i la de Sign Up.
+  
+  const router = useRouter(); // Hook de Next.js per a la navegació programàtica.
+  const supabase = createClient(); // Inicialitzem el client de Supabase per al navegador.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL; // URL del lloc, necessària per a les redireccions d'email.
+  
+  /**
+   * @summary Gestor unificat per a l'enviament del formulari, tant per a registre com per a inici de sessió.
+   */
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault(); // Prevenim el comportament per defecte del formulari.
+    setLoading(true);
 
-  const supabase = createClient();
-  // Obtenim la URL del lloc des de les variables d'entorn
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  
-  // Gestor unificat per al formulari
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setLoading(true);
+    if (isSignUp) {
+      // --- Lògica de Registre (Sign Up) ---
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // Indiquem a Supabase a quina URL ha de redirigir l'usuari després de fer clic a l'enllaç de verificació.
+          emailRedirectTo: `${siteUrl}/auth/callback`,
+        },
+      });
+      if (error) {
+        toast.error("Error en el registre", { description: error.message });
+      } else {
+        toast.success("Registre completat!", { description: "Revisa el teu correu per verificar el compte." });
+        setIsSignUp(false); // Tornem a la vista de login després del registre.
+      }
+    } else {
+      // --- Lògica d'Inici de Sessió (Sign In) ---
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) {
+        toast.error("Error d'inici de sessió", { description: "Les credencials són incorrectes." });
+      } else {
+        // Després de l'inici de sessió, redirigim al dashboard i refresquem la sessió del servidor.
+        router.push('/dashboard');
+        router.refresh(); 
+      }
+    }
+    setLoading(false);
+  };
 
-    if (isSignUp) {
-      // Lògica de Registre (Sign Up)
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          // ✅ CORRECCIÓ: Fem servir la variable d'entorn
-          emailRedirectTo: `${siteUrl}/auth/callback`,
-        },
-      });
-      if (error) {
-        toast.error("Error en el registre", { description: error.message });
-
-      } else {
-        toast.success("Registre completat!", { description: "Revisa el teu correu per verificar el compte." });
-
-        setIsSignUp(false); // Torna a la vista de login
-      }
-    } else {
-      // Lògica d'Inici de Sessió (Sign In)
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) {
-        toast.error("Error d'inici de sessió", { description: "Les credencials són incorrectes." });
-
-      } else {
-        // Redirigim i refresquem la sessió del servidor
-        router.push('/dashboard');
-        router.refresh(); 
-      }
-    }
-    setLoading(false);
-  };
-
-  // Gestor per a l'inici de sessió amb proveïdors externs (Google, etc.)
-  const handleOAuthLogin = async (provider: 'google' | 'github') => {
-    setLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-
-        //redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
-    // Supabase s'encarrega de la redirecció
-  };
-
+  /**
+   * @summary Gestor per a l'inici de sessió amb proveïdors externs (OAuth), com Google.
+   * @param {'google' | 'github'} provider - El nom del proveïdor OAuth.
+   */
+  const handleOAuthLogin = async (provider: 'google' | 'github') => {
+    setLoading(true);
+    await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        // La URL a la qual el proveïdor ha de retornar l'usuari després de l'autenticació.
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      },
+    });
+    // No cal fer res més aquí; Supabase gestiona automàticament la redirecció a la pàgina de Google.
+  };
   return (
     <>
       {/* A Next.js, el títol es gestiona amb l'objecte metadata exportat */}

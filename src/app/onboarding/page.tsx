@@ -1,33 +1,38 @@
-// src/app/onboarding/page.tsx
 "use client";
 
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import dynamic from 'next/dynamic';
-
-// UI Components & Icons
 import { Button } from '@/components/ui/button';
 import { Input, type InputProps } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { Loader2, User, Building, Phone, Briefcase, MapPin } from 'lucide-react';
 import type { DetailedAddress } from '@/types/DetailedAddress';
 
+// El component d'autocompletat d'adreces és complex i pot dependre de llibreries
+// que només funcionen al navegador. Per això, el carreguem de forma dinàmica
+// amb 'ssr: false' per evitar problemes de renderitzat al servidor.
 const AddressAutocomplete = dynamic(
   () => import('@/app/(app)/_components/network/AddressAutocomplete'), {
     ssr: false,
     loading: () => <div className="h-[58px] bg-gray-800 rounded-md animate-pulse"></div>
   }
 );
-
+/**
+ * Pàgina d'Onboarding. Aquesta és la primera pàgina que veu un usuari nou
+ * després de registrar-se. S'encarrega de recollir la informació inicial
+ * del seu perfil professional.
+ */
 export default function OnboardingPage() {
   const supabase = createClient();
   const router = useRouter();
   
+  // Estat per a la càrrega del formulari.
   const [loading, setLoading] = useState(false);
 
-  // Dades del formulari
+  // Estats per a cada camp del formulari.
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [summary, setSummary] = useState('');
@@ -39,7 +44,11 @@ export default function OnboardingPage() {
   const [postalCode, setPostalCode] = useState('');
   const [region, setRegion] = useState('');
   const [country, setCountry] = useState('');
-
+ /**
+   * 'useEffect' que s'executa un cop quan el component es munta.
+   * La seva funció és carregar el nom complet de l'usuari des de les metadades
+   * de Supabase Auth, si està disponible, per pre-omplir el camp.
+   */
   useEffect(() => {
     const fetchUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -47,7 +56,10 @@ export default function OnboardingPage() {
     };
     fetchUserData();
   }, [supabase]);
-
+ /**
+   * Funció de 'callback' que es crida des del component 'AddressAutocomplete'
+   * quan l'usuari selecciona una adreça. Omple automàticament els camps relacionats.
+   */
   const handleAddressSelect = (address: DetailedAddress) => {
     setStreet(address.street);
     setCity(address.city);
@@ -55,7 +67,11 @@ export default function OnboardingPage() {
     setRegion(address.region);
     setCountry(address.country);
   };
-
+ /**
+   * Gestiona l'enviament del formulari.
+   * Recull totes les dades, les formata i crida una Edge Function de Supabase ('submit-onboarding')
+   * per desar el perfil complet a la base de dades.
+   */
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -77,7 +93,8 @@ export default function OnboardingPage() {
         street, city, postal_code: postalCode, region, country,
         onboarding_completed: true,
       };
-
+      // Invoquem la nostra Edge Function de Supabase, que s'encarregarà de
+      // la lògica de negoci al backend (com la geocodificació).
       const { error } = await supabase.functions.invoke('submit-onboarding', {
         body: { profileData, userId: user.id },
       });
@@ -85,13 +102,15 @@ export default function OnboardingPage() {
       if (error) throw error;
       
       // ✅ LA SOLUCIÓ ÉS AQUÍ
-      // 1. Refresca la sessió del servidor i neteja la cau del client.
+      // Si tot va bé, refresquem les dades i redirigim a l'usuari.
       router.refresh(); 
       toast.success("Perfil completat!", { description: "Benvingut! Redirigint..." });
       router.push('/redirecting');
     
     // ✅ CORRECCIÓ: Canviem 'any' per 'unknown' per a Vercel
     } catch (error: unknown) {
+            // Gestió d'errors robusta.
+
       let errorMessage = "Hi ha hagut un error inesperat.";
       if (error instanceof Error) {
         errorMessage = error.message;
