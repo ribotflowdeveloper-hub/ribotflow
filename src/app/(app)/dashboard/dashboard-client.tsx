@@ -41,10 +41,7 @@ export interface DashboardStats {
   expensesIsPositive: boolean;
 }
 
-export interface AiInsights {
-  summary: string;
-  suggestion: string;
-}
+
 
 export interface DashboardInitialData {
   stats: DashboardStats;
@@ -52,7 +49,6 @@ export interface DashboardInitialData {
   contacts: Contact[];
   overdueInvoices: Invoice[];
   attentionContacts: Contact[];
-  aiInsights: AiInsights;
 }
 
 // Sub-components interns del Dashboard (migrats i tipats)
@@ -101,7 +97,7 @@ const QuickTile: FC<{ href: string, icon: ElementType, label: string, desc: stri
 
 const MONTHLY_GOAL = 50000;// Objectiu de facturació mensual.
 
-export function DashboardClient({ initialData }: { initialData: DashboardInitialData }) {
+export function DashboardClient({ initialData, children }: { initialData: DashboardInitialData, children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
   const [tasks, setTasks] = useState(initialData.tasks);// Estat local per a les tasques, per poder actualitzar-les a la UI.
@@ -214,18 +210,26 @@ export function DashboardClient({ initialData }: { initialData: DashboardInitial
                           )
                       )
                   ) : (
-                      <p className="text-sm text-white/70">Tot en ordre.</p>
+                    <p className="text-sm text-white/70">Tot en ordre.</p>
                   )}
-              </div>            </div>
-            <div className="rounded-2xl p-6 ring-1 ring-white/10 bg-gradient-to-br from-white/10 to-white/5">
-                <h2 className="text-xl font-bold text-white mb-3">Oracle d’IA</h2>
-                <div className="space-y-3"><div className="p-3 rounded-lg bg-white/5 ring-1 ring-white/10"><p className="text-sm font-semibold text-white/90 mb-1">Resum</p><p className="text-sm text-white/80">{initialData.aiInsights.summary || '—'}</p></div><div className="p-3 rounded-lg bg-white/5 ring-1 ring-white/10"><p className="text-sm font-semibold text-white/90 mb-1">Suggeriment</p><p className="text-sm text-white/80">{initialData.aiInsights.suggestion || '—'}</p></div><Button variant="outline" className="w-full">Parlar amb l’assistent</Button></div>
-            </div>
+              </div>
           </div>
+          
+          {/* ✅ CANVI FINAL: Aquí és on es renderitzarà l'Oracle (o el seu esquelet) */}
+          {children}
+
         </div>
       </div>
-      <AddTaskDialog open={isTaskDialogOpen} onOpenChange={setTaskDialogOpen} contacts={initialData.contacts} onTaskCreated={() => { router.refresh();                    toast.success('Tasca creada!'); 
- }} />
-    </>
-  );
+    </div>
+    <AddTaskDialog 
+      open={isTaskDialogOpen} 
+      onOpenChange={setTaskDialogOpen} 
+      contacts={initialData.contacts} 
+      onTaskCreated={() => { 
+          router.refresh(); 
+          toast.success('Tasca creada!'); 
+      }} 
+    />
+  </>
+);
 }
