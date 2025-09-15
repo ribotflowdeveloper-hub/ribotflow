@@ -1,24 +1,52 @@
-"use client";
+/**
+ * @file MapContainer.tsx
+ * @summary Component de client que renderitza un mapa interactiu utilitzant Mapbox GL i react-map-gl.
+ * Mostra una sèrie de marcadors per a cada perfil professional i permet seleccionar-los per veure'n
+ * els detalls en un Popup. També anima el mapa per centrar-se en el perfil seleccionat.
+ */
 
-import 'mapbox-gl/dist/mapbox-gl.css';
+"use client"; // Directiva de Next.js. Necessària per a la interactivitat del mapa i l'ús de hooks.
+
+
+import 'mapbox-gl/dist/mapbox-gl.css'; // Importació dels estils CSS base de Mapbox.
 import { useRef, useEffect } from 'react';
+// Importació de components i tipus de la llibreria 'react-map-gl', un embolcall de Mapbox GL per a React.
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
-import type { PublicProfile } from '@/types';
-import { Building2 } from 'lucide-react';
-import Image from 'next/image';
+import type { PublicProfile } from '@/types'; // El nostre tipus de dades per a un perfil públic.
+import { Building2 } from 'lucide-react'; // Icona per a marcadors sense logo.
+import Image from 'next/image'; // Component optimitzat d'imatges de Next.js.
 
+/**
+ * @interface MapContainerProps
+ * @summary Defineix les propietats que el component MapContainer espera rebre.
+ */
 interface MapContainerProps {
-  profiles: PublicProfile[];
-  selectedProfile: PublicProfile | null;
-  onSelectProfile: (profile: PublicProfile | null) => void;
-}
-
+    /** Array de perfils públics que s'han de mostrar al mapa. */
+    profiles: PublicProfile[];
+    /** El perfil que està actualment seleccionat (pot ser null si no n'hi ha cap). */
+    selectedProfile: PublicProfile | null;
+    /** Funció callback per notificar al component pare quan es selecciona o deselecciona un perfil. */
+    onSelectProfile: (profile: PublicProfile | null) => void;
+  }
+  
+/**
+ * @function MapContainer
+ * @summary El component principal que renderitza i gestiona la lògica del mapa.
+ */
 export default function MapContainer({ profiles, selectedProfile, onSelectProfile }: MapContainerProps) {
-  const mapRef = useRef<MapRef>(null);
+    // Utilitzem una 'ref' per obtenir una referència directa a la instància del mapa.
+  // Això ens permetrà cridar a mètodes de l'API del mapa, com 'flyTo'.
+  const mapRef = useRef<MapRef>(null);
 
-  // ✅ MILLORA: Guardem el token en una variable per comprovar-lo
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-
+  // Guardem el token en una variable per fer una comprovació de seguretat abans de renderitzar.
+  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+/**
+   * @effect useEffect
+   * @summary Aquest efecte s'activa cada vegada que la propietat `selectedProfile` canvia.
+   * Si es selecciona un perfil nou, utilitza el mètode 'flyTo' per animar el mapa
+   * i centrar-lo suaument a les coordenades del perfil seleccionat.
+   */
+  
   useEffect(() => {
     if (selectedProfile && mapRef.current) {
       mapRef.current.flyTo({
@@ -29,7 +57,8 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
     }
   }, [selectedProfile]);
 
-  // Si no hi ha token, mostrem un error clar en lloc d'un mapa en blanc
+    // Comprovació de seguretat: si el token de Mapbox no està configurat, mostrem un missatge d'error
+  // en lloc de deixar que l'aplicació falli o mostri un mapa buit.
   if (!mapboxToken) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-800 text-red-400 p-4">
@@ -37,29 +66,33 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
       </div>
     );
   }
-
-  return (
-    <Map
-      ref={mapRef}
-      initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }}
-      style={{ width: '100%', height: '100%' }}
-      mapStyle="mapbox://styles/mapbox/dark-v11"
-      mapboxAccessToken={mapboxToken}
-      onDragStart={() => onSelectProfile(null)}
+// Renderització del component.
+  return (
+      <Map
+        ref={mapRef}
+        initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }} // Vista inicial centrada a Catalunya.
+        style={{ width: '100%', height: '100%' }}
+        mapStyle="mapbox://styles/mapbox/dark-v11" // Estil del mapa (en aquest cas, un tema fosc).
+        mapboxAccessToken={mapboxToken} // Passem el token d'API al mapa.
+        onDragStart={() => onSelectProfile(null)} // Si l'usuari arrossega el mapa, deseleccionem qualsevol perfil.
     >
+       {/* Afegeix els controls de zoom i rotació al mapa. */}
       <NavigationControl position="top-right" />
-
+  {/* Iterem sobre l'array de perfils per crear un marcador per a cadascun. */}
       {profiles.map((profile) => (
         <Marker
-          key={profile.id}
+          key={profile.id} // Clau única per a cada element de la llista.
           longitude={profile.longitude}
           latitude={profile.latitude}
           onClick={(e) => {
-            e.originalEvent.stopPropagation();
-            onSelectProfile(profile);
+            e.originalEvent.stopPropagation(); // Evitem que l'esdeveniment de clic es propagui al mapa.
+              onSelectProfile(profile); // Notifiquem al pare que s'ha seleccionat un perfil.
           }}
         >
+          {/* Contenidor per a l'estil i l'animació del marcador. */}
+
           <div className="transform transition-transform duration-200 hover:scale-125">
+            {/* Si el perfil té un logo, el mostrem. Si no, mostrem una icona genèrica. */}
             {profile.logo_url ? (
               <Image 
                 src={profile.logo_url} 
@@ -76,15 +109,16 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
           </div>
         </Marker>
       ))}
+      {/* Renderització condicional del Popup: només es mostra si hi ha un perfil seleccionat. */}
 
       {selectedProfile && (
         <Popup
           longitude={selectedProfile.longitude}
           latitude={selectedProfile.latitude}
-          onClose={() => onSelectProfile(null)}
-          closeOnClick={false}
-          anchor="bottom"
-          className="popup-dark"
+          onClose={() => onSelectProfile(null)} // Permet tancar el popup.
+          closeOnClick={false} // El popup no es tanca si es fa clic al mapa.
+          anchor="bottom" // El popup apareix a sobre del marcador.
+          className="popup-dark" // Classe CSS personalitzada per a l'estil fosc.
         >
           <div className="max-w-xs p-1">
             <h3 className="font-bold">{selectedProfile.company_name}</h3>

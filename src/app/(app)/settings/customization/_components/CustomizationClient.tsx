@@ -1,3 +1,10 @@
+/**
+ * @file CustomizationClient.tsx
+ * @summary Aquest fitxer conté el component de client que gestiona tota la interfície interactiva
+ * de la pàgina de Personalització. S'encarrega de mostrar les opcions per canviar el tema,
+ * l'idioma, i gestionar les etapes del pipeline i les etiquetes.
+ */
+
 "use client";
 
 import { motion } from 'framer-motion';
@@ -5,11 +12,14 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
 import { Plus, Trash, GripVertical } from 'lucide-react';
 import { ThemeSwitcher } from './ThemeSwitcher';
-import { type Stage, type Tag } from '../page'; // Importem els tipus
+import { type Stage, type Tag } from '../page'; // Importem els tipus definits a la pàgina del servidor.
 
 export function CustomizationClient({ initialStages, initialTags }: { initialStages: Stage[], initialTags: Tag[] }) {
   
-
+ /**
+   * @summary Gestor d'esdeveniments temporal per a funcionalitats encara no implementades.
+   * Mostra una notificació a l'usuari.
+   */
   const handleNotImplemented = () => {
     toast.info("Funcionalitat no implementada", {
       description: "Aviat podràs gestionar etapes i etiquetes des d'aquí."

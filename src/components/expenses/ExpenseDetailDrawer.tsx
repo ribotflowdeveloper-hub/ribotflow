@@ -1,3 +1,10 @@
+/**
+ * @file ExpenseDetailDrawer.tsx
+ * @summary Aquest fitxer defineix un component de client que mostra un calaix lateral (drawer)
+ * amb els detalls complets d'una despesa. S'encarrega de calcular i formatar les dades
+ * financeres, obtenir les URLs dels fitxers adjunts des de Supabase Storage i gestionar la seva descàrrega.
+ */
+
 "use client";
 
 import React, { useState, useEffect, FC } from 'react';
@@ -8,61 +15,73 @@ import { Badge } from '@/components/ui/badge';
 import { Paperclip, Edit, Download } from 'lucide-react';
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { type Expense } from '@/types/finances';
 
 interface ExpenseDetailDrawerProps {
-  expense: Expense | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onEdit: (expense: Expense) => void;
+  expense: Expense | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit: (expense: Expense) => void;
 }
 
+// Tipus per a un adjunt que inclou la seva URL pública.
 type AttachmentWithUrl = {
-  id: string;
-  publicUrl: string;
-  filename: string;
-  mime_type: string;
+  id: string;
+  publicUrl: string;
+  filename: string;
+  mime_type: string;
 };
 
 export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isOpen, onClose, onEdit }) => {
-  const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
-  const supabase = createClient();
+  const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
+  const supabase = createClient();
 
-  useEffect(() => {
-    if (expense && expense.expense_attachments) {
-      const urls = expense.expense_attachments.map(att => {
-        const { data } = supabase.storage.from('despeses-adjunts').getPublicUrl(att.file_path);
-        return { ...att, publicUrl: data.publicUrl };
-      });
-      setAttachmentUrls(urls);
-    }
-  }, [expense, supabase.storage]);
+  // Aquest efecte s'executa quan el component rep una nova despesa.
+  // La seva funció és obtenir les URLs públiques dels fitxers adjunts des de Supabase Storage.
+  useEffect(() => {
+    if (expense && expense.expense_attachments) {
+      const urls = expense.expense_attachments.map(att => {
+        const { data } = supabase.storage.from('despeses-adjunts').getPublicUrl(att.file_path);
+        return { ...att, publicUrl: data.publicUrl };
+      });
+      setAttachmentUrls(urls);
+    }
+  }, [expense, supabase.storage]);
 
-  const handleDownload = async (attachment: { publicUrl: string, filename: string }) => {
-    try {
-      const response = await fetch(attachment.publicUrl);
-      if (!response.ok) throw new Error('Network response was not ok.');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = attachment.filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch {
-      toast.error('Error de descàrrega', {
-        description: 'No s\'ha pogut descarregar l\'arxiu.'
-    });
-    }
-  };
+  /**
+   * @summary Gestor per a la descàrrega d'un fitxer adjunt des del navegador.
+   */
+  const handleDownload = async (attachment: { publicUrl: string, filename: string }) => {
+    try {
+      // Fem una petició 'fetch' per obtenir el contingut del fitxer.
+      const response = await fetch(attachment.publicUrl);
+      if (!response.ok) throw new Error('Network response was not ok.');
+      // Convertim la resposta en un 'Blob'.
+      const blob = await response.blob();
+      // Creem una URL temporal al navegador per a aquest 'Blob'.
+      const url = window.URL.createObjectURL(blob);
+      // Creem un element <a> invisible, hi assignem la URL i el nom del fitxer, i simulem un clic per iniciar la descàrrega.
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = attachment.filename;
+      document.body.appendChild(a);
+      a.click();
+      // Neteja: eliminem l'URL i l'element <a> del DOM.
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      toast.error('Error de descàrrega', { description: 'No s\'ha pogut descarregar l\'arxiu.' });
+    }
+  };
 
-  if (!expense) return null;
+  // Si no hi ha cap despesa seleccionada, no renderitzem res.
+  if (!expense) return null;
 
-  const baseImposable = (expense.subtotal || 0) - (expense.discount_amount || 0);
+  // Calculem la base imposable per a la seva visualització.
+  const baseImposable = (expense.subtotal || 0) - (expense.discount_amount || 0);
+
 
   return (
     <Drawer open={isOpen} onClose={onClose}>
@@ -143,7 +162,7 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
             </div>
           </div>
 
-          {/* --- Footer --- */}
+          {/* Peu del calaix amb els botons d'acció */}
           <DrawerFooter className="flex-row justify-start p-0 pt-6 gap-2">
             <Button onClick={() => onEdit(expense)}>
               <Edit className="w-4 h-4 mr-2" /> Editar

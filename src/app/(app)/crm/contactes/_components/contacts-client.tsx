@@ -24,7 +24,14 @@ type NewContactForm = {
   valor: number;
 };
 
+// ... (El tipus 'NewContactForm' que tenies aquí no és necessari, ja que el formulari
+// envia directament un 'FormData' a la Server Action)
 
+/**
+ * Component principal i interactiu per a la pàgina de llista de contactes.
+ * Gestiona l'estat de la cerca, el mode de visualització (targetes o llista)
+ * i el diàleg per crear nous contactes.
+ */
 export function ContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -32,17 +39,22 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
     const [searchTerm, setSearchTerm] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
-
+    
+    // Funció per navegar a la pàgina de detall d'un contacte.
     const handleContactClick = (contact: Contact) => {
         router.push(`/crm/contactes/${contact.id}`);
     };
-
+    // 'useMemo' optimitza el filtratge de contactes. Només es torna a executar
+    // si la llista de 'contacts' o el 'searchTerm' canvien.
     const filteredContacts = useMemo(() => contacts.filter(c => 
         (c.nom?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
         (c.empresa?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
         (c.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     ), [contacts, searchTerm]);
-    
+      /**
+     * Gestiona l'enviament del formulari de nou contacte.
+     * Crida la Server Action 'createContactAction' i gestiona la resposta.
+     */
     const handleSaveContact = (formData: FormData) => {
         startTransition(async () => {
             const result = await createContactAction(formData);

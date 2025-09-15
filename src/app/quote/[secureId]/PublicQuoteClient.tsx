@@ -19,31 +19,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { createClient } from "@/lib/supabase/client";
 import type { Quote, Contact, CompanyProfile, QuoteItem } from "@/types/crm";
 
+// Tipus per a les dades completes que rep aquest component des del servidor.
+
 export type QuoteDataFromServer = Quote & {
   contacts: Contact;
   profiles: CompanyProfile;
   quote_items: QuoteItem[];
   secure_id: string;
 };
-
+/**
+ * Component de client que permet a un client final interactuar amb un pressupost.
+ * Mostra la vista prèvia del pressupost i ofereix els botons per acceptar-lo o rebutjar-lo.
+ */
 export function PublicQuoteClient({
   initialQuoteData,
 }: {
   initialQuoteData: QuoteDataFromServer;
 }) {
-  const [quoteData] = useState(initialQuoteData);
-  const [isPending, startTransition] = useTransition();
-  const [finalStatus, setFinalStatus] = useState<"accepted" | "declined" | null>(
-    quoteData.status === "Accepted"
-      ? "accepted"
-      : quoteData.status === "Declined"
-      ? "declined"
-      : null
+  const [quoteData] = useState(initialQuoteData); // Dades inicials rebudes del servidor.
+  const [isPending, startTransition] = useTransition(); // Estat de càrrega per a les accions.
+  
+  // Aquest estat controla la UI per mostrar si el pressupost ja ha estat acceptat o rebutjat.
+  const [finalStatus, setFinalStatus] = useState<'accepted' | 'declined' | null>(
+    quoteData.status === "Accepted" ? "accepted" : quoteData.status === "Declined" ? "declined" : null
   );
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
+  
+  const [isRejecting, setIsRejecting] = useState(false); // Controla la visibilitat del diàleg de rebuig.
+  const [rejectionReason, setRejectionReason] = useState(""); // Emmagatzema el motiu del rebuig.
   const supabase = createClient();
-
+/**
+   * Crida l'Edge Function 'accept-quote' per marcar el pressupost com a acceptat.
+   */
   const handleAccept = () => {
     startTransition(async () => {
       try {
@@ -59,7 +65,9 @@ export function PublicQuoteClient({
       }
     });
   };
-
+/**
+   * Envia el motiu del rebuig a l'Edge Function 'reject-quote'.
+   */
   const handleRejectionSubmit = () => {
     if (rejectionReason.trim() === "") {
       toast.error("Motiu requerit", {
@@ -87,6 +95,7 @@ export function PublicQuoteClient({
   ...quoteData,
   items: quoteData.quote_items,
 };
+  // Renderitzat condicional: si el pressupost ja té un estat final, mostrem una pantalla de confirmació.
 
 if (finalStatus === "accepted") {
   return (
@@ -116,6 +125,7 @@ if (finalStatus === "accepted") {
       </div>
     );
   }
+  // Si no, mostrem la pàgina de revisió del pressupost amb els botons d'acció.
 
   return (
     <>

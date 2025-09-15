@@ -1,99 +1,100 @@
-"use client";
+/**
+ * @file TemplatesClient.tsx
+ * @summary Component de client que proporciona la interfície d'usuari completa per a la gestió
+ * de plantilles d'email. Inclou la llista de plantilles, l'editor de codi/vista prèvia i el panell de variables.
+ */
+
+"use client"; // És el cor interactiu de la pàgina de plantilles.
 
 import React, { useState, useEffect, useTransition} from 'react';
 import { motion } from 'framer-motion';
-import { toast } from "sonner"; // ✅ 1. Importem 'toast' de sonner
+import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Plus, FileText, Variable, Code, Eye, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+// Llibreries per a l'editor de codi amb ressaltat de sintaxi.
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-markup';
-// S'han d'importar els estils de PrismJS al teu globals.css o aquí si prefereixes
-// import 'prismjs/themes/prism-tomorrow.css'; 
+// import 'prismjs/themes/prism-tomorrow.css'; // -> Aquests estils s'haurien d'importar al globals.css
 
 import { type EmailTemplate } from '../page';
 import { saveTemplateAction, deleteTemplateAction } from './actions';
 
 export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailTemplate[] }) {
-  const [isSaving, startSaveTransition] = useTransition();
-  const [isDeleting, startDeleteTransition] = useTransition();
+  // Hooks 'useTransition' per gestionar estats de càrrega de les accions de servidor sense bloquejar la UI.
+  const [isSaving, startSaveTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
 
-  const [templates, setTemplates] = useState(initialTemplates);
-  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(initialTemplates[0] || null);
-  const [editorView, setEditorView] = useState('preview');
-  const [detectedVariables, setDetectedVariables] = useState<string[]>([]);
-  const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null);
+  // Gestió de l'estat local del component.
+  const [templates, setTemplates] = useState(initialTemplates); // Llista de totes les plantilles.
+  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(initialTemplates[0] || null); // La plantilla actualment seleccionada per a edició.
+  const [editorView, setEditorView] = useState('preview'); // Controla si es mostra l'editor de codi o la vista prèvia.
+  const [detectedVariables, setDetectedVariables] = useState<string[]>([]); // Variables detectades (ex: {{nom}}).
+  const [templateToDelete, setTemplateToDelete] = useState<EmailTemplate | null>(null); // Per al diàleg de confirmació d'eliminació.
 
-  useEffect(() => {
-    if (selectedTemplate) {
-      const content = `${selectedTemplate.subject || ''} ${selectedTemplate.body || ''}`;
-      const foundVariables = content.match(/\{\{([^}]+)\}\}/g) || [];
-      const uniqueVariables = [...new Set(foundVariables.map(v => v.replace(/[{}]/g, '')))];
-      setDetectedVariables(uniqueVariables);
-    }
-  }, [selectedTemplate]);
+  // Aquest efecte s'executa cada vegada que canvia la plantilla seleccionada.
+  // Analitza el contingut (assumpte i cos) per extreure les variables {{...}}.
+  useEffect(() => {
+    if (selectedTemplate) {
+      const content = `${selectedTemplate.subject || ''} ${selectedTemplate.body || ''}`;
+      const foundVariables = content.match(/\{\{([^}]+)\}\}/g) || [];
+      const uniqueVariables = [...new Set(foundVariables.map(v => v.replace(/[{}]/g, '')))];
+      setDetectedVariables(uniqueVariables);
+    }
+  }, [selectedTemplate]);
 
-  const handleNewTemplate = () => {
-    const newTpl: EmailTemplate = { 
-        id: 'new', name: 'Nova Plantilla', subject: '', 
-        body: '<h1>Hola {{nom_contacte}},</h1>\n<p>Contingut del teu correu...</p>', 
-        variables: [], created_at: new Date().toISOString(), user_id: '' 
-    };
-    setSelectedTemplate(newTpl);
-    setEditorView('code'); // Canvia a la vista de codi per a la nova plantilla
-  };
+  // Gestor per crear una nova plantilla en blanc.
+  const handleNewTemplate = () => {
+    const newTpl: EmailTemplate = { id: 'new', name: 'Nova Plantilla', subject: '', body: '<h1>Hola {{nom_contacte}},</h1>\n<p>Contingut del teu correu...</p>', variables: [], created_at: new Date().toISOString(), user_id: '' };
+    setSelectedTemplate(newTpl);
+    setEditorView('code'); // Passem a la vista de codi automàticament.
+  };
 
-  const handleSaveTemplate = () => {
-    if (!selectedTemplate) return;
-    
-    const templateData = { 
-      name: selectedTemplate.name, 
-      subject: selectedTemplate.subject, 
-      body: selectedTemplate.body, 
-      variables: detectedVariables
-    };
+  // Gestor per desar la plantilla actual (crida a la Server Action).
+  const handleSaveTemplate = () => {
+    if (!selectedTemplate) return;
+    const templateData = { name: selectedTemplate.name, subject: selectedTemplate.subject, body: selectedTemplate.body, variables: detectedVariables };
+    startSaveTransition(async () => {
+        const { data, error } = await saveTemplateAction(templateData, selectedTemplate.id);
+        if (error) {
+          toast.error('Error', { description: error.message });
+        } else if (data) {
+          toast.success('Èxit!', { description: 'Plantilla desada correctament.' });
+          // Actualitzem l'estat local immediatament ("Optimistic UI Update").
+          // Això fa que la interfície se senti més ràpida, sense esperar la revalidació del servidor.
+          if (selectedTemplate.id === 'new') { setTemplates(prev => [data, ...prev]); } 
+          else { setTemplates(prev => prev.map(t => t.id === data.id ? data : t)); }
+          setSelectedTemplate(data);
+        }
+    });
+  };
 
-    startSaveTransition(async () => {
-        const { data, error } = await saveTemplateAction(templateData, selectedTemplate.id);
-        if (error) {
-          toast.error('Error', { description: error.message });
-        } else if (data) {
-          toast.success('Èxit!', { description: 'Plantilla desada correctament.' });
-          // Actualitzem l'estat local per una experiència més ràpida
-            if (selectedTemplate.id === 'new') {
-                setTemplates(prev => [data, ...prev]);
-            } else {
-                setTemplates(prev => prev.map(t => t.id === data.id ? data : t));
-            }
-            setSelectedTemplate(data);
-        }
-    });
-  };
-
-  const handleDeleteTemplate = () => {
-    if (!templateToDelete) return;
-
-    startDeleteTransition(async () => {
-        const { error } = await deleteTemplateAction(templateToDelete.id);
-        if (error) {
-          toast.error('Error', { description: error.message });
-        } else {
-          toast.success('Èxit!', { description: 'Plantilla eliminada.' });
-          const newTemplates = templates.filter(t => t.id !== templateToDelete.id);
-            setTemplates(newTemplates);
-            setSelectedTemplate(newTemplates[0] || null);
-        }
-        setTemplateToDelete(null);
-    });
-  };
+  // Gestor per eliminar una plantilla (crida a la Server Action).
+  const handleDeleteTemplate = () => {
+    if (!templateToDelete) return;
+    startDeleteTransition(async () => {
+        const { error } = await deleteTemplateAction(templateToDelete.id);
+        if (error) {
+          toast.error('Error', { description: error.message });
+        } else {
+          toast.success('Èxit!', { description: 'Plantilla eliminada.' });
+          const newTemplates = templates.filter(t => t.id !== templateToDelete.id);
+          setTemplates(newTemplates);
+          setSelectedTemplate(newTemplates[0] || null); // Seleccionem la següent plantilla o cap.
+        }
+        setTemplateToDelete(null); // Tanquem el diàleg de confirmació.
+    });
+  };
 
   return (
     <>
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
+                {/* Capçalera de la pàgina */}
+
         <div className="flex justify-between items-center mb-6 flex-shrink-0">
           <h1 className="text-3xl font-bold">Editor de Plantilles</h1>
           <Button onClick={handleSaveTemplate} disabled={isSaving || !selectedTemplate}>
@@ -101,6 +102,7 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
             Desar Plantilla
           </Button>
         </div>
+        {/* Estructura principal de 3 columnes */}
 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 min-h-0">
           {/* Columna Llista de Plantilles */}
@@ -109,6 +111,8 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
               <h2 className="font-semibold">Plantilles</h2>
               <Button size="icon" variant="ghost" onClick={handleNewTemplate}><Plus className="w-4 h-4" /></Button>
             </div>
+                    
+
             <div className="flex-1 overflow-y-auto">
               {templates.map(template => (
                 <div key={template.id} onClick={() => setSelectedTemplate(template)} 

@@ -13,11 +13,23 @@ import {
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from '@/components/ui/button';
+// 'date-fns' és una llibreria excel·lent per al format de dates.
 import { formatDistanceToNow } from 'date-fns';
-import { ca } from 'date-fns/locale';
+import { ca } from 'date-fns/locale'; // Importem la localització catalana.
+// Importem el tipus de dades principal des de la pàgina del servidor.
 import { CrmData } from '../page';
 import ComposeEmailDialog from '@/components/crm/ComposeEmailDialog';
+// --- Sub-components interns per a una millor organització ---
 
+/**
+ * Targeta d'estadística (KPI) reutilitzable. Mostra un valor clau, una icona i un títol.
+ * @param {ElementType} icon - El component de la icona (ex: Users).
+ * @param {string} title - El títol de la mètrica (ex: "Total Contacts").
+ * @param {string | number} value - El valor a mostrar.
+ * @param {string} color - Classe de color de Tailwind CSS per a la icona i l'efecte de fons.
+ * @param {string} tooltip - Text que apareix en passar el ratolí per sobre.
+ * @param {string} linkTo - La pàgina a la qual navega en fer clic.
+ */
 // --- Sub-components ---
 const StatCard: FC<{ icon: ElementType; title: string; value: string | number; color: string; tooltip: string; linkTo: string; }> = ({ icon: Icon, title, value, color, tooltip, linkTo }) => (
     <TooltipProvider delayDuration={100}><Tooltip><TooltipTrigger asChild>
@@ -31,7 +43,10 @@ const StatCard: FC<{ icon: ElementType; title: string; value: string | number; c
         </Link>
     </TooltipTrigger><TooltipContent><p>{tooltip}</p></TooltipContent></Tooltip></TooltipProvider>
 );
-
+/**
+ * Barra de progrés per a l'embut de vendes (funnel).
+ * Mostra visualment una quantitat respecte a un valor màxim.
+ */
 const FunnelBar: FC<{ label: string; value: number; maxValue: number; color: string; icon: ElementType; }> = ({ label, value, maxValue, color, icon: Icon }) => {
     const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
     return (
@@ -46,7 +61,9 @@ const FunnelBar: FC<{ label: string; value: number; maxValue: number; color: str
         </div>
     );
 };
-
+/**
+ * Element de llista genèric per a rànquings com "Top Clients" o "Best Months".
+ */
 const ListItem: FC<{ href: string; icon: ElementType; iconColor: string; title: string; subtitle?: string; value?: string }> = ({ href, icon: Icon, iconColor, title, subtitle, value }) => (
     <Link href={href} className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/10 transition-colors">
         <div className="p-2 rounded-lg bg-white/5"><Icon className={`w-5 h-5 ${iconColor}`} /></div>
@@ -57,7 +74,10 @@ const ListItem: FC<{ href: string; icon: ElementType; iconColor: string; title: 
         {value && <div className="font-semibold text-right">{value}</div>}
     </Link>
 );
-
+/**
+ * Mostra una alerta d'activitat no llegida a la secció "Recent Alerts".
+ * Gestiona el marcatge com a llegit i l'opció de respondre.
+ */
 const ActivityItem: FC<{ activity: CrmData['unreadActivities'][0]; onMarkAsRead: (id: string) => void; onReply: (activity: CrmData['unreadActivities'][0]) => void; }> = ({ activity, onMarkAsRead, onReply }) => {
     const router = useRouter();
     const handleClick = () => {
@@ -87,8 +107,15 @@ const ActivityItem: FC<{ activity: CrmData['unreadActivities'][0]; onMarkAsRead:
         </div>
     );
 };
-
+/**
+ * Component de Client principal per al panell del CRM.
+ * Rep les dades inicials del servidor i gestiona tota la interactivitat de l'usuari:
+ * - Marcar alertes com a llegides.
+ * - Obrir el diàleg per respondre a una alerta.
+ * - Renderitzar totes les estadístiques i llistes.
+ */
 export function CrmClient({ initialData }: { initialData: CrmData | null }) {
+    // Hooks de React per a la gestió de l'estat i la navegació.
 
     const supabase = createClient();
     const router = useRouter();
@@ -99,21 +126,31 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
         subject: string;
         body: string;
       }
-      
+      // Estat per controlar el diàleg de composició de correu.
       const [composeState, setComposeState] = useState<{
         open: boolean;
         initialData: ComposeInitialData | null;
       }>({ open: false, initialData: null });
-      
+      /**
+     * Marca una activitat com a llegida.
+     * Fa una "actualització optimista": elimina l'alerta de la UI a l'instant,
+     * i després fa la crida a la base de dades. Si falla, refresca per revertir el canvi.
+     */
     const handleMarkAsRead = async (activityId: string) => {
+        // Elimina l'activitat de l'estat local per a una resposta visual immediata.
         setData(prevData => prevData ? ({ ...prevData, unreadActivities: prevData.unreadActivities.filter(a => a.id !== activityId) }) : null);
+        
+        // Crida a la base de dades per actualitzar l'estat real.
         const { error } = await supabase.from('activities').update({ is_read: true }).eq('id', activityId);
         if (error) {
             toast.error('Error', { description: "No s'ha pogut marcar com a llegida." });
-            router.refresh();
+            router.refresh();// Si falla, refresca per sincronitzar amb la base de dades.
         }
     };
-
+  /**
+     * Prepara i obre el diàleg per respondre a una activitat.
+     * Construeix un cos de correu inicial citant el missatge original.
+     */
     const handleReply = (activity: CrmData['unreadActivities'][0]) => {
         const quotedBody = `\n\n\n--- En resposta al teu feedback del ${new Date(activity.created_at).toLocaleDateString('ca-ES')} ---\n>${activity.content.replace(/\n/g, '\n>')}`;
         setComposeState({ 
@@ -126,14 +163,18 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
             } 
         });
     };
-
+    
+    // Si les dades encara no han arribat del servidor, mostra un indicador de càrrega.
     if (!data) return <div className="flex justify-center items-center h-full"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
-
+    
+    // Calculem el valor màxim de l'embut per a les barres de progrés.
     const funnelMax = Math.max(data.funnel.leads, data.funnel.quoted, data.funnel.clients, 1);
-
+    
+    // Renderitzat del JSX. S'utilitzen els sub-components definits a dalt per mantenir el codi net.
     return (
         <>
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                {/* Secció d'alertes recents (només si n'hi ha) */}
                 {data.unreadActivities && data.unreadActivities.length > 0 && (
                     <div className="glass-card p-6">
                         <h2 className="text-xl font-bold mb-4">Recent Alerts ({data.unreadActivities.length})</h2>
@@ -145,6 +186,8 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
                     </div>
                 )}
                 
+                {/* Targetes de KPIs principals */}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard icon={Users} title="Total Contacts" value={data.stats.totalContacts} color="text-blue-400" linkTo="/crm/contactes" tooltip="All contacts in your CRM" />
                     <StatCard icon={UserCheck} title="New this month" value={data.stats.newContactsThisMonth} color="text-green-400" linkTo="/crm/contactes" tooltip="Contacts added in the last 30 days" />
@@ -152,6 +195,8 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
                     <StatCard icon={DollarSign} title="Pipeline Value" value={`€${(data.stats.pipelineValue).toLocaleString('en-US')}`} color="text-orange-400" linkTo="/crm/pipeline" tooltip="Sum of all active opportunity values" />
                 </div>
                 
+                {/* Gràfic d'embut de vendes i llistes de rànquing */}
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 glass-card p-6">
                         <h2 className="text-xl font-bold mb-4">Customer Lifecycle</h2>
@@ -180,7 +225,7 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
                         </div>
                     </div>
                 </div>
-
+                {/* Estadístiques clau */}         
                  <div className="glass-card p-6">
                        <h2 className="text-xl font-bold mb-4">Key Statistics</h2>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -203,6 +248,8 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
                    </div>
             </motion.div>
             
+            {/* El diàleg per compondre correus, que es mostra o s'amaga segons l'estat 'composeState' */}
+
             <ComposeEmailDialog 
                 open={composeState.open}
                 onOpenChange={(isOpen) =>

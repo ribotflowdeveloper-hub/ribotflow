@@ -1,20 +1,28 @@
 "use client";
 
 import React from 'react';
+// Framer Motion per a animacions suaus d'entrada.
 import { motion } from 'framer-motion';
+// Link de Next.js per a navegació optimitzada del costat del client.
 import Link from 'next/link';
+// Icones i format de dates.
 import { Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ca } from 'date-fns/locale';
-import { type Activity } from '../page'; // Import the type from the page
+// Importem el tipus de dades definit a la pàgina del servidor per a consistència.
+import { type Activity } from '../page';
 
-// --- Sub-component for each history item (Corrected) ---
+/**
+ * Sub-component reutilitzable per mostrar un únic element de l'historial d'activitats.
+ * Aquesta separació manté el codi més net i organitzat.
+ */
 const HistoricActivityItem: React.FC<{ activity: Activity }> = ({ activity }) => {
+    // Determina l'estat i l'estil de la icona basant-se en si l'activitat ha estat llegida.
     const isRead = activity.is_read;
     const Icon = isRead ? CheckCircle : AlertTriangle;
     const iconColor = isRead ? 'text-green-400' : 'text-yellow-400';
 
-    // We define the common content here
+    // Definim el contingut de l'activitat en una variable per no repetir codi.
     const activityContent = (
         <div className="flex items-start gap-4">
             <div className="mt-1">
@@ -23,6 +31,7 @@ const HistoricActivityItem: React.FC<{ activity: Activity }> = ({ activity }) =>
             <div className="flex-1">
                 <div className="flex justify-between items-center">
                     <p className="font-semibold">{activity.type} - <span className="font-normal">{activity.contacts?.nom || 'Contacte esborrat'}</span></p>
+                    {/* Formategem la data de creació per a una millor llegibilitat. */}
                     <p className="text-xs text-muted-foreground">{format(new Date(activity.created_at), "d MMM yyyy 'a les' HH:mm", { locale: ca })}</p>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1 italic">"{activity.content}"</p>
@@ -30,8 +39,8 @@ const HistoricActivityItem: React.FC<{ activity: Activity }> = ({ activity }) =>
         </div>
     );
 
-    // ✅ THIS IS THE FIX: We use a clear if/else for TypeScript
-    // If there is a contact ID, we render a Link component with the required href.
+    // Renderitzat condicional: si l'activitat està associada a un contacte, la fem clicable.
+    // Això evita errors si un contacte ha estat esborrat però la seva activitat encara existeix.
     if (activity.contact_id) {
         return (
             <Link 
@@ -43,7 +52,7 @@ const HistoricActivityItem: React.FC<{ activity: Activity }> = ({ activity }) =>
         );
     }
 
-    // If there is NO contact ID, we render a simple div without an href.
+    // Si no hi ha contacte associat, renderitzem un 'div' simple que no és un enllaç.
     return (
         <div className="block p-4 rounded-lg border-b border-white/10 last:border-b-0">
             {activityContent}
@@ -52,11 +61,17 @@ const HistoricActivityItem: React.FC<{ activity: Activity }> = ({ activity }) =>
 };
 
 
+// Definim les propietats que espera el component principal.
 interface ActivitatsClientProps {
     initialActivities: Activity[];
 }
 
+/**
+ * Component de Client principal per a la pàgina d'historial d'activitats.
+ * La seva funció és rebre les dades del servidor i renderitzar-les.
+ */
 export const ActivitatsClient: React.FC<ActivitatsClientProps> = ({ initialActivities }) => {
+    // Si per alguna raó les dades no arriben, mostrem un indicador de càrrega.
     if (!initialActivities) {
         return <div className="flex-1 flex justify-center items-center"><Loader2 className="w-10 h-10 animate-spin text-primary" /></div>;
     }
@@ -68,13 +83,16 @@ export const ActivitatsClient: React.FC<ActivitatsClientProps> = ({ initialActiv
             </div>
 
             <div className="glass-card">
+                {/* Si hi ha activitats, les mapegem per renderitzar-les. */}
                 {initialActivities.length > 0 ? (
                     <div className="divide-y divide-white/10">
+                        {/* El mètode .map() és la forma estàndard de React per renderitzar llistes. */}
                         {initialActivities.map(activity => (
                             <HistoricActivityItem key={activity.id} activity={activity} />
                         ))}
                     </div>
                 ) : (
+                    // Si no n'hi ha, mostrem un missatge informatiu.
                     <div className="text-center p-12">
                         <p className="text-muted-foreground">No hi ha cap activitat registrada encara.</p>
                     </div>

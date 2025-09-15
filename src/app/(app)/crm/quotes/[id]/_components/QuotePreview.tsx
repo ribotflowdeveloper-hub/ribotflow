@@ -1,28 +1,32 @@
-// Ruta del fitxer: src/app/(app)/crm/quotes/[id]/_components/QuotePreview.tsx
 "use client";
 
 import React from 'react';
 import Image from 'next/image';
 import type { Quote, Contact, CompanyProfile } from '@/types/crm';
 
-// Definim les props del component
+// Definim les propietats que necessita el component per renderitzar-se.
 interface QuotePreviewProps {
     quote: Quote;
     contacts: Contact[];
-    // ✅ CORRECCIÓ: Indiquem que companyProfile pot ser de tipus CompanyProfile O null.
-    companyProfile: CompanyProfile | null; 
+    companyProfile: CompanyProfile | null; // El perfil de l'empresa pot no existir.
     subtotal: number;
     discountAmount: number;
     tax: number;
     total: number;
 }
 
+/**
+ * Component purament visual que renderitza una vista prèvia del pressupost
+ * amb un format semblant a un document PDF.
+ * Aquest mateix component s'utilitza per generar el PDF real.
+ */
 export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discountAmount, tax, total }: QuotePreviewProps) => {
+    // Trobem el contacte específic per a aquest pressupost.
     const contact = contacts.find(c => c.id === quote.contact_id);
     const base = subtotal - discountAmount;
     
-    // El 'return' i tota la lògica JSX es queden exactament igual,
-    // ja que l'ús de '?.' ja gestionava correctament el cas de 'null'.
+    // El 'return' renderitza tota l'estructura visual del document.
+    // L'ús de '?.' (optional chaining) és important per evitar errors si 'companyProfile' o 'contact' són nuls.
     return (
         <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
             <div id="quote-preview-for-pdf">

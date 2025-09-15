@@ -6,44 +6,50 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { PlusCircle, List, LayoutGrid } from "lucide-react";
-
 import type { Product } from "../page";
 import { deleteProduct } from "../actions";
-
 import { ProductForm } from "./ProductForm";
 import { ProductsTableView } from "./ProductsTableView";
 import { ProductsCardView } from "./ProductsCardView";
 
+/**
+ * Component principal i interactiu de la pàgina de "Conceptes".
+ * S'encarrega de:
+ * - Gestionar els estats de la UI (terme de cerca, filtre, mode de vista).
+ * - Filtrar les dades rebudes del servidor.
+ * - Renderitzar la vista adequada (taula o targetes).
+ * - Gestionar l'obertura del diàleg de creació/edició.
+ */
 export function ProductsClient({ initialProducts }: { initialProducts: Product[] }) {
+    // Estats per a la gestió del diàleg d'edició/creació.
     const [isFormOpen, setFormOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+    // Estats per a la interactivitat de la llista.
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("Totes");
     const [viewMode, setViewMode] = useState<"list" | "card">("list");
 
+    // 'useMemo' per a optimitzar la generació de la llista de categories úniques.
+    // Aquest càlcul només es farà de nou si 'initialProducts' canvia.
     const categories = useMemo(() => {
         const categoriesWithNulls = initialProducts.map(p => p.category);
-        // ✅ CORRECCIÓ: Aquesta és la forma més segura de filtrar 'nulls' per a TypeScript.
         const uniqueCategories = new Set(categoriesWithNulls.filter((c): c is string => c != null));
         return ["Totes", ...Array.from(uniqueCategories)];
     }, [initialProducts]);
 
+    // 'useMemo' per a optimitzar el filtratge de productes. La llista només es
+    // recalcularà si canvien els productes inicials o algun dels filtres.
     const filteredProducts = useMemo(() => {
         return initialProducts
-            .filter(p => p.is_active)
-            .filter(p => {
-                if (categoryFilter === "Totes") return true;
-                return p.category === categoryFilter;
-            })
-            .filter(p => {
-                if (!searchTerm) return true;
-                return p.name.toLowerCase().includes(searchTerm.toLowerCase());
-            });
+            .filter(p => p.is_active) // Per defecte, només mostrem els productes actius.
+            .filter(p => categoryFilter === "Totes" || p.category === categoryFilter)
+            .filter(p => !searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [initialProducts, categoryFilter, searchTerm]);
 
+    // Funcions per gestionar les accions de l'usuari.
     const handleEdit = (product: Product) => {
         setSelectedProduct(product);
         setFormOpen(true);
@@ -56,8 +62,8 @@ export function ProductsClient({ initialProducts }: { initialProducts: Product[]
 
     const handleDelete = async (id: string) => {
         const result = await deleteProduct(id);
-        toast.success('Exit!', { description: 'Producte eliminat correctament.' });
-
+        // Aquí podríem afegir una gestió d'errors més detallada si calgués.
+        toast.success('Èxit!', { description: 'Producte eliminat correctament.' });
     };
 
     return (

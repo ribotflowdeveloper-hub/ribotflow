@@ -27,8 +27,9 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
-// --- Sub-components (internal to this file) ---
-const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
+/**
+ * Mostra una etiqueta d'estat acolorida. Reutilitzable per a pressupostos, oportunitats, etc.
+ */const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
     let colorClass = 'bg-muted text-muted-foreground';
     
     // ✅ CORRECTION: Initialize text with a safe default
@@ -47,7 +48,9 @@ const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
     }
     return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorClass}`}>{text}</span>;
 };
-
+/**
+ * Un 'trigger' de pestanya que inclou una icona i un comptador de resultats.
+ */
 const TabTriggerWithCount: FC<{ value: string, icon: ElementType, count: number, label: string }> = ({ value, icon: Icon, count, label }) => (
     <TabsTrigger value={value} className="flex items-center gap-2 text-sm px-4">
         <Icon className="w-4 h-4" />
@@ -55,19 +58,33 @@ const TabTriggerWithCount: FC<{ value: string, icon: ElementType, count: number,
         {count > 0 && <span className="ml-1 px-2 py-0.5 text-xs font-bold rounded-full bg-primary/20 text-primary">{count}</span>}
     </TabsTrigger>
 );
-
+// Definim les propietats que rep el component principal.
 interface ContactDetailClientProps {
-  initialContact: Contact;
-  initialRelatedData: { quotes: Quote[]; opportunities: Opportunity[]; invoices: Invoice[]; activities: Activity[]; };
+  initialContact: Contact; // Les dades inicials del contacte, carregades al servidor.
+  initialRelatedData: { // Dades relacionades amb aquest contacte (pressupostos, factures, etc.).
+    quotes: Quote[];
+    opportunities: Opportunity[];
+    invoices: Invoice[];
+    activities: Activity[];
+  };
 }
-
+/**
+ * Component de Client per a la pàgina de detall d'un contacte.
+ * Gestiona tota la interactivitat, incloent:
+ * - La visualització de dades en pestanyes.
+ * - Un mode d'edició per modificar les dades del contacte.
+ * - La crida a les accions per desar o eliminar el contacte.
+ */
 export function ContactDetailClient({ initialContact, initialRelatedData }: ContactDetailClientProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [isEditing, setIsEditing] = useState(false);
-  const [contact, setContact] = useState(initialContact);
-  const formRef = React.useRef<HTMLFormElement>(null);
-
+  const [isPending, startTransition] = useTransition(); // Estat de càrrega per a les accions.
+  const [isEditing, setIsEditing] = useState(false); // Booleà que controla si estem en mode vista o edició.
+  const [contact, setContact] = useState(initialContact); // Estat local per a les dades del contacte.
+  const formRef = React.useRef<HTMLFormElement>(null);// Referència al formulari per poder resetejar-lo.
+  /**
+   * Gestiona el desat dels canvis del formulari d'edició.
+   * Crida la Server Action 'updateContactAction'.
+   */
   const handleSaveChanges = (formData: FormData) => {
     startTransition(async () => {
       const { data, error } = await updateContactAction(contact.id, formData);
@@ -75,26 +92,34 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
         toast.error('Error',{ description: error.message} );
       } else if (data) {
         toast.success('Èxit!',{description: 'Contacte actualitzat.'}  );
-        setContact(data as Contact);
-        setIsEditing(false);
+        setContact(data as Contact); // Actualitzem l'estat local amb les noves dades.
+        setIsEditing(false); // Tornem al mode de visualització.
       }
     });
   };
+   /**
+   * Gestiona l'eliminació del contacte.
+   * Crida la Server Action 'deleteContactAction'.
+   */
   const handleDelete = () => {
     if (!confirm("Segur que vols eliminar aquest contacte? Aquesta acció no es pot desfer.")) {
       return;
     }
-    
+      // La confirmació es gestiona ara amb un diàleg modal. Aquesta funció es crida
+    // des del botó de confirmació del diàleg.
     startTransition(async () => {
       const res = await deleteContactAction(contact.id);
       if (!res.success) {
         toast.error('Error', {description: res.message });
       } else {
         toast.success('Èxit!', {description: 'El contacte ha estat eliminat correctament.' });
-        router.push('/crm/contactes');
+        router.push('/crm/contactes'); // Redirigim a la llista de contactes.
       }
     });
   };
+    /**
+   * Cancel·la el mode d'edició i reseteja el formulari als seus valors originals.
+   */
   const handleCancelEdit = () => {
     setIsEditing(false);
     formRef.current?.reset();

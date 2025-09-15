@@ -1,12 +1,18 @@
-/* === FONT & TAILWIND === */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
+/* Aquestes són les directives de Tailwind CSS. Injecten els estils base,
+   els components i les utilitats de Tailwind al teu projecte. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* === COLORS I VARIABLES === */
+/* La directiva '@layer base' ens permet definir estils base o per defecte. */
 @layer base {
+  /* ':root' defineix variables CSS globals per al tema clar (light mode).
+     Aquestes variables són compatibles amb el sistema de theming de shadcn/ui.
+     Estan definides en format HSL (Hue, Saturation, Lightness) sense les unitats,
+     perquè Tailwind/shadcn pugui aplicar opacitat dinàmicament (ex: bg-primary/50). */
   :root {
     --background: 0 0% 98%;
     --foreground: 230 15% 10%;
@@ -30,6 +36,8 @@
     --radius: 0.75rem;
   }
 
+  /* La classe '.dark' s'aplica a l'etiqueta <html> quan el tema fosc està actiu.
+  Aquí sobreescrivim les mateixes variables CSS amb els seus valors per al tema fosc. */
   .dark {
     --background: 230 15% 8%;
     --foreground: 230 15% 92%;
@@ -52,7 +60,7 @@
     --ring: 262 83% 58%;
   }
 
-  /* ===== LA SOLUCIÓ ÉS AQUÍ ===== */
+  /* Estils globals per a les etiquetes principals. */
   html,
   body,
   #root {
@@ -61,18 +69,23 @@
     overflow-x: hidden; /* Evita el scroll horitzontal no desitjat */
   }
   /* ================================ */
-
+  
+  /* Apliquem la vora per defecte a tots els elements i un desplaçament suau. */
   * {
     @apply border-border scroll-smooth;
   }
-
+  
+  /* Estils per al <body> de l'aplicació. */
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
     /* Hem tret min-h-screen perquè ara tenim height: 100% a dalt */
   }
 }
+/* === EFECTES I ESTILS PERSONALITZATS === */
+/* Aquestes són classes personalitzades que pots utilitzar a qualsevol lloc de l'aplicació. */
 
+/* Efecte de vidre translúcid (Glassmorphism). */
 /* === GLASS & GRADIENTS === */
 .glass-effect {
   @apply backdrop-blur-xl border border-black/10 rounded-xl bg-white/5;
@@ -94,6 +107,10 @@
 }
 
 /* === SIDEBAR === */
+/* === COMPONENTS PERSONALITZATS === */
+/* Aquí definim classes per a components reutilitzables que no formen part de shadcn/ui. */
+
+/* Estil per a un element de la barra lateral. */
 .sidebar-item {
   @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 bg-white/5 hover:bg-white/10 cursor-pointer;
 }
@@ -136,6 +153,10 @@
 }
 
 /* === EFECTES ANIMATS === */
+/* === EFECTES ANIMATS === */
+/* Definim animacions reutilitzables amb keyframes. */
+
+/* Animació per fer que un element "floti" amunt i avall. */
 .floating-animation {
   animation: floating 6s ease-in-out infinite;
 }
@@ -144,6 +165,7 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
 }
+/* Animació que crea una brillantor que palpita. */
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite alternate;
 }
@@ -162,7 +184,9 @@
 .filter-button:not(.active) {
   @apply bg-white/10 text-gray-300 hover:bg-white/20;
 }
-/* src/app/globals.css */
+/* === ESTILS PER A LLIBRERIES EXTERNES === */
+
+/* Estils per personalitzar els popups de la llibreria MapboxGL. */
 .mapboxgl-popup-content {
   background-color: #1f2937; /* Un gris fosc, ajusta'l al teu color */
   color: #ffffff;
@@ -198,7 +222,7 @@
   background-color: #374151; /* gray-700 */
 }
 
-/* Estil personalitzat per a la barra de desplaçament */
+/* Estil personalitzat per a les barres de desplaçament (scrollbars). */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
 }
@@ -251,8 +275,11 @@ input[type="range"].slider::-moz-range-thumb {
 .text-muted-strong {
   color: hsl(220, 10%, 35%);
 }
-
+/* === ESTILS PER AL CONTINGUT HTML (Ex: Emails, Previsualitzacions) === */
+/* La directiva '@layer components' s'utilitza per definir classes de components més complexes. */
 @layer components {
+  /* La classe 'prose-email' està dissenyada per estilitzar contingut HTML
+     que no controlem directament (com el cos d'un correu electrònic). */
   .prose-email {
     /* NOU: Forcem que les paraules llargues es puguin trencar */
     @apply break-words;
@@ -272,7 +299,8 @@ input[type="range"].slider::-moz-range-thumb {
 
   /* ===== NOU: Regles per domesticar el contingut intern ===== */
 
-  /* Imatges, vídeos i iframes mai seran més amples que el contenidor */
+  /* Regles per assegurar que imatges, vídeos o taules dins d'un correu
+     no siguin més grans que el seu contenidor i es vegin bé. */
   .prose-email img,
   .prose-email video,
   .prose-email iframe {

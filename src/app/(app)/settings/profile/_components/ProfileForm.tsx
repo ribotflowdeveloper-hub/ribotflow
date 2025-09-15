@@ -1,9 +1,16 @@
+/**
+ * @file ProfileForm.tsx
+ * @summary Aquest fitxer conté el component de client que gestiona tota la interfície interactiva
+ * per a l'edició del perfil de l'usuari. S'encarrega de renderitzar el formulari, gestionar
+ * l'estat dels camps, la pujada del logo i la comunicació amb les Server Actions per desar els canvis.
+ */
+
 "use client";
 
 import React, { useState, useTransition, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from "@/components/ui/button";
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Upload } from "lucide-react";
 import { Label } from '@/components/ui/label';
@@ -14,25 +21,24 @@ import { createClient } from '@/lib/supabase/client';
 import Image from 'next/image';
 import { updateProfileAction, updateProfileVisibilityAction } from '../actions';
 
-// Definim una interfície completa per al perfil.
+// Definim una interfície completa per a l'objecte de perfil.
 interface Profile {
-    id: string; 
+    id: string; 
     full_name: string | null;
     company_name: string | null;
-    summary: string | null;
-    company_phone: string | null;
-    services: string[] | null;
-    street: string | null;
-    city: string | null;
-    postal_code: string | null;
-    region: string | null;
-    country: string | null;
-    is_public_profile: boolean | null;
-    // ✅ NOU: Camps de facturació
-    company_tax_id: string | null;
-    company_address: string | null;
-    company_email: string | null;
-    logo_url: string | null;
+    summary: string | null;
+    company_phone: string | null;
+    services: string[] | null;
+    street: string | null;
+    city: string | null;
+    postal_code: string | null;
+    region: string | null;
+    country: string | null;
+    is_public_profile: boolean | null;
+    company_tax_id: string | null;
+    company_address: string | null;
+    company_email: string | null;
+    logo_url: string | null;
 }
 
 interface ProfileFormProps {
@@ -41,65 +47,74 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ profile, email }: ProfileFormProps) {
-  const supabase = createClient();
-  const [isPending, startTransition] = useTransition();
-  const [isSwitchSaving, setIsSwitchSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  // ✅ NOU: Estat local per gestionar els canvis del formulari, especialment el logo.
-  const [localProfile, setLocalProfile] = useState<Profile>(profile);
+  const supabase = createClient();
+  const [isPending, startTransition] = useTransition(); // Hook per a l'estat de càrrega principal del formulari.
+  const [isSwitchSaving, setIsSwitchSaving] = useState(false); // Estat de càrrega específic per a l'interruptor d'autodesat.
+  const [isUploading, setIsUploading] = useState(false); // Estat de càrrega per a la pujada del logo.
+  const [localProfile, setLocalProfile] = useState<Profile>(profile); // Estat local per a una gestió més flexible del formulari, especialment per al logo.
 
-  // Mantenim l'estat local sincronitzat si les props canvien.
-  useEffect(() => {
-    setLocalProfile(profile);
-  }, [profile]);
+  // Aquest efecte sincronitza l'estat local si les dades inicials canvien (ex: després d'un 'router.refresh()').
+  useEffect(() => {
+    setLocalProfile(profile);
+  }, [profile]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setLocalProfile(prev => ({ ...prev, [name]: value }));
-  };
-  
-  // ✅ NOU: Funció per pujar el logo directament a Supabase Storage.
-  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  // Gestor de canvis genèric per als camps d'input i textarea.
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setLocalProfile(prev => ({ ...prev, [name]: value }));
+  };
+  
+  /**
+   * @summary Puja el logo a Supabase Storage i actualitza l'estat local amb la nova URL.
+   */
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    setIsUploading(true);
-    const filePath = `${profile.id}/logo-${Date.now()}`;
-    const { error } = await supabase.storage.from('logos').upload(filePath, file, { upsert: true });
+    setIsUploading(true);
+    const filePath = `${profile.id}/logo-${Date.now()}`;
+    const { error } = await supabase.storage.from('logos').upload(filePath, file, { upsert: true });
 
-    if (error) {
-      toast.error('Error', { description: 'No s\'ha pogut pujar el logo.' });
-    } else {
-      const { data } = supabase.storage.from('logos').getPublicUrl(filePath);
-      setLocalProfile(p => ({ ...p, logo_url: data.publicUrl }));
-      toast.success('Logo pujat!', { description: 'Recorda desar els canvis per aplicar-lo.' });
-    }
-    setIsUploading(false);
-  };
+    if (error) {
+      toast.error('Error', { description: 'No s\'ha pogut pujar el logo.' });
+    } else {
+      const { data } = supabase.storage.from('logos').getPublicUrl(filePath);
+      // Actualitzem l'estat local amb la nova URL, que es mostrarà a la previsualització.
+      setLocalProfile(p => ({ ...p, logo_url: data.publicUrl }));
+      toast.success('Logo pujat!', { description: 'Recorda desar els canvis per aplicar-lo.' });
+    }
+    setIsUploading(false);
+  };
 
+  /**
+   * @summary Gestor per a l'enviament del formulari principal. Crida a la Server Action 'updateProfileAction'.
+   */
   const handleSubmit = (formData: FormData) => {
     startTransition(async () => {
-      // Afegim la URL del logo al FormData abans d'enviar-lo.
-      formData.set('logo_url', localProfile.logo_url || '');
+      // Injectem la URL del logo (que està a l'estat local) al FormData abans d'enviar-lo a l'acció.
+      formData.set('logo_url', localProfile.logo_url || '');
       const result = await updateProfileAction(formData);
       if (result.success) {
-      toast.success("Èxit!", { description: result.message });
+        toast.success("Èxit!", { description: result.message });
       } else {
-      toast.error("Error", { description: result.message });
+        toast.error("Error", { description: result.message });
       }
     });
   };
 
-  const handleVisibilityChange = async (isChecked: boolean) => {
-    setIsSwitchSaving(true);
-    const result = await updateProfileVisibilityAction(isChecked);
-    if (result.success) {
-      toast.success("Visibilitat actualitzada!", { description: result.message });
-    } else {
-      toast.error("Error", { description: result.message });
-    }
-    setIsSwitchSaving(false);
-  };
+  /**
+   * @summary Gestor per a l'autodesat de l'interruptor de visibilitat. Crida a 'updateProfileVisibilityAction'.
+   */
+  const handleVisibilityChange = async (isChecked: boolean) => {
+    setIsSwitchSaving(true);
+    const result = await updateProfileVisibilityAction(isChecked);
+    if (result.success) {
+      toast.success("Visibilitat actualitzada!", { description: result.message });
+    } else {
+      toast.error("Error", { description: result.message });
+    }
+    setIsSwitchSaving(false);
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

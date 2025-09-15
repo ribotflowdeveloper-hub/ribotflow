@@ -17,48 +17,74 @@ import { cn } from "@/lib/utils";
 import { type Invoice, type Contact, type InvoiceItem } from '../page';
 import { createOrUpdateInvoiceAction, type InvoiceFormData } from '../actions';
 
+/**
+ * Definim les propietats (props) que el nostre component de diàleg necessita per funcionar.
+ */
 interface InvoiceDialogProps {
-    isOpen: boolean;
-    onClose: () => void;
-    contacts: Contact[];
-    initialInvoice: Partial<Invoice>;
-    onSaveSuccess: () => void;
+    isOpen: boolean; // Controla si el diàleg és visible.
+    onClose: () => void; // Funció per tancar el diàleg des del component pare.
+    contacts: Contact[]; // Llista de contactes disponibles per al selector.
+    initialInvoice: Partial<Invoice>; // Dades inicials de la factura (pot ser un objecte parcial per a una nova factura).
+    onSaveSuccess: () => void; // Funció a executar quan la factura es desa correctament.
 }
 
+/**
+ * Aquest component gestiona el diàleg complet per crear o editar un esborrany de factura.
+ * Inclou la selecció de client, dates, gestió dinàmica de conceptes i càlculs automàtics.
+ */
 export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSaveSuccess }: InvoiceDialogProps) {
+    // Estat local per a les dades de la factura que s'està editant.
     const [invoice, setInvoice] = useState(initialInvoice);
+    // Estat de transició per mostrar un indicador de càrrega mentre es desa.
     const [isSaving, startSaveTransition] = useTransition();
+    // Estat per controlar la visibilitat del selector de contactes.
     const [comboboxOpen, setComboboxOpen] = useState(false);
 
+    /**
+     * Aquest 'useEffect' s'executa cada cop que la llista de conceptes ('invoice_items') canvia.
+     * La seva funció és recalcular automàticament el subtotal, els impostos i el total,
+     * mantenint les dades sempre sincronitzades i evitant errors de càlcul manuals.
+     */
     useEffect(() => {
         const items = invoice.invoice_items || [];
         const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 1) * Number(item.unit_price || 0)), 0);
-        const taxAmount = subtotal * 0.21;
+        const taxAmount = subtotal * 0.21; // Assumim un 21% d'IVA per defecte.
         const totalAmount = subtotal + taxAmount;
         setInvoice(prev => ({ ...prev, subtotal, tax_amount: taxAmount, total_amount: totalAmount }));
     }, [invoice.invoice_items]);
 
+    /**
+     * Funcions per a la gestió dinàmica dels conceptes de la factura.
+     */
+    // Actualitza un camp específic d'un concepte existent.
     const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
         const updatedItems = [...(invoice.invoice_items || [])];
         updatedItems[index] = { ...updatedItems[index], [field]: value };
         setInvoice(prev => ({ ...prev, invoice_items: updatedItems }));
     };
-
+    // Afegeix una nova línia de concepte buida.
     const addItem = () => {
         const newItem: InvoiceItem = { description: '', quantity: 1, unit_price: 0 };
         setInvoice(prev => ({ ...prev, invoice_items: [...(prev.invoice_items || []), newItem] }));
     };
-
+    // Elimina una línia de concepte per la seva posició.
     const removeItem = (index: number) => {
         setInvoice(prev => ({ ...prev, invoice_items: (prev.invoice_items || []).filter((_, i) => i !== index) }));
     };
 
+    /**
+     * S'executa en clicar el botó de desar.
+     * Valida les dades, les prepara per a l'enviament i crida la Server Action.
+     */
     const handleSave = () => {
+        // Validació del costat del client per a una resposta ràpida.
         if (!invoice.contact_id || !invoice.issue_date) {
             toast.error("Falten dades", { description: "Si us plau, selecciona un client i una data d'emissió." });
             return;
         }
         
+        // Construïm un objecte de dades segur que compleix amb el 'contracte' (InvoiceFormData)
+        // que espera la nostra Server Action.
         const invoiceDataToSend: InvoiceFormData = {
             id: invoice.id,
             contact_id: invoice.contact_id,
@@ -76,7 +102,7 @@ export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSav
             const result = await createOrUpdateInvoiceAction(invoiceDataToSend);
             if (result.success) {
                 toast.success('Èxit!', { description: result.message });
-                onSaveSuccess();
+                onSaveSuccess(); // Notifiquem al component pare que tot ha anat bé.
             } else {
                 toast.error('Error', { description: result.message });
             }

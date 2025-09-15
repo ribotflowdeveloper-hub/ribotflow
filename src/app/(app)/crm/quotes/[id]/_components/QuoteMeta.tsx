@@ -10,7 +10,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Quote, Contact } from '../page';
-
+/**
+ * Component per gestionar les metadades d'un pressupost:
+ * - El client associat.
+ * - El número de pressupost.
+ * - Les dates d'emissió i venciment.
+ */
 export const QuoteMeta = ({ quote, setQuote, contacts }: {
     quote: Quote;
     setQuote: React.Dispatch<React.SetStateAction<Quote>>;

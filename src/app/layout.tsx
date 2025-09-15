@@ -1,4 +1,12 @@
-// src/app/layout.tsx
+/**
+ * @file layout.tsx (Root Layout)
+ * @summary Aquest fitxer defineix el layout arrel de TOTA l'aplicació.
+ * És un Component de Servidor que embolcalla totes les pàgines. La seva funció és:
+ * 1. Definir l'estructura HTML bàsica (<html> i <body>).
+ * 2. Carregar estils globals i fonts.
+ * 3. Configurar les metadades per defecte per al SEO.
+ * 4. Implementar proveïdors de context globals, com el 'ThemeProvider' per al mode clar/fosc.
+ */
 import './globals.css'; // <--- AQUESTA LÍNIA ÉS LA MÉS IMPORTANT DE TOTES
 import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
@@ -10,7 +18,8 @@ const inter = Inter({ subsets: ['latin'] });
 
 // IMPORTANT: Canvia aquesta URL per la de la teva aplicació en producció
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://elteudomini.com';
-
+// L'objecte 'metadata' de Next.js s'utilitza per generar les etiquetes <head> de la pàgina
+// de manera automàtica i optimitzada per al SEO.
 export const metadata: Metadata = {
   title: {
     template: '%s | Ribot',
@@ -27,6 +36,7 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-touch-icon.png',
   },
+ // Metadades per a Open Graph (Facebook, LinkedIn, etc.).
   openGraph: {
     title: 'Ribot - El Teu CRM Intel·ligent',
     description: 'Simplifica la gestió del teu negoci. Clients, pressupostos i factures en un sol lloc.',
@@ -43,18 +53,20 @@ export const metadata: Metadata = {
     locale: 'ca_ES',
     type: 'website',
   },
+ // Metadades per a les targetes de Twitter.
   twitter: {
     card: 'summary_large_image',
     title: 'Ribot - El Teu CRM Intel·ligent',
     description: 'Gestiona els teus clients, projectes i factures de manera eficient.',
     images: [`${siteUrl}/og-image.jpg`],
   },
+  // Metadades per als robots dels motors de cerca.
   robots: {
     index: true,
     follow: true,
   },
 };
-
+// Dades estructurades (JSON-LD) per a l'organització. Ajuda a Google a entendre qui ets.
 const organizationSchema = {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -70,6 +82,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
+    // 'suppressHydrationWarning' és útil quan es fa servir 'next-themes' per evitar avisos a la consola.
     <html lang="ca" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider

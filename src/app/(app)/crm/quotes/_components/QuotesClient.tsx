@@ -1,57 +1,64 @@
-"use client";
+/**
+ * @file QuotesClient.tsx
+ * @summary Aquest fitxer conté el component de client que renderitza la llista principal de pressupostos.
+ * S'encarrega de mostrar les dades en una taula i de gestionar les interaccions de l'usuari,
+ * com l'eliminació d'un pressupost, mitjançant un diàleg de confirmació i una Server Action.
+ */
+
+"use client"; // És un component de client perquè gestiona l'estat de la UI (ex: el diàleg d'eliminació).
 
 import React, { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Loader2, Trash2, Edit } from 'lucide-react';
-import type { QuoteWithContact } from '../page'; // Importem el tipus definit a la pàgina
-import { deleteQuoteAction } from '../actions'; // Importem la nostra Server Action
+import type { QuoteWithContact } from '../page';
+import { deleteQuoteAction } from '../actions';
 
 export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContact[] }) {
 
-  // Estat per controlar quin pressupost es vol esborrar i mostrar el diàleg
-  const [quoteToDelete, setQuoteToDelete] = useState<QuoteWithContact | null>(null);
-  // Hook per gestionar l'estat de càrrega de la Server Action
-  const [isPending, startTransition] = useTransition();
+  // Estat per emmagatzemar el pressupost que s'està a punt d'eliminar. Controla la visibilitat de l'AlertDialog.
+  const [quoteToDelete, setQuoteToDelete] = useState<QuoteWithContact | null>(null);
+  // Hook per gestionar l'estat de càrrega de l'eliminació sense bloquejar la interfície.
+  const [isPending, startTransition] = useTransition();
 
-  const handleDelete = () => {
-    if (!quoteToDelete) return;
+  /**
+   * @summary Gestor per a l'eliminació d'un pressupost. S'executa quan l'usuari confirma al diàleg.
+   */
+  const handleDelete = () => {
+    if (!quoteToDelete) return;
 
-    startTransition(async () => {
-      const result = await deleteQuoteAction(quoteToDelete.id);
-      if (result.success) {
-        toast.success('Èxit!',{description: result.message}  );
-      } else {
-        toast.error('Error', {description: result.message });
-      }
-      setQuoteToDelete(null); // Tanquem el diàleg
-    });
-  };
+    // 'startTransition' embolcalla l'acció asíncrona. Mentre s'executa, 'isPending' serà true.
+    startTransition(async () => {
+      const result = await deleteQuoteAction(quoteToDelete.id); // Cridem a la Server Action.
+      if (result.success) {
+        toast.success('Èxit!',{description: result.message}  );
+      } else {
+        toast.error('Error', {description: result.message });
+      }
+      setQuoteToDelete(null); // Tanquem el diàleg un cop finalitzada l'acció.
+    });
+  };
 
-  const getStatusInfo = (status: QuoteWithContact['status']) => {
-    switch (status) {
-      case 'Draft': return { text: 'Esborrany', color: 'bg-yellow-100 text-yellow-800' };
-      case 'Sent': return { text: 'Enviat', color: 'bg-blue-100 text-blue-800' };
-      case 'Accepted': return { text: 'Acceptat', color: 'bg-green-300 text-green-800' };
-      case 'Declined': return { text: 'Rebutjat', color: 'bg-red-100 text-red-800' };
-      default: return { text: status || 'Desconegut', color: 'bg-gray-100 text-gray-800' };
-    }
-  };
+  /**
+   * @summary Funció auxiliar per obtenir l'estil i el text d'un estat de pressupost.
+   * @param {QuoteWithContact['status']} status - L'estat del pressupost.
+   * @returns {{ text: string; color: string; }} Un objecte amb el text traduït i la classe de color.
+   */
+  const getStatusInfo = (status: QuoteWithContact['status']) => {
+    switch (status) {
+      case 'Draft': return { text: 'Esborrany', color: 'bg-yellow-100 text-yellow-800' };
+      case 'Sent': return { text: 'Enviat', color: 'bg-blue-100 text-blue-800' };
+      case 'Accepted': return { text: 'Acceptat', color: 'bg-green-300 text-green-800' };
+      case 'Declined': return { text: 'Rebutjat', color: 'bg-red-100 text-red-800' };
+      default: return { text: status || 'Desconegut', color: 'bg-gray-100 text-gray-800' };
+    }
+  };
 
-  return (
+  return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <div className="glass-card">

@@ -1,3 +1,9 @@
+/**
+ * @file ThemeSwitcher.tsx
+ * @summary Aquest és un component de client dedicat a gestionar el canvi de tema (clar/fosc).
+ * Utilitza la llibreria `next-themes` per a una gestió senzilla i eficient del tema.
+ */
+
 "use client";
 
 import * as React from "react";
@@ -7,13 +13,18 @@ import { Button } from "@/components/ui/button";
 import { Sun, Moon } from "lucide-react";
 
 export function ThemeSwitcher() {
-  const [mounted, setMounted] = useState(false);
-  const { theme, setTheme } = useTheme();
+  // Aquest estat 'mounted' és una pràctica recomanada amb 'next-themes'.
+  // Evita que el component es renderitzi al servidor amb un tema i després canviï bruscament al client
+  // (un problema conegut com a "hydration mismatch").
+  const [mounted, setMounted] = useState(false);
+  const { theme, setTheme } = useTheme(); // Hook de la llibreria per obtenir i canviar el tema.
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
+  // Quan el component es munta al client, actualitzem l'estat.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  // Mentre el component no estigui muntat al client, mostrem uns placeholders.
+  // Això evita el "hydration mismatch" i el canvi de layout (Layout Shift), millorant l'experiència de l'usuari.
   if (!mounted) {
     // Retorna un placeholder per evitar canvis de layout (Layout Shift)
     return (
@@ -23,7 +34,7 @@ export function ThemeSwitcher() {
       </div>
     );
   }
-
+  // Un cop muntat, mostrem els botons reals.
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-sm">
       <Button

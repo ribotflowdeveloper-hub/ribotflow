@@ -15,7 +15,11 @@ import type { Ticket, Template } from '../page';
 import { deleteTicketAction, markTicketAsReadAction, saveSenderAsContactAction } from '../actions';
 import { ComposeDialog } from './ComposeDialog';
 
-
+/**
+ * Funció utilitària per formatejar les dates dels correus.
+ * Si el correu és d'avui, mostra l'hora (ex: "14:30").
+ * Si és d'un altre dia, mostra el dia i el mes (ex: "15 set.").
+ */
 const formatTicketDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -28,12 +32,20 @@ const formatTicketDate = (dateString: string) => {
         return date.toLocaleDateString('ca-ES', { day: 'numeric', month: 'short' });
     }
 };
-
+/**
+ * Component principal de la Safata d'Entrada.
+ * Gestiona tota la lògica i la interactivitat de la pàgina:
+ * - Mostra la llista de correus (tickets).
+ * - Permet seleccionar i visualitzar un correu.
+ * - Gestiona la resposta, eliminació i arxivat de correus.
+ * - S'adapta a vistes d'escriptori i mòbil.
+ */
 export function InboxClient({ initialTickets, initialTemplates }: {
     initialTickets: Ticket[];
     initialTemplates: Template[];
 }) {
-    
+    // Hooks de React per gestionar l'estat del component.
+
     const router = useRouter();
     const [tickets, setTickets] = useState(initialTickets);
     const [templates] = useState(initialTemplates);
@@ -43,7 +55,7 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     const [activeFilter, setActiveFilter] = useState('rebuts');
     
 
-      
+    // Estat per al diàleg de composició de correu.
     const [composeState, setComposeState] = useState<{
     open: boolean;
     initialData: InitialData | null;
@@ -51,8 +63,14 @@ export function InboxClient({ initialTickets, initialTemplates }: {
     open: false,
     initialData: null
     });       
+// 'useTransition' és un hook de React per gestionar estats de càrrega sense bloquejar la interfície.
+    // 'isPending' serà cert mentre les accions dins de 'startTransition' s'estan executant.
     const [isPending, startTransition] = useTransition();
 
+     /**
+     * Aquest 'useEffect' gestiona la selecció automàtica d'un correu en la vista d'escriptori.
+     * Si no hi ha cap correu seleccionat, selecciona el primer de la llista per evitar una pantalla buida.
+     */
     useEffect(() => {
         const currentSelectedTicketStillExists = selectedTicket && tickets.some(t => t.id === selectedTicket.id);
         
@@ -67,6 +85,11 @@ export function InboxClient({ initialTickets, initialTemplates }: {
         }
     }, [isDesktop, tickets, selectedTicket]);
     
+     /**
+     * S'executa quan l'usuari clica un correu de la llista.
+     * Estableix el correu seleccionat i, si estava "Obert", el marca com a "Llegit" visualment
+     * i crida una Server Action per actualitzar-lo a la base de dades.
+     */
     const handleSelectTicket = (ticket: Ticket) => {
         setSelectedTicket(ticket);
         if (ticket.status === 'Obert') {
@@ -76,9 +99,13 @@ export function InboxClient({ initialTickets, initialTemplates }: {
             });
         }
     };
-
+    /**
+     * Gestiona l'eliminació d'un correu. Es crida des del diàleg de confirmació.
+     */
     const handleDeleteTicket = () => {
         if (!ticketToDelete) return;
+
+        // Envolviquem l'acció asíncrona amb 'startTransition' per mostrar un estat de càrrega.
         startTransition(async () => {
             const result = await deleteTicketAction(ticketToDelete.id);
             if (result.success) {
@@ -90,7 +117,9 @@ export function InboxClient({ initialTickets, initialTemplates }: {
             }
         });
     };
-
+ /**
+     * Guarda el remitent d'un correu com a nou contacte al CRM.
+     */
     const handleSaveContact = (ticket: Ticket) => {
         startTransition(async () => {
             const result = await saveSenderAsContactAction(ticket);
@@ -102,9 +131,10 @@ export function InboxClient({ initialTickets, initialTemplates }: {
             }
         });
     };
-
+    
+    // Funcions per obrir el diàleg de composició (correu nou o resposta).
     const handleComposeNew = () => setComposeState({ open: true, initialData: null });
-
+  
     const handleReply = (ticket: Ticket) => {
         if (!ticket) return;
         const quotedBody = `<br><br><br><p>--- El ${new Date(ticket.sent_at).toLocaleString('ca-ES')} ${ticket.contacts?.nom || ticket.sender_name || ''} va escriure ---</p><blockquote>${ticket.body}</blockquote>`;
@@ -120,21 +150,31 @@ export function InboxClient({ initialTickets, initialTemplates }: {
           
           
     };
-
+  /**
+     * Refresca manualment les dades de la safata d'entrada i mostra una notificació.
+     */
     const handleRefresh = () => {
         startTransition(() => {
             router.refresh();
             toast.info('Safata actualitzada');
         });
     };
-
+ /**
+     * 'useMemo' s'utilitza per a optimitzar càlculs.
+     * Aquest hook calcula els comptadors de correus (totals, no llegits, etc.)
+     * i només es torna a executar si la llista de 'tickets' canvia.
+     */
     const counts = useMemo(() => {
         const received = tickets.filter(t => t.type === 'rebut' || !t.type);
         const sent = tickets.filter(t => t.type === 'enviat');
         const unread = received.filter(t => t.status === 'Obert').length;
         return { all: tickets.length, received: received.length, sent: sent.length, unread };
     }, [tickets]);
-
+ /**
+     * Aquest altre 'useMemo' filtra la llista de correus segons el filtre actiu.
+     * És més eficient que filtrar dins del JSX, ja que només es recalcula quan
+     * 'tickets' o 'activeFilter' canvien.
+     */
     const filteredTickets = useMemo(() => tickets.filter(ticket => {
         if (activeFilter === 'tots') return true;
         if (activeFilter === 'rebuts') return ticket.type === 'rebut' || !ticket.type;
@@ -142,7 +182,8 @@ export function InboxClient({ initialTickets, initialTemplates }: {
         return true;
     }), [tickets, activeFilter]);
 
-
+ // A partir d'aquí, definim els sub-components per a les diferents vistes
+    // i finalment el JSX principal que decideix quina vista mostrar.
     const TicketList = ({ tickets: ticketList }: { tickets: Ticket[]}) => (
         <div className="flex-1 overflow-y-auto">
             {ticketList.length > 0 ? ticketList.map(ticket => (
@@ -218,7 +259,8 @@ export function InboxClient({ initialTickets, initialTemplates }: {
             </div>
         </div>
     );
-
+    
+    {/* Es decideix quina disposició mostrar (escriptori o mòbil) basant-se en l'amplada de la pantalla */}
     const MobileAndTabletLayout = () => (
         <div className="flex h-full w-full overflow-hidden relative">
             <div className={`w-full flex-col flex-shrink-0 ${selectedTicket ? 'hidden' : 'flex'}`}>

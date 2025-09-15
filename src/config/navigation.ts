@@ -13,7 +13,8 @@ import {
   Bot,
   BookPlus,
   Settings,
-  Users
+  Users,
+  Workflow
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -83,6 +84,14 @@ export const navModules: NavItem[] = [
     label: 'Xarxa Professional',
     icon: Users, // O una altra icona que t'agradi
     path: '/network',
+    isSingle: true
+  },
+  // 👇 2. AFEGEIX AQUEST BLOC NOU AQUÍ 👇
+  {
+    id: 'projectStrocture',
+    label: 'Arquitectura',
+    icon: Workflow,
+    path: '/projectStrocture',
     isSingle: true
   },
 ];

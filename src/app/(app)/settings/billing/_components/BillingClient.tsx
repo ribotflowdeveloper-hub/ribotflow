@@ -1,69 +1,60 @@
-// Ruta del fitxer: src/app/(app)/settings/billing/_components/BillingClient.tsx
+/**
+ * @file BillingClient.tsx
+ * @summary Aquest fitxer conté el component de client que gestiona tota la interfície interactiva
+ * de la pàgina de Facturació i Plans. S'encarrega de mostrar els plans disponibles,
+ * gestionar el canvi entre facturació mensual i anual, i mostrar la informació del pla actual de l'usuari.
+ */
+
 "use client";
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Check, Gift, Star, Gem, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Definim el tipus de dades per a un pla.
 type Plan = {
-  name: string;
-  iconName: string; 
-  priceMonthly: number | null;
-  priceYearly: number | null;
-  description: string;
-  features: string[];
-  isPopular?: boolean;
-  isCurrent?: boolean;
-  colors: {
-    border: string;
-    text: string;
-    bg: string;
-    hoverBg: string;
-  }
+  name: string;
+  iconName: string; // Passem el nom de la icona en lloc del component per a una millor serialització.
+  priceMonthly: number | null;
+  priceYearly: number | null;
+  description: string;
+  features: string[];
+  isPopular?: boolean;
+  isCurrent?: boolean;
+  colors: { border: string; text: string; bg: string; hoverBg: string; }
 };
 
+/** @summary Un component d'ajuda per renderitzar la icona correcta basant-se en el seu nom. */
 const PlanIcon = ({ name, className }: { name: string; className?: string }) => {
-  switch (name) {
-    case 'Gift': return <Gift className={className} />;
-    case 'Star': return <Star className={className} />;
-    case 'Gem': return <Gem className={className} />;
-    case 'Settings': return <Settings className={className} />;
-    default: return null;
-  }
+  switch (name) {
+    case 'Gift': return <Gift className={className} />;
+    case 'Star': return <Star className={className} />;
+    case 'Gem': return <Gem className={className} />;
+    case 'Settings': return <Settings className={className} />;
+    default: return null;
+  }
 };
 
 export function BillingClient({ plans }: { plans: Plan[] }) {
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  // Estat per controlar si la vista és mensual o anual.
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
 
-  const currentPlan = plans.find(p => p.isCurrent);
-  
-  const renewalDate = new Date();
-  renewalDate.setDate(new Date().getDate() + 21);
+  // Trobem el pla actual de l'usuari a partir de les dades rebudes.
+  const currentPlan = plans.find(p => p.isCurrent);
+  
+  const renewalDate = new Date();
+  renewalDate.setDate(new Date().getDate() + 21); // Data de renovació simulada.
 
-  const handleSelectPlan = (planName: string) => {
-    toast.info("Funcionalitat no implementada", {
-      description: `Aviat podràs canviar al pla ${planName}.`,
-  });
-  };
-
-  const handleManageBilling = () => {
-    toast.info("Redireccionant...", {
-      description: "Aviat podràs gestionar les teves dades de facturació a través de Stripe.",
-  });
-  };
-
-  const handleCancelSubscription = () => {
-    toast.error("Pàgina de cancel·lació", {
-      description: "Aviat podràs cancel·lar la teva subscripció des d'aquí.",
-  });
-  };
-
+  // Gestors d'esdeveniments. Actualment mostren notificacions, ja que la integració amb Stripe no està implementada.
+  const handleSelectPlan = (planName: string) => { toast.info("Funcionalitat no implementada", { description: `Aviat podràs canviar al pla ${planName}.` }); };
+  const handleManageBilling = () => { toast.info("Redireccionant...", { description: "Aviat podràs gestionar les teves dades de facturació a través de Stripe." }); };
+  const handleCancelSubscription = () => { toast.error("Pàgina de cancel·lació", { description: "Aviat podràs cancel·lar la teva subscripció des d'aquí." }); };
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
       

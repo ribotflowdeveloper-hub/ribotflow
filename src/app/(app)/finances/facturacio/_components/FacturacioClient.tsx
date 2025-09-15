@@ -2,34 +2,52 @@
 
 import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+// Framer Motion per a animacions d'entrada.
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Loader2, Plus, Edit, Trash2, ShieldCheck } from 'lucide-react'; // ✅ Importem ShieldCheck
+import { Loader2, Plus, Edit, Trash2, ShieldCheck } from 'lucide-react';
+// 'date-fns' per a un format de dates robust i localitzat.
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
+// Importem els tipus de dades i les accions del servidor.
 import type { Invoice, Contact } from '../page';
 import { deleteInvoiceAction, issueInvoiceAction } from '../actions';
+// Importem el component dedicat per al diàleg d'edició.
 import { InvoiceDialog } from './InvoiceDialog';
 
+/**
+ * Component de Client principal per a la pàgina de Facturació.
+ * S'encarrega de:
+ * - Renderitzar la llista de factures.
+ * - Gestionar l'estat per obrir els diàlegs (crear/editar, eliminar, emetre).
+ * - Cridar les Server Actions corresponents a les accions de l'usuari.
+ */
 export function FacturacioClient({ initialInvoices, initialContacts }: {
     initialInvoices: Invoice[];
     initialContacts: Contact[];
 }) {
-    const router = useRouter();
-    const [isSaving, startSaveTransition] = useTransition();
+    const router = useRouter(); // Hook de Next.js per a la navegació i el refresc de dades.
+    const [isSaving, startSaveTransition] = useTransition(); // Estat de càrrega per a operacions (eliminar, emetre).
+    
+    // Estats per controlar la visibilitat dels diàlegs i les dades que gestionen.
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<Partial<Invoice> | null>(null);
     const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
     const [invoiceToIssue, setInvoiceToIssue] = useState<Invoice | null>(null);
 
+    /**
+     * Obre el diàleg per crear un nou esborrany o editar-ne un d'existent.
+     * Només permet editar factures que estiguin en estat 'Draft'.
+     */
     const handleOpenForm = (invoice: Invoice | null = null) => {
         if (invoice && invoice.status !== 'Draft') {
             toast.info("Acció no permesa", { description: "Les factures emeses o pagades no es poden editar." });
             return;
         }
+        // Si estem creant una nova factura, proporcionem valors per defecte.
         setEditingInvoice(invoice ? { ...invoice } : { 
             status: 'Draft', 
             issue_date: new Date().toISOString(),
@@ -39,12 +57,19 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         setIsFormOpen(true);
     };
 
+    /**
+     * Funció de callback que s'executa quan el diàleg d'edició es desa amb èxit.
+     * Tanca el diàleg i refresca les dades de la pàgina.
+     */
     const handleSaveSuccess = () => {
         setIsFormOpen(false);
         setEditingInvoice(null);
-        router.refresh();
+        router.refresh(); // Crida a Next.js per tornar a carregar les dades del servidor.
     };
 
+    /**
+     * Crida la Server Action per emetre una factura legal (Veri*factu).
+     */
     const handleIssueInvoice = () => {
         if (!invoiceToIssue) return;
         startSaveTransition(async () => {
@@ -59,6 +84,9 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         });
     };
 
+    /**
+     * Crida la Server Action per eliminar un esborrany de factura.
+     */
     const handleDelete = () => {
         if (!invoiceToDelete) return;
         startSaveTransition(async () => {
@@ -72,6 +100,11 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
             }
         });
     };
+    
+    /**
+     * Funció utilitària per retornar classes de CSS segons l'estat de la factura,
+     * permetent acolorir les etiquetes d'estat a la taula.
+     */
     
     const getStatusClass = (status: string | null) => {
         switch(status?.toLowerCase()) {
