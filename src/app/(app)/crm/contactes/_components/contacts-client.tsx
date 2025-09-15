@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { type Contact } from '@/types/crm'; // ✅ CORRECT
-import { CONTACT_STATUSES } from '@/types/crm'; // ✅ 1. Importa la constant!
+import { CONTACT_STATUS_DISPLAY } from '@/types/crm'; // ✅ 1. Importa la constant!
 
 import ContactCard from '@/components/contactes/ContactCard';
 import ContactTable from '@/components/contactes/ContactTable';
@@ -88,10 +88,9 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                                 <Select name="estat" defaultValue="Lead">
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        {/* ✅ 2. Fem un map sobre la constant per generar les opcions */}
-                                        {CONTACT_STATUSES.map(status => (
-                                            <SelectItem key={status} value={status}>
-                                                {status}
+                                        {Object.entries(CONTACT_STATUS_DISPLAY).map(([key, label]) => (
+                                            <SelectItem key={key} value={key}>
+                                                {label}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

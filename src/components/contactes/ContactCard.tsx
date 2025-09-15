@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { User, Building, Mail, Phone, Euro, Star } from 'lucide-react';
 // Importem el tipus de dades 'Contact' per a la seguretat de tipus.
 import type { Contact } from '@/types/crm';
+import { CONTACT_STATUS_DISPLAY, ContactStatusKey } from '@/types/crm';
 
 // Definim les propietats (props) que el nostre component espera rebre.
 interface ContactCardProps {
@@ -54,7 +55,7 @@ const ContactCard: React.FC<ContactCardProps> = ({ contact, onClick }) => (
         {/* L'etiqueta d'estat ('Badge') obté el seu color d'una classe CSS dinàmica
             definida a 'globals.css' (ex: .status-lead, .status-client). */}
         <span className={`status-badge status-${contact.estat?.toLowerCase()} shrink-0`}>
-          {contact.estat}
+          {CONTACT_STATUS_DISPLAY[contact.estat as ContactStatusKey]}
         </span>
       </div>
       {/* Informació de contacte addicional */}

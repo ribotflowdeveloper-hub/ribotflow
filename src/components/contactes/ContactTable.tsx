@@ -5,6 +5,7 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { User } from 'lucide-react';
 import type { Contact } from '@/types/crm';
+import { CONTACT_STATUS_DISPLAY, ContactStatusKey } from '@/types/crm';
 
 // Definim les propietats que el component espera.
 interface ContactTableProps {
@@ -47,7 +48,7 @@ const ContactTable: React.FC<ContactTableProps> = ({ contacts, onRowClick }) => 
               </TableCell>
               <TableCell>
                 {/* L'etiqueta d'estat obté el seu color de les classes CSS globals. */}
-                <span className={`status-badge status-${contact.estat?.toLowerCase()}`}>{contact.estat}</span>
+                <span className={`status-badge status-${contact.estat?.toLowerCase()}`}>{CONTACT_STATUS_DISPLAY[contact.estat as ContactStatusKey]}</span>
               </TableCell>
               <TableCell className="text-muted-foreground">{contact.email}</TableCell>
               <TableCell className="text-muted-foreground">{contact.telefon || '-'}</TableCell>

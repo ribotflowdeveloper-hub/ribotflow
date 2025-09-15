@@ -18,6 +18,7 @@ import { ca } from 'date-fns/locale';
 import { deleteContactAction, updateContactAction } from './actions';
 import { type Contact, type Quote, type Opportunity, type Invoice, type Activity } from '@/types/crm'; // Use central types
 import { Trash } from "lucide-react";
+import { CONTACT_STATUS_DISPLAY, ContactStatusKey } from '@/types/crm';
 import {
   Dialog,
   DialogContent,
@@ -123,7 +124,7 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
   const handleCancelEdit = () => {
     setIsEditing(false);
     formRef.current?.reset();
-  };
+  }; 
 
   return (
     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -254,16 +255,69 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                 
                 <TabsContent value="detalls" className="p-8 space-y-12">
                     <div>
-                        <h3 className="text-2xl font-bold mb-6">Informació General</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
-                            <div className="space-y-2"><Label>Email</Label>{isEditing ? (<Input name="email" type="email" defaultValue={contact.email || ''} className="text-lg p-2"/>) : (<p className="text-lg pt-2">{contact.email || '--'}</p>)}</div>
-                            <div className="space-y-2"><Label>Telèfon</Label>{isEditing ? (<Input name="telefon" defaultValue={contact.telefon || ''} className="text-lg p-2"/>) : (<p className="text-lg pt-2">{contact.telefon || '--'}</p>)}</div>
-                            <div className="space-y-2"><Label>Estat</Label>{isEditing ? (<Select name="estat" defaultValue={contact.estat}><SelectTrigger className="text-lg h-auto p-2"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Lead">Lead</SelectItem><SelectItem value="Actiu">Actiu</SelectItem><SelectItem value="Client">Client</SelectItem></SelectContent></Select>) : (<p className="text-lg pt-2">{contact.estat || '--'}</p>)}</div>
-                            <div className="space-y-2"><Label>Càrrec</Label>{isEditing ? (<Input name="job_title" defaultValue={contact.job_title || ''} className="text-lg p-2"/>) : (<p className="text-lg pt-2">{contact.job_title || '--'}</p>)}</div>
-                            <div className="space-y-2"><Label>Sector</Label>{isEditing ? (<Input name="industry" defaultValue={contact.industry || ''} className="text-lg p-2"/>) : (<p className="text-lg pt-2">{contact.industry || '--'}</p>)}</div>
-                            <div className="space-y-2"><Label>Origen del Lead</Label>{isEditing ? (<Input name="lead_source" defaultValue={contact.lead_source || ''} className="text-lg p-2"/>) : (<p className="text-lg pt-2">{contact.lead_source || '--'}</p>)}</div>
-                        </div>
-                    </div>
+    <h3 className="text-2xl font-bold mb-6">Informació General</h3>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
+        <div className="space-y-2">
+            <Label>Email</Label>
+            {isEditing ? (
+                <Input name="email" type="email" defaultValue={contact.email || ''} className="text-lg p-2" />
+            ) : (
+                <p className="text-lg pt-2">{contact.email || '--'}</p>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label>Telèfon</Label>
+            {isEditing ? (
+                <Input name="telefon" defaultValue={contact.telefon || ''} className="text-lg p-2" />
+            ) : (
+                <p className="text-lg pt-2">{contact.telefon || '--'}</p>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label>Estat</Label>
+            {isEditing ? (
+            <Select name="estat" defaultValue={contact.estat as ContactStatusKey}>
+                <SelectTrigger className="text-lg h-auto p-2">
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    {Object.entries(CONTACT_STATUS_DISPLAY).map(([key, label]) => (
+                        <SelectItem key={key} value={key}>
+                            {label}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        ) : (
+            <p className="text-lg pt-2">{CONTACT_STATUS_DISPLAY[contact.estat as ContactStatusKey] || '--'}</p>
+        )}
+        </div>
+        <div className="space-y-2">
+            <Label>Càrrec</Label>
+            {isEditing ? (
+                <Input name="job_title" defaultValue={contact.job_title || ''} className="text-lg p-2" />
+            ) : (
+                <p className="text-lg pt-2">{contact.job_title || '--'}</p>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label>Sector</Label>
+            {isEditing ? (
+                <Input name="industry" defaultValue={contact.industry || ''} className="text-lg p-2" />
+            ) : (
+                <p className="text-lg pt-2">{contact.industry || '--'}</p>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label>Origen del Lead</Label>
+            {isEditing ? (
+                <Input name="lead_source" defaultValue={contact.lead_source || ''} className="text-lg p-2" />
+            ) : (
+                <p className="text-lg pt-2">{contact.lead_source || '--'}</p>
+            )}
+        </div>
+    </div>
+</div>
                     <div>
                         <h3 className="text-2xl font-bold mb-6">Informació Personal</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
