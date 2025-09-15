@@ -1,16 +1,21 @@
 "use client";
 
 import React from 'react';
+// Importem els components de taula de shadcn/ui.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { User } from 'lucide-react';
-import type { Contact } from '@/types/crm'; // ✅ CANVI: Corregim la ruta de la importació
+import type { Contact } from '@/types/crm';
 
-// Define the component's props
+// Definim les propietats que el component espera.
 interface ContactTableProps {
-  contacts: Contact[];
-  onRowClick: (contact: Contact) => void;
+  contacts: Contact[]; // Un array amb tots els contactes a mostrar.
+  onRowClick: (contact: Contact) => void; // Funció a executar quan es clica una fila.
 }
 
+/**
+ * Component presentacional que renderitza una llista de contactes en format de taula.
+ * És una de les dues vistes disponibles a la pàgina de contactes.
+ */
 const ContactTable: React.FC<ContactTableProps> = ({ contacts, onRowClick }) => {
   return (
     <div className="glass-effect rounded-xl overflow-hidden">
@@ -21,14 +26,17 @@ const ContactTable: React.FC<ContactTableProps> = ({ contacts, onRowClick }) => 
             <TableHead>Estat</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Telèfon</TableHead>
+            {/* Aquesta columna només serà visible en pantalles mitjanes o més grans (md:table-cell).
+                És una tècnica de disseny responsiu per a taules. */}
             <TableHead className="hidden md:table-cell">Empresa</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
+          {/* Fem un 'map' sobre l'array de contactes per crear una fila ('TableRow') per a cada un. */}
           {contacts.map((contact) => (
             <TableRow 
-              key={contact.id} 
-              onClick={() => onRowClick(contact)}
+              key={contact.id} // La 'key' única és essencial per a l'optimització de React.
+              onClick={() => onRowClick(contact)} // L'acció de clic es propaga a tota la fila.
               className="border-b-white/10 hover:bg-white/5 cursor-pointer"
             >
               <TableCell className="font-medium flex items-center gap-3">
@@ -38,6 +46,7 @@ const ContactTable: React.FC<ContactTableProps> = ({ contacts, onRowClick }) => 
                 {contact.nom}
               </TableCell>
               <TableCell>
+                {/* L'etiqueta d'estat obté el seu color de les classes CSS globals. */}
                 <span className={`status-badge status-${contact.estat?.toLowerCase()}`}>{contact.estat}</span>
               </TableCell>
               <TableCell className="text-muted-foreground">{contact.email}</TableCell>

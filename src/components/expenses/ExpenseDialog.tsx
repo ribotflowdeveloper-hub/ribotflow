@@ -17,33 +17,46 @@ import { format } from "date-fns";
 import { ca } from "date-fns/locale";
 import { type Expense, type Supplier, type ExpenseItem } from '@/types/finances';
 import { saveExpenseAction, processOcrAction, uploadAttachmentAction } from '@/app/(app)/finances/despeses/_components/actions';
-
+// Definim les propietats que el component espera rebre.
 interface ExpenseDialogProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  initialData: Expense | null;
-  suppliers: Supplier[];
-}
+    isOpen: boolean;
+    setIsOpen: (isOpen: boolean) => void;
+    initialData: Expense | null; // Pot rebre una despesa per editar, o null per crear-ne una de nova.
+    suppliers: Supplier[]; // Llista de proveïdors per al selector.
+  }
 
 // Define a more flexible type for the form state
 type ExpenseFormState = Omit<Expense, 'id' | 'created_at' | 'user_id' | 'suppliers'> & { id?: string | null };
 
+// Funció que retorna un objecte de despesa buit, per a inicialitzar el formulari de creació.
 const getInitialExpenseState = (): ExpenseFormState => ({
     supplier_id: null, invoice_number: '', expense_date: new Date().toISOString(),
     category: '', description: '', notes: '', discount_amount: 0, tax_rate: 21,
     expense_items: [{ description: '', quantity: 1, unit_price: 0 }],
     expense_attachments: [], subtotal: 0, tax_amount: 0, total_amount: 0,
 });
-
+/**
+ * Component de diàleg per crear i editar despeses.
+ * És un component complex que gestiona:
+ * - Un formulari amb múltiples camps i selectors.
+ * - Lògica per afegir/eliminar línies de concepte dinàmicament.
+ * - Càlcul automàtic de totals.
+ * - Pujada d'arxius (OCR i adjunts manuals).
+ */
 export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initialData, suppliers }) => {
+     // Hooks de transició per gestionar els estats de càrrega de les diferents accions.
     const [isSaving, startSaveTransition] = useTransition();
     const [isProcessingOcr, startOcrTransition] = useTransition();
     const [isUploading, startUploadTransition] = useTransition();
-    
+    // Estat principal que emmagatzema totes les dades del formulari.
     const [currentExpense, setCurrentExpense] = useState<ExpenseFormState>(getInitialExpenseState());
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [comboboxOpen, setComboboxOpen] = useState(false);
 
+    /**
+     * 'useEffect' per inicialitzar o resetejar l'estat del diàleg cada cop que s'obre.
+     * Si rep 'initialData', carrega les dades per a edició. Si no, prepara un formulari buit.
+     */
     useEffect(() => {
         if (isOpen) {
             const expense = initialData ? { ...initialData } : getInitialExpenseState();
@@ -55,7 +68,10 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
             }
         }
     }, [initialData, isOpen, suppliers]);
-
+/**
+     * 'useEffect' per recalcular automàticament els totals (subtotal, impostos, total)
+     * cada cop que canvien els conceptes, el percentatge d'IVA o el descompte.
+     */
     useEffect(() => {
         const items = currentExpense.expense_items || [];
         const subtotal = items.reduce((acc, item) => acc + (Number(item.quantity || 0) * Number(item.unit_price || 0)), 0);
@@ -66,7 +82,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
         const totalAmount = baseImposable + taxAmount;
         setCurrentExpense(prev => ({ ...prev, subtotal, tax_amount: taxAmount, total_amount: totalAmount }));
     }, [currentExpense.expense_items, currentExpense.tax_rate, currentExpense.discount_amount]);
-
+// Funcions per a la gestió dinàmica de les línies de concepte.
     const handleItemChange = (index: number, field: keyof ExpenseItem, value: string | number) => {
         const updatedItems = [...currentExpense.expense_items];
         // @ts-expect-error: La propietat 'form' existeix a l'event, però el tipus no la inclou.
@@ -75,7 +91,10 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
     };
     const addItem = () => setCurrentExpense(prev => ({ ...prev, expense_items: [...prev.expense_items, { description: '', quantity: 1, unit_price: 0 }] }));
     const removeItem = (index: number) => setCurrentExpense(prev => ({ ...prev, expense_items: prev.expense_items.filter((_, i) => i !== index) }));
-
+/**
+     * Gestiona la pujada d'un arxiu (factura/tiquet) per a processament OCR amb IA.
+     * Crida la Server Action 'processOcrAction' i actualitza el formulari amb les dades extretes.
+     */
     const handleOcrUpload = (file: File | undefined) => {
         if (!file) return;
         const formData = new FormData();
@@ -114,7 +133,9 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
         
 
     };
-
+/**
+     * Gestiona la pujada manual d'un arxiu adjunt a una despesa ja existent.
+     */
     const handleAttachmentUpload = (file: File | undefined) => {
         if (!file || !initialData?.id) return;
         const formData = new FormData();
@@ -130,7 +151,10 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
             }
         });
     };
-
+/**
+     * Gestiona el desat final de la despesa (creació o actualització).
+     * Crida la Server Action 'saveExpenseAction'.
+     */
     const handleSave = () => {
         startSaveTransition(async () => {
             const { error } = await saveExpenseAction(currentExpense, initialData?.id || null);
