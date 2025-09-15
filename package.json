@@ -73,6 +73,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "vaul": "^1.1.2",
+    "xslx": "^1.0.0",
     "yet-another-react-lightbox": "^3.25.0",
     "zod": "^4.1.5"
   },
@@ -86,6 +87,7 @@
     "@types/prismjs": "^1.26.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/xlsx": "^0.0.35",
     "autoprefixer": "^10.4.21",
     "dotenv": "^17.2.2",
     "eslint": "^9",

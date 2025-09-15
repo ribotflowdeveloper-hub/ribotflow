@@ -14,9 +14,13 @@ import {
   BookPlus,
   Settings,
   Users,
-  Workflow
+  Workflow,
+  FileSpreadsheet,
+  FilePlus2, 
+  FileUp, 
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { fa } from 'zod/v4/locales';
 
 export interface NavItem {
   id: string;
@@ -93,6 +97,18 @@ export const navModules: NavItem[] = [
     icon: Workflow,
     path: '/projectStrocture',
     isSingle: true
+  },
+  {
+    id: 'excel',
+    label: 'Excel',
+    icon: FileSpreadsheet,
+    basePath: '/excel',
+    path: '/excel/create',
+    isSingle: false,
+    children: [
+      { id: 'CrearTemplate', label: 'Crear Plantilla', icon: FilePlus2, path: '/excel/create', isSingle: true },
+      { id: 'LoadFile', label: 'Carregar Fitxer', icon: FileUp, path: '/excel/upload', isSingle: true }, 
+    ]
   },
 ];
 
