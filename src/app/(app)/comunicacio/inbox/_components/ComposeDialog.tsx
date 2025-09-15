@@ -14,7 +14,6 @@ import { useEditor, EditorContent, Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import TextAlign from '@tiptap/extension-text-align';
 import { createClient } from '@/lib/supabase/client';
-
 import { sendEmailAction } from '../actions';
 import type { Template, Contact } from '../page';
 

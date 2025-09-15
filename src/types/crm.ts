@@ -1,4 +1,11 @@
 // Aquest fitxer serà l'única font de veritat per als tipus del CRM.
+// ✅ 1. Definim els estats com una constant exportable.
+// 'as const' és clau: converteix l'array en una tupla de només lectura amb tipus literals.
+export const CONTACT_STATUSES = ['Lead', 'Proveidor', 'Client'] as const;
+
+// ✅ 2. Creem un tipus a partir dels valors de la constant.
+// Això genera el tipus: 'Lead' | 'Proveidor' | 'Client'
+type ContactStatus = (typeof CONTACT_STATUSES)[number];
 
 export type QuoteItem = {
   id?: number;
@@ -38,7 +45,7 @@ export type Contact = {
   created_at?: string;
   email?: string | null;
   telefon?: string | null;
-  estat?: 'Lead' | 'Actiu' | 'Client';
+  estat?: ContactStatus;
   valor?: number | null;
   user_id?: string;
   job_title?: string | null;

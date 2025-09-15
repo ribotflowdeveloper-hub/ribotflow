@@ -10,22 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { type Contact } from '@/types/crm'; // ✅ CORRECT
+import { CONTACT_STATUSES } from '@/types/crm'; // ✅ 1. Importa la constant!
+
 import ContactCard from '@/components/contactes/ContactCard';
 import ContactTable from '@/components/contactes/ContactTable';
 import { createContactAction } from './actions';
 
-// Tipus per al formulari de nou contacte
-type NewContactForm = {
-  nom: string;
-  empresa: string;
-  email: string;
-  telefon: string;
-  estat: 'Lead' | 'Proveidor' | 'Client';
-  valor: number;
-};
-
-// ... (El tipus 'NewContactForm' que tenies aquí no és necessari, ja que el formulari
-// envia directament un 'FormData' a la Server Action)
 
 /**
  * Component principal i interactiu per a la pàgina de llista de contactes.
@@ -94,12 +84,16 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                                 <Input name="email" type="email" placeholder="Email" required />
                                 <Input name="telefon" placeholder="Telèfon" />
                                 <Input name="valor" type="number" placeholder="Valor (€)" defaultValue={0} />
+                                  {/* 👇 AQUÍ VE EL CANVI 👇 */}
                                 <Select name="estat" defaultValue="Lead">
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Lead">Lead</SelectItem>
-                                        <SelectItem value="Actiu">Actiu</SelectItem>
-                                        <SelectItem value="Client">Client</SelectItem>
+                                        {/* ✅ 2. Fem un map sobre la constant per generar les opcions */}
+                                        {CONTACT_STATUSES.map(status => (
+                                            <SelectItem key={status} value={status}>
+                                                {status}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                                 <DialogFooter>
