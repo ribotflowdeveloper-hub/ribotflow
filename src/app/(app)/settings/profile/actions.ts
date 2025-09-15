@@ -5,7 +5,9 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from "next/cache";
 
 /**
- * Acció principal per actualitzar totes les dades del perfil des del formulari.
+ * Server Action per actualitzar totes les dades del perfil d'usuari.
+ * Aquesta funció s'executa de forma segura al servidor quan s'envia el formulari principal del perfil.
+ * @param formData Les dades del formulari enviades des del component de client.
  */
 export async function updateProfileAction(formData: FormData) {
   const cookieStore = cookies();
@@ -36,6 +38,8 @@ export async function updateProfileAction(formData: FormData) {
 
   const isPublicProfile = formData.get('is_public_profile') === 'on';
   const servicesArray = servicesInput.split(',').map(s => s.trim()).filter(Boolean);
+  
+  // Executem l'operació d'actualització ('update') a la taula 'profiles'.
 
   const { error } = await supabase
     .from('profiles')
@@ -58,42 +62,47 @@ export async function updateProfileAction(formData: FormData) {
       company_email: companyEmail,
       logo_url: logoUrl
     })
-    .eq('id', user.id);
+    .eq('id', user.id); // Assegurem que només actualitzem el perfil de l'usuari logat.
+  
   
   if (error) {
-    console.error("Error en actualitzar el perfil:", error);
-    return { success: false, message: "No s'ha pogut actualitzar el perfil." };
-  }
-  
-  revalidatePath('/settings/profile'); 
-  
-  return { success: true, message: "Perfil actualitzat correctament." };
+  console.error("Error en actualitzar el perfil:", error);
+  return { success: false, message: "No s'ha pogut actualitzar el perfil." };
+}
+
+// Informem a Next.js que les dades de la ruta '/settings/profile' han canviat,
+// forçant una recàrrega de les dades a la pròxima visita.
+revalidatePath('/settings/profile'); 
+
+return { success: true, message: "Perfil actualitzat correctament." };
 }
 
 /**
- * Acció específica per a l'autodesat de la visibilitat del perfil.
- */
+* Server Action específica per a l'autodesat de la visibilitat del perfil.
+* Es crida quan l'usuari activa o desactiva l'interruptor de "Perfil Públic".
+* @param isPublic Un booleà que indica el nou estat de visibilitat.
+*/
 export async function updateProfileVisibilityAction(isPublic: boolean) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+const cookieStore = cookies();
+const supabase = createClient(cookieStore);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { success: false, message: "Usuari no autenticat." };
-  }
-
-  const { error } = await supabase
-    .from('profiles')
-    .update({ is_public_profile: isPublic })
-    .eq('id', user.id);
-
-  if (error) {
-    console.error("Error en actualitzar la visibilitat:", error);
-    return { success: false, message: "No s'ha pogut canviar la visibilitat." };
-  }
-
-  revalidatePath('/settings/profile');
-
-  return { success: true, message: `El perfil ara és ${isPublic ? 'públic' : 'privat'}.` };
+const { data: { user } } = await supabase.auth.getUser();
+if (!user) {
+  return { success: false, message: "Usuari no autenticat." };
 }
 
+// Aquesta acció només actualitza un únic camp a la base de dades.
+const { error } = await supabase
+  .from('profiles')
+  .update({ is_public_profile: isPublic })
+  .eq('id', user.id);
+
+if (error) {
+  console.error("Error en actualitzar la visibilitat:", error);
+  return { success: false, message: "No s'ha pogut canviar la visibilitat." };
+}
+
+revalidatePath('/settings/profile');
+
+return { success: true, message: `El perfil ara és ${isPublic ? 'públic' : 'privat'}.` };
+}

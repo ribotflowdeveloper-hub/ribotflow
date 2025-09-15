@@ -1,24 +1,32 @@
-// src/app/(app)/settings/team/_components/TeamClient.tsx
 "use client";
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { Plus, User } from 'lucide-react';
 
-// Si li passes dades des del Server Component, les reps com a props
-// export function TeamClient({ members }: { members: any[] }) {
+/**
+ * Component de Client per a la pàgina de "Gestió de l'Equip".
+ * S'encarrega de la part interactiva de la interfície.
+ * Actualment, la funcionalitat està per implementar, així que mostra una maqueta.
+ */
+// En un futur, quan carreguis les dades des del servidor, les rebries com a 'props'.
+// Per exemple: export function TeamClient({ members }: { members: Member[] }) {
 export function TeamClient() {
- 
 
+  /**
+   * Funció que s'executa en clicar el botó "Invitar Membre".
+   * Com que la funcionalitat encara no està desenvolupada, mostra una notificació
+   * informativa a l'usuari.
+   */
   const handleInvite = () => {
-    // ✅ 3. Actualitzem la crida a toast
     toast.info("Funció no implementada", {
-        description: "La opció d'invitar membres aviat estarà disponible.",
+        description: "L'opció d'invitar membres aviat estarà disponible.",
     });
-};
+  };
 
   return (
+    // 'motion.div' de Framer Motion per a una animació d'aparició suau.
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="glass-card p-8">
         <div className="flex justify-between items-center mb-6">
@@ -29,7 +37,9 @@ export function TeamClient() {
           </Button>
         </div>
         <div className="space-y-3">
-          {/* Aquí faries un map dels 'members' rebuts per props */}
+          {/* Aquesta secció és una maqueta. En el futur, aquí es faria un '.map()'
+              sobre l'array de 'members' rebut per props per renderitzar cada membre
+              de l'equip de forma dinàmica. */}
           <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full flex items-center justify-center">
