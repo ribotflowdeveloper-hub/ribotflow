@@ -4,20 +4,27 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-// Tipus per als conceptes que arriben del formulari
+/**
+ * Aquest tipus defineix l'estructura de les dades d'un concepte de factura
+ * tal com arriben des del formulari del client.
+ */
 type InvoiceItemData = {
     description: string | null;
     quantity: number | null;
     unit_price: number | null;
 };
 
-// Tipus complet per a les dades que envia el formulari
+/**
+ * Aquest tipus és el "contracte" de dades que la nostra Server Action espera rebre.
+ * Defineix tots els camps que el formulari d'edició/creació pot enviar.
+ * Assegura que les dades que arriben al servidor tenen l'estructura correcta.
+ */
 export type InvoiceFormData = {
     id?: string | null;
     contact_id: string;
     issue_date: string;
     due_date: string | null;
-    status: 'Draft';
+    status: 'Draft'; // Aquesta acció només treballa amb esborranys.
     subtotal: number;
     tax_amount: number;
     total_amount: number;
@@ -25,6 +32,11 @@ export type InvoiceFormData = {
     invoice_items: InvoiceItemData[];
 };
 
+/**
+ * Server Action per crear un nou esborrany de factura o actualitzar-ne un d'existent.
+ * Gestiona tant les dades principals de la factura com els seus conceptes associats.
+ * @param invoiceData Les dades completes de la factura enviades des del client.
+ */
 export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
@@ -32,7 +44,7 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
     
-    // Separem les dades de la factura de les dades dels conceptes
+    // Separem les dades de la factura ('invoiceMainData') dels seus conceptes ('invoice_items').
     const { invoice_items, ...invoiceMainData } = invoiceData;
     const dataToUpsert = {
         ...invoiceMainData,
@@ -40,28 +52,32 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
     };
 
     try {
+        // 'upsert' és una operació intel·ligent: si l'ID ja existeix, actualitza el registre;
+        // si no existeix, en crea un de nou.
         const { data: savedInvoice, error: invoiceError } = await supabase
             .from('invoices')
             .upsert(dataToUpsert)
-            .select()
+            .select() // Demanem que ens retorni la factura desada per obtenir el seu ID.
             .single();
 
         if (invoiceError) throw invoiceError;
 
-        // Esborrem els conceptes antics associats a aquesta factura
+        // Per simplificar l'actualització dels conceptes, primer esborrem tots els antics
+        // que estiguin associats a aquesta factura.
         await supabase.from('invoice_items').delete().eq('invoice_id', savedInvoice.id);
 
-        // Inserim els nous conceptes si n'hi ha
+        // Si el formulari ha enviat nous conceptes, els inserim a la base de dades.
         if (invoice_items && invoice_items.length > 0) {
             const itemsToInsert = invoice_items.map(item => ({
                 ...item,
-                invoice_id: savedInvoice.id,
+                invoice_id: savedInvoice.id, // Associem cada concepte a la factura que acabem de desar.
                 user_id: user.id,
             }));
             const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
             if (itemsError) throw itemsError;
         }
         
+        // Invalidem la memòria cau de la pàgina de facturació perquè mostri les dades actualitzades.
         revalidatePath('/finances/facturacio');
         return { success: true, message: `Esborrany ${invoiceData.id ? 'actualitzat' : 'creat'} correctament.` };
     } catch (error: any) {
@@ -69,45 +85,50 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
     }
 }
 
-// ... (les teves altres accions com deleteInvoiceAction i issueInvoiceAction es queden igual) ...
 /**
- * Acció per eliminar un esborrany de factura.
+ * Server Action per eliminar un esborrany de factura.
+ * @param invoiceId L'ID de l'esborrany a eliminar.
  */
 export async function deleteInvoiceAction(invoiceId: string) {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
-    
-    try {
-        // Comprovació de seguretat: només es poden eliminar esborranys.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuari no autenticat." };
+    
+    try {
+        // Comprovació de seguretat addicional: assegurem que només es poden eliminar esborranys ('Draft').
         const { data: existingInvoice } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
         if (existingInvoice && existingInvoice.status !== 'Draft') {
             return { success: false, message: "Error: No es pot eliminar una factura que ja ha estat emesa." };
         }
 
-        const { error } = await supabase.from('invoices').delete().match({ id: invoiceId, user_id: user.id });
-        if (error) throw error;
-        
-        revalidatePath('/finances/facturacio');
-        return { success: true, message: "Esborrany eliminat." };
-    } catch (error: any) {
-        return { success: false, message: error.message };
-    }
+        // L'eliminació dels conceptes associats ('invoice_items') es gestiona automàticament
+        // a la base de dades gràcies a la configuració "ON DELETE CASCADE".
+        const { error } = await supabase.from('invoices').delete().match({ id: invoiceId, user_id: user.id });
+        if (error) throw error;
+        
+        revalidatePath('/finances/facturacio');
+        return { success: true, message: "Esborrany eliminat." };
+    } catch (error: any) {
+        return { success: false, message: error.message };
+    }
 }
 
 /**
- * Acció que crida a l'Edge Function per emetre una factura legal.
+ * Server Action que fa de pont segur cap a l'Edge Function que emet una factura legal (Veri*factu).
+ * @param draftInvoiceId L'ID de l'esborrany de factura a emetre.
  */
 export async function issueInvoiceAction(draftInvoiceId: string) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient(cookieStore);
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuari no autenticat." };
 
     try {
+        // Invoquem la Edge Function 'issue-verifactu-invoice', que conté la lògica
+        // complexa per generar el número de factura, les signatures digitals, el QR, etc.
         const { data, error } = await supabase.functions.invoke('issue-verifactu-invoice', {
             body: { draft_invoice_id: draftInvoiceId, user_id: user.id },
         });
@@ -118,9 +139,7 @@ export async function issueInvoiceAction(draftInvoiceId: string) {
         return { success: true, message: "Factura emesa correctament.", invoice: data };
 
     } catch (error: any) {
-        // Si l'error ve de la Edge Function, pot contenir un missatge més específic.
         const errorMessage = error.context?.errorMessage || error.message || "Error en connectar amb el servei de facturació.";
         return { success: false, message: errorMessage };
     }
 }
-

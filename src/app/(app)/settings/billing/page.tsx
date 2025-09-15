@@ -11,7 +11,8 @@ export const metadata: Metadata = {
   title: 'Facturació i Plans | Ribot',
 };
 
-// ✅ CORRECCIÓ: En lloc de la icona, passem el seu nom com una cadena de text.
+// En una aplicació real, aquestes dades probablement vindrien d'una base de dades
+// o d'un servei extern com Stripe. Aquí, les definim com una constant per simplicitat.
 const plansData = [
   {
     name: 'Free',
@@ -60,28 +61,38 @@ const plansData = [
   },
 ];
 
+/**
+ * @function BillingPage
+ * @summary El component de servidor asíncron que construeix la pàgina.
+ */
 export default async function BillingPage() {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      redirect('/login');
-    }
-
-    const userPlanName = "Plus"; 
-
-    const finalPlansData = plansData.map(plan => ({
-      ...plan,
-      isCurrent: plan.name === userPlanName,
-    }));
-
-    return (
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Facturació i Plans</h1>
-        <p className="text-muted-foreground mb-8">Gestiona la teva subscripció i tria el pla que millor s'adapti a tu.</p>
-        <BillingClient plans={finalPlansData} />
-      </div>
-    );
-}
+      const cookieStore = cookies();
+      const supabase = createClient(cookieStore);
+  
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        redirect('/login');
+      }
+  
+      // Lògica del servidor per determinar el pla actual de l'usuari.
+      // Això podria venir d'una consulta a la taula 'subscriptions' de Supabase.
+      // Aquí, ho simulem amb un valor fix.
+      const userPlanName = "Plus"; 
+  
+      // Processem les dades dels plans al servidor per afegir la propietat 'isCurrent'.
+      // Això evita haver de fer aquesta lògica al client.
+      const finalPlansData = plansData.map(plan => ({
+        ...plan,
+        isCurrent: plan.name === userPlanName,
+      }));
+  
+      return (
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Facturació i Plans</h1>
+          <p className="text-muted-foreground mb-8">Gestiona la teva subscripció i tria el pla que millor s'adapti a tu.</p>
+          {/* Passem les dades ja processades al component de client. */}
+          <BillingClient plans={finalPlansData} />
+        </div>
+      );
+  }
 
