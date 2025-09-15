@@ -23,7 +23,7 @@ export default function ProfileList({ profiles, searchTerm, onSearchChange, onSe
       <div className="p-4 border-b border-gray-700">
         <h2 className="text-xl font-bold mb-4">Xarxa Professional</h2>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+          <Search className="absolute  top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
             placeholder="Cerca per nom o servei..."

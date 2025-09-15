@@ -17,11 +17,12 @@ import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm
 
 // Definim el tipus de les propietats (props) que rep la pàgina.
 // Next.js passa els paràmetres de la ruta (com 'contactId') dins d'un objecte 'params'.
-type ContactDetailPageProps = {
-  params: {
-    contactId: string;
-  };
-};
+// ✅ CORRECCIÓ 1: Definim el tipus correcte per a les 'props'
+interface ContactDetailPageProps {
+  params: Promise<{ contactId: string }>;
+}
+
+
 
 /**
  * @summary Funció especial de Next.js per generar metadades dinàmiques al servidor.
@@ -29,23 +30,32 @@ type ContactDetailPageProps = {
  * @param {ContactDetailPageProps} props - Les propietats de la pàgina, incloent l'ID del contacte.
  * @returns {Promise<Metadata>} Un objecte de metadades per al <head> de la pàgina.
  */
-export async function generateMetadata({ params }: ContactDetailPageProps): Promise<Metadata> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-  
-  const { data: contact } = await supabase.from('contacts').select('nom').eq('id', params.contactId).single();
-  
-  return { title: `${contact?.nom || 'Contacte'} | Ribot` };
+/**
+ * Funció per generar metadades dinàmiques (el títol de la pàgina).
+ */
+export async function generateMetadata({ params: paramsPromise }: { params: Promise<{ contactId: string }> }): Promise<Metadata> {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  
+  // ✅ CORRECCIÓ 2: Esperem la promesa per obtenir els paràmetres.
+  const params = await paramsPromise;
+
+  const { data: contact } = await supabase.from('contacts').select('nom').eq('id', params.contactId).single();
+
+  return { title: `${contact?.nom || 'Contacte'} | Ribot` };
 }
 
 /**
- * @function ContactDetailPage
- * @summary El component de servidor asíncron que construeix la pàgina de detall.
+ * Component de Pàgina del Servidor per al detall d'un contacte.
+ * Carrega totes les dades necessàries del contacte i la seva informació relacionada.
  */
-export default async function ContactDetailPage({ params }: ContactDetailPageProps) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-  const { contactId } = params; // Extraiem l'ID del contacte dels paràmetres de la ruta.
+export default async function ContactDetailPage(props: ContactDetailPageProps) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+
+  // ✅ CORRECCIÓ 3: Esperem la promesa per obtenir els paràmetres.
+  const params = await props.params;
+  const { contactId } = params;
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {

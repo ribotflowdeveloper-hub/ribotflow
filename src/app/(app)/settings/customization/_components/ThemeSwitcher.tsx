@@ -23,37 +23,36 @@ export function ThemeSwitcher() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
   // Mentre el component no estigui muntat al client, mostrem uns placeholders.
   // Això evita el "hydration mismatch" i el canvi de layout (Layout Shift), millorant l'experiència de l'usuari.
-  if (!mounted) {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-sm">
-        <div className="h-24 bg-muted rounded-lg animate-pulse" />
-        <div className="h-24 bg-muted rounded-lg animate-pulse" />
-      </div>
-    );
-  }
-
+  if (!mounted) {
+    // Retorna un placeholder per evitar canvis de layout (Layout Shift)
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-sm">
+        <div className="h-24 bg-muted rounded-lg animate-pulse" />
+        <div className="h-24 bg-muted rounded-lg animate-pulse" />
+      </div>
+    );
+  }
   // Un cop muntat, mostrem els botons reals.
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-sm">
-      <Button
-        variant={theme === 'light' ? 'default' : 'outline'}
-        onClick={() => setTheme("light")}
-        className="flex flex-col h-24 gap-2"
-      >
-        <Sun className="w-6 h-6" />
-        <span>Clar</span>
-      </Button>
-      <Button
-        variant={theme === 'dark' ? 'default' : 'outline'}
-        onClick={() => setTheme("dark")}
-        className="flex flex-col h-24 gap-2"
-      >
-        <Moon className="w-6 h-6" />
-        <span>Fosc</span>
-      </Button>
-    </div>
-  );
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-sm">
+      <Button
+        variant={theme === 'light' ? 'default' : 'outline'}
+        onClick={() => setTheme("light")}
+        className="flex flex-col h-24 gap-2"
+      >
+        <Sun className="w-6 h-6" />
+        <span>Clar</span>
+      </Button>
+      <Button
+        variant={theme === 'dark' ? 'default' : 'outline'}
+        onClick={() => setTheme("dark")}
+        className="flex flex-col h-24 gap-2"
+      >
+        <Moon className="w-6 h-6" />
+        <span>Fosc</span>
+      </Button>
+    </div>
+  );
 }
