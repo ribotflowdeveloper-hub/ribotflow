@@ -1,107 +1,119 @@
-"use client";
+/**
+ * @file ContactDetailClient.tsx
+ * @summary Component de client que gestiona tota la interfície i la interactivitat
+ * per a la pàgina de detall d'un contacte. S'encarrega de mostrar les dades,
+ * permetre l'edició, i visualitzar la informació relacionada (pressupostos, factures, etc.).
+ */
 
-import React, { useState, useTransition, FC, ElementType } from 'react';
+"use client"; // És un component de client per la seva alta interactivitat i gestió d'estat.
+
+import React, { useState, useTransition, FC, ElementType, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { toast } from "sonner"; // ✅ Canviem la importació
+import { toast } from "sonner";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, User, Briefcase, FileText, Receipt, Activity as ActivityIcon, Edit, Ban, Loader2 } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, FileText, Receipt, Activity as ActivityIcon, Edit, Ban, Loader2, Trash } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { format } from 'date-fns';
 import { ca } from 'date-fns/locale';
 import { deleteContactAction, updateContactAction } from './actions';
-import { type Contact, type Quote, type Opportunity, type Invoice, type Activity } from '@/types/crm'; // Use central types
-import { Trash } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-// --- Sub-components (internal to this file) ---
-const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
-    let colorClass = 'bg-muted text-muted-foreground';
-    
-    // ✅ CORRECTION: Initialize text with a safe default
-    let text = status || 'N/A';
-    
-    // Use a temporary variable for the switch to avoid type issues
-    const lowerCaseStatus = status?.toLowerCase();
+import { type Contact, type Quote, type Opportunity, type Invoice, type Activity } from '@/types/crm';
 
-    switch (lowerCaseStatus) {
-        case 'draft': text = 'Esborrany'; colorClass = 'bg-yellow-500/10 text-yellow-500'; break;
-        case 'sent': text = 'Enviat'; colorClass = 'bg-blue-500/10 text-blue-500'; break;
-        case 'accepted': case 'guanyat': case 'paid': text = 'Guanyat/Pagat'; colorClass = 'bg-green-500/10 text-green-500'; break;
-        case 'declined': case 'perdut': text = 'Rebutjat'; colorClass = 'bg-red-500/10 text-red-500'; break;
-        case 'negociació': text = 'Negociació'; colorClass = 'bg-purple-500/10 text-purple-500'; break;
-        case 'overdue': text = 'Vençut'; colorClass = 'bg-orange-500/10 text-orange-500'; break;
-    }
-    return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorClass}`}>{text}</span>;
+// --- Sub-components (reutilitzables dins d'aquest fitxer) ---
+
+/**
+ * @summary Un component petit per mostrar l'estat d'un element amb un color corresponent.
+ */
+const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
+  let colorClass = 'bg-muted text-muted-foreground';
+  let text = status || 'N/A';
+  const lowerCaseStatus = status?.toLowerCase();
+
+  switch (lowerCaseStatus) {
+        case 'draft': text = 'Esborrany'; colorClass = 'bg-yellow-500/10 text-yellow-500'; break;
+        case 'sent': text = 'Enviat'; colorClass = 'bg-blue-500/10 text-blue-500'; break;
+        case 'accepted': case 'guanyat': case 'paid': text = 'Guanyat/Pagat'; colorClass = 'bg-green-500/10 text-green-500'; break;
+        case 'declined': case 'perdut': text = 'Rebutjat'; colorClass = 'bg-red-500/10 text-red-500'; break;
+        case 'negociació': text = 'Negociació'; colorClass = 'bg-purple-500/10 text-purple-500'; break;
+        case 'overdue': text = 'Vençut'; colorClass = 'bg-orange-500/10 text-orange-500'; break;
+  }
+  return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorClass}`}>{text}</span>;
 };
 
+/**
+ * @summary Un component per a les pestanyes que mostra un comptador al costat de l'etiqueta.
+ */
 const TabTriggerWithCount: FC<{ value: string, icon: ElementType, count: number, label: string }> = ({ value, icon: Icon, count, label }) => (
-    <TabsTrigger value={value} className="flex items-center gap-2 text-sm px-4">
-        <Icon className="w-4 h-4" />
-        <span className="font-semibold">{label}</span>
-        {count > 0 && <span className="ml-1 px-2 py-0.5 text-xs font-bold rounded-full bg-primary/20 text-primary">{count}</span>}
-    </TabsTrigger>
+  <TabsTrigger value={value} className="flex items-center gap-2 text-sm px-4">
+    <Icon className="w-4 h-4" />
+    <span className="font-semibold">{label}</span>
+    {count > 0 && <span className="ml-1 px-2 py-0.5 text-xs font-bold rounded-full bg-primary/20 text-primary">{count}</span>}
+  </TabsTrigger>
 );
 
+// Interfície de propietats del component principal.
 interface ContactDetailClientProps {
-  initialContact: Contact;
-  initialRelatedData: { quotes: Quote[]; opportunities: Opportunity[]; invoices: Invoice[]; activities: Activity[]; };
+  initialContact: Contact;
+  initialRelatedData: { quotes: Quote[]; opportunities: Opportunity[]; invoices: Invoice[]; activities: Activity[]; };
 }
 
 export function ContactDetailClient({ initialContact, initialRelatedData }: ContactDetailClientProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [isEditing, setIsEditing] = useState(false);
-  const [contact, setContact] = useState(initialContact);
-  const formRef = React.useRef<HTMLFormElement>(null);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition(); // Hook per a estats de càrrega no bloquejants.
+  const [isEditing, setIsEditing] = useState(false); // Estat per controlar el mode d'edició.
+  const [contact, setContact] = useState(initialContact); // Estat local per a les dades del contacte.
+  const formRef = useRef<HTMLFormElement>(null); // Referència al formulari per poder resetejar-lo.
 
-  const handleSaveChanges = (formData: FormData) => {
-    startTransition(async () => {
-      const { data, error } = await updateContactAction(contact.id, formData);
-      if (error) {
-        toast.error('Error',{ description: error.message} );
-      } else if (data) {
-        toast.success('Èxit!',{description: 'Contacte actualitzat.'}  );
-        setContact(data as Contact);
-        setIsEditing(false);
-      }
-    });
-  };
-  const handleDelete = () => {
-    if (!confirm("Segur que vols eliminar aquest contacte? Aquesta acció no es pot desfer.")) {
-      return;
-    }
-    
-    startTransition(async () => {
-      const res = await deleteContactAction(contact.id);
-      if (!res.success) {
-        toast.error('Error', {description: res.message });
-      } else {
-        toast.success('Èxit!', {description: 'El contacte ha estat eliminat correctament.' });
-        router.push('/crm/contactes');
-      }
-    });
-  };
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    formRef.current?.reset();
-  };
+  /**
+   * @summary Gestor per desar els canvis del formulari. Crida a la Server Action 'updateContactAction'.
+   */
+  const handleSaveChanges = (formData: FormData) => {
+    startTransition(async () => {
+      const { data, error } = await updateContactAction(contact.id, formData);
+      if (error) {
+        toast.error('Error',{ description: error.message} );
+      } else if (data) {
+        toast.success('Èxit!',{description: 'Contacte actualitzat.'}  );
+        setContact(data as Contact); // Actualitzem l'estat local amb les noves dades.
+        setIsEditing(false); // Sortim del mode d'edició.
+      }
+    });
+  };
+
+  /**
+   * @summary Gestor per eliminar el contacte. Crida a la Server Action 'deleteContactAction'.
+   */
+  const handleDelete = () => {
+    startTransition(async () => {
+      const res = await deleteContactAction(contact.id);
+      if (!res.success) {
+        toast.error('Error', {description: res.message });
+      } else {
+        toast.success('Èxit!', {description: 'El contacte ha estat eliminat correctament.' });
+        router.push('/crm/contactes'); // Redirigim a la llista de contactes.
+      }
+    });
+  };
+
+  /**
+   * @summary Gestor per cancel·lar l'edició.
+   */
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    formRef.current?.reset(); // Reseteja els camps del formulari als seus valors per defecte.
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+            {/* El formulari embolcalla tota la pàgina per poder desar des del botó de la capçalera. */}
+
       <form action={handleSaveChanges} ref={formRef}>
         <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
             <div className="flex-1">

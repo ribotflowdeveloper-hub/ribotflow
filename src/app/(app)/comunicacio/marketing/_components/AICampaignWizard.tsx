@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+// Framer Motion és una llibreria per a animacions. 'motion' permet animar components
+// i 'AnimatePresence' gestiona les animacions d'entrada i sortida dels components.
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
@@ -23,41 +25,57 @@ import {
   Users,
   ChevronLeft,
 } from "lucide-react";
+
+// Aquestes són les Server Actions, funcions que s'executen de forma segura al servidor.
 import {
   generateStrategiesAction,
   draftContentAction,
   saveCampaignAction,
 } from "./actions";
 
+// Definim les propietats que el component espera rebre del seu pare.
 interface AICampaignWizardProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCampaignCreated: () => void;
+  open: boolean; // Controla si el diàleg és visible.
+  onOpenChange: (open: boolean) => void; // Funció per notificar al pare que el diàleg es vol tancar/obrir.
+  onCampaignCreated: () => void; // Funció de callback que s'executa quan una campanya es crea amb èxit.
 }
 
+// Tipus per a les estratègies de màrqueting que genera la IA.
 interface Strategy {
   name: string;
   type: string;
   target_audience: string;
   description: string;
-  content?: string;
+  content?: string; // El contingut del correu o publicació, és opcional al principi.
 }
 
+/**
+ * Assistent multi-pas guiat per IA per a la creació de campanyes de màrqueting.
+ * Aquest component gestiona l'estat dels diferents passos, les crides a les accions
+ * d'IA i la interacció de l'usuari dins d'un diàleg modal.
+ */
 export const AICampaignWizard: FC<AICampaignWizardProps> = ({
   open,
   onOpenChange,
   onCampaignCreated,
 }) => {
+  // --- ESTATS DEL COMPONENT ---
+  const [step, setStep] = useState(1); // Controla el pas actual de l'assistent (1, 2, o 3).
+  const [goal, setGoal] = useState(""); // Emmagatzema l'objectiu de màrqueting de l'usuari.
+  const [strategies, setStrategies] = useState<Strategy[]>([]); // Array per a les estratègies suggerides per la IA.
+  const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null); // L'estratègia que l'usuari ha triat.
   
-  const [step, setStep] = useState(1);
-  const [goal, setGoal] = useState("");
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(
-    null
-  );
+  // 'useTransition' és un hook de React per gestionar estats de càrrega sense bloquejar la UI.
+  // 'isPending' serà cert mentre una acció (com una crida a la IA) s'està executant.
   const [isPending, startTransition] = useTransition();
+  
+  // Estat per saber quina estratègia s'està processant, per a una millor UX (només mostra un spinner).
   const [processingIndex, setProcessingIndex] = useState<number | null>(null);
 
+  /**
+   * Funció per resetejar tots els estats de l'assistent a la seva configuració inicial.
+   * Es crida quan el diàleg es tanca per assegurar que comenci de nou la pròxima vegada.
+   */
   const resetWizard = () => {
     setStep(1);
     setGoal("");
@@ -66,55 +84,68 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     setProcessingIndex(null);
   };
 
+  /**
+   * Gestiona la crida a la IA per generar estratègies basades en l'objectiu de l'usuari.
+   */
   const handleGenerateStrategies = () => {
-    if (!goal.trim()) return;
+    if (!goal.trim()) return; // No fa res si l'objectiu està buit.
     startTransition(async () => {
       const { data, error } = await generateStrategiesAction(goal);
       if (error) {
         toast.error("Error d'IA", { description: error });
-
       } else {
         setStrategies(data as Strategy[]);
-        setStep(2);
+        setStep(2); // Avança al següent pas.
       }
     });
   };
 
+  /**
+   * Gestiona la crida a la IA per redactar el contingut d'una estratègia específica.
+   */
   const handleDraftContent = (strategy: Strategy, index: number) => {
-    setProcessingIndex(index);
+    setProcessingIndex(index); // Marca quina targeta està processant per a la UI.
     startTransition(async () => {
       const { data, error } = await draftContentAction(goal, strategy);
       if (error) {
         toast.error("Error d'IA", { description: error });
-
       } else {
+        // Guarda l'estratègia seleccionada juntament amb el nou contingut generat.
         setSelectedStrategy({ ...strategy, content: data as string });
-        setStep(3);
+        setStep(3); // Avança a l'últim pas.
       }
-      setProcessingIndex(null);
+      setProcessingIndex(null); // Reseteja l'índex de processament.
     });
   };
 
+  /**
+   * Desa la campanya final a la base de dades.
+   */
   const handleSaveCampaign = () => {
     if (!selectedStrategy) return;
     startTransition(async () => {
       const { error } = await saveCampaignAction(selectedStrategy, goal);
       if (error) {
         toast.error("Error", { description: "No s'ha pogut desar la campanya." });
-
       } else {
         toast.success("Campanya Creada!", {
           description: "La teva nova campanya està a la llista.",
         });
-        onCampaignCreated();
-        onOpenChange(false);
-        resetWizard();
+        onCampaignCreated(); // Notifica al component pare.
+        onOpenChange(false); // Tanca el diàleg.
+        resetWizard(); // Neteja l'estat per a la pròxima vegada.
       }
     });
   };
 
+  /**
+   * Funció que renderitza el contingut del diàleg segons el pas ('step') actual.
+   * L'ús d'un 'switch' és una manera neta de gestionar múltiples vistes dins d'un component.
+   */
   const renderStepContent = () => {
     switch (step) {
+      // Pas 1: L'usuari introdueix el seu objectiu.
+
       case 1:
         return (
           <motion.div
@@ -148,6 +179,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
             </DialogFooter>
           </motion.div>
         );
+      // Pas 2: L'usuari tria una de les estratègies generades.
+
       case 2:
         return (
           <motion.div
@@ -200,6 +233,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
             </DialogFooter>
           </motion.div>
         );
+      // Pas 3: L'usuari edita i desa el contingut final.
+
       case 3:
         if (!selectedStrategy) return null;
         return (
@@ -287,6 +322,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
             ))}
           </div>
         </DialogHeader>
+        {/* 'AnimatePresence' de Framer Motion gestiona les animacions quan el contingut de dins canvia.
+            'mode="wait"' espera que l'animació de sortida acabi abans de començar la d'entrada. */}
         <AnimatePresence mode="wait">{renderStepContent()}</AnimatePresence>
       </DialogContent>
     </Dialog>

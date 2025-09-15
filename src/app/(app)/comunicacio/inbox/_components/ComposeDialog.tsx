@@ -18,6 +18,10 @@ import { createClient } from '@/lib/supabase/client';
 import { sendEmailAction } from '../actions';
 import type { Template, Contact } from '../page';
 
+/**
+ * Sub-component que renderitza la barra d'eines per a l'editor de text.
+ * Rep l'instància de l'editor i mostra botons per a les accions més comunes.
+ */
 const EmailEditorToolbar = ({ editor }: { editor: Editor | null }) => {
     if (!editor) return null;
     return (
@@ -31,14 +35,22 @@ const EmailEditorToolbar = ({ editor }: { editor: Editor | null }) => {
         </div>
     );
 };
-
+/**
+ * Funció utilitària per substituir les variables (ex: {{nom_contacte}}) en un text
+ * pels seus valors corresponents.
+ * @param templateString El text de la plantilla amb variables.
+ * @param values Un objecte amb els valors per a cada variable.
+ */
 const renderTemplate = (templateString: string, values: { [key: string]: string }) => {
     if (!templateString) return '';
+    // Utilitza una expressió regular per buscar totes les ocurrències de {{...}}
     return templateString.replace(/\{\{([^}]+)\}\}/g, (match, varName) => {
         const key = varName.trim();
+        // Retorna el valor si existeix, o la variable original si no.
         return values[key] || `{{${key}}}`;
     });
 };
+// Tipus per a les dades inicials que pot rebre el diàleg (ex: en respondre a un correu).
 
 export type InitialData = {
     contactId?: string | null;
@@ -47,7 +59,10 @@ export type InitialData = {
     body?: string | null;
   };
   
-
+/**
+ * Component principal del diàleg per compondre i enviar correus.
+ * Gestiona l'editor de text, la selecció de contactes, l'ús de plantilles i l'enviament final.
+ */
   export const ComposeDialog = ({ open, onOpenChange, onEmailSent, initialData, templates = [] }: {
     open: boolean;
     onOpenChange: (isOpen: boolean) => void;
@@ -73,7 +88,13 @@ export type InitialData = {
     const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
     const [variableValues, setVariableValues] = useState<{ [key: string]: string }>({});
     const [debouncedVariableValues, setDebouncedVariableValues] = useState<{ [key: string]: string }>({});
-
+  /**
+     * S'executa cada cop que el diàleg s'obre ('open' canvia a true).
+     * S'encarrega d'inicialitzar o resetejar tots els estats del diàleg:
+     * - Carrega la llista de contactes des de Supabase.
+     * - Omple els camps amb les dades inicials si n'hi ha (per a una resposta).
+     * - Neteja els estats de plantilles, variables, etc.
+     */
     useEffect(() => {
         const initDialog = async () => {
             if (open) {
@@ -96,30 +117,48 @@ export type InitialData = {
         };
         initDialog();
     }, [open, initialData, editor]);
-
+ /**
+     * Aquest efecte implementa un "debounce" per a les variables de les plantilles.
+     * En lloc de refrescar la vista prèvia a cada tecla que prem l'usuari, espera 500ms
+     * després de l'última pulsació. Això millora molt el rendiment.
+     */
     useEffect(() => {
         const handler = setTimeout(() => setDebouncedVariableValues(variableValues), 500);
         return () => clearTimeout(handler);
     }, [variableValues]);
-    
+     /**
+     * Actualitza l'assumpte del correu automàticament quan es fa servir una plantilla
+     * i es modifiquen les seves variables (amb el debounce aplicat).
+     */
     useEffect(() => {
         if (selectedTemplate) {
             setSubject(renderTemplate(selectedTemplate.subject, debouncedVariableValues));
         }
     }, [selectedTemplate, debouncedVariableValues]);
-
+  /**
+     * Calcula el cos final del correu en format HTML.
+     * Si hi ha una plantilla seleccionada, renderitza la plantilla amb les variables.
+     * Si no, obté l'HTML directament de l'editor Tiptap.
+     * 'useMemo' optimitza aquest càlcul perquè només es torni a fer si les dependències canvien.
+     */
     const finalHtmlBody = useMemo(() => {
         if (selectedTemplate) {
             return renderTemplate(selectedTemplate.body, debouncedVariableValues);
         }
         return editor?.getHTML() || '';
     }, [selectedTemplate, debouncedVariableValues, editor]);
-
+ /**
+     * Filtra la llista de contactes basant-se en el text introduït al cercador.
+     * 'useMemo' assegura que aquesta filtració només es recalculi quan sigui necessari.
+     */
     const filteredContacts = useMemo(() => {
         if (!contactSearch) return contacts;
         return contacts.filter(contact => contact.nom.toLowerCase().includes(contactSearch.toLowerCase()));
     }, [contacts, contactSearch]);
-
+    /**
+     * Gestiona la selecció d'una plantilla de la llista desplegable.
+     * Si se'n selecciona una, actualitza l'estat. Si es deselecciona, torna als valors inicials.
+     */
     const handleTemplateSelect = (templateId: string) => {
         if (!templateId || templateId === 'none') {
             setSelectedTemplate(null);
@@ -134,7 +173,12 @@ export type InitialData = {
             setVariableValues({}); 
         }
     };
-    
+     /**
+     * Gestiona l'enviament del correu.
+     * Primer, valida que els camps necessaris no estiguin buits.
+     * Després, crida la Server Action 'sendEmailAction' per enviar el correu des del backend.
+     * Finalment, mostra una notificació d'èxit o error.
+     */
     const handleSend = async () => {
         if (!selectedContactId || !subject || !finalHtmlBody.replace(/<p><\/p>/g, '').trim()) {
             toast.error('Camps obligatoris', { 
@@ -158,6 +202,8 @@ export type InitialData = {
     };
 
     return (
+          // El JSX del diàleg, que es divideix en l'àrea d'edició i la barra lateral
+        // amb el destinatari, les plantilles i les variables.
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
                 <DialogHeader>

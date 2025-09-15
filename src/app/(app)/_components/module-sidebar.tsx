@@ -1,4 +1,4 @@
-"use client";
+"use client"; // ✅ També client component.
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -7,12 +7,14 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { NavItem } from '@/config/navigation';
 
+// ✅ Barra lateral per a un mòdul específic (submenú)
 export function ModuleSidebar({ module, onClose }: { module: NavItem; onClose: () => void; }) {
-    const pathname = usePathname();
-    if (!module || !module.children) return null;
+    const pathname = usePathname(); // ✅ Ruta actual per marcar element actiu.
+    if (!module || !module.children) return null; // ✅ Si no hi ha mòdul o subelements, no renderitzem res.
 
     return (
         <div className="w-64 h-full glass-effect border-r border-border flex flex-col p-4 flex-shrink-0">
+            {/* ✅ Capçalera amb títol del mòdul i botó per tancar el submenú */}
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold pl-2">{module.label}</h2>
                 <Button variant="ghost" size="icon" onClick={onClose}>
@@ -20,9 +22,10 @@ export function ModuleSidebar({ module, onClose }: { module: NavItem; onClose: (
                 </Button>
             </div>
             
+            {/* ✅ Llistat dels subelements del mòdul */}
             <nav className="flex flex-col gap-2">
                 {module.children.map(item => {
-                    const isActive = pathname === item.path;
+                    const isActive = pathname === item.path; // ✅ Marca actiu si el path coincideix.
                     return (
                         <Link
                             key={item.id}
