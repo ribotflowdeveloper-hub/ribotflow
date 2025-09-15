@@ -4,12 +4,16 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // --- TIPUS I INTERFÍCIES COMUNES ---
+// Aquestes interfícies defineixen un "contracte" per a la nostra lògica,
+// fent que sigui més fàcil afegir nous proveïdors de correu en el futur.
 
 /**
- * Representa les dades d'un correu normalitzades, independentment del proveïdor.
+ * Representa les dades d'un correu en un format estàndard i normalitzat.
+ * Independentment de si el correu ve de Google o Microsoft, el transformem
+ * a aquesta estructura abans de desar-lo.
  */
 interface NormalizedEmail {
-  provider_message_id: string;
+  provider_message_id: string;// L'ID únic del missatge al proveïdor (Google, Microsoft).
   subject: string;
   body: string;
   preview: string;
@@ -21,7 +25,9 @@ interface NormalizedEmail {
 }
 
 /**
- * Interfície que ha de complir cada proveïdor de correu.
+ * Aquesta interfície defineix els mètodes que CADA proveïdor de correu
+ * (Google, Microsoft, etc.) ha d'implementar. Garanteix que tots els proveïdors
+ * tinguin la mateixa "forma" i siguin intercanviables.
  */
 interface MailProvider {
   refreshAccessToken(refreshToken: string): Promise<string>;
@@ -35,8 +41,8 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-// Inicialització del client de Supabase (una sola vegada)
+// Inicialitzem el client de Supabase una sola vegada fora de la funció principal
+// per a una millor eficiència si la Edge Function es manté "calenta" (reutilitzada).
 const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -44,11 +50,15 @@ const supabaseAdmin = createClient(
 
 
 // --- LÒGICA PER A MICROSOFT (GRAPH API) ---
-
+/**
+ * Implementació de la interfície 'MailProvider' per a Microsoft.
+ * Conté tota la lògica específica per comunicar-se amb l'API de Microsoft Graph.
+ */
 class MicrosoftMailProvider implements MailProvider {
   private clientId = Deno.env.get("MICROSOFT_CLIENT_ID")!;
   private clientSecret = Deno.env.get("MICROSOFT_CLIENT_SECRET")!;
   private tenantId = Deno.env.get("MICROSOFT_TENANT_ID") || "common";
+  // Obté un nou 'access token' de curta durada utilitzant el 'refresh token'.
 
   async refreshAccessToken(refreshToken: string): Promise<string> {
     const res = await fetch(`https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`, {
@@ -68,13 +78,17 @@ class MicrosoftMailProvider implements MailProvider {
     const tokens = await res.json();
     return tokens.access_token;
   }
-
+// Mètode principal per obtenir nous missatges. Crida a la funció auxiliar per a
+  // la bústia d'entrada i la de sortida.
   async getNewMessages(accessToken: string, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
     const inboxMessages = await this.fetchMessagesFromFolder(accessToken, 'inbox', lastSyncDate, 'rebut');
     const sentMessages = await this.fetchMessagesFromFolder(accessToken, 'sentitems', lastSyncDate, 'enviat');
     return [...inboxMessages, ...sentMessages];
   }
-
+/**
+   * Funció privada per obtenir missatges d'una carpeta específica (entrada o sortida).
+   * Gestiona la paginació de l'API de Microsoft Graph per obtenir tots els resultats.
+   */
   private async fetchMessagesFromFolder(accessToken: string, folder: 'inbox' | 'sentitems', lastSyncDate: Date | null, type: 'rebut' | 'enviat'): Promise<NormalizedEmail[]> {
     let allMessages: any[] = [];
     let filterQuery = "";
@@ -100,7 +114,10 @@ class MicrosoftMailProvider implements MailProvider {
     
     return allMessages.map(this.normalizeMicrosoftEmail(type));
   }
-
+/**
+   * Mètode privat que transforma un objecte de missatge de l'API de Microsoft
+   * a la nostra estructura normalitzada 'NormalizedEmail'.
+   */
   private normalizeMicrosoftEmail = (type: 'rebut' | 'enviat') => (msg: any): NormalizedEmail => {
     const sender = type === 'rebut' ? msg.from : msg.sender;
     return {
@@ -120,10 +137,14 @@ class MicrosoftMailProvider implements MailProvider {
 
 // --- LÒGICA PER A GOOGLE (GMAIL API) ---
 
+/**
+ * Implementació de la interfície 'MailProvider' per a Google.
+ * Conté tota la lògica específica per comunicar-se amb l'API de Gmail.
+ */
 class GoogleMailProvider implements MailProvider {
   private clientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
   private clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
-
+// Funció utilitària per decodificar el format Base64URL que utilitza Gmail.
   private decodeBase64Url(base64Url: string): string {
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const decoded = atob(base64);
@@ -131,7 +152,7 @@ class GoogleMailProvider implements MailProvider {
       Array.from(decoded).map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
     );
   }
-
+// Obté un nou 'access token' de curta durada.
   async refreshAccessToken(refreshToken: string): Promise<string> {
     const res = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -149,7 +170,10 @@ class GoogleMailProvider implements MailProvider {
     const tokens = await res.json();
     return tokens.access_token;
   }
-
+/**
+   * Mètode principal per obtenir nous missatges de Gmail.
+   * Primer obté una llista d'IDs de missatges i després processa cada missatge individualment.
+   */
   async getNewMessages(accessToken: string, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
     let gmailQuery = "-in:draft";
     if (lastSyncDate) {
@@ -175,11 +199,14 @@ class GoogleMailProvider implements MailProvider {
       currentPage++;
     } while (nextPageToken && currentPage < MAX_PAGES);
 
-    // Processar cada missatge en paral·lel per eficiència
+    // Processa totes les peticions de detall de missatge en paral·lel amb 'Promise.all' per a més rapidesa.
     const emailPromises = messageIds.map(msg => this.fetchAndNormalizeEmail(msg.id, accessToken));
     return (await Promise.all(emailPromises)).filter((email): email is NormalizedEmail => email !== null);
   }
-  
+  /**
+   * Funció privada que obté el contingut complet d'un missatge a partir del seu ID
+   * i el transforma a la nostra estructura 'NormalizedEmail'.
+   */
   private async fetchAndNormalizeEmail(messageId: string, accessToken: string): Promise<NormalizedEmail | null> {
     try {
       const emailRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`, {
@@ -237,6 +264,11 @@ class GoogleMailProvider implements MailProvider {
 
 // --- FACTORY PER SELECCIONAR EL PROVEÏDOR ---
 
+/**
+ * Aquest és un patró de disseny "Factory". Donat un nom de proveïdor ('google' o 'azure'),
+ * retorna la instància de la classe correcta.
+ * Això fa que la funció principal sigui més neta i fàcil d'estendre amb nous proveïdors.
+ */
 function getMailProvider(provider: string): MailProvider {
   if (provider === 'google') return new GoogleMailProvider();
   if (provider === 'azure') return new MicrosoftMailProvider();
@@ -246,6 +278,11 @@ function getMailProvider(provider: string): MailProvider {
 
 // --- FUNCIÓ PRINCIPAL DEL SERVIDOR (EDGE FUNCTION) ---
 
+/**
+ * Aquesta és la funció principal de la Edge Function, el 'worker' de sincronització.
+ * Orquestra tot el procés de sincronització de correus per a un usuari específic.
+ * Aquesta funció pot ser cridada per un 'cron job' (Supabase Cron) o manualment.
+ */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
