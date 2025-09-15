@@ -1,8 +1,7 @@
-// Ruta del fitxer: src/app/(app)/crm/pipeline/_components/OpportunityDialog.tsx
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { toast } from 'sonner'; // ✅ 1. Importem 'toast' de sonner
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,10 +15,10 @@ import { Check, ChevronsUpDown, Calendar as CalendarIcon, Loader2 } from 'lucide
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ca } from "date-fns/locale";
-
 import { saveOpportunityAction } from '../actions';
 import type { Opportunity, Contact, Stage } from '../page';
 
+// Definim les propietats que rep el diàleg des del seu component pare.
 interface OpportunityDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,16 +28,24 @@ interface OpportunityDialogProps {
   opportunityToEdit: Partial<Opportunity> | null;
 }
 
+/**
+ * Diàleg modal per crear o editar una oportunitat de venda.
+ * Conté un formulari que s'envia a una Server Action.
+ */
 export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: OpportunityDialogProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition(); // Hook per a l'estat de càrrega.
   
+  // Estats locals per a camps que requereixen una gestió especial, com el selector de contacte i el calendari.
   const [selectedContactId, setSelectedContactId] = useState(opportunityToEdit?.contact_id || '');
   const [closeDate, setCloseDate] = useState<Date | undefined>(
     opportunityToEdit?.close_date ? new Date(opportunityToEdit.close_date) : undefined
   );
 
+  /**
+   * 'useEffect' per resetejar els estats del formulari cada cop que s'obre el diàleg.
+   * Això assegura que les dades d'una edició anterior no es mantinguin en crear una nova oportunitat.
+   */
   useEffect(() => {
-    // Resetejem els estats interns quan el diàleg s'obre amb una nova oportunitat
     if (open) {
       setSelectedContactId(opportunityToEdit?.contact_id || '');
       setCloseDate(opportunityToEdit?.close_date ? new Date(opportunityToEdit.close_date) : undefined);
@@ -46,15 +53,20 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
   }, [open, opportunityToEdit]);
 
 
+  /**
+   * Gestiona l'enviament del formulari.
+   * Recull les dades, les prepara i les envia a la Server Action 'saveOpportunityAction'.
+   */
   const handleSubmit = (formData: FormData) => {
+    // Afegim al 'formData' les dades que gestionem amb estats locals.
     if (opportunityToEdit?.id) {
       formData.set('id', opportunityToEdit.id);
     }
     formData.set('contact_id', selectedContactId);
     if (closeDate) {
-        formData.set('close_date', closeDate.toISOString());
+      formData.set('close_date', closeDate.toISOString());
     } else {
-        formData.delete('close_date');
+      formData.delete('close_date');
     }
 
     startTransition(async () => {
@@ -63,12 +75,13 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
         toast.error('Error', { description: result.error.message });
       } else {
         toast.success('Èxit!', { description: "L'oportunitat s'ha desat correctament." });
-        onSuccess();
-        onOpenChange(false);
+        onSuccess(); // Cridem la funció de callback per notificar al pare (ex: refrescar dades).
+        onOpenChange(false); // Tanquem el diàleg.
       }
     });
   };
   
+  // Trobem el contacte seleccionat per mostrar el seu nom al botó del Popover.
   const selectedContact = contacts.find(c => c.id === selectedContactId);
 
   return (

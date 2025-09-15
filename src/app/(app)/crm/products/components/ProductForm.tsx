@@ -1,44 +1,68 @@
 "use client";
+
+// Importem els hooks de React. 'useActionState' és la versió moderna de 'useFormState'
+// per gestionar l'estat dels formularis que utilitzen Server Actions.
 import { useActionState, useEffect } from "react"; 
-import { useFormState, useFormStatus } from "react-dom";
-import { toast } from "sonner"; // ✅ CORRECCIÓ: Importem 'toast' directament de 'sonner'
+// 'useFormStatus' és un hook que ens dona informació sobre l'estat d'enviament
+// d'un formulari, com per exemple si està 'pending' (enviant-se).
+import { useFormStatus } from "react-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createProduct, updateProduct } from "../actions";
 import type { Product } from "../page";
 import type { FormState } from "../actions";
-import { Switch } from "@/components/ui/switch"; // ✅ Importa el component Switch
-import { Textarea } from "@/components/ui/textarea"; // ✅ Importa Textarea
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
-// Botó de Submit que mostra un estat de càrrega
+/**
+ * Sub-component reutilitzable per al botó d'enviament del formulari.
+ * Utilitza el hook 'useFormStatus' per desactivar-se i mostrar un text
+ * de "Desant..." automàticament mentre la Server Action s'està executant.
+ */
 function SubmitButton({ isEditing }: { isEditing: boolean }) {
   const { pending } = useFormStatus();
   return <Button type="submit" disabled={pending}>{pending ? "Desant..." : (isEditing ? "Desar Canvis" : "Crear Concepte")}</Button>;
 }
 
+/**
+ * Component del formulari per crear o editar un producte/concepte.
+ * @param {Product | null} product - Si rep un objecte 'product', funciona en mode edició. Si és 'null', funciona en mode creació.
+ * @param {() => void} onSuccess - Funció de callback a executar quan l'operació té èxit (ex: tancar el diàleg).
+ */
 export function ProductForm({ product, onSuccess }: { product: Product | null, onSuccess: () => void }) {
+  // Determina quina Server Action s'ha d'executar: 'updateProduct' si estem editant,
+  // o 'createProduct' si estem creant. 'bind' s'utilitza per pre-configurar
+  // el primer paràmetre de 'updateProduct' (l'ID del producte).
   const action = product ? updateProduct.bind(null, product.id) : createProduct;
+
+  // Estat inicial per a 'useActionState'.
   const initialState: FormState = { success: false, message: "" };
+
+  // Hook principal que connecta el formulari amb la Server Action.
+  // 'state' contindrà l'últim resultat de l'acció (èxit, missatge, errors).
+  // 'formAction' és la funció que s'assigna a l'atribut 'action' de l'etiqueta <form>.
   const [state, formAction] = useActionState(action, initialState);
 
+  /**
+   * 'useEffect' que s'executa cada cop que l'estat ('state') canvia (després d'enviar el formulari).
+   * S'encarrega de mostrar les notificacions ('toast') d'èxit o error.
+   */
   useEffect(() => {
     if (state.message) {
       if (state.success) {
-        // ✅ CORRECCIÓ: Nova manera de cridar les notificacions
-        toast.success("Èxit!", {
-          description: state.message,
-        });
-        onSuccess();
-      } else if (!state.errors) {
-        // ✅ CORRECCIÓ: Nova manera de cridar les notificacions d'error
-        toast.error("Error", {
-          description: state.message,
-        });
+        toast.success("Èxit!", { description: state.message });
+        onSuccess(); // Executa el callback per tancar el diàleg.
+      } else if (!state.errors) { // Només mostra error general si no hi ha errors de camp específics.
+        toast.error("Error", { description: state.message });
       }
     }
   }, [state, onSuccess]);
+
   return (
+       // L'atribut 'action' connecta directament aquest formulari a la nostra Server Action.
+    // En fer 'submit', s'executarà la funció 'formAction' al servidor.
     <form action={formAction} className="grid gap-6 py-4">
       {/* Camp 'is_active' a dalt de tot */}
       <div className="flex items-center space-x-2">

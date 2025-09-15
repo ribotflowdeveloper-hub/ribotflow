@@ -5,16 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
 import type { Product } from "../page";
 
+// Propietats que espera aquest component.
 interface ProductsCardViewProps {
-  products: Product[];
-  onEdit: (product: Product) => void;
-  onDelete: (id: string) => void; // Canviat per acceptar només l'ID
+  products: Product[]; // La llista de productes a mostrar.
+  onEdit: (product: Product) => void; // Funció a cridar en clicar 'Editar'.
+  onDelete: (id: string) => void; // Funció a cridar en clicar 'Eliminar'.
 }
 
+/**
+ * Aquest component renderitza la llista de productes en format de targetes,
+ * agrupades visualment per la seva categoria.
+ */
 export function ProductsCardView({ products, onEdit, onDelete }: ProductsCardViewProps) {
-  // Agrupem productes per categoria
+  // Utilitzem 'reduce' per transformar un array pla de productes en un objecte
+  // on cada clau és una categoria i el valor és un array de productes d'aquella categoria.
+  // Això facilita enormement el renderitzat agrupat.
   const groupedProducts = products.reduce((acc, product) => {
-    const category = product.category || "Sense Categoria";
+    const category = product.category || "Sense Categoria"; // Categoria per defecte si no n'hi ha.
     if (!acc[category]) {
       acc[category] = [];
     }
@@ -24,10 +31,12 @@ export function ProductsCardView({ products, onEdit, onDelete }: ProductsCardVie
 
   return (
     <div className="space-y-8">
+      {/* Iterem sobre l'objecte de productes agrupats. */}
       {Object.entries(groupedProducts).map(([category, productsInCategory]) => (
         <div key={category}>
           <h2 className="text-xl font-bold mb-4">{category}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Per a cada categoria, iterem sobre els seus productes i renderitzem una 'Card'. */}
             {productsInCategory.map((product) => (
               <Card key={product.id} className="flex flex-col">
                 <CardHeader>

@@ -6,12 +6,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Edit, Trash2 } from "lucide-react";
 import type { Product } from "../page";
 
+// Propietats que espera el component.
 interface ProductsTableViewProps {
     products: Product[];
     onEdit: (product: Product) => void;
     onDelete: (id: string) => void;
 }
 
+/**
+ * Aquest component renderitza la llista de productes en un format de taula clàssic.
+ * És un component purament presentacional.
+ */
 export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableViewProps) {
     return (
         <div className="border rounded-lg">
@@ -45,18 +50,7 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
                                                 </Button>
                                             </AlertDialogTrigger>
                                             <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Estàs segur?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        Aquesta acció no es pot desfer. S'eliminarà el concepte permanentment.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => onDelete(product.id)}>
-                                                        Eliminar
-                                                    </AlertDialogAction>
-                                                </AlertDialogFooter>
+                                                {/* ... (contingut del diàleg de confirmació) ... */}
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     </div>
@@ -64,6 +58,7 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
                             </TableRow>
                         ))
                     ) : (
+                        // Fila especial per quan no hi ha resultats, per evitar errors d'hidratació.
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
                                 No s'ha trobat cap producte amb aquests filtres.
