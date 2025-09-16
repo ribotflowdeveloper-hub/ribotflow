@@ -1,4 +1,338 @@
 {
+  "Metadata": {
+    "siteName": "Ribot",
+    "defaultTitle": "Ribot - Tu CRM Inteligente",
+    "description": "Gestiona tus clientes, proyectos y facturas de forma eficiente con Ribot.",
+    "ogImageAlt": "Panel de control de Ribot CRM"
+  },
+  "NetworkPage": {
+    "mapboxError": "Error: La clave de API de Mapbox no está configurada correctamente.",
+    "logoAltText": "Logo de {companyName}",
+    "visitWebsite": "Visitar web",
+    "loadingNetwork": "Cargando red profesional...",
+    "title": "Red Profesional",
+    "searchPlaceholder": "Busca por nombre o servicio...",
+    "noResults": "No se han encontrado resultados."
+  },
+  "RedirectAnimation": {
+    "loadingWorkspace": "Preparando tu espacio de trabajo..."
+  },
+  "Navigation": {
+    "dashboard": "Panel Principal",
+    "crm": "CRM",
+    "finances": "Finanzas",
+    "network": "Red Profesional",
+    "communication": "Comunicación",
+    "settings": "Configuración",
+    "architecture": "Arquitectura",
+    "profile": "Perfil",
+    "customization": "Personalización",
+    "crmGeneral": "CRM General",
+    "contacts": "Contactos",
+    "pipeline": "Pipeline",
+    "quotes": "Presupuestos",
+    "concepts": "Conceptos",
+    "activities": "Actividades",
+    "invoicing": "Facturación",
+    "expenses": "Gastos",
+    "inbox": "Bandeja de Entrada",
+    "templates": "Plantillas",
+    "marketing": "Marketing",
+    "logoAlt": "Logo de Ribot",
+    "comingSoon": "Próximamente",
+    "featureUnavailable": "🚧 Esta funcionalidad aún no está disponible.",
+    "ai": "IA Automática",
+    "signOut": "Cerrar Sesión",
+    "signOutConfirmTitle": "¿Estás seguro de que quieres cerrar la sesión?",
+    "signOutConfirmDescription": "Tendrás que volver a iniciar sesión para acceder a tu cuenta.",
+    "cancel": "Cancelar",
+    "confirmSignOut": "Sí, cerrar sesión"
+  },
+  "InboxPage": {
+    "composeDialogTitle": "Escribir un Correo",
+    "composeDialogDescription": "Selecciona un destinatario, escribe un asunto y compone tu mensaje o elige una plantilla.",
+    "subjectPlaceholder": "Asunto...",
+    "previewTitle": "Vista Previa",
+    "recipientLabel": "Destinatario",
+    "searchContactPlaceholder": "Busca un contacto...",
+    "selectContactPlaceholder": "Selecciona un contacto...",
+    "noContactsFound": "No se han encontrado contactos.",
+    "templateLabel": "Plantilla",
+    "selectTemplatePlaceholder": "Usa una plantilla...",
+    "noTemplateOption": "Ninguna plantilla",
+    "variablesLabel": "Variables",
+    "variablePlaceholder": "Valor para {varName}...",
+    "cancelButton": "Cancelar",
+    "sendButton": "Enviar Correo",
+    "toastSuccessTitle": "¡Éxito!",
+    "toastErrorTitle": "Error en el envío",
+    "requiredFieldsErrorTitle": "Campos obligatorios",
+    "requiredFieldsErrorDescription": "Debes rellenar el destinatario, el asunto y el cuerpo.",
+    "replyHeader": "--- El {date} {name} escribió ---",
+    "inboxUpdatedToast": "Bandeja actualizada",
+    "unknownSender": "Desconocido",
+    "emptyInbox": "Tu bandeja está vacía.",
+    "inboxTitle": "Bandeja de Entrada",
+    "receivedFilter": "Recibidos",
+    "sentFilter": "Enviados",
+    "replyButton": "Responder",
+    "selectConversationTitle": "Selecciona una conversación",
+    "selectConversationDescription": "Elige un email de la lista para verlo aquí.",
+    "contactDetailsTitle": "Detalles del Contacto",
+    "emailLabel": "Email:",
+    "phoneLabel": "Teléfono:",
+    "locationLabel": "Ubicación:",
+    "notSpecified": "No especificado",
+    "saveContactButton": "Guardar Contacto",
+    "noContactAssociated": "Ningún contacto asociado.",
+    "senderDetailsLabel": "Detalles del Remitente",
+    "nameLabel": "Nombre:",
+    "deleteConfirmTitle": "¿Estás seguro?",
+    "deleteConfirmDescription": "Esta acción no se puede deshacer.",
+    "confirmDeleteButton": "Sí, elimínalo"
+  },
+  "AICampaignWizard": {
+    "title": "Asistente de Campañas de IA",
+    "step1Description": "Comienza describiendo tu objetivo de marketing. ¡Sé específico!",
+    "step1Placeholder": "Ej: Quiero conseguir 3 nuevos clientes para mi servicio de consultoría este mes a través de Instagram.",
+    "generateStrategiesButton": "Generar Estrategias",
+    "step2Description": "Hemos generado algunas ideas para ti. Elige la que más te guste para desarrollar el contenido.",
+    "creatingMagic": "Creando magia...",
+    "backButton": "Atrás",
+    "step3Description": "¡Perfecto! Aquí tienes un borrador. Puedes editarlo antes de guardar la campaña.",
+    "saveCampaignButton": "Guardar Campaña",
+    "toastErrorAI": "Error de IA",
+    "toastErrorSave": "Error",
+    "toastErrorSaveDescription": "No se pudo guardar la campaña.",
+    "toastSuccessSave": "¡Campaña Creada!",
+    "toastSuccessSaveDescription": "Tu nueva campaña está en la lista."
+  },
+  "CampaignCalendar": {
+    "daysOfWeek": {
+      "monday": "Lun",
+      "tuesday": "Mar",
+      "wednesday": "Mié",
+      "thursday": "Jue",
+      "friday": "Vie",
+      "saturday": "Sáb",
+      "sunday": "Dom"
+    }
+  },
+  "Marketing": {
+    "title": "Centro de Marketing",
+    "createCampaignButton": "Crear Campaña con IA",
+    "kpiNewContacts": "Nuevos Contactos (Mes)",
+    "kpiConversionRate": "Tasa de Conversión",
+    "kpiInteraction": "Interacción (Próximamente)",
+    "yourCampaignsTitle": "Tus Campañas",
+    "noCampaignsMessage": "Aún no has creado ninguna campaña. Haz clic en \"Crear Campaña con IA\" para empezar.",
+    "campaignListHeader": "Campaña",
+    "typeListHeader": "Tipo",
+    "statusListHeader": "Estado",
+    "dateListHeader": "Fecha",
+    "detailDialogTitle": "Detalle de la Campaña",
+    "detailDialogScheduledFor": "Planificada para",
+    "detailDialogNameLabel": "Nombre de la Campaña",
+    "detailDialogAudienceLabel": "Público Objetivo",
+    "detailDialogContentLabel": "Contenido",
+    "closeButton": "Cerrar",
+    "saveChangesButton": "Guardar Cambios",
+    "toastErrorUpdate": "No se pudo actualizar la campaña.",
+    "toastSuccessUpdate": "Campaña actualizada."
+  },
+  "TemplatesPage": {
+    "pageTitle": "Editor de Plantillas",
+    "saveButton": "Guardar Plantilla",
+    "templatesListTitle": "Plantillas",
+    "templateNamePlaceholder": "Nombre de la plantilla...",
+    "subjectPlaceholder": "Asunto del correo...",
+    "contentTitle": "Contenido",
+    "codeButton": "Código",
+    "previewButton": "Vista Previa",
+    "previewTitle": "Vista Previa",
+    "noTemplateSelected": "Selecciona o crea una plantilla",
+    "detectedVariablesTitle": "Variables Detectadas",
+    "variablesDescription": "La plataforma detecta automáticamente las variables.",
+    "noVariablesDetected": "No se ha detectado ninguna variable.",
+    "toastCopiedTitle": "¡Copiado!",
+    "toastCopiedDescription": "Variable {{variable}} copiada.",
+    "newTemplateName": "Nueva Plantilla",
+    "newTemplateBody": "<h1>Hola {{nombre_contacto}},</h1>\n<p>Contenido de tu correo...</p>",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "¡Éxito!",
+    "toastSaveSuccessDescription": "Plantilla guardada correctamente.",
+    "toastDeleteSuccessDescription": "Plantilla eliminada.",
+    "deleteConfirmTitle": "¿Estás seguro?",
+    "deleteConfirmDescription": "Esta acción no se puede deshacer. Esto eliminará la plantilla permanentemente.",
+    "cancelButton": "Cancelar",
+    "deletingButton": "Eliminando...",
+    "confirmDeleteButton": "Sí, elimínala"
+  },
+  "ActivitiesClient": {
+    "title": "Historial de Actividades",
+    "deletedContact": "Contacto eliminado",
+    "noActivities": "No hay ninguna actividad registrada todavía.",
+    "dateFormat": "d MMM yyyy 'a las' HH:mm"
+  },
+  "ContactsClient": {
+    "title": "Contactos",
+    "searchPlaceholder": "Buscar...",
+    "newContactButton": "Nuevo Contacto",
+    "dialogTitle": "Nuevo Contacto",
+    "dialogDescription": "Agrega los detalles del nuevo contacto.",
+    "namePlaceholder": "Nombre completo",
+    "companyPlaceholder": "Empresa",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Teléfono",
+    "valuePlaceholder": "Valor (€)",
+    "cancelButton": "Cancelar",
+    "saveButton": "Guardar Contacto",
+    "noContactsFound": "No se han encontrado contactos.",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "¡Éxito!",
+    "toastSuccessDescription": "El contacto se ha guardado correctamente."
+  },
+  "ContactDetailPage": {
+    "backToContacts": "Volver a Contactos",
+    "placeholderName": "Escribe el nombre del contacto",
+    "placeholderCompany": "Escribe el nombre de la empresa",
+    "buttons": {
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar Cambios",
+      "editDetails": "Editar Detalles",
+      "delete": "Eliminar",
+      "confirmDelete": "Sí, eliminar definitivamente"
+    },
+    "deleteDialog": {
+      "title": "¿Eliminar contacto?",
+      "description1": "Esta acción",
+      "irreversible": "no se puede deshacer",
+      "description2": "Se perderá toda la información relacionada con este contacto, incluyendo actividades, presupuestos y facturas."
+    },
+    "tabs": {
+      "activities": "Actividades",
+      "opportunities": "Oportunidades",
+      "quotes": "Presupuestos",
+      "invoices": "Facturas",
+      "details": "Detalles"
+    },
+    "activities": {
+      "title": "Historial de Actividades",
+      "empty": "No hay actividades para este contacto."
+    },
+    "opportunities": {
+      "title": "Oportunidades",
+      "empty": "No hay oportunidades.",
+      "table": {
+        "name": "Nombre",
+        "status": "Estado",
+        "value": "Valor"
+      }
+    },
+    "quotes": {
+      "title": "Presupuestos",
+      "empty": "No hay presupuestos.",
+      "table": {
+        "number": "Número",
+        "status": "Estado",
+        "total": "Total"
+      }
+    },
+    "invoices": {
+      "title": "Facturas",
+      "empty": "No hay facturas.",
+      "table": {
+        "number": "Número",
+        "status": "Estado",
+        "total": "Total"
+      }
+    },
+    "details": {
+      "generalInfo": "Información General",
+      "personalInfo": "Información Personal",
+      "notes": "Notas",
+      "noData": "--",
+      "noNotes": "No hay notas para este contacto.",
+      "labels": {
+        "email": "Email",
+        "phone": "Teléfono",
+        "status": "Estado",
+        "jobTitle": "Cargo",
+        "industry": "Sector",
+        "leadSource": "Origen del Lead",
+        "birthday": "Cumpleaños",
+        "city": "Ciudad",
+        "linkedin": "LinkedIn",
+        "children": "Hijos",
+        "partnerName": "Nombre de la pareja",
+        "hobbies": "Hobbies"
+      }
+    },
+    "status": {
+      "notAvailable": "N/A",
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "wonPaid": "Ganado/Pagado",
+      "rejected": "Rechazado",
+      "negotiation": "Negociación",
+      "overdue": "Vencido"
+    },
+    "contactStatuses": {
+      "Lead": "Lead",
+      "Client": "Cliente",
+      "Proveidor": "Proveedor"
+    },
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "¡Éxito!",
+      "updateSuccess": "Contacto actualizado.",
+      "deleteSuccess": "El contacto ha sido eliminado correctamente."
+    }
+  },
+  "DashboardClient": {
+    "openLink": "Abrir",
+    "totalContacts": "Contactos Totales",
+    "activeOpportunities": "Oportunidades Activas",
+    "monthlyInvoicing": "Facturación Mensual",
+    "pendingVAT": "IVA Pendiente",
+    "salesPerformance": "Rendimiento de Ventas",
+    "goalCompleted": "% completado",
+    "invoicedMonth": "Facturado (mes)",
+    "expensesMonth": "Gastos (mes)",
+    "netProfit": "Beneficio neto (est.)",
+    "recentActivities": "Actividades Recientes",
+    "noActivities": "Aún no hay actividades.",
+    "quickAccess": "Acceso Rápido",
+    "contacts": "Contactos",
+    "crm": "CRM",
+    "pipeline": "Pipeline",
+    "opportunities": "Oportunidades",
+    "invoicing": "Facturación",
+    "invoices": "Facturas",
+    "expenses": "Gastos",
+    "costs": "Costes",
+    "inbox": "Inbox",
+    "communication": "Comunicación",
+    "quotes": "Presupuestos",
+    "agenda": "Agenda",
+    "newTask": "Nueva Tarea",
+    "noPendingTasks": "No tienes tareas pendientes.",
+    "radar": "Radar",
+    "allInOrder": "Todo en orden.",
+    "overdueInvoice": "Factura vencida de {clientName}",
+    "dueDate": "Vencía el {dueDate}",
+    "taskCompleted": "Tarea completada: {taskTitle}",
+    "taskCreated": "Tarea creada: {taskTitle}",
+    "newContact": "Nuevo contacto: {contactName}",
+    "coolingContact": "Contacto enfriándose: {contactName}",
+    "noInteraction7Days": "Sin interacciones en +7 días",
+    "taskCreatedToast": "¡Tarea creada!",
+    "taskUpdateErrorToast": "No se ha podido actualizar la tarea."
+  },
+  "ThemeSwitcher": {
+    "lightTheme": "Claro",
+    "darkTheme": "Oscuro"
+  },
   "CustomizationPage": {
     "languageTitle": "Idioma",
     "languageDescription": "Selecciona tu idioma de preferencia.",
@@ -8,15 +342,5 @@
     "newStageButton": "Nueva Fase",
     "tagsTitle": "Gestionar Etiquetas de Contacto",
     "newTagButton": "Nueva Etiqueta"
-  },
-  "ThemeSwitcher": {
-    "lightTheme": "Claro",
-    "darkTheme": "Oscuro"
-  },
-  "Metadata": {
-    "siteName": "Ribot",
-    "defaultTitle": "Ribot - Tu CRM Inteligente",
-    "description": "Gestiona tus clientes, proyectos y facturas de forma eficiente con Ribot.",
-    "ogImageAlt": "Panel de control de Ribot CRM"
   }
 }

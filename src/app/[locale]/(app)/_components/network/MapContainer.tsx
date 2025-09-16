@@ -15,6 +15,7 @@ import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
 import type { PublicProfile } from '@/types'; // El nostre tipus de dades per a un perfil públic.
 import { Building2 } from 'lucide-react'; // Icona per a marcadors sense logo.
 import Image from 'next/image'; // Component optimitzat d'imatges de Next.js.
+import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 
 /**
  * @interface MapContainerProps
@@ -37,7 +38,7 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
     // Utilitzem una 'ref' per obtenir una referència directa a la instància del mapa.
   // Això ens permetrà cridar a mètodes de l'API del mapa, com 'flyTo'.
   const mapRef = useRef<MapRef>(null);
-
+  const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
   // Guardem el token en una variable per fer una comprovació de seguretat abans de renderitzar.
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 /**
@@ -62,8 +63,8 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
   if (!mapboxToken) {
     return (
       <div className="w-full h-full flex items-center justify-center bg-gray-800 text-red-400 p-4">
-        Error: La clau d'API de Mapbox no està configurada correctament a les variables d'entorn.
-      </div>
+        {t('mapboxError')} {/* ✅ Text traduït */}
+        </div>
     );
   }
 // Renderització del component.
@@ -96,7 +97,7 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
             {profile.logo_url ? (
               <Image 
                 src={profile.logo_url} 
-                alt={`Logo de ${profile.company_name}`}
+                alt={t('logoAltText', { companyName: profile.company_name })}
                 width={32}
                 height={32}
                 className="rounded-full border-2 border-purple-500 object-cover"

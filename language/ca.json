@@ -1,4 +1,338 @@
 {
+  "Metadata": {
+    "siteName": "Ribot",
+    "defaultTitle": "Ribot - El Teu CRM Intel·ligent",
+    "description": "Gestiona els teus clients, projectes i factures de manera eficient amb Ribot.",
+    "ogImageAlt": "Panell de control de Ribot CRM"
+  },
+  "NetworkPage": {
+    "mapboxError": "Error: La clau d'API de Mapbox no està configurada correctament.",
+    "logoAltText": "Logo de {companyName}",
+    "visitWebsite": "Visitar web",
+    "loadingNetwork": "Carregant xarxa professional...",
+    "title": "Xarxa Professional",
+    "searchPlaceholder": "Cerca per nom o servei...",
+    "noResults": "No s'han trobat resultats."
+  },
+  "RedirectAnimation": {
+    "loadingWorkspace": "Preparant el teu espai de treball..."
+  },
+  "Navigation": {
+    "dashboard": "Tauler Principal",
+    "crm": "CRM",
+    "finances": "Finances",
+    "network": "Xarxa Professional",
+    "communication": "Comunicació",
+    "settings": "Configuració",
+    "architecture": "Arquitectura",
+    "profile": "Perfil",
+    "customization": "Personalització",
+    "crmGeneral": "General CRM",
+    "contacts": "Contactes",
+    "pipeline": "Pipeline",
+    "quotes": "Pressupostos",
+    "concepts": "Conceptes",
+    "activities": "Activitats",
+    "invoicing": "Facturació",
+    "expenses": "Despeses",
+    "inbox": "Safata d'Entrada",
+    "templates": "Plantilles",
+    "marketing": "Màrqueting",
+    "logoAlt": "Logo de Ribot",
+    "comingSoon": "Pròximament",
+    "featureUnavailable": "🚧 Aquesta funcionalitat encara no està disponible.",
+    "ai": "IA Automàtica",
+    "signOut": "Tancar Sessió",
+    "signOutConfirmTitle": "Estàs segur que vols tancar la sessió?",
+    "signOutConfirmDescription": "Hauràs de tornar a iniciar sessió per accedir al teu compte.",
+    "cancel": "Cancel·lar",
+    "confirmSignOut": "Sí, tanca la sessió"
+  },
+  "InboxPage": {
+    "composeDialogTitle": "Escriure un Correu",
+    "composeDialogDescription": "Selecciona un destinatari, escriu un assumpte i compon el teu missatge o tria una plantilla.",
+    "subjectPlaceholder": "Assumpte...",
+    "previewTitle": "Vista Prèvia",
+    "recipientLabel": "Destinatari",
+    "searchContactPlaceholder": "Cerca un contacte...",
+    "selectContactPlaceholder": "Selecciona un contacte...",
+    "noContactsFound": "No s'han trobat contactes.",
+    "templateLabel": "Plantilla",
+    "selectTemplatePlaceholder": "Fes servir una plantilla...",
+    "noTemplateOption": "Cap plantilla",
+    "variablesLabel": "Variables",
+    "variablePlaceholder": "Valor per a {varName}...",
+    "cancelButton": "Cancel·lar",
+    "sendButton": "Enviar Correu",
+    "toastSuccessTitle": "Èxit!",
+    "toastErrorTitle": "Error en l'enviament",
+    "requiredFieldsErrorTitle": "Camps obligatoris",
+    "requiredFieldsErrorDescription": "Has d'omplir el destinatari, l'assumpte i el cos.",
+    "replyHeader": "--- El {date} {name} va escriure ---",
+    "inboxUpdatedToast": "Safata actualitzada",
+    "unknownSender": "Desconegut",
+    "emptyInbox": "La teva safata està buida.",
+    "inboxTitle": "Safata d'Entrada",
+    "receivedFilter": "Rebuts",
+    "sentFilter": "Enviats",
+    "replyButton": "Respondre",
+    "selectConversationTitle": "Selecciona una conversa",
+    "selectConversationDescription": "Tria un email de la llista per veure'l aquí.",
+    "contactDetailsTitle": "Detalls del Contacte",
+    "emailLabel": "Email:",
+    "phoneLabel": "Telèfon:",
+    "locationLabel": "Ubicació:",
+    "notSpecified": "No especificat",
+    "saveContactButton": "Guardar Contacte",
+    "noContactAssociated": "Cap contacte associat.",
+    "senderDetailsLabel": "Detalls del Remitent",
+    "nameLabel": "Nom:",
+    "deleteConfirmTitle": "Estàs segur?",
+    "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
+    "confirmDeleteButton": "Sí, elimina'l"
+  },
+  "AICampaignWizard": {
+    "title": "Assistent de Campanyes d'IA",
+    "step1Description": "Comença descrivint el teu objectiu de màrqueting. Sigues específic!",
+    "step1Placeholder": "Ex: Vull aconseguir 3 nous clients per al meu servei de consultoria aquest mes a través d'Instagram.",
+    "generateStrategiesButton": "Generar Estratègies",
+    "step2Description": "Hem generat algunes idees per a tu. Tria la que més t'agradi per desenvolupar el contingut.",
+    "creatingMagic": "Creant màgia...",
+    "backButton": "Enrere",
+    "step3Description": "Perfecte! Aquí tens un esborrany. Pots editar-lo abans de desar la campanya.",
+    "saveCampaignButton": "Desar Campanya",
+    "toastErrorAI": "Error d'IA",
+    "toastErrorSave": "Error",
+    "toastErrorSaveDescription": "No s'ha pogut desar la campanya.",
+    "toastSuccessSave": "Campanya Creada!",
+    "toastSuccessSaveDescription": "La teva nova campanya està a la llista."
+  },
+  "CampaignCalendar": {
+    "daysOfWeek": {
+      "monday": "Dl",
+      "tuesday": "Dm",
+      "wednesday": "Dc",
+      "thursday": "Dj",
+      "friday": "Dv",
+      "saturday": "Ds",
+      "sunday": "Dg"
+    }
+  },
+  "Marketing": {
+    "title": "Centre de Màrqueting",
+    "createCampaignButton": "Crear Campanya amb IA",
+    "kpiNewContacts": "Nous Contactes (Mes)",
+    "kpiConversionRate": "Taxa de Conversió",
+    "kpiInteraction": "Interacció (Properament)",
+    "yourCampaignsTitle": "Les Teves Campanyes",
+    "noCampaignsMessage": "Encara no has creat cap campanya. Fes clic a \"Crear Campanya amb IA\" per començar.",
+    "campaignListHeader": "Campanya",
+    "typeListHeader": "Tipus",
+    "statusListHeader": "Estat",
+    "dateListHeader": "Data",
+    "detailDialogTitle": "Detall de la Campanya",
+    "detailDialogScheduledFor": "Planificada per al",
+    "detailDialogNameLabel": "Nom de la Campanya",
+    "detailDialogAudienceLabel": "Públic Objectiu",
+    "detailDialogContentLabel": "Contingut",
+    "closeButton": "Tancar",
+    "saveChangesButton": "Desar Canvis",
+    "toastErrorUpdate": "No s'ha pogut actualitzar la campanya.",
+    "toastSuccessUpdate": "Campanya actualitzada."
+  },
+  "TemplatesPage": {
+    "pageTitle": "Editor de Plantilles",
+    "saveButton": "Desar Plantilla",
+    "templatesListTitle": "Plantilles",
+    "templateNamePlaceholder": "Nom de la plantilla...",
+    "subjectPlaceholder": "Assumpte del correu...",
+    "contentTitle": "Contingut",
+    "codeButton": "Codi",
+    "previewButton": "Vista Prèvia",
+    "previewTitle": "Vista Prèvia",
+    "noTemplateSelected": "Selecciona o crea una plantilla",
+    "detectedVariablesTitle": "Variables Detectades",
+    "variablesDescription": "La plataforma detecta automàticament les variables.",
+    "noVariablesDetected": "No s'ha detectat cap variable.",
+    "toastCopiedTitle": "Copiat!",
+    "toastCopiedDescription": "Variable {{variable}} copiada.",
+    "newTemplateName": "Nova Plantilla",
+    "newTemplateBody": "<h1>Hola {{nom_contacte}},</h1>\n<p>Contingut del teu correu...</p>",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "Èxit!",
+    "toastSaveSuccessDescription": "Plantilla desada correctament.",
+    "toastDeleteSuccessDescription": "Plantilla eliminada.",
+    "deleteConfirmTitle": "Estàs segur?",
+    "deleteConfirmDescription": "Aquesta acció no es pot desfer. Això eliminarà la plantilla permanentment.",
+    "cancelButton": "Cancel·lar",
+    "deletingButton": "Eliminant...",
+    "confirmDeleteButton": "Sí, elimina-la"
+  },
+  "ActivitiesClient": {
+    "title": "Historial d'Activitats",
+    "deletedContact": "Contacte esborrat",
+    "noActivities": "No hi ha cap activitat registrada encara.",
+    "dateFormat": "d MMM yyyy 'a les' HH:mm"
+  },
+  "ContactsClient": {
+    "title": "Contactes",
+    "searchPlaceholder": "Cerca...",
+    "newContactButton": "Nou Contacte",
+    "dialogTitle": "Nou Contacte",
+    "dialogDescription": "Afegeix els detalls del nou contacte.",
+    "namePlaceholder": "Nom complet",
+    "companyPlaceholder": "Empresa",
+    "emailPlaceholder": "Email",
+    "phonePlaceholder": "Telèfon",
+    "valuePlaceholder": "Valor (€)",
+    "cancelButton": "Cancel·lar",
+    "saveButton": "Desar Contacte",
+    "noContactsFound": "No s'han trobat contactes.",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "Èxit!",
+    "toastSuccessDescription": "El contacte s'ha desat correctament."
+  },
+  "ContactDetailPage": {
+    "backToContacts": "Tornar a Contactes",
+    "placeholderName": "Escriu el nom del contacte",
+    "placeholderCompany": "Escriu el nom de l’empresa",
+    "buttons": {
+      "cancel": "Cancel·lar",
+      "saveChanges": "Desar Canvis",
+      "editDetails": "Editar Detalls",
+      "delete": "Eliminar",
+      "confirmDelete": "Sí, eliminar definitivament"
+    },
+    "deleteDialog": {
+      "title": "Eliminar contacte?",
+      "description1": "Aquesta acció",
+      "irreversible": "no es pot desfer",
+      "description2": "Es perdrà tota la informació relacionada amb aquest contacte, incloent activitats, pressupostos i factures."
+    },
+    "tabs": {
+      "activities": "Activitats",
+      "opportunities": "Oportunitats",
+      "quotes": "Pressupostos",
+      "invoices": "Factures",
+      "details": "Detalls"
+    },
+    "activities": {
+      "title": "Historial d'Activitats",
+      "empty": "No hi ha activitats per a aquest contacte."
+    },
+    "opportunities": {
+      "title": "Oportunitats",
+      "empty": "No hi ha oportunitats.",
+      "table": {
+        "name": "Nom",
+        "status": "Estat",
+        "value": "Valor"
+      }
+    },
+    "quotes": {
+      "title": "Pressupostos",
+      "empty": "No hi ha pressupostos.",
+      "table": {
+        "number": "Número",
+        "status": "Estat",
+        "total": "Total"
+      }
+    },
+    "invoices": {
+      "title": "Factures",
+      "empty": "No hi ha factures.",
+      "table": {
+        "number": "Número",
+        "status": "Estat",
+        "total": "Total"
+      }
+    },
+    "details": {
+      "generalInfo": "Informació General",
+      "personalInfo": "Informació Personal",
+      "notes": "Notes",
+      "noData": "--",
+      "noNotes": "No hi ha notes per a aquest contacte.",
+      "labels": {
+        "email": "Email",
+        "phone": "Telèfon",
+        "status": "Estat",
+        "jobTitle": "Càrrec",
+        "industry": "Sector",
+        "leadSource": "Origen del Lead",
+        "birthday": "Aniversari",
+        "city": "Ciutat",
+        "linkedin": "LinkedIn",
+        "children": "Fills",
+        "partnerName": "Nom de la parella",
+        "hobbies": "Hobbies"
+      }
+    },
+    "status": {
+      "notAvailable": "N/A",
+      "draft": "Esborrany",
+      "sent": "Enviat",
+      "wonPaid": "Guanyat/Pagat",
+      "rejected": "Rebutjat",
+      "negotiation": "Negociació",
+      "overdue": "Vençut"
+    },
+    "contactStatuses": {
+      "Lead": "Lead",
+      "Client": "Client",
+      "Proveidor": "Proveïdor"
+    },
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "Èxit!",
+      "updateSuccess": "Contacte actualitzat.",
+      "deleteSuccess": "El contacte ha estat eliminat correctament."
+    }
+  },
+  "DashboardClient": {
+    "openLink": "Obrir",
+    "totalContacts": "Contactes Totals",
+    "activeOpportunities": "Oportunitats Actives",
+    "monthlyInvoicing": "Facturació Mensual",
+    "pendingVAT": "IVA Pendent",
+    "salesPerformance": "Rendiment de Vendes",
+    "goalCompleted": "% completat",
+    "invoicedMonth": "Facturat (mes)",
+    "expensesMonth": "Despeses (mes)",
+    "netProfit": "Benefici net (est.)",
+    "recentActivities": "Activitats Recents",
+    "noActivities": "Encara no hi ha activitats.",
+    "quickAccess": "Accés Ràpid",
+    "contacts": "Contactes",
+    "crm": "CRM",
+    "pipeline": "Pipeline",
+    "opportunities": "Oportunitats",
+    "invoicing": "Facturació",
+    "invoices": "Factures",
+    "expenses": "Despeses",
+    "costs": "Costos",
+    "inbox": "Inbox",
+    "communication": "Comunicació",
+    "quotes": "Pressupostos",
+    "agenda": "Agenda",
+    "newTask": "Nova Tasca",
+    "noPendingTasks": "No tens tasques pendents.",
+    "radar": "Radar",
+    "allInOrder": "Tot en ordre.",
+    "overdueInvoice": "Factura vençuda de {clientName}",
+    "dueDate": "Vencia el {dueDate}",
+    "taskCompleted": "Tasca completada: {taskTitle}",
+    "taskCreated": "Tasca creada: {taskTitle}",
+    "newContact": "Nou contacte: {contactName}",
+    "coolingContact": "Contacte refredant-se: {contactName}",
+    "noInteraction7Days": "Sense interaccions en +7 dies",
+    "taskCreatedToast": "Tasca creada!",
+    "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca."
+  },
+  "ThemeSwitcher": {
+    "lightTheme": "Clar",
+    "darkTheme": "Fosc"
+  },
   "CustomizationPage": {
     "languageTitle": "Idioma",
     "languageDescription": "Selecciona el teu idioma de preferència.",
@@ -8,15 +342,5 @@
     "newStageButton": "Nova Etapa",
     "tagsTitle": "Gestionar Etiquetes de Contacte",
     "newTagButton": "Nova Etiqueta"
-  },
-  "ThemeSwitcher": {
-    "lightTheme": "Clar",
-    "darkTheme": "Fosc"
-  },
-  "Metadata": {
-    "siteName": "Ribot",
-    "defaultTitle": "Ribot - El Teu CRM Intel·ligent",
-    "description": "Gestiona els teus clients, projectes i factures de manera eficient amb Ribot.",
-    "ogImageAlt": "Panell de control de Ribot CRM"
   }
 }

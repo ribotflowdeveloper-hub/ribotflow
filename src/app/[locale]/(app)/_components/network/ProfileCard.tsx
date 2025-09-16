@@ -2,6 +2,7 @@ import { Building2 } from 'lucide-react';
 import { PublicProfile } from '@/types';
 // Importem el component 'Image' de Next.js. És una versió optimitzada de l'etiqueta <img>.
 import Image from 'next/image';
+import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 
 // Definim les propietats que rep aquest component.
 interface ProfileCardProps {
@@ -17,6 +18,8 @@ interface ProfileCardProps {
  * Això el fa altament reutilitzable.
  */
 export default function ProfileCard({ profile, isSelected, onClick }: ProfileCardProps) {
+  const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
+
   return (
     // El 'div' principal gestiona el clic i canvia d'estil segons si està seleccionat.
     <div
@@ -34,7 +37,7 @@ export default function ProfileCard({ profile, isSelected, onClick }: ProfileCar
           // Requereix 'width' i 'height' per evitar salts de disseny durant la càrrega.
           <Image 
             src={profile.logo_url} 
-            alt={`Logo de ${profile.company_name}`}
+            alt={t('logoAltText', { companyName: profile.company_name })}
             width={48} 
             height={48}
             className="rounded-full object-cover bg-gray-700"
