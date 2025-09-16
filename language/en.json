@@ -12,7 +12,8 @@
     "loadingNetwork": "Loading professional network...",
     "title": "Professional Network",
     "searchPlaceholder": "Search by name or service...",
-    "noResults": "No results found."
+    "noResults": "No results found.",
+    "errorLoading": "Error loading network data."
   },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparing your workspace..."
@@ -755,6 +756,164 @@
       "deleteError": "Error deleting",
       "missingData": "Missing data",
       "missingDataDesc": "Please select a client and an issue date."
+    }
+  },
+  "SettingsPage": {
+    "nav": {
+      "title": "Settings",
+      "profile": "Profile",
+      "billing": "Billing",
+      "team": "Team",
+      "integrations": "Integrations",
+      "blacklist": "Inbox Filter",
+      "customization": "Customization"
+    },
+    "billing": {
+      "notImplemented": "Feature not implemented",
+      "notImplementedDesc": "Soon you'll be able to switch to the {planName} plan.",
+      "redirecting": "Redirecting...",
+      "redirectingDesc": "Soon you'll be able to manage your billing details via Stripe.",
+      "cancellationPage": "Cancellation Page",
+      "cancellationDesc": "Soon you'll be able to cancel your subscription here.",
+      "currentPlan": "Your Current Plan: {planName}",
+      "renewsOn": "Renews on {date}",
+      "clickForDetails": "Click to see details.",
+      "planLabel": "Plan",
+      "statusLabel": "Status",
+      "statusValue": "Active",
+      "renewalDateLabel": "Renews on",
+      "manageButton": "Manage Billing",
+      "cancelButton": "Cancel Subscription",
+      "monthlyBilling": "Monthly Billing",
+      "yearlyBilling": "Yearly Billing",
+      "yearlySave": "(Save 2 months)",
+      "mostPopular": "MOST POPULAR",
+      "pricePerMonth": "/month",
+      "billedAs": "Billed as €{price} yearly",
+      "contactUs": "Contact Us",
+      "yourCurrentPlan": "Your Current Plan",
+      "selectPlan": "Select Plan",
+      "contactSales": "Contact Sales",
+      "metaTitle": "Billing & Plans",
+      "pageTitle": "Billing & Plans",
+      "pageDescription": "Manage your subscription and choose the plan that best suits you.",
+      "plans": {
+        "free": {
+          "name": "Free",
+          "description": "Perfect for getting started and exploring basic features.",
+          "features": [
+            "Manage up to 100 contacts",
+            "Basic CRM functionalities",
+            "1 Sales pipeline",
+            "Email support"
+          ]
+        },
+        "plus": {
+          "name": "Plus",
+          "description": "Ideal for professionals and small teams looking to grow.",
+          "features": [
+            "Unlimited contacts",
+            "All CRM functionalities",
+            "3 Sales pipelines",
+            "Basic automations",
+            "Calendar integration",
+            "Priority email support"
+          ]
+        },
+        "premium": {
+          "name": "Premium",
+          "description": "The complete solution for businesses that need maximum performance.",
+          "features": [
+            "Everything in the Plus plan",
+            "Unlimited pipelines",
+            "Advanced automations & AI",
+            "Detailed reports and analytics",
+            "Team management and permissions",
+            "Phone and video call support"
+          ]
+        },
+        "custom": {
+          "name": "Custom",
+          "description": "A tailored solution for large companies with specific needs.",
+          "features": [
+            "Everything in the Premium plan",
+            "Dedicated account manager",
+            "Custom integrations (API)",
+            "Team training",
+            "Service Level Agreements (SLA)"
+          ]
+        }
+      }
+    },
+    "blacklist": {
+      "description": "Add domains (e.g., `example.com`) or full email addresses to prevent them from appearing in your inbox.",
+      "placeholder": "example.com or spammer@example.com",
+      "addButton": "Add",
+      "empty": "Your blacklist is empty.",
+      "toast": {
+        "success": "Success!",
+        "error": "Error"
+      }
+    },
+    "integrations": {
+      "title": "Email Integrations",
+      "googleTitle": "Google / Gmail",
+      "googleDescription": "Sync your Gmail account.",
+      "microsoftTitle": "Microsoft / Outlook",
+      "microsoftDescription": "Sync your Outlook account.",
+      "statusConnected": "Connected",
+      "connectButton": "Connect",
+      "disconnectButton": "Disconnect"
+    },
+    "SettingsProfile": {
+      "toastError": "Error",
+      "toastLogoUploadError": "Failed to upload logo.",
+      "toastLogoUploadSuccess": "Logo uploaded!",
+      "toastLogoUploadSuccessDesc": "Remember to save changes to apply it.",
+      "toastSuccess": "Success!",
+      "toastUpdateSuccess": "Profile updated successfully.",
+      "toastVisibilitySuccess": "Visibility updated!",
+      "visibilityUpdateMessage": "The profile is now {status}.",
+      "publicStatus": "public",
+      "privateStatus": "private",
+      "generalCardTitle": "General Profile",
+      "generalCardDescription": "Basic information about you and your company.",
+      "fullNameLabel": "Full Name",
+      "companyNameLabel": "Company Name",
+      "summaryLabel": "Business Description",
+      "summaryPlaceholder": "A short description of what you do...",
+      "servicesLabel": "Services (separated by commas)",
+      "servicesPlaceholder": "E.g.: Web Design, SEO, Marketing",
+      "contactCardTitle": "Contact & Address Details",
+      "contactCardDescription": "How your clients can reach you.",
+      "phoneLabel": "Contact Phone",
+      "streetLabel": "Street",
+      "cityLabel": "City",
+      "postalCodeLabel": "Postal Code",
+      "regionLabel": "Region",
+      "countryLabel": "Country",
+      "visibilityCardTitle": "Profile Visibility",
+      "publicProfileLabel": "Public Profile",
+      "publicProfileDescription": "If active, other users will be able to find and view your business information.",
+      "billingCardTitle": "Company Billing Information",
+      "billingCardDescription": "This information will appear on your quotes and invoices.",
+      "taxIdLabel": "Tax ID / VAT",
+      "companyEmailLabel": "Company Email",
+      "fiscalAddressLabel": "Fiscal Address",
+      "logoLabel": "Company Logo",
+      "changeLogoButton": "Change Logo",
+      "savingButton": "Saving...",
+      "saveChangesButton": "Save Changes",
+      "uploadingLogoButton": "Uploading logo..."
+    },
+    "SettingsTeam": {
+      "toastNotImplemented": "Feature not implemented",
+      "toastNotImplementedDesc": "The option to invite members will be available soon.",
+      "title": "Team Members",
+      "inviteButton": "Invite Member",
+      "youOwner": "You (Owner)",
+      "exampleEmail": "email@example.com",
+      "adminRole": "Admin"
     }
   },
   "ThemeSwitcher": {

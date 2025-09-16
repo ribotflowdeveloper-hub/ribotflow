@@ -12,7 +12,8 @@
     "loadingNetwork": "Cargando red profesional...",
     "title": "Red Profesional",
     "searchPlaceholder": "Busca por nombre o servicio...",
-    "noResults": "No se han encontrado resultados."
+    "noResults": "No se han encontrado resultados.",
+    "errorLoading": "Error al cargar los datos de la red."
   },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparando tu espacio de trabajo..."
@@ -756,6 +757,165 @@
       "missingData": "Faltan datos",
       "missingDataDesc": "Por favor, selecciona un cliente y una fecha de emisión."
     }
+  },
+  "SettingsPage": {
+    "nav": {
+      "title": "Configuración",
+      "profile": "Perfil",
+      "billing": "Facturación",
+      "team": "Equipo",
+      "integrations": "Integraciones",
+      "blacklist": "Filtro Inbox",
+      "customization": "Personalización"
+    },
+    "billing": {
+      "notImplemented": "Funcionalidad no implementada",
+      "notImplementedDesc": "Pronto podrás cambiar al plan {planName}.",
+      "redirecting": "Redirigiendo...",
+      "redirectingDesc": "Pronto podrás gestionar tus datos de facturación a través de Stripe.",
+      "cancellationPage": "Página de cancelación",
+      "cancellationDesc": "Pronto podrás cancelar tu suscripción desde aquí.",
+      "currentPlan": "Tu Plan Actual: {planName}",
+      "renewsOn": "Se renueva el {date}",
+      "clickForDetails": "Haz clic para ver detalles.",
+      "planLabel": "Plan",
+      "statusLabel": "Estado",
+      "statusValue": "Activa",
+      "renewalDateLabel": "Se renueva el",
+      "manageButton": "Gestionar Facturación",
+      "cancelButton": "Cancelar Suscripción",
+      "monthlyBilling": "Facturación Mensual",
+      "yearlyBilling": "Facturación Anual",
+      "yearlySave": "(Ahorra 2 meses)",
+      "mostPopular": "MÁS POPULAR",
+      "pricePerMonth": "/mes",
+      "billedAs": "Facturado como €{price} anuales",
+      "contactUs": "Contáctanos",
+      "yourCurrentPlan": "Tu Plan Actual",
+      "selectPlan": "Seleccionar Plan",
+      "contactSales": "Contactar Ventas",
+      "metaTitle": "Facturación y Planes",
+      "pageTitle": "Facturación y Planes",
+      "pageDescription": "Gestiona tu suscripción y elige el plan que mejor se adapte a ti.",
+      "plans": {
+        "free": {
+          "name": "Free",
+          "description": "Perfecto para empezar y explorar las funcionalidades básicas.",
+          "features": [
+            "Gestión de hasta 100 contactos",
+            "Funcionalidades básicas de CRM",
+            "1 Pipeline de ventas",
+            "Soporte por email"
+          ]
+        },
+        "plus": {
+          "name": "Plus",
+          "description": "Ideal para profesionales y equipos pequeños que quieren crecer.",
+          "features": [
+            "Contactos ilimitados",
+            "Todas las funcionalidades de CRM",
+            "3 Pipelines de ventas",
+            "Automatizaciones básicas",
+            "Integración con calendario",
+            "Soporte prioritario por email"
+          ]
+        },
+        "premium": {
+          "name": "Premium",
+          "description": "La solución completa para empresas que necesitan el máximo rendimiento.",
+          "features": [
+            "Todo lo del plan Plus",
+            "Pipelines ilimitados",
+            "Automatizaciones avanzadas e IA",
+            "Informes y análisis detallados",
+            "Gestión de equipos y permisos",
+            "Soporte por teléfono y videollamada"
+          ]
+        },
+        "custom": {
+          "name": "Personalizado",
+          "description": "Una solución a medida para grandes empresas con necesidades específicas.",
+          "features": [
+            "Todo lo del plan Premium",
+            "Gestor de cuenta dedicado",
+            "Integraciones personalizadas (API)",
+            "Formación para el equipo",
+            "Acuerdos de nivel de servicio (SLA)"
+          ]
+        }
+      }
+    },
+    "blacklist": {
+      "description": "Agrega dominios (ej: `ejemplo.com`) o direcciones de correo completas para evitar que aparezcan en tu bandeja de entrada.",
+      "placeholder": "ejemplo.com o spammer@ejemplo.com",
+      "addButton": "Agregar",
+      "empty": "Tu lista negra está vacía.",
+      "toast": {
+        "success": "¡Éxito!",
+        "error": "Error"
+      }
+    },
+    "integrations": {
+      "title": "Integraciones de Correo",
+      "googleTitle": "Google / Gmail",
+      "googleDescription": "Sincroniza tu correo de Gmail.",
+      "microsoftTitle": "Microsoft / Outlook",
+      "microsoftDescription": "Sincroniza tu correo de Outlook.",
+      "statusConnected": "Conectado",
+      "connectButton": "Conectar",
+      "disconnectButton": "Desconectar"
+    },
+    "SettingsProfile": {
+      "toastError": "Error",
+      "toastLogoUploadError": "No se pudo subir el logo.",
+      "toastLogoUploadSuccess": "¡Logo subido!",
+      "toastLogoUploadSuccessDesc": "Recuerda guardar los cambios para aplicarlo.",
+      "toastSuccess": "¡Éxito!",
+      "toastUpdateSuccess": "Perfil actualizado correctamente.",
+      "toastVisibilitySuccess": "¡Visibilidad actualizada!",
+      "visibilityUpdateMessage": "El perfil ahora es {status}.",
+      "publicStatus": "público",
+      "privateStatus": "privado",
+      "generalCardTitle": "Perfil General",
+      "generalCardDescription": "Información básica sobre ti y tu empresa.",
+      "fullNameLabel": "Nombre completo",
+      "companyNameLabel": "Nombre de la empresa",
+      "summaryLabel": "Descripción del negocio",
+      "summaryPlaceholder": "Una breve descripción de lo que haces...",
+      "servicesLabel": "Servicios (separados por comas)",
+      "servicesPlaceholder": "Ej: Diseño web, SEO, Marketing",
+      "contactCardTitle": "Datos de Contacto y Dirección",
+      "contactCardDescription": "Cómo pueden encontrarte tus clientes.",
+      "phoneLabel": "Teléfono de contacto",
+      "streetLabel": "Calle",
+      "cityLabel": "Ciudad",
+      "postalCodeLabel": "Código Postal",
+      "regionLabel": "Provincia",
+      "countryLabel": "País",
+      "visibilityCardTitle": "Visibilidad del Perfil",
+      "publicProfileLabel": "Perfil Público",
+      "publicProfileDescription": "Si está activo, otros usuarios podrán encontrar y ver la información de tu negocio.",
+      "billingCardTitle": "Datos de Facturación de la Empresa",
+      "billingCardDescription": "Esta información aparecerá en tus presupuestos y facturas.",
+      "taxIdLabel": "NIF/CIF",
+      "companyEmailLabel": "Email de la Empresa",
+      "fiscalAddressLabel": "Dirección Fiscal",
+      "logoLabel": "Logo de la Empresa",
+      "changeLogoButton": "Cambiar Logo",
+      "savingButton": "Guardando...",
+      "saveChangesButton": "Guardar Cambios",
+      "uploadingLogoButton": "Subiendo logo..."
+    },
+    "SettingsTeam": {
+      "toastNotImplemented": "Función no implementada",
+      "toastNotImplementedDesc": "La opción de invitar miembros estará disponible pronto.",
+      "title": "Miembros del Equipo",
+      "inviteButton": "Invitar Miembro",
+      "youOwner": "Tú (Propietario)",
+      "exampleEmail": "email@ejemplo.com",
+      "adminRole": "Administrador"
+    }
+ 
   },
   "ThemeSwitcher": {
     "lightTheme": "Claro",

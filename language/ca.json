@@ -12,7 +12,8 @@
     "loadingNetwork": "Carregant xarxa professional...",
     "title": "Xarxa Professional",
     "searchPlaceholder": "Cerca per nom o servei...",
-    "noResults": "No s'han trobat resultats."
+    "noResults": "No s'han trobat resultats.",
+    "errorLoading": "Error en carregar les dades de la xarxa"
   },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparant el teu espai de treball..."
@@ -755,6 +756,164 @@
       "deleteError": "Error en eliminar",
       "missingData": "Falten dades",
       "missingDataDesc": "Si us plau, selecciona un client i una data d'emissió."
+    }
+  },
+  "SettingsPage": {
+    "nav": {
+      "title": "Configuració",
+      "profile": "Perfil",
+      "billing": "Facturació",
+      "team": "Equip",
+      "integrations": "Integracions",
+      "blacklist": "Filtre Inbox",
+      "customization": "Personalització"
+    },
+    "billing": {
+      "notImplemented": "Funcionalitat no implementada",
+      "notImplementedDesc": "Aviat podràs canviar al pla {planName}.",
+      "redirecting": "Redireccionant...",
+      "redirectingDesc": "Aviat podràs gestionar les teves dades de facturació a través de Stripe.",
+      "cancellationPage": "Pàgina de cancel·lació",
+      "cancellationDesc": "Aviat podràs cancel·lar la teva subscripció des d'aquí.",
+      "currentPlan": "El Teu Pla Actual: {planName}",
+      "renewsOn": "Es renova el {date}",
+      "clickForDetails": "Clica per veure detalls.",
+      "planLabel": "Pla",
+      "statusLabel": "Estat",
+      "statusValue": "Activa",
+      "renewalDateLabel": "Es renova el",
+      "manageButton": "Gestionar Facturació",
+      "cancelButton": "Cancel·lar Subscripció",
+      "monthlyBilling": "Facturació Mensual",
+      "yearlyBilling": "Facturació Anual",
+      "yearlySave": "(Estalvia 2 mesos)",
+      "mostPopular": "MÉS POPULAR",
+      "pricePerMonth": "/mes",
+      "billedAs": "Facturat com a €{price} anuals",
+      "contactUs": "Contacta'ns",
+      "yourCurrentPlan": "El Teu Pla Actual",
+      "selectPlan": "Seleccionar Pla",
+      "contactSales": "Contactar Vendes",
+      "metaTitle": "Facturació i Plans",
+      "pageTitle": "Facturació i Plans",
+      "pageDescription": "Gestiona la teva subscripció i tria el pla que millor s'adapti a tu.",
+      "plans": {
+        "free": {
+          "name": "Free",
+          "description": "Perfecte per començar i explorar les funcionalitats bàsiques.",
+          "features": [
+            "Gestió de fins a 100 contactes",
+            "Funcionalitats bàsiques de CRM",
+            "1 Pipeline de vendes",
+            "Suport per email"
+          ]
+        },
+        "plus": {
+          "name": "Plus",
+          "description": "Ideal per a professionals i equips petits que volen créixer.",
+          "features": [
+            "Contactes il·limitats",
+            "Totes les funcionalitats de CRM",
+            "3 Pipelines de vendes",
+            "Automatitzacions bàsiques",
+            "Integració amb calendari",
+            "Suport prioritari per email"
+          ]
+        },
+        "premium": {
+          "name": "Premium",
+          "description": "La solució completa per a empreses que necessiten el màxim rendiment.",
+          "features": [
+            "Tot el del pla Plus",
+            "Pipelines il·limitats",
+            "Automatitzacions avançades i IA",
+            "Informes i anàlisis detallades",
+            "Gestió d'equips i permisos",
+            "Suport per telèfon i videotrucada"
+          ]
+        },
+        "custom": {
+          "name": "Personalitzat",
+          "description": "Una solució a mida per a grans empreses amb necessitats específiques.",
+          "features": [
+            "Tot el del pla Premium",
+            "Gestor de compte dedicat",
+            "Integracions personalitzades (API)",
+            "Formació per a l'equip",
+            "Acords de nivell de servei (SLA)"
+          ]
+        }
+      }
+    },
+    "blacklist": {
+      "description": "Afegeix dominis (ex: `exemple.com`) o adreces de correu completes per evitar que apareguin a la teva bústia d'entrada.",
+      "placeholder": "exemple.com o spammer@exemple.com",
+      "addButton": "Afegir",
+      "empty": "La teva blacklist està buida.",
+      "toast": {
+        "success": "Èxit!",
+        "error": "Error"
+      }
+    },
+    "integrations": {
+      "title": "Integracions de Correu",
+      "googleTitle": "Google / Gmail",
+      "googleDescription": "Sincronitza el teu correu de Gmail.",
+      "microsoftTitle": "Microsoft / Outlook",
+      "microsoftDescription": "Sincronitza el teu correu d'Outlook.",
+      "statusConnected": "Connectat",
+      "connectButton": "Connectar",
+      "disconnectButton": "Desconnectar"
+    },
+    "SettingsProfile": {
+      "toastError": "Error",
+      "toastLogoUploadError": "No s'ha pogut pujar el logo.",
+      "toastLogoUploadSuccess": "Logo pujat!",
+      "toastLogoUploadSuccessDesc": "Recorda desar els canvis per aplicar-lo.",
+      "toastSuccess": "Èxit!",
+      "toastUpdateSuccess": "Perfil actualitzat correctament.",
+      "toastVisibilitySuccess": "Visibilitat actualitzada!",
+      "visibilityUpdateMessage": "El perfil ara és {status}.",
+      "publicStatus": "públic",
+      "privateStatus": "privat",
+      "generalCardTitle": "Perfil General",
+      "generalCardDescription": "Informació bàsica sobre tu i la teva empresa.",
+      "fullNameLabel": "Nom complet",
+      "companyNameLabel": "Nom de l'empresa",
+      "summaryLabel": "Descripció del negoci",
+      "summaryPlaceholder": "Una breu descripció del que fas...",
+      "servicesLabel": "Serveis (separats per comes)",
+      "servicesPlaceholder": "Ex: Disseny web, SEO, Marketing",
+      "contactCardTitle": "Dades de Contacte i Adreça",
+      "contactCardDescription": "Com et poden trobar els teus clients.",
+      "phoneLabel": "Telèfon de contacte",
+      "streetLabel": "Carrer",
+      "cityLabel": "Població",
+      "postalCodeLabel": "Codi Postal",
+      "regionLabel": "Província",
+      "countryLabel": "País",
+      "visibilityCardTitle": "Visibilitat del Perfil",
+      "publicProfileLabel": "Perfil Públic",
+      "publicProfileDescription": "Si està actiu, altres usuaris podran trobar i veure la informació del teu negoci.",
+      "billingCardTitle": "Dades de Facturació de l'Empresa",
+      "billingCardDescription": "Aquesta informació apareixerà als teus pressupostos i factures.",
+      "taxIdLabel": "NIF/CIF",
+      "companyEmailLabel": "Email de l'Empresa",
+      "fiscalAddressLabel": "Adreça Fiscal",
+      "logoLabel": "Logo de l'Empresa",
+      "changeLogoButton": "Canviar Logo",
+      "savingButton": "Desant...",
+      "saveChangesButton": "Desar Canvis",
+      "uploadingLogoButton": "Pujant logo..."
+    },
+    "SettingsTeam": {
+      "toastNotImplemented": "Funció no implementada",
+      "toastNotImplementedDesc": "L'opció d'invitar membres aviat estarà disponible.",
+      "title": "Membres de l'Equip",
+      "inviteButton": "Invitar Membre",
+      "youOwner": "Tu (Propietari)",
+      "exampleEmail": "email@exemple.com",
+      "adminRole": "Administrador"
     }
   },
   "ThemeSwitcher": {
