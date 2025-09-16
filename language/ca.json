@@ -175,6 +175,11 @@
     "dateFormat": "d MMM yyyy 'a les' HH:mm"
   },
   "ContactsClient": {
+    "contactStatuses": {
+      "Lead": "Lead",
+      "Client": "Client",
+      "Proveidor": "Proveïdor"
+    },
     "title": "Contactes",
     "searchPlaceholder": "Cerca...",
     "newContactButton": "Nou Contacte",
@@ -190,7 +195,9 @@
     "noContactsFound": "No s'han trobat contactes.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
-    "toastSuccessDescription": "El contacte s'ha desat correctament."
+    "toastSuccessDescription": "El contacte s'ha desat correctament.",
+    "noCompany": "Sense empresa",
+    "notSpecified": "No especificat"
   },
   "ContactDetailPage": {
     "backToContacts": "Tornar a Contactes",
@@ -288,6 +295,89 @@
       "updateSuccess": "Contacte actualitzat.",
       "deleteSuccess": "El contacte ha estat eliminat correctament."
     }
+  },
+  "ComposeEmailDialog": {
+    "toastErrorTitle": "Error",
+    "toastErrorMissingContactId": "Falta l'ID del contacte.",
+    "toastSuccessTitle": "Èxit!",
+    "dialogTitle": "Respondre al Contacte",
+    "toLabel": "Per a",
+    "subjectLabel": "Assumpte",
+    "messageLabel": "Missatge",
+    "cancelButton": "Cancel·lar",
+    "sendButton": "Enviar amb Gmail"
+  },
+  "CrmGeneralPage": {
+    "recentAlerts": "Alertes Recents ({count})",
+    "totalContacts": "Contactes Totals",
+    "totalContactsTooltip": "Tots els contactes al teu CRM",
+    "newThisMonth": "Nous aquest mes",
+    "newThisMonthTooltip": "Contactes afegits en els últims 30 dies",
+    "opportunities": "Oportunitats",
+    "opportunitiesTooltip": "Oportunitats de negoci actives",
+    "pipelineValue": "Valor del Pipeline",
+    "pipelineValueTooltip": "Suma de totes les oportunitats actives",
+    "customerLifecycle": "Cicle de Vida del Client",
+    "leads": "Leads",
+    "quoted": "Pressupostats",
+    "clients": "Clients",
+    "topClients": "Top Clients (Facturació)",
+    "noRevenueData": "Encara no hi ha dades de facturació.",
+    "healthRadar": "Radar de Salut",
+    "lastContactOn": "Últim contacte el {date}",
+    "allContactsWarm": "Tots els contactes estan actius!",
+    "keyStatistics": "Estadístiques Clau",
+    "bestMonths": "Millors Mesos (Facturació)",
+    "noRevenueHistory": "Sense historial de facturació.",
+    "overallPerformance": "Rendiment General",
+    "avgRevenuePerClient": "Facturació Mitjana / Client",
+    "avgConversionTime": "Temps Mitjà de Conversió",
+    "replyTooltip": "Respondre",
+    "markAsReadTooltip": "Marcar com a llegit",
+    "toast": {
+      "errorTitle": "Error",
+      "markAsReadError": "No s'ha pogut marcar com a llegida.",
+      "replySubject": "Re: El teu pressupost"
+    },
+    "replyBody": "\n\n\n--- En resposta al teu feedback del {date} ---\n>{content}"
+  },
+  "PipelineClient": {
+    "title": "Pipeline de Vendes",
+    "newOpportunityButton": "Nova Oportunitat",
+    "toastMoved": "Oportunitat moguda a \"{stageName}\".",
+    "opportunityCount": "{count, plural, one {# oportunitat} other {# oportunitats}}",
+    "noContact": "Sense contacte",
+    "add": "Afegir",
+    "noOpportunitiesInStage": "No hi ha oportunitats en aquesta etapa.",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "Èxit!",
+    "stageNames": {
+      "prospect": "Prospecto",
+      "contacted": "Contactado",
+      "proposalSent": "Propuesta Enviada",
+      "negotiation": "Negociación",
+      "won": "Ganado",
+      "lost": "Perdido"
+    }
+  },
+  "OpportunityDialog": {
+    "editTitle": "Editar Oportunitat",
+    "newTitle": "Nova Oportunitat",
+    "namePlaceholder": "Nom de l'oportunitat...",
+    "selectContactPlaceholder": "Selecciona un contacte...",
+    "searchContactPlaceholder": "Buscar contacte...",
+    "noContactFound": "No s'ha trobat cap contacte.",
+    "selectStagePlaceholder": "Selecciona una etapa",
+    "valueLabel": "Valor (€)",
+    "closeDateLabel": "Data de Tancament",
+    "pickDate": "Tria una data",
+    "descriptionPlaceholder": "Descripció i notes...",
+    "cancelButton": "Cancel·lar",
+    "saveButton": "Desar",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "Èxit!",
+    "toastSuccessDescription": "L'oportunitat s'ha desat correctament."
+    
   },
   "DashboardClient": {
     "openLink": "Obrir",

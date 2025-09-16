@@ -1,11 +1,29 @@
 // Aquest fitxer serà l'única font de veritat per als tipus del CRM.
 // ✅ 1. Definim els estats com una constant exportable.
 // 'as const' és clau: converteix l'array en una tupla de només lectura amb tipus literals.
-export const CONTACT_STATUSES = ['Lead', 'Proveidor', 'Client'] as const;
+// ✅ AQUEST ÉS EL CANVI MÉS IMPORTANT: El nostre nou "mapa" de dades.
+// Defineix el codi per a la base de dades i la clau per a les traduccions.
+export const CONTACT_STATUS_MAP = [
+  { code: 'L', key: 'Lead' },
+  { code: 'P', key: 'Proveidor' },
+  { code: 'C', key: 'Client' },
+] as const;
 
 // ✅ 2. Creem un tipus a partir dels valors de la constant.
 // Això genera el tipus: 'Lead' | 'Proveidor' | 'Client'
-type ContactStatus = (typeof CONTACT_STATUSES)[number];
+// Creem un tipus per als codis que aniran a la base de dades ('L' | 'P' | 'C')
+type ContactStatusCode = typeof CONTACT_STATUS_MAP[number]['code'];
+
+
+// ✅ AFEGEIX AQUEST NOU MAPA PER A LES ETAPES DEL PIPELINE
+export const PIPELINE_STAGES_MAP = [
+  { name: 'Prospecte', key: 'prospect' },
+  { name: 'Contactat', key: 'contacted' },
+  { name: 'Proposta Enviada', key: 'proposalSent' },
+  { name: 'Negociació', key: 'negotiation' },
+  { name: 'Guanyat', key: 'won' },
+  { name: 'Perdut', key: 'lost' },
+] as const;
 
 export type QuoteItem = {
   id?: number;
@@ -45,7 +63,7 @@ export type Contact = {
   created_at?: string;
   email?: string | null;
   telefon?: string | null;
-  estat?: ContactStatus;
+  estat?: ContactStatusCode; 
   valor?: number | null;
   user_id?: string;
   job_title?: string | null;

@@ -175,6 +175,11 @@
     "dateFormat": "d MMM yyyy 'a las' HH:mm"
   },
   "ContactsClient": {
+    "contactStatuses": {
+      "Lead": "Lead",
+      "Client": "Cliente",
+      "Proveidor": "Proveedor"
+    },
     "title": "Contactos",
     "searchPlaceholder": "Buscar...",
     "newContactButton": "Nuevo Contacto",
@@ -190,7 +195,9 @@
     "noContactsFound": "No se han encontrado contactos.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "¡Éxito!",
-    "toastSuccessDescription": "El contacto se ha guardado correctamente."
+    "toastSuccessDescription": "El contacto se ha guardado correctamente.",
+    "noCompany": "Sin empresa",
+    "notSpecified": "No especificado"
   },
   "ContactDetailPage": {
     "backToContacts": "Volver a Contactos",
@@ -289,6 +296,91 @@
       "deleteSuccess": "El contacto ha sido eliminado correctamente."
     }
   },
+  "ComposeEmailDialog": {
+    "toastErrorTitle": "Error",
+    "toastErrorMissingContactId": "Falta el ID del contacto.",
+    "toastSuccessTitle": "¡Éxito!",
+    "dialogTitle": "Responder al Contacto",
+    "toLabel": "Para",
+    "subjectLabel": "Asunto",
+    "messageLabel": "Mensaje",
+    "cancelButton": "Cancelar",
+    "sendButton": "Enviar con Gmail"
+  },
+  "CrmGeneralPage": {
+    "recentAlerts": "Alertas Recientes ({count})",
+    "totalContacts": "Contactos Totales",
+    "totalContactsTooltip": "Todos los contactos en tu CRM",
+    "newThisMonth": "Nuevos este mes",
+    "newThisMonthTooltip": "Contactos añadidos en los últimos 30 días",
+    "opportunities": "Oportunidades",
+    "opportunitiesTooltip": "Oportunidades de negocio activas",
+    "pipelineValue": "Valor del Pipeline",
+    "pipelineValueTooltip": "Suma de todas las oportunidades activas",
+    "customerLifecycle": "Ciclo de Vida del Cliente",
+    "leads": "Leads",
+    "quoted": "Presupuestados",
+    "clients": "Clientes",
+    "topClients": "Top Clientes (Facturación)",
+    "noRevenueData": "Aún no hay datos de facturación.",
+    "healthRadar": "Radar de Salud",
+    "lastContactOn": "Último contacto el {date}",
+    "allContactsWarm": "¡Todos los contactos están activos!",
+    "keyStatistics": "Estadísticas Clave",
+    "bestMonths": "Mejores Meses (Facturación)",
+    "noRevenueHistory": "Sin historial de facturación.",
+    "overallPerformance": "Rendimiento General",
+    "avgRevenuePerClient": "Facturación Media / Cliente",
+    "avgConversionTime": "Tiempo Medio de Conversión",
+    "replyTooltip": "Responder",
+    "markAsReadTooltip": "Marcar como leído",
+    "toast": {
+      "errorTitle": "Error",
+      "markAsReadError": "No se ha podido marcar como leída.",
+      "replySubject": "Re: Tu presupuesto"
+    },
+    "replyBody": "\n\n\n--- En respuesta a tu feedback del {date} ---\n>{content}"
+  },
+  "PipelineClient": {
+  "title": "Pipeline de Ventas",
+  "newOpportunityButton": "Nueva Oportunidad",
+  "toastMoved": "Oportunidad movida a \"{stageName}\".",
+  "opportunityCount": "{count, plural, one {# oportunidad} other {# oportunidades}}",
+  "noContact": "Sin contacto",
+  "add": "Añadir",
+  "noOpportunitiesInStage": "No hay oportunidades en esta etapa.",
+  "toastErrorTitle": "Error",
+  "toastSuccessTitle": "¡Éxito!",
+  "stageNames": {
+    "prospect": "Prospecto",
+    "contacted": "Contactado",
+    "proposalSent": "Propuesta Enviada",
+    "negotiation": "Negociación",
+    "won": "Ganado",
+    "lost": "Perdido"
+  }
+
+},
+"OpportunityDialog": {
+  "editTitle": "Editar Oportunidad",
+  "newTitle": "Nueva Oportunidad",
+  "namePlaceholder": "Nombre de la oportunidad...",
+  "selectContactPlaceholder": "Selecciona un contacto...",
+  "searchContactPlaceholder": "Buscar contacto...",
+  "noContactFound": "No se ha encontrado ningún contacto.",
+  "selectStagePlaceholder": "Selecciona una etapa",
+  "valueLabel": "Valor (€)",
+  "closeDateLabel": "Fecha de Cierre",
+  "pickDate": "Elige una fecha",
+  "descriptionPlaceholder": "Descripción y notas...",
+  "cancelButton": "Cancelar",
+  "saveButton": "Guardar",
+  "toastErrorTitle": "Error",
+  "toastSuccessTitle": "¡Éxito!",
+  "toastSuccessDescription": "La oportunidad se ha guardado correctamente."
+  
+},
+
   "DashboardClient": {
     "openLink": "Abrir",
     "totalContacts": "Contactos Totales",

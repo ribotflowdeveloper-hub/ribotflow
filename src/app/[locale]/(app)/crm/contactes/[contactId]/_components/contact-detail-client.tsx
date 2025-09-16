@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format } from 'date-fns';
 
 import { deleteContactAction, updateContactAction } from './actions';
-import { type Contact, type Quote, type Opportunity, type Invoice, type Activity, CONTACT_STATUSES } from '@/types/crm'; // Use central types
+import { type Contact, type Quote, type Opportunity, type Invoice, type Activity, CONTACT_STATUS_MAP } from '@/types/crm'; // Use central types
 import { Trash } from "lucide-react";
 import { ca, es, enUS } from 'date-fns/locale';// Importem el tipus de dades definit a la pàgina del servidor per a consistència.
 import { useTranslations, useLocale } from 'next-intl'; // ✅ Importem hooks d'idioma
@@ -156,7 +156,15 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
     setIsEditing(false);
     formRef.current?.reset();
   };
-
+  /**
+   * @summary Obté el text traduït per a un codi d'estat de contacte.
+   */
+  const getStatusLabel = (statusCode?: string) => {
+    if (!statusCode) return t('details.noData');
+    const status = CONTACT_STATUS_MAP.find(s => s.code === statusCode);
+    return status ? t(`contactStatuses.${status.key}`) : statusCode;
+  };
+  
   return (
     <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <form action={handleSaveChanges} ref={formRef}>
@@ -252,34 +260,42 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                 </TableBody></Table>
             </TabsContent>
             
+            {/* Pestanya de Detalls */}
             <TabsContent value="detalls" className="p-8 space-y-12">
               <div>
                 <h3 className="text-2xl font-bold mb-6">{t('details.generalInfo')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
-                  <div className="space-y-2"><Label>{t('details.labels.email')}</Label>{isEditing ? (<Input name="email" type="email" defaultValue={contact.email || ''}/>) : (<p className="...">{contact.email || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.phone')}</Label>{isEditing ? (<Input name="telefon" defaultValue={contact.telefon || ''}/>) : (<p className="...">{contact.telefon || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.status')}</Label>{isEditing ? (<Select name="estat" defaultValue={contact.estat}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>
-                    {CONTACT_STATUSES.map(status => <SelectItem key={status} value={status}>{t(`contactStatuses.${status}`)}</SelectItem>)}
-                  </SelectContent></Select>) : (<p className="...">{contact.estat || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.jobTitle')}</Label>{isEditing ? (<Input name="job_title" defaultValue={contact.job_title || ''}/>) : (<p className="...">{contact.job_title || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.industry')}</Label>{isEditing ? (<Input name="industry" defaultValue={contact.industry || ''}/>) : (<p className="...">{contact.industry || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.leadSource')}</Label>{isEditing ? (<Input name="lead_source" defaultValue={contact.lead_source || ''}/>) : (<p className="...">{contact.lead_source || t('details.noData')}</p>)}</div>
+                  <div className="space-y-2"><Label>{t('details.labels.email')}</Label>{isEditing ? (<Input name="email" type="email" defaultValue={contact.email || ''}/>) : (<p className="text-lg pt-2">{contact.email || t('details.noData')}</p>)}</div>
+                  <div className="space-y-2"><Label>{t('details.labels.phone')}</Label>{isEditing ? (<Input name="telefon" defaultValue={contact.telefon || ''}/>) : (<p className="text-lg pt-2">{contact.telefon || t('details.noData')}</p>)}</div>
+                  <div className="space-y-2"><Label>{t('details.labels.status')}</Label>{isEditing ? (
+                    <Select name="estat" defaultValue={contact.estat}>
+                        <SelectTrigger className="text-lg h-auto p-2"><SelectValue/></SelectTrigger>
+                        <SelectContent>
+                            {CONTACT_STATUS_MAP.map(status => <SelectItem key={status.code} value={status.code}>{t(`contactStatuses.${status.key}`)}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-lg pt-2">{getStatusLabel(contact.estat)}</p>
+                  )}</div>
+                  <div className="space-y-2"><Label>{t('details.labels.jobTitle')}</Label>{isEditing ? (<Input name="job_title" defaultValue={contact.job_title || ''}/>) : (<p className="text-lg pt-2">{contact.job_title || t('details.noData')}</p>)}</div>
+                  <div className="space-y-2"><Label>{t('details.labels.industry')}</Label>{isEditing ? (<Input name="industry" defaultValue={contact.industry || ''}/>) : (<p className="text-lg pt-2">{contact.industry || t('details.noData')}</p>)}</div>
+                  <div className="space-y-2"><Label>{t('details.labels.leadSource')}</Label>{isEditing ? (<Input name="lead_source" defaultValue={contact.lead_source || ''}/>) : (<p className="text-lg pt-2">{contact.lead_source || t('details.noData')}</p>)}</div>
                 </div>
               </div>
               <div>
                 <h3 className="text-2xl font-bold mb-6">{t('details.personalInfo')}</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
-                    <div className="space-y-2"><Label>{t('details.labels.birthday')}</Label>{isEditing ? (<Input type="date" name="birthday" defaultValue={contact.birthday || ''}/>) : (<p className="...">{contact.birthday ? format(new Date(contact.birthday), 'dd/MM/yyyy', { locale: dateLocale }) : t('details.noData')}</p>)}</div>
-                    <div className="space-y-2"><Label>{t('details.labels.city')}</Label>{isEditing ? (<Input name="address.city" defaultValue={contact.address?.city || ''}/>) : (<p className="...">{contact.address?.city || t('details.noData')}</p>)}</div>
-                    <div className="space-y-2"><Label>{t('details.labels.linkedin')}</Label>{isEditing ? (<Input name="social_media.linkedin" defaultValue={contact.social_media?.linkedin || ''}/>) : (<p className="...">{contact.social_media?.linkedin || t('details.noData')}</p>)}</div>
-                    <div className="space-y-2"><Label>{t('details.labels.children')}</Label>{isEditing ? (<Input type="number" name="children_count" defaultValue={contact.children_count ?? ''} />) : (<p className="...">{contact.children_count ?? t('details.noData')}</p>)}</div>
-                    <div className="space-y-2"><Label>{t('details.labels.partnerName')}</Label>{isEditing ? (<Input name="partner_name" defaultValue={contact.partner_name || ''} />) : (<p className="...">{contact.partner_name || t('details.noData')}</p>)}</div>
-                    <div className="space-y-2"><Label>{t('details.labels.hobbies')}</Label>{isEditing ? (<Input name="hobbies" defaultValue={contact.hobbies?.join(', ') || ''} />) : (<p className="...">{contact.hobbies?.join(', ') || t('details.noData')}</p>)}</div>
+                    <div className="space-y-2"><Label>{t('details.labels.birthday')}</Label>{isEditing ? (<Input type="date" name="birthday" defaultValue={contact.birthday || ''}/>) : (<p className="text-lg pt-2">{contact.birthday ? format(new Date(contact.birthday), 'dd/MM/yyyy', { locale: dateLocale }) : t('details.noData')}</p>)}</div>
+                    <div className="space-y-2"><Label>{t('details.labels.city')}</Label>{isEditing ? (<Input name="address.city" defaultValue={contact.address?.city || ''}/>) : (<p className="text-lg pt-2">{contact.address?.city || t('details.noData')}</p>)}</div>
+                    <div className="space-y-2"><Label>{t('details.labels.linkedin')}</Label>{isEditing ? (<Input name="social_media.linkedin" defaultValue={contact.social_media?.linkedin || ''}/>) : (<p className="text-lg pt-2">{contact.social_media?.linkedin || t('details.noData')}</p>)}</div>
+                    <div className="space-y-2"><Label>{t('details.labels.children')}</Label>{isEditing ? (<Input type="number" name="children_count" defaultValue={contact.children_count ?? ''} />) : (<p className="text-lg pt-2">{contact.children_count ?? t('details.noData')}</p>)}</div>
+                    <div className="space-y-2"><Label>{t('details.labels.partnerName')}</Label>{isEditing ? (<Input name="partner_name" defaultValue={contact.partner_name || ''} />) : (<p className="text-lg pt-2">{contact.partner_name || t('details.noData')}</p>)}</div>
+                    <div className="space-y-2"><Label>{t('details.labels.hobbies')}</Label>{isEditing ? (<Input name="hobbies" defaultValue={contact.hobbies?.join(', ') || ''} />) : (<p className="text-lg pt-2">{contact.hobbies?.join(', ') || t('details.noData')}</p>)}</div>
                 </div>
               </div>
               <div>
                 <h3 className="text-2xl font-bold mb-6">{t('details.notes')}</h3>
-                {isEditing ? (<Textarea name="notes" defaultValue={contact.notes || ''} rows={6}/>) : (<p className="...">{contact.notes || t('details.noNotes')}</p>)}
+                {isEditing ? (<Textarea name="notes" defaultValue={contact.notes || ''} rows={6}/>) : (<p className="text-base text-muted-foreground whitespace-pre-wrap">{contact.notes || t('details.noNotes')}</p>)}
               </div>
             </TabsContent>
           </Tabs>

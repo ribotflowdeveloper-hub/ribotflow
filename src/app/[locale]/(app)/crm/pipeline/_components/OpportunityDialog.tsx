@@ -14,9 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Check, ChevronsUpDown, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { ca } from "date-fns/locale";
+import { ca, es, enUS } from "date-fns/locale";
 import { saveOpportunityAction } from '../actions';
 import type { Opportunity, Contact, Stage } from '../page';
+import { useLocale, useTranslations } from 'next-intl';
+import { PIPELINE_STAGES_MAP } from '@/types/crm'; // ✅ Importem el nou mapa
+
 
 // Definim les propietats que rep el diàleg des del seu component pare.
 interface OpportunityDialogProps {
@@ -34,7 +37,10 @@ interface OpportunityDialogProps {
  */
 export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: OpportunityDialogProps) {
   const [isPending, startTransition] = useTransition(); // Hook per a l'estat de càrrega.
-  
+  const t = useTranslations('OpportunityDialog');
+  const statePipline = useTranslations('PipelineClient');
+
+  const locale = useLocale();
   // Estats locals per a camps que requereixen una gestió especial, com el selector de contacte i el calendari.
   const [selectedContactId, setSelectedContactId] = useState(opportunityToEdit?.contact_id || '');
   const [closeDate, setCloseDate] = useState<Date | undefined>(
@@ -52,7 +58,13 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
     }
   }, [open, opportunityToEdit]);
 
-
+  const getDateLocale = () => {
+    switch (locale) {
+      case 'es': return es;
+      case 'en': return enUS;
+      default: return ca;
+    }
+  };
   /**
    * Gestiona l'enviament del formulari.
    * Recull les dades, les prepara i les envia a la Server Action 'saveOpportunityAction'.
@@ -72,42 +84,45 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
     startTransition(async () => {
       const result = await saveOpportunityAction(formData);
       if (result.error) {
-        toast.error('Error', { description: result.error.message });
+        toast.error(t('toastErrorTitle'), { description: result.error.message });
       } else {
-        toast.success('Èxit!', { description: "L'oportunitat s'ha desat correctament." });
+        toast.success(t('toastSuccessTitle'), { description: t('toastSuccessDescription') });
         onSuccess(); // Cridem la funció de callback per notificar al pare (ex: refrescar dades).
         onOpenChange(false); // Tanquem el diàleg.
       }
     });
   };
-  
+
   // Trobem el contacte seleccionat per mostrar el seu nom al botó del Popover.
   const selectedContact = contacts.find(c => c.id === selectedContactId);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="glass-effect">
-        <DialogHeader><DialogTitle>{opportunityToEdit?.id ? 'Editar Oportunitat' : 'Nova Oportunitat'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{opportunityToEdit?.id ? t('editTitle') : t('newTitle')}</DialogTitle></DialogHeader>
         <form action={handleSubmit} className="grid gap-4 pt-4">
-          <Input name="name" placeholder="Nom de l'oportunitat..." defaultValue={opportunityToEdit?.name || ''} required />
+          <Input name="name" placeholder={t('namePlaceholder')} defaultValue={opportunityToEdit?.name || ''} required />
           
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" role="combobox" className="w-full justify-between search-input text-left font-normal">
-                {selectedContact ? selectedContact.nom : "Selecciona un contacte..."}
+              <Button variant="outline" role="combobox" className="w-full justify-between ...">
+                {selectedContact ? selectedContact.nom : t('selectContactPlaceholder')}
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-effect">
               <Command>
-                <CommandInput placeholder="Buscar contacte..." />
+                <CommandInput placeholder={t('searchContactPlaceholder')} />
                 <CommandList>
-                  <CommandEmpty>No s'ha trobat cap contacte.</CommandEmpty>
+                  <CommandEmpty>{t('noContactFound')}</CommandEmpty>
                   <CommandGroup>
                     {contacts.map(contact => (
                       <CommandItem key={contact.id} value={contact.nom} onSelect={() => setSelectedContactId(contact.id)}>
-                         <Check className={cn("mr-2 h-4 w-4", selectedContactId === contact.id ? "opacity-100" : "opacity-0")} />
-                         {contact.nom}
+                        {/* ✅ CORRECCIÓ: Embolcallem els dos fills en un <div> */}
+                        <div className="flex items-center">
+                          <Check className={cn("mr-2 h-4 w-4", selectedContactId === contact.id ? "opacity-100" : "opacity-0")} />
+                          {contact.nom}
+                        </div>
                       </CommandItem>
                     ))}
                   </CommandGroup>
@@ -115,35 +130,40 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
               </Command>
             </PopoverContent>
           </Popover>
-
+          
+          {/* ✅ CORRECCIÓ: Utilitzem el mapa per al desplegable d'etapes */}
           <Select name="stage_name" defaultValue={opportunityToEdit?.stage_name || stages[0]?.name}>
-            <SelectTrigger><SelectValue placeholder="Selecciona una etapa" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={t('selectStagePlaceholder')} /></SelectTrigger>
             <SelectContent className="glass-effect">
-              {stages.map(stage => (<SelectItem key={stage.id} value={stage.name}>{stage.name}</SelectItem>))}
+              {PIPELINE_STAGES_MAP.map(stage => (
+                <SelectItem key={stage.key} value={stage.name}>
+                  {statePipline(`stageNames.${stage.key}`)}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Valor (€)</Label><Input name="value" type="number" step="0.01" placeholder="0.00" defaultValue={opportunityToEdit?.value || ''} /></div>
-            <div><Label>Data de Tancament</Label>
+            <div><Label>{t('valueLabel')}</Label><Input name="value" type="number" step="0.01" placeholder="0.00" defaultValue={opportunityToEdit?.value || ''} /></div>
+            <div><Label>{t('closeDateLabel')}</Label>
               <Popover>
                 <PopoverTrigger asChild>
-                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !closeDate && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {closeDate ? format(closeDate, "PPP", { locale: ca }) : <span>Tria una data</span>}
-                    </Button>
+                  <Button variant={"outline"} className={cn("w-full ...", !closeDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {closeDate ? format(closeDate, "PPP", { locale: getDateLocale() }) : <span>{t('pickDate')}</span>}
+                  </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={closeDate} onSelect={setCloseDate} className={undefined} classNames={undefined} formatters={undefined} components={undefined} /></PopoverContent>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={closeDate} onSelect={setCloseDate} /></PopoverContent>
               </Popover>
             </div>
           </div>
-          <Textarea name="description" placeholder="Descripció i notes..." defaultValue={opportunityToEdit?.description || ''} />
-
+          <Textarea name="description" placeholder={t('descriptionPlaceholder')} defaultValue={opportunityToEdit?.description || ''} />
+          
           <DialogFooter className="pt-4">
-            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel·lar</Button>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>{t('cancelButton')}</Button>
             <Button type="submit" disabled={isPending}>
               {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Desar
+              {t('saveButton')}
             </Button>
           </DialogFooter>
         </form>
@@ -151,4 +171,3 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
     </Dialog>
   );
 }
-

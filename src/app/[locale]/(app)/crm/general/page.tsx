@@ -21,6 +21,8 @@ export type CrmData = {
     newContactsThisMonth: number;
     opportunities: number;
     pipelineValue: number;
+    avgRevenuePerClient: number; // ✅ AFEGEIX AQUESTA LÍNIA
+    avgConversionTimeDays: number; // ✅ AFEGEIX AQUESTA LÍNIA
   };
   funnel: {
     leads: number;

@@ -175,6 +175,11 @@
     "dateFormat": "d MMM yyyy 'at' HH:mm"
   },
   "ContactsClient": {
+    "contactStatuses": {
+      "Lead": "Lead",
+      "Client": "Client",
+      "Proveidor": "Supplier"
+    },
     "title": "Contacts",
     "searchPlaceholder": "Search...",
     "newContactButton": "New Contact",
@@ -190,7 +195,9 @@
     "noContactsFound": "No contacts found.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
-    "toastSuccessDescription": "The contact has been saved successfully."
+    "toastSuccessDescription": "The contact has been saved successfully.",
+    "noCompany": "No company",
+    "notSpecified": "Not specified"
   },
   "ContactDetailPage": {
     "backToContacts": "Back to Contacts",
@@ -289,6 +296,90 @@
       "deleteSuccess": "The contact has been deleted successfully."
     }
   },
+  "ComposeEmailDialog": {
+    "toastErrorTitle": "Error",
+    "toastErrorMissingContactId": "Missing contact ID.",
+    "toastSuccessTitle": "Success!",
+    "dialogTitle": "Reply to Contact",
+    "toLabel": "To",
+    "subjectLabel": "Subject",
+    "messageLabel": "Message",
+    "cancelButton": "Cancel",
+    "sendButton": "Send with Gmail"
+  },
+  "CrmGeneralPage": {
+    "recentAlerts": "Recent Alerts ({count})",
+    "totalContacts": "Total Contacts",
+    "totalContactsTooltip": "All contacts in your CRM",
+    "newThisMonth": "New This Month",
+    "newThisMonthTooltip": "Contacts added in the last 30 days",
+    "opportunities": "Opportunities",
+    "opportunitiesTooltip": "Active business opportunities",
+    "pipelineValue": "Pipeline Value",
+    "pipelineValueTooltip": "Sum of all active opportunities",
+    "customerLifecycle": "Customer Lifecycle",
+    "leads": "Leads",
+    "quoted": "Quoted",
+    "clients": "Clients",
+    "topClients": "Top Clients (Revenue)",
+    "noRevenueData": "No revenue data yet.",
+    "healthRadar": "Health Radar",
+    "lastContactOn": "Last contact on {date}",
+    "allContactsWarm": "All contacts are active!",
+    "keyStatistics": "Key Statistics",
+    "bestMonths": "Best Months (Revenue)",
+    "noRevenueHistory": "No revenue history.",
+    "overallPerformance": "Overall Performance",
+    "avgRevenuePerClient": "Average Revenue per Client",
+    "avgConversionTime": "Average Conversion Time",
+    "replyTooltip": "Reply",
+    "markAsReadTooltip": "Mark as read",
+    "toast": {
+      "errorTitle": "Error",
+      "markAsReadError": "Could not mark as read.",
+      "replySubject": "Re: Your quote"
+    },
+    "replyBody": "\n\n\n--- In response to your feedback from {date} ---\n>{content}"
+  },
+  "PipelineClient": {
+  "title": "Sales Pipeline",
+  "newOpportunityButton": "New Opportunity",
+  "toastMoved": "Opportunity moved to \"{stageName}\".",
+  "opportunityCount": "{count, plural, one {# opportunity} other {# opportunities}}",
+  "noContact": "No contact",
+  "add": "Add",
+  "noOpportunitiesInStage": "No opportunities in this stage.",
+  "toastErrorTitle": "Error",
+  "toastSuccessTitle": "Success!",
+  "stageNames": {
+    "prospect": "Prospect",
+    "contacted": "Contacted",
+    "proposalSent": "Proposal Sent",
+    "negotiation": "Negotiation",
+    "won": "Won",
+    "lost": "Lost"
+  }
+},
+"OpportunityDialog": {
+  "editTitle": "Edit Opportunity",
+  "newTitle": "New Opportunity",
+  "namePlaceholder": "Opportunity name...",
+  "selectContactPlaceholder": "Select a contact...",
+  "searchContactPlaceholder": "Search contact...",
+  "noContactFound": "No contact found.",
+  "selectStagePlaceholder": "Select a stage",
+  "valueLabel": "Value (€)",
+  "closeDateLabel": "Close Date",
+  "pickDate": "Pick a date",
+  "descriptionPlaceholder": "Description and notes...",
+  "cancelButton": "Cancel",
+  "saveButton": "Save",
+  "toastErrorTitle": "Error",
+  "toastSuccessTitle": "Success!",
+  "toastSuccessDescription": "The opportunity has been saved successfully."
+
+},
+
   "DashboardClient": {
     "openLink": "Open",
     "totalContacts": "Total Contacts",

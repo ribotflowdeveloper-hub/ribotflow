@@ -107,8 +107,13 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
-          return (<div data-slot="calendar" className={cn(className)} {...props} />);
+        // Dins de calendar.tsx
+        Root: ({ className, ...props }) => {
+          // 1. Separem 'rootRef' de la resta de props.
+          const { rootRef, ...rest } = props as { rootRef?: React.Ref<HTMLDivElement> };
+          
+          // 2. Usem 'rootRef' a la prop 'ref' i passem la resta de props.
+          return (<div ref={rootRef} data-slot="calendar" className={cn(className)} {...rest} />);
         },
         // ✅ 2. AFEGIM "up" A LES ORIENTACIONS PERMESES
         Chevron: ({ className, orientation }: { className?: string; orientation?: "left" | "right" | "down" | "up" }) => {

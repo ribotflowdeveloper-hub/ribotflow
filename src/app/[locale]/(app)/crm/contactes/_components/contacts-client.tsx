@@ -10,11 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { type Contact } from '@/types/crm'; // ✅ CORRECT
-import { CONTACT_STATUSES } from '@/types/crm'; // ✅ 1. Importa la constant!
+import { CONTACT_STATUS_MAP } from '@/types/crm'; // ✅ Importa el nou mapa
 import { useTranslations } from 'next-intl';
 
-import ContactCard from '@/components/contactes/ContactCard';
-import ContactTable from '@/components/contactes/ContactTable';
+import ContactCard from '@/app/[locale]/(app)/crm/contactes/_components/ContactCard';
+import ContactTable from '@/app/[locale]/(app)/crm/contactes/_components/ContactTable';
 import { createContactAction } from './actions';
 
 
@@ -91,9 +91,13 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {/* ✅ 2. Fem un map sobre la constant per generar les opcions */}
-                                        {CONTACT_STATUSES.map(status => (
-                                            <SelectItem key={status} value={status}>
-                                                {status}
+                                            {/* ✅ Mapejem sobre el nou mapa de dades */}
+                                        {CONTACT_STATUS_MAP.map(status => (
+                                            <SelectItem 
+                                                key={status.code} 
+                                                value={status.code} // <-- El valor que s'envia al servidor és el CODI
+                                            >
+                                                {t(`contactStatuses.${status.key}`)} {/* <-- El text que veu l'usuari és la TRADUCCIÓ */}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

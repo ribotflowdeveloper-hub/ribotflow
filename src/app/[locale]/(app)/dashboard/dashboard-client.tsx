@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import AddTaskDialog from '@/components/dashboard/AddTaskDialog';
+import AddTaskDialog from '@/app/[locale]/(app)/dashboard/_components/AddTaskDialog';
 import {
   Users, Target, Euro, BadgePercent, Plus, FileWarning, CheckCircle2, Clock3,
   Mail, MessageSquare, ArrowRight, Sparkles, FileText, FolderOpen, Workflow, BookOpen,  ChevronLeft, ChevronRight

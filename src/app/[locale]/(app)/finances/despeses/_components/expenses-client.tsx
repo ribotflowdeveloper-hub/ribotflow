@@ -11,9 +11,9 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { ExpenseDialog } from '@/components/expenses/ExpenseDialog';
-import { ExpenseTable } from '@/components/expenses/ExpenseTable';
-import { ExpenseDetailDrawer } from '@/components/expenses/ExpenseDetailDrawer';
+import { ExpenseDialog } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog';
+import { ExpenseTable } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseTable';
+import { ExpenseDetailDrawer } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer';
 import { type Expense, type Supplier } from '@/types/finances';
 import { createClient } from '@/lib/supabase/client';
 
