@@ -62,43 +62,7 @@ export function BillingClient({ plans }: { plans: Plan[] }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
 
-      {currentPlan && (
-        <div className="max-w-2xl mx-auto">
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="item-1" className="glass-card rounded-2xl border px-6">
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center gap-3">
-                  <PlanIcon name={currentPlan.iconName} className={cn("w-6 h-6", currentPlan.colors.text)} />
-                  <div>
-                    <p className="font-bold text-lg text-left">{t('currentPlan', { planName: currentPlan.name })}</p>
-                    <p className="text-sm text-muted-foreground text-left">{t('renewsOn', { date: renewalDate.toLocaleDateString(locale, { day: 'numeric', month: 'long' }) })}. {t('clickForDetails')}</p>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 text-sm pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">{t('planLabel')}</span>
-                    <span className="font-semibold">{currentPlan.name}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">{t('statusLabel')}</span>
-                    <span className="font-semibold text-green-500">{t('statusValue')}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">{t('renewalDateLabel')}</span>
-                    <span className="font-semibold">{renewalDate.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                  </div>
-                </div>
-                <div className="border-t mt-6 pt-6 flex flex-col sm:flex-row gap-3">
-                  <Button className="w-full" onClick={handleManageBilling}>{t('manageButton')}</Button>
-                  <Button variant="destructive" className="w-full" onClick={handleCancelSubscription}>{t('cancelButton')}</Button>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </div>
-      )}
+     
 
       <div className="flex items-center justify-center space-x-4">
         <Label htmlFor="billing-cycle" className={cn('transition-colors', billingCycle === 'monthly' ? 'text-foreground font-semibold' : 'text-muted-foreground')}>
@@ -177,11 +141,49 @@ export function BillingClient({ plans }: { plans: Plan[] }) {
                 ))}
               </ul>
             </div>
+            
 
 
           </div>
         ))}
       </div>
+      {currentPlan && (
+        <div className="max-w-2xl mx-auto">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1" className="glass-card rounded-2xl border px-6">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-3">
+                  <PlanIcon name={currentPlan.iconName} className={cn("w-6 h-6", currentPlan.colors.text)} />
+                  <div>
+                    <p className="font-bold text-lg text-left">{t('currentPlan', { planName: currentPlan.name })}</p>
+                    <p className="text-sm text-muted-foreground text-left">{t('renewsOn', { date: renewalDate.toLocaleDateString(locale, { day: 'numeric', month: 'long' }) })}. {t('clickForDetails')}</p>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 text-sm pt-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t('planLabel')}</span>
+                    <span className="font-semibold">{currentPlan.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t('statusLabel')}</span>
+                    <span className="font-semibold text-green-500">{t('statusValue')}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">{t('renewalDateLabel')}</span>
+                    <span className="font-semibold">{renewalDate.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                  </div>
+                </div>
+                <div className="border-t mt-6 pt-6 flex flex-col sm:flex-row gap-3">
+                  <Button className="w-full" onClick={handleManageBilling}>{t('manageButton')}</Button>
+                  <Button variant="destructive" className="w-full" onClick={handleCancelSubscription}>{t('cancelButton')}</Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      )}
     </motion.div>
   );
 }

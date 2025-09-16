@@ -1,7 +1,7 @@
 /**
  * @file page.tsx (Billing)
  * @summary Component de Servidor per a la pàgina de Facturació, amb la lògica de traducció correcta.
- * ✅ CORREGIT: S'ha solucionat l'error "params should be awaited".
+ * ✅ SOLUCIÓ DEFINITIVA: Utilitzem 'await params' per a una màxima compatibilitat amb Next.js.
  */
 
 import { BillingClient } from './_components/BillingClient';
@@ -13,17 +13,19 @@ import { getTranslations } from 'next-intl/server';
 
 export const dynamic = 'force-dynamic';
 
-// ✅ CORRECCIÓ: Definim el tipus correcte per a les props.
+// Definim el tipus correcte per a les props, indicant que params pot ser una Promise.
 type BillingPageProps = {
-    params: { locale: string };
+    params: { locale: string } | Promise<{ locale: string }>;
 };
 
 /**
  * @summary Genera les metadades de la pàgina de manera dinàmica i traduïda.
  */
 export async function generateMetadata({ params }: BillingPageProps): Promise<Metadata> {
-  // ✅ CORRECCIÓ: Accedim a 'locale' directament, ja que Next.js ho resol.
-  const t = await getTranslations({ locale: params.locale, namespace: 'SettingsPage.billing' });
+  // ✅ CORRECCIÓ CLAU: Esperem (await) la promesa per obtenir els paràmetres reals.
+  // Això assegura que sempre tenim el valor correcte abans de continuar.
+  const { locale } = await params; 
+  const t = await getTranslations({ locale, namespace: 'SettingsPage.billing' });
 
   return {
     title: `${t('metaTitle')} | Ribot`,
@@ -54,7 +56,7 @@ const plansStructure = [
  * @summary El component de servidor asíncron que construeix la pàgina.
  */
 export default async function BillingPage({ params }: BillingPageProps) {
-    const { locale } = params; // ✅ CORRECCIÓ: Accedim a 'locale' directament.
+    const { locale } = await params; // ✅ CORRECCIÓ CLAU: Apliquem la mateixa solució aquí.
     const t = await getTranslations({ locale, namespace: 'SettingsPage.billing' });
     const cookieStore = cookies();
     const supabase = createClient(cookieStore);
