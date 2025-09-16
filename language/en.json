@@ -342,44 +342,183 @@
     "replyBody": "\n\n\n--- In response to your feedback from {date} ---\n>{content}"
   },
   "PipelineClient": {
-  "title": "Sales Pipeline",
-  "newOpportunityButton": "New Opportunity",
-  "toastMoved": "Opportunity moved to \"{stageName}\".",
-  "opportunityCount": "{count, plural, one {# opportunity} other {# opportunities}}",
-  "noContact": "No contact",
-  "add": "Add",
-  "noOpportunitiesInStage": "No opportunities in this stage.",
-  "toastErrorTitle": "Error",
-  "toastSuccessTitle": "Success!",
-  "stageNames": {
-    "prospect": "Prospect",
-    "contacted": "Contacted",
-    "proposalSent": "Proposal Sent",
-    "negotiation": "Negotiation",
-    "won": "Won",
-    "lost": "Lost"
-  }
-},
-"OpportunityDialog": {
-  "editTitle": "Edit Opportunity",
-  "newTitle": "New Opportunity",
-  "namePlaceholder": "Opportunity name...",
-  "selectContactPlaceholder": "Select a contact...",
-  "searchContactPlaceholder": "Search contact...",
-  "noContactFound": "No contact found.",
-  "selectStagePlaceholder": "Select a stage",
-  "valueLabel": "Value (€)",
-  "closeDateLabel": "Close Date",
-  "pickDate": "Pick a date",
-  "descriptionPlaceholder": "Description and notes...",
-  "cancelButton": "Cancel",
-  "saveButton": "Save",
-  "toastErrorTitle": "Error",
-  "toastSuccessTitle": "Success!",
-  "toastSuccessDescription": "The opportunity has been saved successfully."
-
-},
-
+    "title": "Sales Pipeline",
+    "newOpportunityButton": "New Opportunity",
+    "toastMoved": "Opportunity moved to \"{stageName}\".",
+    "opportunityCount": "{count, plural, one {# opportunity} other {# opportunities}}",
+    "noContact": "No contact",
+    "add": "Add",
+    "noOpportunitiesInStage": "No opportunities in this stage.",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "Success!",
+    "stageNames": {
+      "prospect": "Prospect",
+      "contacted": "Contacted",
+      "proposalSent": "Proposal Sent",
+      "negotiation": "Negotiation",
+      "won": "Won",
+      "lost": "Lost"
+    }
+  },
+  "OpportunityDialog": {
+    "editTitle": "Edit Opportunity",
+    "newTitle": "New Opportunity",
+    "namePlaceholder": "Opportunity name...",
+    "selectContactPlaceholder": "Select a contact...",
+    "searchContactPlaceholder": "Search contact...",
+    "noContactFound": "No contact found.",
+    "selectStagePlaceholder": "Select a stage",
+    "valueLabel": "Value (€)",
+    "closeDateLabel": "Close Date",
+    "pickDate": "Pick a date",
+    "descriptionPlaceholder": "Description and notes...",
+    "cancelButton": "Cancel",
+    "saveButton": "Save",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "Success!",
+    "toastSuccessDescription": "The opportunity has been saved successfully."
+  },
+  "QuotesPage": {
+    "toast": {
+      "successTitle": "Success!",
+      "errorTitle": "Error"
+    },
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "declined": "Declined",
+      "unknown": "Unknown"
+    },
+    "table": {
+      "number": "Number",
+      "client": "Client",
+      "issueDate": "Issue Date",
+      "total": "Total",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "noClient": "N/A",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "emptyState": "No quotes found. Create a new one!",
+    "deleteDialog": {
+      "title": "Are you absolutely sure?",
+      "description1": "This action cannot be undone. The quote will be permanently deleted",
+      "cancelButton": "Cancel",
+      "confirmButton": "Yes, delete it",
+      "deleting": "Deleting..."
+    }
+  },
+  "QuoteEditor": {
+    "companyProfileDialog": {
+      "title": "Your Company Details",
+      "description": "This information will appear on your quotes and invoices.",
+      "logoLabel": "Company Logo",
+      "logoAlt": "Logo",
+      "uploadButton": "Upload Logo",
+      "nameLabel": "Company Name",
+      "taxIdLabel": "Tax ID (NIF/CIF)",
+      "addressLabel": "Address",
+      "emailLabel": "Email",
+      "phoneLabel": "Phone",
+      "saveButton": "Save Changes"
+    },
+    "quoteEditor": {
+      "backButton": "Back",
+      "companyDataTooltip": "Company Data",
+      "deleteTooltip": "Delete",
+      "createButton": "Create Quote",
+      "saveButton": "Save Changes",
+      "generatingPDF": "Generating PDF...",
+      "uploadingFile": "Uploading file...",
+      "sending": "Sending...",
+      "resendButton": "Resend",
+      "sendButton": "Send Quote",
+      "sentOn": "Quote sent on {date}.",
+      "clientOpportunitiesLabel": "Client Opportunities",
+      "noOpportunityAssociated": "No associated opportunity",
+      "noOpenOpportunities": "This client has no open opportunities.",
+      "additionalNotesLabel": "Additional Notes",
+      "deleteDialogTitle": "Are you sure?",
+      "deleteDialogDescription": "This action will permanently delete this quote."
+    },
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "Success!",
+      "logoUploadError": "Could not upload logo.",
+      "missingProfileData": "Essential profile data is missing.",
+      "saveFirst": "Save the quote before sending.",
+      "previewNotFound": "Preview element not found.",
+      "unauthenticated": "User not authenticated.",
+      "sendError": "Sending error",
+      "deletedSuccess": "Deleted!"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "saveChanges": "Save Changes",
+      "editDetails": "Edit Details",
+      "delete": "Delete",
+      "confirmDelete": "Yes, permanently delete"
+    },
+    "items": {
+      "title": "Items",
+      "empty": "Add the first item to the quote.",
+      "placeholderDescription": "Service or product description",
+      "placeholderQty": "Qty",
+      "placeholderPrice": "Price",
+      "addButton": "Add Item",
+      "newProductTitle": "Create and save new item",
+      "newProductNamePlaceholder": "Item name",
+      "newProductPricePlaceholder": "Price (€)",
+      "cancelButton": "Cancel",
+      "saveAndAddButton": "Save and Add",
+      "searchPlaceholder": "Search item...",
+      "emptySearch": "No item found.",
+      "addManualItem": "Add manual item",
+      "createNewItem": "Create and save new item",
+      "toast": {
+        "requiredFields": "Required fields",
+        "requiredFieldsDesc": "Name and price are mandatory.",
+        "productCreated": "Product created!",
+        "productCreatedDesc": "It has been added to your product list."
+      }
+    },
+    "meta": {
+      "clientLabel": "Client",
+      "selectClientPlaceholder": "Select a client...",
+      "searchClientPlaceholder": "Search client...",
+      "noClientFound": "No client found.",
+      "quoteNumberLabel": "Quote Number",
+      "issueDateLabel": "Issue Date",
+      "expiryDateLabel": "Expiry Date"
+    },
+    "totals": {
+      "subtotal": "Subtotal",
+      "discount": "Discount (%)",
+      "discountAmount": "Discount Amount",
+      "taxableBase": "Taxable Base",
+      "taxes": "Taxes (VAT 21%)",
+      "total": "Total"
+    },
+    "preview": {
+      "logoPlaceholder": "Your Logo",
+      "yourCompany": "Your Company",
+      "pending": "Pending",
+      "unselectedClient": "Client not selected",
+      "issueDate": "Issue Date:",
+      "expiryDate": "Expiry Date:",
+      "itemHeader": "Item",
+      "totalHeader": "Total",
+      "discountLine": "Discount:",
+      "taxesLine": "Taxes (21%):",
+      "notesAndTerms": "Notes and Terms",
+      "totalLabel": "TOTAL"
+    }
+    
+  },
   "DashboardClient": {
     "openLink": "Open",
     "totalContacts": "Total Contacts",

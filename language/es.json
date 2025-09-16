@@ -342,45 +342,182 @@
     "replyBody": "\n\n\n--- En respuesta a tu feedback del {date} ---\n>{content}"
   },
   "PipelineClient": {
-  "title": "Pipeline de Ventas",
-  "newOpportunityButton": "Nueva Oportunidad",
-  "toastMoved": "Oportunidad movida a \"{stageName}\".",
-  "opportunityCount": "{count, plural, one {# oportunidad} other {# oportunidades}}",
-  "noContact": "Sin contacto",
-  "add": "Añadir",
-  "noOpportunitiesInStage": "No hay oportunidades en esta etapa.",
-  "toastErrorTitle": "Error",
-  "toastSuccessTitle": "¡Éxito!",
-  "stageNames": {
-    "prospect": "Prospecto",
-    "contacted": "Contactado",
-    "proposalSent": "Propuesta Enviada",
-    "negotiation": "Negociación",
-    "won": "Ganado",
-    "lost": "Perdido"
-  }
-
-},
-"OpportunityDialog": {
-  "editTitle": "Editar Oportunidad",
-  "newTitle": "Nueva Oportunidad",
-  "namePlaceholder": "Nombre de la oportunidad...",
-  "selectContactPlaceholder": "Selecciona un contacto...",
-  "searchContactPlaceholder": "Buscar contacto...",
-  "noContactFound": "No se ha encontrado ningún contacto.",
-  "selectStagePlaceholder": "Selecciona una etapa",
-  "valueLabel": "Valor (€)",
-  "closeDateLabel": "Fecha de Cierre",
-  "pickDate": "Elige una fecha",
-  "descriptionPlaceholder": "Descripción y notas...",
-  "cancelButton": "Cancelar",
-  "saveButton": "Guardar",
-  "toastErrorTitle": "Error",
-  "toastSuccessTitle": "¡Éxito!",
-  "toastSuccessDescription": "La oportunidad se ha guardado correctamente."
-  
-},
-
+    "title": "Pipeline de Ventas",
+    "newOpportunityButton": "Nueva Oportunidad",
+    "toastMoved": "Oportunidad movida a \"{stageName}\".",
+    "opportunityCount": "{count, plural, one {# oportunidad} other {# oportunidades}}",
+    "noContact": "Sin contacto",
+    "add": "Añadir",
+    "noOpportunitiesInStage": "No hay oportunidades en esta etapa.",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "¡Éxito!",
+    "stageNames": {
+      "prospect": "Prospecto",
+      "contacted": "Contactado",
+      "proposalSent": "Propuesta Enviada",
+      "negotiation": "Negociación",
+      "won": "Ganado",
+      "lost": "Perdido"
+    }
+  },
+  "OpportunityDialog": {
+    "editTitle": "Editar Oportunidad",
+    "newTitle": "Nueva Oportunidad",
+    "namePlaceholder": "Nombre de la oportunidad...",
+    "selectContactPlaceholder": "Selecciona un contacto...",
+    "searchContactPlaceholder": "Buscar contacto...",
+    "noContactFound": "No se ha encontrado ningún contacto.",
+    "selectStagePlaceholder": "Selecciona una etapa",
+    "valueLabel": "Valor (€)",
+    "closeDateLabel": "Fecha de Cierre",
+    "pickDate": "Elige una fecha",
+    "descriptionPlaceholder": "Descripción y notas...",
+    "cancelButton": "Cancelar",
+    "saveButton": "Guardar",
+    "toastErrorTitle": "Error",
+    "toastSuccessTitle": "¡Éxito!",
+    "toastSuccessDescription": "La oportunidad se ha guardado correctamente."
+  },
+  "QuotesPage": {
+    "toast": {
+      "successTitle": "¡Éxito!",
+      "errorTitle": "Error"
+    },
+    "status": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "accepted": "Aceptado",
+      "declined": "Rechazado",
+      "unknown": "Desconocido"
+    },
+    "table": {
+      "number": "Número",
+      "client": "Cliente",
+      "issueDate": "Fecha Emisión",
+      "total": "Total",
+      "status": "Estado",
+      "actions": "Acciones"
+    },
+    "noClient": "N/A",
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar"
+    },
+    "emptyState": "No se han encontrado presupuestos. ¡Crea uno nuevo!",
+    "deleteDialog": {
+      "title": "¿Estás absolutamente seguro?",
+      "description1": "Esta acción no se puede deshacer. Se eliminará permanentemente el presupuesto",
+      "cancelButton": "Cancelar",
+      "confirmButton": "Sí, elimínalo",
+      "deleting": "Eliminando..."
+    }
+  },
+  "QuoteEditor": {
+    "companyProfileDialog": {
+      "title": "Datos de Tu Empresa",
+      "description": "Esta información aparecerá en tus presupuestos y facturas.",
+      "logoLabel": "Logo de la Empresa",
+      "logoAlt": "Logo",
+      "uploadButton": "Subir Logo",
+      "nameLabel": "Nombre de la Empresa",
+      "taxIdLabel": "NIF/CIF",
+      "addressLabel": "Dirección",
+      "emailLabel": "Email",
+      "phoneLabel": "Teléfono",
+      "saveButton": "Guardar Cambios"
+    },
+    "quoteEditor": {
+      "backButton": "Volver",
+      "companyDataTooltip": "Datos de la empresa",
+      "deleteTooltip": "Eliminar",
+      "createButton": "Crear Presupuesto",
+      "saveButton": "Guardar Cambios",
+      "generatingPDF": "Generando PDF...",
+      "uploadingFile": "Subiendo archivo...",
+      "sending": "Enviando...",
+      "resendButton": "Volver a Enviar",
+      "sendButton": "Enviar Presupuesto",
+      "sentOn": "Presupuesto enviado el {date}.",
+      "clientOpportunitiesLabel": "Oportunidades del cliente",
+      "noOpportunityAssociated": "Ninguna oportunidad asociada",
+      "noOpenOpportunities": "Este cliente no tiene oportunidades abiertas.",
+      "additionalNotesLabel": "Notas Adicionales",
+      "deleteDialogTitle": "¿Estás seguro?",
+      "deleteDialogDescription": "Esta acción borrará permanentemente este presupuesto."
+    },
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "¡Éxito!",
+      "logoUploadError": "No se ha podido subir el logo.",
+      "missingProfileData": "Faltan datos esenciales del perfil.",
+      "saveFirst": "Guarda el presupuesto antes de enviarlo.",
+      "previewNotFound": "Elemento de previsualización no encontrado.",
+      "unauthenticated": "Usuario no autenticado.",
+      "sendError": "Error en el envío",
+      "deletedSuccess": "¡Eliminado!"
+    },
+    "buttons": {
+      "cancel": "Cancelar",
+      "saveChanges": "Guardar Cambios",
+      "editDetails": "Editar Detalles",
+      "delete": "Eliminar",
+      "confirmDelete": "Sí, eliminar permanentemente"
+    },
+    "items": {
+      "title": "Conceptos",
+      "empty": "Añade el primer concepto al presupuesto.",
+      "placeholderDescription": "Descripción del servicio o producto",
+      "placeholderQty": "Cant.",
+      "placeholderPrice": "Precio",
+      "addButton": "Añadir Concepto",
+      "newProductTitle": "Crear y guardar nuevo concepto",
+      "newProductNamePlaceholder": "Nombre del concepto",
+      "newProductPricePlaceholder": "Precio (€)",
+      "cancelButton": "Cancelar",
+      "saveAndAddButton": "Guardar y Añadir",
+      "searchPlaceholder": "Buscar concepto...",
+      "emptySearch": "No se ha encontrado ningún concepto.",
+      "addManualItem": "Añadir concepto manual",
+      "createNewItem": "Crear y guardar nuevo concepto",
+      "toast": {
+        "requiredFields": "Campos requeridos",
+        "requiredFieldsDesc": "El nombre y el precio son obligatorios.",
+        "productCreated": "¡Producto creado!",
+        "productCreatedDesc": "Se ha añadido a tu lista de productos."
+      }
+    },
+    "meta": {
+      "clientLabel": "Cliente",
+      "selectClientPlaceholder": "Selecciona un cliente...",
+      "searchClientPlaceholder": "Buscar cliente...",
+      "noClientFound": "No se ha encontrado ningún cliente.",
+      "quoteNumberLabel": "Número de Presupuesto",
+      "issueDateLabel": "Fecha de Emisión",
+      "expiryDateLabel": "Fecha de Vencimiento"
+    },
+    "totals": {
+      "subtotal": "Subtotal",
+      "discount": "Descuento (%)",
+      "discountAmount": "Importe Descuento",
+      "taxableBase": "Base Imponible",
+      "taxes": "Impuestos (IVA 21%)",
+      "total": "Total"
+    },
+    "preview": {
+      "logoPlaceholder": "Tu Logo",
+      "yourCompany": "Tu Empresa",
+      "pending": "Pendiente",
+      "unselectedClient": "Cliente no seleccionado",
+      "issueDate": "Fecha Emisión:",
+      "expiryDate": "Fecha Vencimiento:",
+      "itemHeader": "Concepto",
+      "totalHeader": "Total",
+      "discountLine": "Descuento:",
+      "taxesLine": "Impuestos (21%):",
+      "notesAndTerms": "Notas y Términos",
+      "totalLabel": "TOTAL"
+    }
+  },
   "DashboardClient": {
     "openLink": "Abrir",
     "totalContacts": "Contactos Totales",

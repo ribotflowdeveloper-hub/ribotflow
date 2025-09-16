@@ -377,7 +377,146 @@
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
     "toastSuccessDescription": "L'oportunitat s'ha desat correctament."
-    
+  },
+  "QuotesPage": {
+    "toast": {
+      "successTitle": "Èxit!",
+      "errorTitle": "Error"
+    },
+    "status": {
+      "draft": "Esborrany",
+      "sent": "Enviat",
+      "accepted": "Acceptat",
+      "declined": "Rebutjat",
+      "unknown": "Desconegut"
+    },
+    "table": {
+      "number": "Número",
+      "client": "Client",
+      "issueDate": "Data Emissió",
+      "total": "Total",
+      "status": "Estat",
+      "actions": "Accions"
+    },
+    "noClient": "N/A",
+    "actions": {
+      "edit": "Editar",
+      "delete": "Esborrar"
+    },
+    "emptyState": "No s'han trobat pressupostos. Crea'n un de nou!",
+    "deleteDialog": {
+      "title": "Estàs absolutament segur?",
+      "description1": "Aquesta acció no es pot desfer. S'esborrarà permanentment el pressupost",
+      "cancelButton": "Cancel·lar",
+      "confirmButton": "Sí, esborra'l",
+      "deleting": "Esborrant..."
+    }
+  },
+  "QuoteEditor": {
+    "companyProfileDialog": {
+      "title": "Dades de la Teva Empresa",
+      "description": "Aquesta informació apareixerà als teus pressupostos i factures.",
+      "logoLabel": "Logo de l'Empresa",
+      "logoAlt": "Logo",
+      "uploadButton": "Pujar Logo",
+      "nameLabel": "Nom de l'Empresa",
+      "taxIdLabel": "NIF/CIF",
+      "addressLabel": "Adreça",
+      "emailLabel": "Email",
+      "phoneLabel": "Telèfon",
+      "saveButton": "Desar Canvis"
+    },
+    "quoteEditor": {
+      "backButton": "Tornar",
+      "companyDataTooltip": "Dades de l'empresa",
+      "deleteTooltip": "Esborrar",
+      "createButton": "Crear Pressupost",
+      "saveButton": "Desar Canvis",
+      "generatingPDF": "Generant PDF...",
+      "uploadingFile": "Pujant arxiu...",
+      "sending": "Enviant...",
+      "resendButton": "Tornar a Enviar",
+      "sendButton": "Enviar Pressupost",
+      "sentOn": "Pressupost enviat el {date}.",
+      "clientOpportunitiesLabel": "Oportunitats del client",
+      "noOpportunityAssociated": "Cap oportunitat associada",
+      "noOpenOpportunities": "Aquest client no té oportunitats obertes.",
+      "additionalNotesLabel": "Notes Addicionals",
+      "deleteDialogTitle": "Estàs segur?",
+      "deleteDialogDescription": "Aquesta acció esborrarà permanentment aquest pressupost."
+    },
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "Èxit!",
+      "logoUploadError": "No s'ha pogut pujar el logo.",
+      "missingProfileData": "Falten dades essencials del perfil.",
+      "saveFirst": "Desa el pressupost abans d'enviar-lo.",
+      "previewNotFound": "Element de previsualització no trobat.",
+      "unauthenticated": "Usuari no autenticat.",
+      "sendError": "Error en l'enviament",
+      "deletedSuccess": "Esborrat!"
+    },
+    "buttons": {
+      "cancel": "Cancel·lar",
+      "saveChanges": "Desar Canvis",
+      "editDetails": "Editar Detalls",
+      "delete": "Eliminar",
+      "confirmDelete": "Sí, eliminar definitivament"
+    },
+    "items": {
+      "title": "Conceptes",
+      "empty": "Afegeix el primer concepte al pressupost.",
+      "placeholderDescription": "Descripció del servei o producte",
+      "placeholderQty": "Quant.",
+      "placeholderPrice": "Preu",
+      "addButton": "Afegir Concepte",
+      "newProductTitle": "Crear i desar nou concepte",
+      "newProductNamePlaceholder": "Nom del concepte",
+      "newProductPricePlaceholder": "Preu (€)",
+      "cancelButton": "Cancel·lar",
+      "saveAndAddButton": "Desar i Afegir",
+      "searchPlaceholder": "Buscar concepte...",
+      "emptySearch": "No s'ha trobat cap concepte.",
+      "addManualItem": "Afegir concepte manual",
+      "createNewItem": "Crear i desar nou concepte",
+      "toast": {
+        "requiredFields": "Camps requerits",
+        "requiredFieldsDesc": "El nom i el preu són obligatoris.",
+        "productCreated": "Producte creat!",
+        "productCreatedDesc": "S'ha afegit a la teva llista de productes."
+      }
+    },
+    "meta": {
+      "clientLabel": "Client",
+      "selectClientPlaceholder": "Selecciona un client...",
+      "searchClientPlaceholder": "Buscar client...",
+      "noClientFound": "No s'ha trobat cap client.",
+      "quoteNumberLabel": "Número de Pressupost",
+      "issueDateLabel": "Data d'Emissió",
+      "expiryDateLabel": "Data de Venciment"
+    },
+    "totals": {
+      "subtotal": "Subtotal",
+      "discount": "Descompte (%)",
+      "discountAmount": "Import Descompte",
+      "taxableBase": "Base Imposable",
+      "taxes": "Impostos (IVA 21%)",
+      "total": "Total"
+    },
+    "preview": {
+      "logoPlaceholder": "El teu Logo",
+      "yourCompany": "La Teva Empresa",
+      "pending": "Pendent",
+      "unselectedClient": "Client no seleccionat",
+      "issueDate": "Data Emissió:",
+      "expiryDate": "Data Venciment:",
+      "itemHeader": "Concepte",
+      "totalHeader": "Total",
+      "discountLine": "Descompte:",
+      "taxesLine": "Impostos (21%):",
+      "notesAndTerms": "Notes i Termes",
+      "totalLabel": "TOTAL"
+    }
   },
   "DashboardClient": {
     "openLink": "Obrir",

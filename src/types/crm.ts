@@ -25,6 +25,17 @@ export const PIPELINE_STAGES_MAP = [
   { name: 'Perdut', key: 'lost' },
 ] as const;
 
+
+export const QUOTE_STATUS_MAP = [
+  { dbValue: 'Draft',    key: 'draft',    colorClass: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' },
+  { dbValue: 'Sent',     key: 'sent',     colorClass: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' },
+  { dbValue: 'Accepted', key: 'accepted', colorClass: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' },
+  { dbValue: 'Declined', key: 'declined', colorClass: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300' },
+] as const;
+
+// Creem un tipus per als valors que aniran a la base de dades ('Draft' | 'Sent' | ...)
+type QuoteStatus = typeof QUOTE_STATUS_MAP[number]['dbValue'];
+
 export type QuoteItem = {
   id?: number;
   product_id: number | null;
@@ -40,8 +51,7 @@ export type Quote = {
   quote_number: string;
   issue_date: string;
   expiry_date?: string | null;
-  status: 'Draft' | 'Sent' | 'Accepted' | 'Declined';
-  notes: string;
+  status: QuoteStatus;  notes: string;
   discount: number;
   subtotal: number;
   tax: number;
