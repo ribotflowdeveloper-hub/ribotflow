@@ -4,13 +4,15 @@ import React, { FC } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Paperclip } from 'lucide-react';
 import { format } from "date-fns";
-import { ca } from "date-fns/locale";
-import { type Expense } from '@/types/finances';
+
+import { type Expense } from '@/types/finances/expense';
+import { useLocale, useTranslations } from 'next-intl';
+import { ca, es, enUS } from "date-fns/locale";
 
 // Definim les propietats que espera el component.
 interface ExpenseTableProps {
-  expenses: Expense[]; // Llista de despeses a mostrar.
-  onViewDetails: (expense: Expense) => void; // Funció a executar en clicar una fila.
+    expenses: Expense[]; // Llista de despeses a mostrar.
+    onViewDetails: (expense: Expense) => void; // Funció a executar en clicar una fila.
 }
 
 /**
@@ -18,16 +20,26 @@ interface ExpenseTableProps {
  * Cada fila és clicable per obrir el calaix de detalls.
  */
 export const ExpenseTable: FC<ExpenseTableProps> = ({ expenses, onViewDetails }) => {
+    const t = useTranslations('Expenses');
+    const locale = useLocale();
+
+    const getDateLocale = () => {
+        switch (locale) {
+            case 'es': return es;
+            case 'en': return enUS;
+            default: return ca;
+        }
+    };
     return (
         <div className="glass-effect rounded-xl overflow-hidden">
             <Table>
                 <TableHeader>
                     <TableRow className="border-b-white/10 hover:bg-white/5">
-                        <TableHead>Proveïdor / Descripció</TableHead>
-                        <TableHead>Nº Factura</TableHead>
-                        <TableHead>Data</TableHead>
-                        <TableHead>Categoria</TableHead>
-                        <TableHead className="text-right">Import</TableHead>
+                        <TableHead>{t('tableHeaderSupplier')}</TableHead>
+                        <TableHead>{t('tableHeaderInvoiceNo')}</TableHead>
+                        <TableHead>{t('tableHeaderDate')}</TableHead>
+                        <TableHead>{t('tableHeaderCategory')}</TableHead>
+                        <TableHead className="text-right">{t('tableHeaderAmount')}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -43,7 +55,7 @@ export const ExpenseTable: FC<ExpenseTableProps> = ({ expenses, onViewDetails })
                                 )}
                             </TableCell>
                             <TableCell className="font-mono text-muted-foreground">{expense.invoice_number || '-'}</TableCell>
-                            <TableCell>{expense.expense_date ? format(new Date(expense.expense_date), "dd MMM, yyyy", { locale: ca }) : '-'}</TableCell>
+                            <TableCell>{expense.expense_date ? format(new Date(expense.expense_date), "dd MMM, yyyy", { locale: getDateLocale() }) : '-'}</TableCell>
                             <TableCell><span className="bg-white/10 px-2 py-1 text-xs rounded-full">{expense.category || '-'}</span></TableCell>
                             <TableCell className="text-right font-mono">- €{(expense.total_amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</TableCell>
                         </TableRow>
@@ -51,7 +63,7 @@ export const ExpenseTable: FC<ExpenseTableProps> = ({ expenses, onViewDetails })
                         // Fila per a l'estat buit, que ocupa totes les columnes.
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                Encara no has registrat cap despesa.
+                                {t('emptyState')}
                             </TableCell>
                         </TableRow>
                     )}

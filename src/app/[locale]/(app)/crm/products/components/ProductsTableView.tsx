@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Edit, Trash2 } from "lucide-react";
 import type { Product } from "../page";
+import { useTranslations } from "next-intl";
 
 // Propietats que espera el component.
 interface ProductsTableViewProps {
@@ -18,16 +19,18 @@ interface ProductsTableViewProps {
  * És un component purament presentacional.
  */
 export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableViewProps) {
+    const t = useTranslations('ProductsPage');
+    
     return (
         <div className="border rounded-lg">
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead>Nom</TableHead>
-                        <TableHead>Categoria</TableHead>
-                        <TableHead className="text-right">Preu Base</TableHead>
-                        <TableHead className="text-right">Unitat</TableHead>
-                        <TableHead className="w-[100px] text-right">Accions</TableHead>
+                        <TableHead>{t('table.name')}</TableHead>
+                        <TableHead>{t('table.category')}</TableHead>
+                        <TableHead className="text-right">{t('table.price')}</TableHead>
+                        <TableHead className="text-right">{t('table.unit')}</TableHead>
+                        <TableHead className="w-[100px] text-right">{t('table.actions')}</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -49,8 +52,18 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                 </Button>
                                             </AlertDialogTrigger>
+                                            {/* ✅ Contingut del diàleg de confirmació completat i traduït */}
                                             <AlertDialogContent>
-                                                {/* ... (contingut del diàleg de confirmació) ... */}
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>{t('deleteDialog.title')}</AlertDialogTitle>
+                                                    <AlertDialogDescription>{t('deleteDialog.description')}</AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel>{t('deleteDialog.cancelButton')}</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={() => onDelete(product.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                        {t('deleteDialog.confirmButton')}
+                                                    </AlertDialogAction>
+                                                </AlertDialogFooter>
                                             </AlertDialogContent>
                                         </AlertDialog>
                                     </div>
@@ -58,10 +71,9 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
                             </TableRow>
                         ))
                     ) : (
-                        // Fila especial per quan no hi ha resultats, per evitar errors d'hidratació.
                         <TableRow>
                             <TableCell colSpan={5} className="h-24 text-center">
-                                No s'ha trobat cap producte amb aquests filtres.
+                                {t('noProductsFound')}
                             </TableCell>
                         </TableRow>
                     )}
