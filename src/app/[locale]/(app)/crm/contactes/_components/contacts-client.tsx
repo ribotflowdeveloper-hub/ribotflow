@@ -12,6 +12,7 @@ import { Loader2, Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { type Contact } from '@/types/crm'; // ✅ CORRECT
 import { CONTACT_STATUS_MAP } from '@/types/crm'; // ✅ Importa el nou mapa
 import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 
 import ContactCard from '@/app/[locale]/(app)/crm/contactes/_components/ContactCard';
 import ContactTable from '@/app/[locale]/(app)/crm/contactes/_components/ContactTable';
@@ -23,7 +24,11 @@ import { createContactAction } from './actions';
  * Gestiona l'estat de la cerca, el mode de visualització (targetes o llista)
  * i el diàleg per crear nous contactes.
  */
-export function ContactsClient({ initialContacts }: { initialContacts: Contact[] }) {
+export function ContactsClient({ initialContacts, totalPages, currentPage }: {
+    initialContacts: Contact[],
+    totalPages: number,
+    currentPage: number
+}) {
     const t = useTranslations('ContactsClient');
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -91,10 +96,10 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         {/* ✅ 2. Fem un map sobre la constant per generar les opcions */}
-                                            {/* ✅ Mapejem sobre el nou mapa de dades */}
+                                        {/* ✅ Mapejem sobre el nou mapa de dades */}
                                         {CONTACT_STATUS_MAP.map(status => (
-                                            <SelectItem 
-                                                key={status.code} 
+                                            <SelectItem
+                                                key={status.code}
                                                 value={status.code} // <-- El valor que s'envia al servidor és el CODI
                                             >
                                                 {t(`contactStatuses.${status.key}`)} {/* <-- El text que veu l'usuari és la TRADUCCIÓ */}
@@ -130,6 +135,18 @@ export function ContactsClient({ initialContacts }: { initialContacts: Contact[]
                     </motion.div>
                 </AnimatePresence>
             </div>
+            {/* ✅ NOU: Afegeix els botons de paginació al final */}
+            {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 mt-8">
+                    <Button asChild disabled={currentPage <= 1}>
+                        <Link href={`/crm/contactes?page=${currentPage - 1}`}>Anterior</Link>
+                    </Button>
+                    <span>Pàgina {currentPage} de {totalPages}</span>
+                    <Button asChild disabled={currentPage >= totalPages}>
+                        <Link href={`/crm/contactes?page=${currentPage + 1}`}>Següent</Link>
+                    </Button>
+                </div>
+            )}
         </motion.div>
     );
 };

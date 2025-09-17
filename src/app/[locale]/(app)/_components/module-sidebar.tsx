@@ -1,42 +1,61 @@
-"use client"; // ✅ També client component.
+"use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn, getCleanPathname } from '@/lib/utils';
+import type { NavItem } from '@/types/navigation';
+import { useNavigationStore } from '@/stores/navigationStore'; // ✅ NOU
 
-import { cn, getCleanPathname } from '@/lib/utils'; // ✅ Importem la nova funció
-import type { NavItem } from '@/types/navigation'; // ✅ Importem el tipus des del seu fitxer
-
-// ✅ Barra lateral per a un mòdul específic (submenú)
-export function ModuleSidebar({ module, onClose }: { module: NavItem; onClose: () => void; }) {
+/**
+ * @summary Barra lateral para un módulo específico (submenú).
+ */
+export function ModuleSidebar({ module, onClose, onSubItemClick }: { 
+    module: NavItem; 
+    onClose: () => void; 
+    onSubItemClick: () => void; // ✅ NUEVO: Prop para notificar el clic.
+}) {
     const locale = useLocale();
     const t = useTranslations('Navigation');
     const fullPathname = usePathname();
     const cleanPathname = getCleanPathname(fullPathname, locale);
+    const setIsNavigating = useNavigationStore((state) => state.setIsNavigating); // ✅ NOU
     
-    if (!module || !module.children) return null; // ✅ Si no hi ha mòdul o subelements, no renderitzem res.
+
+    if (!module || !module.children) return null;
 
     return (
-        <div className="w-64 h-full glass-effect border-r border-border flex flex-col p-4 flex-shrink-0">
-            {/* ✅ Capçalera amb títol del mòdul i botó per tancar el submenú */}
-            <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold pl-2">{t(module.labelKey as any)}</h2> {/* ✅ Títol traduït */}
-            <Button variant="ghost" size="icon" onClick={onClose}>
-                    <ChevronLeft className="h-5 w-5" />
-                </Button>
-            </div>
-            
-            {/* ✅ Llistat dels subelements del mòdul */}
+        <div className="w-64 h-full glass-effect ...">
+             <div className="flex items-center justify-between mb-6">
+
+                <h2 className="text-lg font-bold pl-2">{t(module.labelKey as any)}</h2>
+
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                    <ChevronLeft className="h-5 w-5" />
+
+                </Button>
+
+            </div>
             <nav className="flex flex-col gap-2">
                 {module.children.map(item => {
                     const isActive = cleanPathname === item.path;
                     return (
-                        <Link
+                        <Link // Tornem a un <Link> simple i pur
                             key={item.id}
                             href={`/${locale}${item.path}`}
+                            // ✅ NOU: Activem l'estat de navegació en fer clic
+                            onClick={() => {
+                                // Notificamos al layout padre para que cierre el menú.
+                                onSubItemClick(); 
+                                
+                                // Mantenemos la lógica para mostrar el estado de carga.
+
+                                if (fullPathname !== `/${locale}${item.path}`) {
+                                    setIsNavigating(true);
+                                }
+                            }}
                             className={cn(
                                 'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors',
                                 isActive

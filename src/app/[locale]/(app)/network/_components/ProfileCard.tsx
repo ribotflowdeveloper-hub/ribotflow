@@ -1,5 +1,5 @@
 import { Building2 } from 'lucide-react';
-import { PublicProfile } from '@/types';
+import { PublicProfile } from '@/types/network';
 // Importem el component 'Image' de Next.js. És una versió optimitzada de l'etiqueta <img>.
 import Image from 'next/image';
 import { useTranslations } from 'next-intl'; // ✅ Importem el hook

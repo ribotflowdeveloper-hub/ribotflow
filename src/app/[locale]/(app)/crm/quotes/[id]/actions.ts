@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-import type { Quote, CompanyProfile } from './page';
+import type { Quote, CompanyProfileObject } from '@/types/crm';
 // 'withUser' és una funció 'wrapper' personalitzada que probablement gestiona l'autenticació
 // i la creació del client de Supabase per evitar repetir codi a cada acció.
 import { withUser } from "@/lib/actions";
@@ -110,22 +110,35 @@ export async function sendQuoteAction(quoteId: string) {
 /**
  * Acció per actualitzar el perfil de l'empresa de l'usuari.
  */
-export async function updateCompanyProfileAction(profileData: CompanyProfile) {
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !profileData) return { success: false, message: "Dades invàlides." };
+export async function updateCompanyProfileAction(profileData: CompanyProfileObject) {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // ✅ Assegurem que profileData no sigui null
+  if (!user || !profileData) {
+      return { success: false, message: "Dades invàlides." };
+  }
 
-    try {
-        const { data, error } = await supabase.from('profiles').upsert({ ...profileData, id: user.id }).select().single();
-        if (error) throw error;
-        
-        revalidatePath(`/crm/quotes/[id]`, 'layout');
-        return { success: true, message: 'Perfil d\'empresa actualitzat.', updatedProfile: data };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { success: false, message };
-      }
+  try {
+      const { data, error } = await supabase
+          .from('profiles')
+          .upsert({ ...profileData, id: user.id })
+          .select()
+          .single();
+      
+      if (error) throw error;
+      
+      // ✅ CORRECCIÓ DEFINITIVA: Revalidem el layout del CRM.
+      // Això refrescarà les dades a totes les pàgines dins de /crm,
+      // incloent-hi la pàgina de l'editor de pressupostos, de manera segura.
+      revalidatePath('/crm', 'layout');
+      
+      return { success: true, message: 'Perfil d\'empresa actualitzat.', updatedProfile: data };
+  } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error desconegut";
+      return { success: false, message };
+  }
 }
 /**
  * Acció per crear un nou producte desable des de l'editor de pressupostos.

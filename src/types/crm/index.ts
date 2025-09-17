@@ -1,0 +1,13 @@
+/**
+ * @file src/types/crm/index.ts
+ * @summary Aquest és un "fitxer barril" que re-exporta tots els tipus del domini CRM.
+ * Això permet que la resta de l'aplicació importi qualsevol tipus del CRM des d'un sol lloc,
+ * mantenint l'organització interna en mòduls.
+ * * @example
+ * import type { Contact, Quote, Ticket } from '@/types/crm';
+ */
+
+export * from './contacts';
+export * from './quotes';
+export * from '../comunicacio/inbox';
+export * from './general';

@@ -90,7 +90,13 @@
     "nameLabel": "Nom:",
     "deleteConfirmTitle": "Estàs segur?",
     "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
-    "confirmDeleteButton": "Sí, elimina'l"
+    "confirmDeleteButton": "Sí, elimina'l",
+    "deleteButtonTooltip": "Eliminar Conversa",
+    "composeButtonTooltip": "Redactar Nou Correu",
+    "refreshButtonTooltip": "Refrescar Safata d'Entrada",
+    "allFilter": "Tots",
+    "unreadFilter": "No llegits"
+   
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -335,6 +341,12 @@
     "avgConversionTime": "Temps Mitjà de Conversió",
     "replyTooltip": "Respondre",
     "markAsReadTooltip": "Marcar com a llegit",
+    "tooltips": {
+      "totalContacts": "Tots els contactes del teu CRM",
+      "newContacts": "Contactes afegits en els darrers 30 dies",
+      "opportunities": "Oportunitats actives al teu pipeline",
+      "pipelineValue": "Suma de tots els valors d'oportunitats actives"
+    },
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "No s'ha pogut marcar com a llegida.",
@@ -342,23 +354,32 @@
     },
     "replyBody": "\n\n\n--- En resposta al teu feedback del {date} ---\n>{content}"
   },
-  "PipelineClient": {
-    "title": "Pipeline de Vendes",
+  "PipelinePage": {
+    "title": "Canal de Vendes",
+    "addOpportunity": "Nova Oportunitat",
+    "noContact": "Sense contacte assignat",
+    "opportunityCount": "{count, plural, =0 {Cap oportunitat} one {# oportunitat} other {# oportunitats}}",
+    "noOpportunitiesInStage": "Arrossega una oportunitat aquí o crea’n una de nova.",
+    "columnViewLabel": "Vista de columnes",
+    "rowViewLabel": "Vista de files",
+    "loadingError": "Error en carregar les oportunitats.",
     "newOpportunityButton": "Nova Oportunitat",
     "toastMoved": "Oportunitat moguda a \"{stageName}\".",
-    "opportunityCount": "{count, plural, one {# oportunitat} other {# oportunitats}}",
-    "noContact": "Sense contacte",
     "add": "Afegir",
-    "noOpportunitiesInStage": "No hi ha oportunitats en aquesta etapa.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "Èxit!",
+      "moved": "Oportunitat moguda a {stageName}"
+    },
     "stageNames": {
-      "prospect": "Prospecto",
-      "contacted": "Contactado",
-      "proposalSent": "Propuesta Enviada",
-      "negotiation": "Negociación",
-      "won": "Ganado",
-      "lost": "Perdido"
+      "prospect": "Prospecte",
+      "contacted": "Contactat",
+      "proposalSent": "Proposta Enviada",
+      "negotiation": "Negociació",
+      "won": "Guanyada",
+      "lost": "Perduda"
     }
   },
   "OpportunityDialog": {

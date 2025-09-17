@@ -90,7 +90,12 @@
     "nameLabel": "Name:",
     "deleteConfirmTitle": "Are you sure?",
     "deleteConfirmDescription": "This action cannot be undone.",
-    "confirmDeleteButton": "Yes, delete it"
+    "confirmDeleteButton": "Yes, delete it",
+    "deleteButtonTooltip": "Delete Conversation",
+    "composeButtonTooltip": "Compose New Email",
+    "refreshButtonTooltip": "Refresh Inbox",
+    "allFilter": "Tots",
+    "unreadFilter": "No llegits"
   },
   "AICampaignWizard": {
     "title": "AI Campaign Assistant",
@@ -335,6 +340,12 @@
     "avgConversionTime": "Average Conversion Time",
     "replyTooltip": "Reply",
     "markAsReadTooltip": "Mark as read",
+    "tooltips": {
+      "totalContacts": "All contacts in your CRM",
+      "newContacts": "Contacts added in the last 30 days",
+      "opportunities": "Active opportunities in your pipeline",
+      "pipelineValue": "Sum of all active opportunity values"
+    },
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "Could not mark as read.",
@@ -342,16 +353,25 @@
     },
     "replyBody": "\n\n\n--- In response to your feedback from {date} ---\n>{content}"
   },
-  "PipelineClient": {
+  "PipelinePage": {
     "title": "Sales Pipeline",
+    "addOpportunity": "New Opportunity",
+    "noContact": "No assigned contact",
+    "opportunityCount": "{count, plural, =0 {No opportunities} one {# opportunity} other {# opportunities}}",
+    "noOpportunitiesInStage": "Drag an opportunity here or create a new one.",
+    "columnViewLabel": "Column view",
+    "rowViewLabel": "Row view",
+    "loadingError": "Error loading opportunities.",
     "newOpportunityButton": "New Opportunity",
     "toastMoved": "Opportunity moved to \"{stageName}\".",
-    "opportunityCount": "{count, plural, one {# opportunity} other {# opportunities}}",
-    "noContact": "No contact",
     "add": "Add",
-    "noOpportunitiesInStage": "No opportunities in this stage.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "Success!",
+      "moved": "Opportunity moved to {stageName}"
+    },
     "stageNames": {
       "prospect": "Prospect",
       "contacted": "Contacted",

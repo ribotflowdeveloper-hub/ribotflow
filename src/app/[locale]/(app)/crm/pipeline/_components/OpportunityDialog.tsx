@@ -38,7 +38,7 @@ interface OpportunityDialogProps {
 export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: OpportunityDialogProps) {
   const [isPending, startTransition] = useTransition(); // Hook per a l'estat de càrrega.
   const t = useTranslations('OpportunityDialog');
-  const statePipline = useTranslations('PipelineClient');
+  const statePipline = useTranslations('PipelinePage');
 
   const locale = useLocale();
   // Estats locals per a camps que requereixen una gestió especial, com el selector de contacte i el calendari.

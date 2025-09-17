@@ -15,7 +15,7 @@ import type { DetailedAddress } from '@/types/DetailedAddress';
 // que només funcionen al navegador. Per això, el carreguem de forma dinàmica
 // amb 'ssr: false' per evitar problemes de renderitzat al servidor.
 const AddressAutocomplete = dynamic(
-  () => import('@/app/[locale]/(app)/_components/network/AddressAutocomplete'), {
+  () => import('@/app/[locale]/(app)/network/_components/AddressAutocomplete'), {
     ssr: false,
     loading: () => <div className="h-[58px] bg-gray-800 rounded-md animate-pulse"></div>
   }

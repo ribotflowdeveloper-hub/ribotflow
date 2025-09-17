@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { PublicProfile } from '@/types';
+import { PublicProfile } from '@/types/network';
 import ProfileCard from './ProfileCard';
 import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 

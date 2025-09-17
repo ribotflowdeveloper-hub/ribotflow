@@ -90,7 +90,12 @@
     "nameLabel": "Nombre:",
     "deleteConfirmTitle": "¿Estás seguro?",
     "deleteConfirmDescription": "Esta acción no se puede deshacer.",
-    "confirmDeleteButton": "Sí, elimínalo"
+    "confirmDeleteButton": "Sí, elimínalo",
+    "deleteButtonTooltip": "Eliminar Conversación",
+    "composeButtonTooltip": "Redactar Nuevo Correo",
+    "refreshButtonTooltip": "Refrescar Bandeja de Entrada",
+    "allFilter": "Tots",
+    "unreadFilter": "No llegits"
   },
   "AICampaignWizard": {
     "title": "Asistente de Campañas de IA",
@@ -335,6 +340,12 @@
     "avgConversionTime": "Tiempo Medio de Conversión",
     "replyTooltip": "Responder",
     "markAsReadTooltip": "Marcar como leído",
+    "tooltips": {
+      "totalContacts": "Todos los contactos de tu CRM",
+      "newContacts": "Contactos añadidos en los últimos 30 días",
+      "opportunities": "Oportunidades activas en tu pipeline",
+      "pipelineValue": "Suma de todos los valores de oportunidades activas"
+    },
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "No se ha podido marcar como leída.",
@@ -342,23 +353,32 @@
     },
     "replyBody": "\n\n\n--- En respuesta a tu feedback del {date} ---\n>{content}"
   },
-  "PipelineClient": {
-    "title": "Pipeline de Ventas",
+  "PipelinePage": {
+    "title": "Canal de Ventas",
+    "addOpportunity": "Nueva Oportunidad",
+    "noContact": "Sin contacto asignado",
+    "opportunityCount": "{count, plural, =0 {Ninguna oportunidad} one {# oportunidad} other {# oportunidades}}",
+    "noOpportunitiesInStage": "Arrastra una oportunidad aquí o crea una nueva.",
+    "columnViewLabel": "Vista de columnas",
+    "rowViewLabel": "Vista de filas",
+    "loadingError": "Error al cargar las oportunidades.",
     "newOpportunityButton": "Nueva Oportunidad",
     "toastMoved": "Oportunidad movida a \"{stageName}\".",
-    "opportunityCount": "{count, plural, one {# oportunidad} other {# oportunidades}}",
-    "noContact": "Sin contacto",
     "add": "Añadir",
-    "noOpportunitiesInStage": "No hay oportunidades en esta etapa.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "¡Éxito!",
+    "toast": {
+      "errorTitle": "Error",
+      "successTitle": "¡Éxito!",
+      "moved": "Oportunidad movida a {stageName}"
+    },
     "stageNames": {
       "prospect": "Prospecto",
       "contacted": "Contactado",
       "proposalSent": "Propuesta Enviada",
       "negotiation": "Negociación",
-      "won": "Ganado",
-      "lost": "Perdido"
+      "won": "Ganada",
+      "lost": "Perdida"
     }
   },
   "OpportunityDialog": {
@@ -915,7 +935,6 @@
       "exampleEmail": "email@ejemplo.com",
       "adminRole": "Administrador"
     }
- 
   },
   "ThemeSwitcher": {
     "lightTheme": "Claro",
