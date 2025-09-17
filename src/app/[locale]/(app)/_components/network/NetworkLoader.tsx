@@ -7,6 +7,7 @@
 // sinó només quan sigui necessari, millorant el temps de càrrega inicial.
 import dynamic from 'next/dynamic';
 import { PublicProfile } from '@/types';
+import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 
 // Aquí fem la importació dinàmica del component principal que conté el mapa i la interactivitat.
 // Aquest component (NetworkClient) probablement utilitza llibreries que només funcionen al navegador.
@@ -18,7 +19,7 @@ const NetworkClient = dynamic(() => import('@/app/[locale]/(app)/_components/net
   
   // 'loading' defineix un component o JSX que es mostrarà mentre el 'NetworkClient'
   // s'està descarregant i preparant al navegador. És un bon lloc per a un 'spinner' o un esquelet de càrrega.
-  loading: () => <div className="p-8 text-center">Carregant xarxa professional...</div>,
+  loading: () => <NetworkLoadingSkeleton />, // Utilitzem un component per a la càrrega
 });
 
 // Definim les propietats (props) que espera aquest component.
@@ -27,7 +28,13 @@ interface NetworkLoaderProps {
   // Aquestes dades han estat carregades prèviament al servidor (en un Server Component) i es passen aquí.
   profiles: PublicProfile[];
 }
-
+// Component intern per poder utilitzar el hook de traduccions
+function NetworkLoadingSkeleton() {
+  const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
+  return (
+    <div className="p-8 text-center">{t('loadingNetwork')}</div> // ✅ Text traduït
+  );
+}
 /**
  * Aquest component actua com un "carregador" o "pont".
  * La seva única responsabilitat és gestionar la càrrega asíncrona i segura (sense SSR)

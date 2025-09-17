@@ -25,6 +25,7 @@ import {
   Users,
   ChevronLeft,
 } from "lucide-react";
+import { useTranslations } from 'next-intl';
 
 // Aquestes són les Server Actions, funcions que s'executen de forma segura al servidor.
 import {
@@ -64,11 +65,12 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
   const [goal, setGoal] = useState(""); // Emmagatzema l'objectiu de màrqueting de l'usuari.
   const [strategies, setStrategies] = useState<Strategy[]>([]); // Array per a les estratègies suggerides per la IA.
   const [selectedStrategy, setSelectedStrategy] = useState<Strategy | null>(null); // L'estratègia que l'usuari ha triat.
-  
+  const t = useTranslations('AICampaignWizard');
+
   // 'useTransition' és un hook de React per gestionar estats de càrrega sense bloquejar la UI.
   // 'isPending' serà cert mentre una acció (com una crida a la IA) s'està executant.
   const [isPending, startTransition] = useTransition();
-  
+
   // Estat per saber quina estratègia s'està processant, per a una millor UX (només mostra un spinner).
   const [processingIndex, setProcessingIndex] = useState<number | null>(null);
 
@@ -92,7 +94,7 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     startTransition(async () => {
       const { data, error } = await generateStrategiesAction(goal);
       if (error) {
-        toast.error("Error d'IA", { description: error });
+        toast.error(t('toastErrorAI'), { description: error });
       } else {
         setStrategies(data as Strategy[]);
         setStep(2); // Avança al següent pas.
@@ -108,7 +110,7 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     startTransition(async () => {
       const { data, error } = await draftContentAction(goal, strategy);
       if (error) {
-        toast.error("Error d'IA", { description: error });
+        toast.error(t('toastErrorAI'), { description: error });
       } else {
         // Guarda l'estratègia seleccionada juntament amb el nou contingut generat.
         setSelectedStrategy({ ...strategy, content: data as string });
@@ -126,11 +128,10 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
     startTransition(async () => {
       const { error } = await saveCampaignAction(selectedStrategy, goal);
       if (error) {
-        toast.error("Error", { description: "No s'ha pogut desar la campanya." });
+        toast.error(t('toastErrorSave'), { description: t('toastErrorSaveDescription') });
       } else {
-        toast.success("Campanya Creada!", {
-          description: "La teva nova campanya està a la llista.",
-        });
+        toast.success(t('toastSuccessSave'), { description: t('toastSuccessSaveDescription') });
+
         onCampaignCreated(); // Notifica al component pare.
         onOpenChange(false); // Tanca el diàleg.
         resetWizard(); // Neteja l'estat per a la pròxima vegada.
@@ -154,11 +155,10 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <DialogDescription>
-              Comença descrivint el teu objectiu de màrqueting. Sigues específic!
-            </DialogDescription>
+            <DialogDescription>{t('step1Description')}</DialogDescription>
+
             <Textarea
-              placeholder="Ex: Vull aconseguir 3 nous clients per al meu servei de consultoria aquest mes a través d'Instagram."
+              placeholder={t('step1Placeholder')}
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               className="my-4"
@@ -174,7 +174,7 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
                 ) : (
                   <Sparkles className="mr-2 h-4 w-4" />
                 )}
-                Generar Estratègies
+                {t('generateStrategiesButton')}
               </Button>
             </DialogFooter>
           </motion.div>
@@ -189,19 +189,16 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <DialogDescription>
-              Hem generat algunes idees per a tu. Tria la que més t'agradi per
-              desenvolupar el contingut.
-            </DialogDescription>
+            <DialogDescription>{t('step2Description')}</DialogDescription>
+
             <div className="my-4 space-y-3 max-h-[50vh] overflow-y-auto p-1">
               {strategies.map((s, i) => (
                 <div
                   key={i}
-                  className={`p-4 border border-border rounded-lg transition-all ${
-                    isPending && processingIndex !== i
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:border-primary cursor-pointer"
-                  }`}
+                  className={`p-4 border border-border rounded-lg transition-all ${isPending && processingIndex !== i
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:border-primary cursor-pointer"
+                    }`}
                   onClick={() => !isPending && handleDraftContent(s, i)}
                 >
                   {isPending && processingIndex === i ? (
@@ -211,14 +208,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
                     </div>
                   ) : (
                     <>
-                      <h3 className="font-semibold flex items-center gap-2">
-                        <Lightbulb className="text-yellow-400 h-4 w-4" />{" "}
-                        {s.name} <Badge variant="outline" className={undefined}>{s.type}</Badge>
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        <Users className="inline h-4 w-4 mr-1" />
-                        {s.target_audience}
-                      </p>
+                      <h3 className="font-semibold flex items-center gap-2"><Lightbulb className="text-yellow-400 h-4 w-4" /> {s.name} <Badge variant="outline" className={undefined}>{s.type}</Badge></h3>
+                      <p className="text-sm text-muted-foreground mt-1"><Users className="inline h-4 w-4 mr-1" /> {s.target_audience}</p>
                       <p className="text-sm mt-2">{s.description}</p>
                     </>
                   )}
@@ -226,10 +217,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
               ))}
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setStep(1)}>
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Enrere
-              </Button>
+              <Button variant="ghost" onClick={() => setStep(1)}><ChevronLeft className="mr-2 h-4 w-4" /> {t('backButton')}</Button>
+
             </DialogFooter>
           </motion.div>
         );
@@ -244,10 +233,8 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <DialogDescription>
-              Perfecte! Aquí tens un esborrany. Pots editar-lo abans de desar la
-              campanya.
-            </DialogDescription>
+                        <DialogDescription>{t('step3Description')}</DialogDescription>
+
             <div className="my-4 space-y-4">
               <Input
                 value={selectedStrategy.name}
@@ -268,15 +255,10 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
                 className="h-[40vh] text-base"
               />
             </div>
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setStep(2)}>
-                Enrere
-              </Button>
-              <Button onClick={handleSaveCampaign} disabled={isPending}>
-                {isPending ? <Loader2 className="animate-spin mr-2" /> : null}
-                Desar Campanya
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+              <Button variant="ghost" onClick={() => setStep(2)}>{t('backButton')}</Button>
+              <Button onClick={handleSaveCampaign} disabled={isPending}>{isPending && <Loader2 className="animate-spin mr-2" />} {t('saveCampaignButton')}</Button>
+            </DialogFooter>
           </motion.div>
         );
       default:
@@ -295,27 +277,25 @@ export const AICampaignWizard: FC<AICampaignWizardProps> = ({
       <DialogContent className="glass-effect max-w-2xl min-h-[400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
-            <Wand2 className="text-primary" /> Assistent de Campanyes d'IA
+            <Wand2 className="text-primary" /> {t('title')}
           </DialogTitle>
           <div className="flex items-center pt-4">
             {[1, 2, 3].map((s) => (
               <React.Fragment key={s}>
                 <div className="flex flex-col items-center">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-                      step >= s
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${step >= s
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted"
+                      }`}
                   >
                     {s}
                   </div>
                 </div>
                 {s < 3 && (
                   <div
-                    className={`flex-1 h-0.5 transition-all ${
-                      step > s ? "bg-primary" : "bg-muted"
-                    }`}
+                    className={`flex-1 h-0.5 transition-all ${step > s ? "bg-primary" : "bg-muted"
+                      }`}
                   />
                 )}
               </React.Fragment>

@@ -5,7 +5,8 @@ import React from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { User } from 'lucide-react';
 import type { Contact } from '@/types/crm';
-import { CONTACT_STATUS_DISPLAY, ContactStatusKey } from '@/types/crm';
+import { useTranslations } from 'next-intl';
+import { CONTACT_STATUS_MAP } from '@/types/crm';
 
 // Definim les propietats que el component espera.
 interface ContactTableProps {
@@ -18,6 +19,20 @@ interface ContactTableProps {
  * És una de les dues vistes disponibles a la pàgina de contactes.
  */
 const ContactTable: React.FC<ContactTableProps> = ({ contacts, onRowClick }) => {
+  const t = useTranslations('ContactsClient');
+    /**
+   * @summary Funció interna per obtenir el text traduït de l'estat a partir del seu codi.
+   * @param statusCode El codi de l'estat (ex: 'L', 'P', 'C').
+   * @returns El text complet i traduït (ex: "Lead", "Cliente", "Proveedor").
+   */
+    const getStatusLabel = (statusCode?: string) => {
+      if (!statusCode) return ''; // Si no hi ha estat, no retornem res.
+      // Busquem l'objecte corresponent al codi dins del nostre mapa central.
+      const statusObject = CONTACT_STATUS_MAP.find(s => s.code === statusCode);
+      // Si el trobem, utilitzem la seva 'key' per obtenir la traducció.
+      // Si no, retornem el codi original com a fallback.
+      return statusObject ? t(`contactStatuses.${statusObject.key}`) : statusCode;
+    };
   return (
     <div className="glass-effect rounded-xl overflow-hidden">
       <Table>
@@ -48,8 +63,9 @@ const ContactTable: React.FC<ContactTableProps> = ({ contacts, onRowClick }) => 
               </TableCell>
               <TableCell>
                 {/* L'etiqueta d'estat obté el seu color de les classes CSS globals. */}
-                <span className={`status-badge status-${contact.estat?.toLowerCase()}`}>{CONTACT_STATUS_DISPLAY[contact.estat as ContactStatusKey]}</span>
-              </TableCell>
+                <span className={`status-badge status-${contact.estat?.toLowerCase()} shrink-0`}>
+            {getStatusLabel(contact.estat)}
+          </span>              </TableCell>
               <TableCell className="text-muted-foreground">{contact.email}</TableCell>
               <TableCell className="text-muted-foreground">{contact.telefon || '-'}</TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground">{contact.empresa || '-'}</TableCell>

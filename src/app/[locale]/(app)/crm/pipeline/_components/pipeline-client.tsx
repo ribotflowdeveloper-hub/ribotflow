@@ -19,36 +19,43 @@ import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
+import { ca, es, enUS } from 'date-fns/locale';
+import { useTranslations, useLocale } from 'next-intl';
 import type { Contact, Stage, Opportunity } from '../page';
 import { OpportunityDialog } from './OpportunityDialog';
 import { updateOpportunityStageAction } from '../actions';
+import { PIPELINE_STAGES_MAP } from '@/types/crm'; // ✅ Importa el nou mapa
 
 // --- Sub-component: Targeta d'Oportunitat (Columnes) ---
 /**
- * @summary Renderitza una targeta d'oportunitat per a la vista de columnes.
+ * Renderitza una targeta d'oportunitat per a la vista de columnes.
  */
 const OpportunityCard: React.FC<{ opportunity: Opportunity; index: number }> = ({ opportunity, index }) => {
+  const t = useTranslations('PipelineClient');
+  const locale = useLocale();
+  const getDateLocale = () => {
+    switch(locale) { case 'es': return es; case 'en': return enUS; default: return ca; }
+  };
   return (
     // 'Draggable' fa que aquest component es pugui arrossegar.
     <Draggable draggableId={opportunity.id.toString()} index={index}>
       {(provided, snapshot) => (
-         <div
-          ref={provided.innerRef} // Ref necessària per a la llibreria dnd.
-          {...provided.draggableProps} // Propietats per a l'arrossegament.
-          {...provided.dragHandleProps} // Propietats per "agafar" la targeta.
-          className={cn(
-            'bg-background/80 backdrop-blur-sm p-3 rounded-lg mb-3 border-l-4 transition-all duration-300 cursor-pointer',
+        <div
+          ref={provided.innerRef} // Ref necessària per a la llibreria dnd.
+          {...provided.draggableProps} // Propietats per a l'arrossegament.
+          {...provided.dragHandleProps} // Propietats per "agafar" la targeta.
+          className={cn(
+            'bg-background/80 backdrop-blur-sm p-3 rounded-lg mb-3 border-l-4 transition-all duration-300 cursor-pointer',
             // Canviem l'estil visualment quan la targeta s'està arrossegant.
-            snapshot.isDragging ? 'border-primary shadow-2xl shadow-primary/20 scale-105' : 'border-transparent hover:border-primary/50'
-          )}
-        >
+            snapshot.isDragging ? 'border-primary shadow-2xl shadow-primary/20 scale-105' : 'border-transparent hover:border-primary/50'
+          )}
+        >
           <h4 className="font-semibold text-foreground mb-2 text-sm">{opportunity.name}</h4>
           {opportunity.description && (
             <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{opportunity.description}</p>
           )}
           <p className="text-xs text-muted-foreground flex items-center gap-2 mb-2">
-            <User className="w-4 h-4 text-primary/80" /> {opportunity.contacts?.nom || 'Sense contacte'}
+            <User className="w-4 h-4 text-primary/80" /> {opportunity.contacts?.nom || t('noContact')}
           </p>
           <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5 text-xs">
             <span className="font-semibold text-green-400 flex items-center gap-1">
@@ -56,13 +63,7 @@ const OpportunityCard: React.FC<{ opportunity: Opportunity; index: number }> = (
             </span>
             <span className="text-muted-foreground flex items-center gap-1">
               <Calendar className="w-3 h-3" />{' '}
-              {opportunity.close_date
-                ? new Date(opportunity.close_date).toLocaleDateString('ca-ES', {
-                    day: '2-digit',
-                    month: '2-digit',
-                  })
-                : '-'}
-            </span>
+              {opportunity.close_date ? new Date(opportunity.close_date).toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }) : '-'}</span>
           </div>
         </div>
       )}
@@ -72,9 +73,11 @@ const OpportunityCard: React.FC<{ opportunity: Opportunity; index: number }> = (
 
 // --- Sub-component: Targeta d'Oportunitat (Files) ---
 /**
- * @summary Renderitza una targeta d'oportunitat per a la vista de files (acordió).
+ * Renderitza una targeta d'oportunitat per a la vista de files (acordió).
  */
 const OpportunityRowCard: React.FC<{ op: Opportunity; index: number; onEdit: (op: Opportunity) => void }> = ({ op, index, onEdit }) => {
+  const t = useTranslations('PipelineClient');
+  const locale = useLocale();
   return (
     <Draggable draggableId={op.id.toString()} index={index}>
       {(provided, snapshot) => (
@@ -92,7 +95,7 @@ const OpportunityRowCard: React.FC<{ op: Opportunity; index: number; onEdit: (op
           <div className="font-semibold text-base text-foreground col-span-2">{op.name}</div>
           <div className="flex items-center text-sm text-foreground">
             <User className="w-4 h-4 mr-2 text-primary" />
-            {op.contacts?.nom || "N/A"}
+            {op.contacts?.nom || t('noContact')}
           </div>
           <div className="flex items-center text-sm font-medium text-green-600">
             <Euro className="w-4 h-4 mr-2" />
@@ -101,9 +104,7 @@ const OpportunityRowCard: React.FC<{ op: Opportunity; index: number; onEdit: (op
           <div className="flex justify-end items-center text-xs text-muted-foreground gap-2">
             <Calendar className="w-3 h-3" />
             {op.close_date
-              ? new Date(op.close_date).toLocaleDateString("ca-ES", { day: "2-digit", month: "2-digit" })
-              : "-"}
-          </div>
+              ? new Date(op.close_date).toLocaleDateString(locale, { day: "2-digit", month: "2-digit" }) : "-"}</div>
         </div>
       )}
     </Draggable>
@@ -113,11 +114,15 @@ const OpportunityRowCard: React.FC<{ op: Opportunity; index: number; onEdit: (op
 // --- Sub-component: Columna d'Etapa (Columnes) ---
 
 /**
- * @summary Renderitza una columna completa d'una etapa del pipeline (ex: "Prospecte"),
+ * Renderitza una columna completa d'una etapa del pipeline (ex: "Prospecte"),
  * incloent la capçalera i la llista d'oportunitats que conté.
  */
 const StageColumn: React.FC<{ stage: Stage; opportunities: Opportunity[]; onEditOpportunity: (opportunity: Opportunity) => void; onAddClick: () => void; }> = ({ stage, opportunities, onEditOpportunity, onAddClick }) => {
+  const t = useTranslations('PipelineClient');
+  const locale = useLocale();
   const totalValue = opportunities.reduce((sum, op) => sum + (op.value || 0), 0);
+  const stageKey = PIPELINE_STAGES_MAP.find(s => s.name === stage.name)?.key;
+
   const stageColors: Record<string, string> = {
     'Prospecte': 'border-blue-500',
     'Contactat': 'border-cyan-500',
@@ -129,22 +134,22 @@ const StageColumn: React.FC<{ stage: Stage; opportunities: Opportunity[]; onEdit
 
   return (
     <div className="flex flex-col h-full bg-muted/20 rounded-xl overflow-hidden">
-      
+
       {/* Capçalera de la columna amb el nom de l'etapa i el valor total. */}
 
       <div className={cn('p-4 border-t-4', stageColors[stage.name] || 'border-gray-500')}>
         <div className="flex justify-between items-center">
-          <h3 className="font-bold text-lg text-foreground mb-1">{stage.name}</h3>
+          <h3 className="font-bold text-lg text-foreground mb-1">{stageKey ? t(`stageNames.${stageKey}`) : stage.name}</h3>
           <Button variant="ghost" size="icon" onClick={onAddClick} className="w-7 h-7">
             <Plus className="w-4 h-4" />
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          {opportunities.length} oportunitat{opportunities.length !== 1 ? 's' : ''} • €
-          {totalValue.toLocaleString('ca-ES')}
+          {t('opportunityCount', { count: opportunities.length })} • €
+          {totalValue.toLocaleString(locale)}
         </p>
       </div>
-      
+
       {/* 'Droppable' defineix aquesta àrea com una zona on es poden deixar anar elements. */}
 
       <Droppable droppableId={stage.name}>
@@ -152,11 +157,10 @@ const StageColumn: React.FC<{ stage: Stage; opportunities: Opportunity[]; onEdit
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            
+
             // Canviem el color de fons quan s'està arrossegant un element per sobre.
-            className={`flex-1 px-2 pt-2 overflow-y-auto transition-colors ${
-              snapshot.isDraggingOver ? 'bg-primary/10' : ''
-            }`}
+            className={`flex-1 px-2 pt-2 overflow-y-auto transition-colors ${snapshot.isDraggingOver ? 'bg-primary/10' : ''
+              }`}
           >
             {opportunities.map((op, index) => (
               <div key={op.id} onDoubleClick={() => onEditOpportunity(op)}>
@@ -172,35 +176,29 @@ const StageColumn: React.FC<{ stage: Stage; opportunities: Opportunity[]; onEdit
 };
 
 // --- Component Principal ---
-export function PipelineClient({ initialStages, initialOpportunitiesByStage, initialContacts }: { 
-  initialStages: Stage[]; 
-  initialOpportunitiesByStage: Record<string, Opportunity[]>; 
+export function PipelineClient({ initialStages, initialOpportunitiesByStage, initialContacts }: {
+  initialStages: Stage[];
+  initialOpportunitiesByStage: Record<string, Opportunity[]>;
   initialContacts: Contact[];
 }) {
-
+  const t = useTranslations('PipelineClient');
   const router = useRouter();
   const [stages] = useState(initialStages);
   const [opportunitiesByStage, setOpportunitiesByStage] = useState(initialOpportunitiesByStage);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOpportunity, setEditingOpportunity] = useState<Partial<Opportunity> | null>(null);
   const [viewMode, setViewMode] = useState<'columns' | 'rows'>('columns');
- /**
-   * @summary Funció que s'executa quan s'acaba d'arrossegar una oportunitat.
-   * Gestiona l'actualització de l'estat a la UI i crida a la Server Action per desar el canvi.
-   */
+  /**
+    * @summary Funció que s'executa quan s'acaba d'arrossegar una oportunitat.
+    * Gestiona l'actualització de l'estat a la UI i crida a la Server Action per desar el canvi.
+    */
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
     // Aturada si es deixa anar fora d'una columna
     if (!destination) return;
 
-    // ✅ CORRECCIÓ: Aturada si es deixa anar exactament al mateix lloc
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
+   
     // --- Patró d'UI Optimista (Optimistic UI Update) ---
     // 1. Guardem l'estat original per si l'acció del servidor falla.
     const originalState = JSON.parse(JSON.stringify(opportunitiesByStage));
@@ -218,17 +216,17 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
       newState[destination.droppableId] = destinationOpportunities;
     }
     setOpportunitiesByStage(newState);
-    
+
     // 3. Cridem a la Server Action per actualitzar la base de dades.
 
     const updateResult = await updateOpportunityStageAction(draggableId, destination.droppableId);
     // 4. Si la Server Action falla, revertim l'estat de la UI a l'original.
     if (updateResult.error) {
       setOpportunitiesByStage(originalState);
-      toast.error('Error', { description: updateResult.error.message });
+      toast.error(t('toastErrorTitle'), { description: updateResult.error.message });
     } else {
       // Si té èxit, mostrem una notificació de confirmació.
-      toast.success('Èxit!', { description: `Oportunitat moguda a "${destination.droppableId}".` });
+      toast.success(t('toastSuccessTitle'), { description: t('toastMoved', { stageName: destination.droppableId }) });
     }
   };
 
@@ -242,13 +240,15 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
     setEditingOpportunity(initialData);
     setIsDialogOpen(true);
   };
-  
+
   // ... (Gestors per obrir els diàlegs de creació/edició)
 
   /**
    * @summary Sub-component que renderitza la vista de files (acordió).
    */
   const RowView = () => {
+    const locale = useLocale();
+
     const stageColors: Record<string, string> = {
       'Prospecte': 'border-blue-500', 'Contactat': 'border-cyan-500', 'Proposta Enviada': 'border-purple-500',
       'Negociació': 'border-yellow-500', 'Guanyat': 'border-green-500', 'Perdut': 'border-red-500'
@@ -257,6 +257,8 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
       <div className="flex-1 overflow-y-auto pr-2 -mr-4">
         <Accordion type="multiple" defaultValue={stages.map(s => s.id)} className="w-full space-y-4">
           {stages.map(stage => {
+            const stageKey = PIPELINE_STAGES_MAP.find(s => s.name === stage.name)?.key;
+
             const opportunities = opportunitiesByStage[stage.name] || [];
             const totalValue = opportunities.reduce((sum, op) => sum + (op.value || 0), 0);
             return (
@@ -265,23 +267,23 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
                 className={cn("bg-muted/20 rounded-xl overflow-hidden border-l-4", stageColors[stage.name] || "border-gray-500")}
               >
                 <div className="flex justify-between items-center w-full px-4">
-                    <AccordionTrigger className="flex-1 text-left py-3 hover:no-underline">
-                        <div>
-                            <h3 className="font-bold text-lg text-foreground">{stage.name}</h3>
-                            <p className="text-xs text-muted-foreground text-left">
-                                {opportunities.length} oportunitat{opportunities.length !== 1 ? "s" : ""} • €
-                                {totalValue.toLocaleString("ca-ES")}
-                            </p>
-                        </div>
-                    </AccordionTrigger>
-                    <Button
-                        size="sm" variant="ghost"
-                        onClick={() => handleOpenCreateDialog(stage.name)}
-                        className="ml-4"
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Afegir
-                    </Button>
+                  <AccordionTrigger className="flex-1 text-left py-3 hover:no-underline">
+                    <div>
+                      <h3 className="font-bold text-lg text-foreground">{stageKey ? t(`stageNames.${stageKey}`) : stage.name}</h3>
+                      <p className="text-xs text-muted-foreground text-left">
+                        {t('opportunityCount', { count: opportunities.length })} • €
+                        {totalValue.toLocaleString(locale)}
+                      </p>
+                    </div>
+                  </AccordionTrigger>
+                  <Button
+                    size="sm" variant="ghost"
+                    onClick={() => handleOpenCreateDialog(stage.name)}
+                    className="ml-4"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    {t('add')}
+                  </Button>
                 </div>
                 <AccordionContent className="px-2 pb-2">
                   <Droppable droppableId={stage.name}>
@@ -296,7 +298,7 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
                           ))
                         ) : (
                           <p className="text-center text-sm text-muted-foreground p-4">
-                            No hi ha oportunitats en aquesta etapa.
+                            {t('noOpportunitiesInStage')}
                           </p>
                         )}
                         {provided.placeholder}
@@ -314,17 +316,17 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
 
   return (
     <>
-          {/* El diàleg per crear/editar oportunitats es manté fora del flux principal del DOM. */}
+      {/* El diàleg per crear/editar oportunitats es manté fora del flux principal del DOM. */}
 
       <OpportunityDialog
         open={isDialogOpen} onOpenChange={setIsDialogOpen} contacts={initialContacts}
         stages={stages} onSuccess={() => router.refresh()} opportunityToEdit={editingOpportunity}
       />
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
-                {/* Capçalera de la pàgina amb el títol i els botons d'acció. */}
+        {/* Capçalera de la pàgina amb el títol i els botons d'acció. */}
 
         <div className="flex justify-between items-center mb-6 flex-shrink-0">
-          <h1 className="text-3xl font-bold">Pipeline de Vendes</h1>
+          <h1 className="text-3xl font-bold">{t('title')}</h1>
           <div className="flex items-center gap-2">
             <div className="bg-muted p-1 rounded-lg">
               <Button variant={viewMode === 'columns' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('columns')}>
@@ -335,11 +337,11 @@ export function PipelineClient({ initialStages, initialOpportunitiesByStage, ini
               </Button>
             </div>
             <Button onClick={() => handleOpenCreateDialog()}>
-              <Plus className="w-4 h-4 mr-2" /> Nova Oportunitat
+              <Plus className="w-4 h-4 mr-2" />     {t('add')}
             </Button>
           </div>
         </div>
-         {/* 'DragDropContext' embolcalla tota l'àrea on es pot arrossegar i deixar anar. */}
+        {/* 'DragDropContext' embolcalla tota l'àrea on es pot arrossegar i deixar anar. */}
         <DragDropContext onDragEnd={onDragEnd}>
           {/* Renderització condicional: mostrem la vista de columnes o la de files segons l'estat 'viewMode'. */}
           {viewMode === 'columns' ? (

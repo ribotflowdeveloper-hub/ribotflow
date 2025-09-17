@@ -3,8 +3,11 @@
 
 import { motion } from 'framer-motion'; // ✅ Importem Framer Motion per gestionar animacions.
 import { Rocket } from 'lucide-react'; // ✅ Icona de coet de la llibreria Lucide.
+import { useTranslations } from 'next-intl'; // ✅ Import
 
 export default function RedirectAnimation() {
+  const t = useTranslations('RedirectAnimation'); // ✅ Hook
+
   // ✅ Component que mostra una animació mentre es prepara l'espai de treball.
   return (
     <div className="flex flex-col items-center justify-center gap-6 text-center">
@@ -34,8 +37,8 @@ export default function RedirectAnimation() {
         transition={{ delay: 0.5, duration: 1 }} // Apareix després de 0.5s, dura 1s.
         className="text-2xl font-semibold text-muted-foreground"
       >
-        Preparant el teu espai de treball...
-      </motion.p>
+        {t('loadingWorkspace')} {/* ✅ Text traduït */}
+        </motion.p>
     </div>
   );
 }

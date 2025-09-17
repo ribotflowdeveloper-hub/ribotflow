@@ -9,6 +9,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import NetworkLoader from '@/app/[locale]/(app)/_components/network/NetworkLoader'; // Component "pont" que gestiona la càrrega de la UI del client.
+import { getTranslations } from 'next-intl/server'; // ✅ Importem el hook de servidor
 
 // Aquesta variable de Next.js indica que el contingut d'aquesta pàgina es pot mantenir en memòria cau (cache)
 // per a un màxim de 3600 segons (1 hora). Això millora el rendiment, ja que no es torna a carregar
@@ -22,6 +23,7 @@ export const revalidate = 3600;
 export default async function NetworkPage() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
+  const t = await getTranslations('NetworkPage'); // ✅ Cridem el hook
 
   // Cridem a una funció de PostgreSQL (RPC) per obtenir només els perfils públics.
   // Les RPC són eficients per a consultes complexes o per encapsular lògica de negoci a la base de dades.
@@ -29,7 +31,7 @@ export default async function NetworkPage() {
 
   if (error) {
     console.error('Error en carregar els perfils:', error.message);
-    return <div className="p-8 text-red-500">Error en carregar les dades de la xarxa.</div>;
+    return <div className="p-8 text-red-500">{t('errorLoading')}</div>; // ✅ Text traduït
   }
 
   // Passem els perfils carregats al component NetworkLoader. Aquest patró (Server -> Loader -> Client)

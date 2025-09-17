@@ -12,6 +12,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'; // Estils base de Mapbox.
 import { useState } from 'react';
 import Map, { Marker, Popup, NavigationControl } from 'react-map-gl';
 import type { PublicProfile } from '@/types';
+import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 
 /**
  * @interface MapViewProps
@@ -30,7 +31,7 @@ export default function MapView({ profiles }: MapViewProps) {
   // Utilitzem 'useState' per gestionar quin perfil està seleccionat actualment.
   // Aquesta és la diferència principal amb 'MapContainer', on aquest estat es gestiona des de l'exterior.
   const [selectedProfile, setSelectedProfile] = useState<PublicProfile | null>(null);
-
+      const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
   return (
     <div className="w-full h-[calc(100vh-theme(spacing.24))]"> {/* L'alçada es calcula per omplir l'espai disponible. */}
       <Map
@@ -85,7 +86,7 @@ export default function MapView({ profiles }: MapViewProps) {
               )}
               {selectedProfile.website_url && (
                   <a href={selectedProfile.website_url} target="_blank" rel="noopener noreferrer" className="text-purple-400 text-sm mt-2 block hover:underline">
-                    Visitar web
+                    {t('visitWebsite')} {/* ✅ Text traduït */}
                   </a>
               )}
             </div>

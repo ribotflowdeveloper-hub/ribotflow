@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Plus, User } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 /**
  * Component de Client per a la pàgina de "Gestió de l'Equip".
@@ -13,6 +14,7 @@ import { Plus, User } from 'lucide-react';
 // En un futur, quan carreguis les dades des del servidor, les rebries com a 'props'.
 // Per exemple: export function TeamClient({ members }: { members: Member[] }) {
 export function TeamClient() {
+  const t = useTranslations('SettingsPage.SettingsTeam');
 
   /**
    * Funció que s'executa en clicar el botó "Invitar Membre".
@@ -20,8 +22,8 @@ export function TeamClient() {
    * informativa a l'usuari.
    */
   const handleInvite = () => {
-    toast.info("Funció no implementada", {
-        description: "L'opció d'invitar membres aviat estarà disponible.",
+    toast.info(t('toastNotImplemented'), {
+      description: t('toastNotImplementedDesc'),
     });
   };
 
@@ -30,10 +32,10 @@ export function TeamClient() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="glass-card p-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Membres de l'Equip</h2>
+          <h2 className="text-xl font-semibold">{t('title')}</h2>
           <Button onClick={handleInvite}>
             <Plus className="w-4 h-4 mr-2" />
-            Invitar Membre
+            {t('inviteButton')}
           </Button>
         </div>
         <div className="space-y-3">
@@ -46,11 +48,11 @@ export function TeamClient() {
                 <User className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="font-semibold">Tu (Propietari)</p>
-                <p className="text-sm text-muted-foreground">email@exemple.com</p>
+                <p className="font-semibold">{t('youOwner')}</p>
+                <p className="text-sm text-muted-foreground">{t('exampleEmail')}</p>
               </div>
             </div>
-            <span className="text-sm text-muted-foreground">Administrador</span>
+            <span className="text-sm text-muted-foreground">{t('adminRole')}</span>
           </div>
         </div>
       </div>

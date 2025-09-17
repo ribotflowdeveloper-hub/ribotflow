@@ -17,6 +17,7 @@ import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 // Aquesta és la Server Action que s'encarregarà de la lògica d'enviament.
 import { sendEmailWithGmailAction } from '@/app/[locale]/(app)/crm/general/_components/send-email-action';
+import { useTranslations } from 'next-intl';
 
 // Propietats que el diàleg espera rebre.
 interface ComposeEmailDialogProps {
@@ -27,6 +28,7 @@ interface ComposeEmailDialogProps {
 }
 
 const ComposeEmailDialog: React.FC<ComposeEmailDialogProps> = ({ open, onOpenChange, initialData, onEmailSent }) => {
+    const t = useTranslations('ComposeEmailDialog');
 
   // --- Gestió de l'Estat del Component ---
   const [contactId, setContactId] = useState('');
@@ -68,37 +70,37 @@ const ComposeEmailDialog: React.FC<ComposeEmailDialogProps> = ({ open, onOpenCha
     });
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-effect">
-        <DialogHeader>
-          <DialogTitle>Respondre al Contacte</DialogTitle>
-        </DialogHeader>
-        <div className="py-4 space-y-4">
-          {/* Camps del formulari per al destinatari, assumpte i cos del missatge. */}
-          <div className="space-y-2">
-            <Label htmlFor="to">Per a</Label>
-            <Input id="to" value={to} readOnly disabled />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="subject">Assumpte</Label>
-            <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="body">Missatge</Label>
-            <Textarea id="body" value={body} onChange={(e) => setBody(e.target.value)} rows={10} />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel·lar</Button>
-          <Button onClick={handleSend} disabled={isPending}>
-            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-            Enviar amb Gmail
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-export default ComposeEmailDialog;
+ return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="glass-effect">
+          <DialogHeader>
+            <DialogTitle>{t('dialogTitle')}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="to">{t('toLabel')}</Label>
+              <Input id="to" value={to} readOnly disabled />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="subject">{t('subjectLabel')}</Label>
+              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="body">{t('messageLabel')}</Label>
+              <Textarea id="body" value={body} onChange={(e) => setBody(e.target.value)} rows={10} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>{t('cancelButton')}</Button>
+            <Button onClick={handleSend} disabled={isPending}>
+              {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+              {t('sendButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+  
+  export default ComposeEmailDialog;
+  

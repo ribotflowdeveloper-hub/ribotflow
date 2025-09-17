@@ -11,12 +11,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Plus, Edit, Trash2, ShieldCheck } from 'lucide-react';
 // 'date-fns' per a un format de dates robust i localitzat.
 import { format } from "date-fns";
-import { ca } from "date-fns/locale";
+import { ca, es, enUS } from "date-fns/locale";
 // Importem els tipus de dades i les accions del servidor.
 import type { Invoice, Contact } from '../page';
 import { deleteInvoiceAction, issueInvoiceAction } from '../actions';
 // Importem el component dedicat per al diàleg d'edició.
 import { InvoiceDialog } from './InvoiceDialog';
+import { useTranslations, useLocale } from 'next-intl';
+import { INVOICE_STATUS_MAP } from '@/types/finances/invoice'; // ✅ Importem el nou mapa
+
 
 /**
  * Component de Client principal per a la pàgina de Facturació.
@@ -31,7 +34,10 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
 }) {
     const router = useRouter(); // Hook de Next.js per a la navegació i el refresc de dades.
     const [isSaving, startSaveTransition] = useTransition(); // Estat de càrrega per a operacions (eliminar, emetre).
-    
+    const t = useTranslations('InvoicingPage');
+    const locale = useLocale();
+    const dateLocale = { ca, es, en: enUS }[locale] || ca;
+
     // Estats per controlar la visibilitat dels diàlegs i les dades que gestionen.
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState<Partial<Invoice> | null>(null);
@@ -44,7 +50,7 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
      */
     const handleOpenForm = (invoice: Invoice | null = null) => {
         if (invoice && invoice.status !== 'Draft') {
-            toast.info("Acció no permesa", { description: "Les factures emeses o pagades no es poden editar." });
+            toast.info(t('toast.notAllowed'), { description: t('toast.notAllowedDesc') });
             return;
         }
         // Si estem creant una nova factura, proporcionem valors per defecte.
@@ -75,11 +81,11 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         startSaveTransition(async () => {
             const result = await issueInvoiceAction(invoiceToIssue.id);
             if (result.success) {
-                toast.success('Factura Emesa Correctament!', { description: `S'ha generat la factura legal ${result.invoice?.invoice_number}.` });
+                toast.success(t('toast.issueSuccess'), { description: t('toast.issueSuccessDesc', { invoiceNumber: result.invoice?.invoice_number }) });
                 setInvoiceToIssue(null);
                 router.refresh();
             } else {
-                toast.error('Error en emetre la factura', { description: result.message });
+                toast.error(t('toast.issueError'), { description: result.message });
             }
         });
     };
@@ -92,11 +98,11 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
         startSaveTransition(async () => {
             const result = await deleteInvoiceAction(invoiceToDelete.id);
             if (result.success) {
-                toast.success('Èxit!', { description: result.message });
+                toast.success(t('toast.deleteSuccess'), { description: result.message });
                 setInvoiceToDelete(null);
                 router.refresh();
             } else {
-                toast.error('Error en eliminar', { description: result.message });
+                toast.error(t('toast.deleteError'), { description: result.message });
             }
         });
     };
@@ -105,108 +111,82 @@ export function FacturacioClient({ initialInvoices, initialContacts }: {
      * Funció utilitària per retornar classes de CSS segons l'estat de la factura,
      * permetent acolorir les etiquetes d'estat a la taula.
      */
-    
-    const getStatusClass = (status: string | null) => {
-        switch(status?.toLowerCase()) {
-            case 'issued': return 'bg-purple-500/10 text-purple-400 border border-purple-400/30';
-            case 'paid': return 'bg-green-500/10 text-green-400 border border-green-400/30';
-            case 'overdue': return 'bg-red-500/10 text-red-400 border border-red-400/30';
-            case 'draft': return 'bg-gray-500/10 text-gray-400 border border-gray-400/30';
-            default: return 'bg-yellow-500/10 text-yellow-400 border border-yellow-400/30';
-        }
-    };
+  
 
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
             <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold">Facturació</h1>
-                <Button onClick={() => handleOpenForm()}>
-                    <Plus className="w-4 h-4 mr-2" /> Nou Esborrany
-                </Button>
+                <h1 className="text-3xl font-bold">{t('title')}</h1>
+                <Button onClick={() => handleOpenForm()}><Plus className="w-4 h-4 mr-2" />{t('newDraftButton')}</Button>
             </div>
             
             <div className="glass-card overflow-hidden">
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Nº Factura</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Data Emissió</TableHead>
-                            <TableHead>Import</TableHead>
-                            <TableHead>Estat</TableHead>
-                            <TableHead className="text-right">Accions</TableHead>
-                        </TableRow>
-                    </TableHeader>
+                    <TableHeader><TableRow>
+                        <TableHead>{t('table.invoiceNo')}</TableHead><TableHead>{t('table.client')}</TableHead>
+                        <TableHead>{t('table.issueDate')}</TableHead><TableHead>{t('table.amount')}</TableHead>
+                        <TableHead>{t('table.status')}</TableHead><TableHead className="text-right">{t('table.actions')}</TableHead>
+                    </TableRow></TableHeader>
                     <TableBody>
-                        {initialInvoices && initialInvoices.length > 0 ? (
-                            initialInvoices.map(invoice => (
+                        {initialInvoices?.length > 0 ? (
+                            initialInvoices.map(invoice => {
+                                const statusInfo = INVOICE_STATUS_MAP.find(s => s.dbValue === invoice.status);
+                                return (
                                 <TableRow key={invoice.id}>
-                                    <TableCell className="font-medium">{invoice.invoice_number || 'Esborrany'}</TableCell>
-                                    <TableCell>{invoice.contacts?.nom || 'N/A'}</TableCell>
-                                    <TableCell>{format(new Date(invoice.issue_date), "dd/MM/yyyy")}</TableCell>
-                                    <TableCell>€{(invoice.total_amount || 0).toLocaleString('ca-ES', { minimumFractionDigits: 2 })}</TableCell>
-                                    <TableCell><span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusClass(invoice.status)}`}>{invoice.status}</span></TableCell>
+                                    <TableCell className="font-medium">{invoice.invoice_number || t('statuses.draft')}</TableCell>
+                                    <TableCell>{invoice.contacts?.nom || t('noClient')}</TableCell>
+                                    <TableCell>{format(new Date(invoice.issue_date), "dd/MM/yyyy", { locale: dateLocale })}</TableCell>
+                                    <TableCell>€{(invoice.total_amount || 0).toLocaleString(locale, { minimumFractionDigits: 2 })}</TableCell>
+                                    <TableCell>
+                                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusInfo?.colorClass || ''}`}>
+                                            {statusInfo ? t(`statuses.${statusInfo.key}`) : (invoice.status || t('statuses.unknown'))}
+                                        </span>
+                                    </TableCell>                                    
                                     <TableCell className="text-right">
-                                        {/* ✅ LÒGICA I BOTONS AFEGITS */}
-                                        {invoice.status === 'Draft' ? (
-                                            <>
-                                                   <Button size="sm" variant="outline" className="bg-green-500/10 hover:bg-green-500/20 text-green-400 border-green-500/30" onClick={() => setInvoiceToIssue(invoice)}>
-                                                <ShieldCheck className="w-4 h-4 mr-2" />Emetre
-                                            </Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handleOpenForm(invoice)}>
-                                                    <Edit className="w-4 h-4" />
-                                                </Button>
-                                                <Button size="icon" variant="ghost" onClick={() => setInvoiceToDelete(invoice)}>
-                                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                                </Button>
-                                            </>
-                                        ) : (
-                                            <Button size="icon" variant="ghost" disabled>
-                                                {/* Pots afegir un botó de 'Veure' o similar aquí si vols */}
-                                            </Button>
-                                        )}
-                                    </TableCell>
+                                         {/* ✅ CORRECCIÓ: Estructura neta per a la cel·la d'accions */}
+                                         {invoice.status === 'Draft' ? (
+                                                <div className="flex justify-end items-center gap-1">
+                                                    <Button size="sm" variant="outline" className="bg-green-500/10 hover:bg-green-500/20 text-green-400 border-green-500/30" onClick={() => setInvoiceToIssue(invoice)}>
+                                                        <ShieldCheck className="w-4 h-4 mr-2" />{t('issueButton')}
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => handleOpenForm(invoice)}>
+                                                        <Edit className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => setInvoiceToDelete(invoice)}>
+                                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                // Per a factures no editables, podem mostrar un botó de "Veure" o simplement res.
+                                                // Deixar la cel·la buida és segur.
+                                                null
+                                            )}
+                                        </TableCell>
                                 </TableRow>
-                            ))
+                            )})
                         ) : (
-                            <TableRow>
-                                <TableCell colSpan={6} className="h-24 text-center">
-                                    Encara no has creat cap factura.
-                                </TableCell>
-                            </TableRow>
+                            <TableRow><TableCell colSpan={6} className="h-24 text-center">{t('emptyState')}</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
             </div>
 
-            {isFormOpen && editingInvoice && (
-                <InvoiceDialog
-                    isOpen={isFormOpen}
-                    onClose={() => setIsFormOpen(false)}
-                    contacts={initialContacts}
-                    initialInvoice={editingInvoice}
-                    onSaveSuccess={handleSaveSuccess}
-                />
-            )}
+            {isFormOpen && editingInvoice && (<InvoiceDialog isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} contacts={initialContacts} initialInvoice={editingInvoice} onSaveSuccess={handleSaveSuccess} />)}
             
             <AlertDialog open={!!invoiceToDelete} onOpenChange={() => setInvoiceToDelete(null)}>
-                {/* ... (Contingut del diàleg per eliminar no canvia) ... */}
+                <AlertDialogContent>
+                    <AlertDialogHeader><AlertDialogTitle>{t('deleteDialog.title')}</AlertDialogTitle><AlertDialogDescription>{t('deleteDialog.description')}</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>{t('deleteDialog.cancelButton')}</AlertDialogCancel><AlertDialogAction className="bg-destructive..." onClick={handleDelete}>{t('deleteDialog.confirmButton')}</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
             </AlertDialog>
 
             <AlertDialog open={!!invoiceToIssue} onOpenChange={() => setInvoiceToIssue(null)}>
                 <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Emetre Factura Legal?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Aquesta acció és irreversible. Es generarà una factura legal amb número oficial. Un cop emesa, no podràs editar-la ni eliminar-la.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={isSaving}>Cancel·lar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleIssueInvoice} className="bg-purple-600 hover:bg-purple-700" disabled={isSaving}>
-                            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Sí, emetre factura
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogHeader><AlertDialogTitle>{t('issueDialog.title')}</AlertDialogTitle><AlertDialogDescription>{t('issueDialog.description')}</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel disabled={isSaving}>{t('deleteDialog.cancelButton')}</AlertDialogCancel><AlertDialogAction className="bg-purple-600..." onClick={handleIssueInvoice} disabled={isSaving}>
+                        {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        {t('issueDialog.confirmButton')}
+                    </AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </motion.div>

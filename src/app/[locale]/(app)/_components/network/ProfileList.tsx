@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react';
 import { PublicProfile } from '@/types';
 import ProfileCard from './ProfileCard';
+import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 
 // Definim les propietats que rep el component de la llista.
 interface ProfileListProps {
@@ -17,6 +18,8 @@ interface ProfileListProps {
  * està seleccionat) es gestiona en un component de nivell superior (el pare).
  */
 export default function ProfileList({ profiles, searchTerm, onSearchChange, onSelectProfile, selectedProfileId }: ProfileListProps) {
+  const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
+
   return (
     <>
       {/* Capçalera amb el títol i el camp de cerca */}
@@ -26,7 +29,7 @@ export default function ProfileList({ profiles, searchTerm, onSearchChange, onSe
           <Search className="absolute  top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Cerca per nom o servei..."
+            placeholder={t('searchPlaceholder')} 
             // El valor i el canvi de l'input estan controlats per les 'props' del component pare.
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
@@ -54,7 +57,7 @@ export default function ProfileList({ profiles, searchTerm, onSearchChange, onSe
           ))
         ) : (
           // Si l'array 'profiles' està buit, mostrem un missatge a l'usuari.
-          <p className="text-center text-gray-400 p-4">No s'han trobat resultats.</p>
+          <p className="text-center text-gray-400 p-4">{t('noResults')}</p> /* ✅ Text traduït */
         )}
       </div>
     </>

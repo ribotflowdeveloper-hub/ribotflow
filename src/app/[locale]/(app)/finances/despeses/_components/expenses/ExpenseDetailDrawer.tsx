@@ -14,73 +14,83 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Paperclip, Edit, Download } from 'lucide-react';
 import { format } from "date-fns";
-import { ca } from "date-fns/locale";
+import { ca, es, enUS } from "date-fns/locale";
 import { toast } from 'sonner';
-import { type Expense } from '@/types/finances';
+import { type Expense } from '@/types/finances/expense';
+import { useLocale, useTranslations } from 'next-intl';
 
 interface ExpenseDetailDrawerProps {
-  expense: Expense | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onEdit: (expense: Expense) => void;
+  expense: Expense | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit: (expense: Expense) => void;
 }
 
 // Tipus per a un adjunt que inclou la seva URL pública.
 type AttachmentWithUrl = {
-  id: string;
-  publicUrl: string;
-  filename: string;
-  mime_type: string;
+  id: string;
+  publicUrl: string;
+  filename: string;
+  mime_type: string;
 };
 
 export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isOpen, onClose, onEdit }) => {
-  const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
-  const supabase = createClient();
+  const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
+  const supabase = createClient();
+  const t = useTranslations('Expenses');
+  const locale = useLocale();
 
+  const getDateLocale = () => {
+    switch (locale) {
+      case 'es': return es;
+      case 'en': return enUS;
+      default: return ca;
+    }
+  };
   // Aquest efecte s'executa quan el component rep una nova despesa.
   // La seva funció és obtenir les URLs públiques dels fitxers adjunts des de Supabase Storage.
-  useEffect(() => {
-    if (expense && expense.expense_attachments) {
-      const urls = expense.expense_attachments.map(att => {
-        const { data } = supabase.storage.from('despeses-adjunts').getPublicUrl(att.file_path);
-        return { ...att, publicUrl: data.publicUrl };
-      });
-      setAttachmentUrls(urls);
-    }
-  }, [expense, supabase.storage]);
+  useEffect(() => {
+    if (expense && expense.expense_attachments) {
+      const urls = expense.expense_attachments.map(att => {
+        const { data } = supabase.storage.from('despeses-adjunts').getPublicUrl(att.file_path);
+        return { ...att, publicUrl: data.publicUrl };
+      });
+      setAttachmentUrls(urls);
+    }
+  }, [expense, supabase.storage]);
 
   /**
    * @summary Gestor per a la descàrrega d'un fitxer adjunt des del navegador.
    */
-  const handleDownload = async (attachment: { publicUrl: string, filename: string }) => {
-    try {
+  const handleDownload = async (attachment: { publicUrl: string, filename: string }) => {
+    try {
       // Fem una petició 'fetch' per obtenir el contingut del fitxer.
-      const response = await fetch(attachment.publicUrl);
-      if (!response.ok) throw new Error('Network response was not ok.');
+      const response = await fetch(attachment.publicUrl);
+      if (!response.ok) throw new Error('Network response was not ok.');
       // Convertim la resposta en un 'Blob'.
-      const blob = await response.blob();
+      const blob = await response.blob();
       // Creem una URL temporal al navegador per a aquest 'Blob'.
-      const url = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
       // Creem un element <a> invisible, hi assignem la URL i el nom del fitxer, i simulem un clic per iniciar la descàrrega.
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = attachment.filename;
-      document.body.appendChild(a);
-      a.click();
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = attachment.filename;
+      document.body.appendChild(a);
+      a.click();
       // Neteja: eliminem l'URL i l'element <a> del DOM.
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch {
-      toast.error('Error de descàrrega', { description: 'No s\'ha pogut descarregar l\'arxiu.' });
-    }
-  };
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      toast.error(t('downloadErrorTitle'), { description: t('downloadErrorDescription') });
+    }
+  };
 
   // Si no hi ha cap despesa seleccionada, no renderitzem res.
-  if (!expense) return null;
+  if (!expense) return null;
 
   // Calculem la base imposable per a la seva visualització.
-  const baseImposable = (expense.subtotal || 0) - (expense.discount_amount || 0);
+  const baseImposable = (expense.subtotal || 0) - (expense.discount_amount || 0);
 
 
   return (
@@ -92,7 +102,7 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
               {expense.suppliers?.nom || expense.description}
             </DrawerTitle>
             <DrawerDescription>
-              {expense.invoice_number ? `Factura Nº ${expense.invoice_number}` : 'Despesa sense número'}
+              {expense.invoice_number ? t('drawerDescInvoice', { invoiceNumber: expense.invoice_number }) : t('drawerDescNoInvoice')}
             </DrawerDescription>
           </DrawerHeader>
 
@@ -100,8 +110,7 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
             {/* --- Adjunts --- */}
             <div className="md:col-span-1 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
-                <Paperclip className="w-4 h-4" /> Adjunts
-              </h3>
+                <Paperclip className="w-4 h-4" /> {t('attachments')}</h3>
               {attachmentUrls.length > 0 ? (
                 <div className="space-y-2">
                   {attachmentUrls.map(att => (
@@ -116,47 +125,47 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No hi ha arxius adjunts.</p>
+                <p className="text-sm text-muted-foreground">{t('noAttachments')}</p>
               )}
             </div>
 
             {/* --- Detall --- */}
             <div className="md:col-span-2 bg-white/5 p-6 rounded-xl space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Data</span>
+                <span className="text-muted-foreground">{t('date')}</span>
                 <span>
                   {expense.expense_date
-                    ? format(new Date(expense.expense_date), "PPP", { locale: ca })
+                    ? format(new Date(expense.expense_date), "PPP", { locale: getDateLocale() })
                     : '-'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Categoria</span>
-                <Badge variant="secondary" className={undefined}>{expense.category || 'Sense categoria'}</Badge>
+                <span className="text-muted-foreground">{t('category')}</span>
+                <Badge variant="secondary" className={undefined}>{expense.category || t('noCategory')}</Badge>
               </div>
               <div className="border-t border-white/10 my-4"></div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between items-center">
-                  <p className="text-muted-foreground">Subtotal</p>
+                  <p className="text-muted-foreground">{t('subtotal')}</p>
                   <p className="font-mono">€{(expense.subtotal || 0).toFixed(2)}</p>
                 </div>
                 {expense.discount_amount && expense.discount_amount > 0 && (
                   <div className="flex justify-between items-center text-orange-400">
-                    <p>Descompte</p>
+                    <p>{t('discount')}</p>
                     <p className="font-mono">-€{(expense.discount_amount).toFixed(2)}</p>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <p className="text-muted-foreground">Base Imposable</p>
+                  <p className="text-muted-foreground">{t('taxBase')}</p>
                   <p className="font-mono">€{baseImposable.toFixed(2)}</p>
                 </div>
                 <div className="flex justify-between items-center">
-                  <p className="text-muted-foreground">IVA ({expense.tax_rate || 21}%)</p>
+                  <p className="text-muted-foreground">{t('vat', {taxRate: expense.tax_rate || 21})}</p>
                   <p className="font-mono">€{(expense.tax_amount || 0).toFixed(2)}</p>
                 </div>
               </div>
               <div className="flex justify-between items-center text-xl font-bold border-t border-white/20 pt-2 mt-2">
-                <p>Total</p>
+                <p>{t('total')}</p>
                 <p className="font-mono">- €{(expense.total_amount || 0).toFixed(2)}</p>
               </div>
             </div>
@@ -165,10 +174,10 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
           {/* Peu del calaix amb els botons d'acció */}
           <DrawerFooter className="flex-row justify-start p-0 pt-6 gap-2">
             <Button onClick={() => onEdit(expense)}>
-              <Edit className="w-4 h-4 mr-2" /> Editar
+              <Edit className="w-4 h-4 mr-2" />  {t('editButton')}
             </Button>
             <Button variant="outline" onClick={onClose}>
-              Tancar
+            {t('closeButton')}
             </Button>
           </DrawerFooter>
         </div>
