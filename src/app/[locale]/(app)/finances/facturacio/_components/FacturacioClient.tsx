@@ -13,12 +13,12 @@ import { Loader2, Plus, Edit, Trash2, ShieldCheck } from 'lucide-react';
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
 // Importem els tipus de dades i les accions del servidor.
-import type { Invoice, Contact } from '../page';
+import type { Invoice, Contact } from '../types'; // ✅ Importamos desde el nuevo fichero de tipos
 import { deleteInvoiceAction, issueInvoiceAction } from '../actions';
 // Importem el component dedicat per al diàleg d'edició.
 import { InvoiceDialog } from './InvoiceDialog';
 import { useTranslations, useLocale } from 'next-intl';
-import { INVOICE_STATUS_MAP } from '@/types/finances/invoice'; // ✅ Importem el nou mapa
+import { INVOICE_STATUS_MAP } from '../types'; // ✅ Importamos el mapa
 
 
 /**

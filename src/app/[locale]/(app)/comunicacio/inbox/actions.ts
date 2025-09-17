@@ -22,9 +22,7 @@ interface Contact {
   user_id: string;
 }
 
-interface Opportunity {
-  id: string;
-}
+
 
 /**
  * getTicketBodyAction - retorna el body d'un tiquet (string).

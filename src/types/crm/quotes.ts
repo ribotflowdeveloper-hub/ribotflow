@@ -3,7 +3,7 @@
  * @summary Defineix els tipus de dades per a Pressupostos, Oportunitats, Factures i Pipeline.
  */
 
-import type { Contact } from './index';
+
 
 // --- MAPES I TIPUS D'ESTATS ---
 

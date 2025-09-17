@@ -8,7 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { PlusCircle, List, LayoutGrid } from "lucide-react";
-import type { Product } from "../page";
+import type { Product } from "@/types/crm/products";
 import { deleteProduct } from "../actions";
 import { ProductForm } from "./ProductForm";
 import { ProductsTableView } from "./ProductsTableView";
@@ -64,7 +64,8 @@ export function ProductsClient({ initialProducts }: { initialProducts: Product[]
     };
 
     const handleDelete = async (id: string) => {
-        const result = await deleteProduct(id);
+         // ✅ CORRECCIÓ: Cridem l'acció sense guardar el resultat a 'result'.
+         await deleteProduct(id);
         // Aquí podríem afegir una gestió d'errors més detallada si calgués.
         toast.success(t('toast.success'), { description: t('toast.productDeleted') });
     };

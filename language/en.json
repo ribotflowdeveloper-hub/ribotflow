@@ -5,16 +5,6 @@
     "description": "Efficiently manage your clients, projects, and invoices with Ribot.",
     "ogImageAlt": "Ribot CRM Dashboard"
   },
-  "NetworkPage": {
-    "mapboxError": "Error: The Mapbox API key is not configured correctly.",
-    "logoAltText": "Logo of {companyName}",
-    "visitWebsite": "Visit website",
-    "loadingNetwork": "Loading professional network...",
-    "title": "Professional Network",
-    "searchPlaceholder": "Search by name or service...",
-    "noResults": "No results found.",
-    "errorLoading": "Error loading network data."
-  },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparing your workspace..."
   },
@@ -98,20 +88,27 @@
     "unreadFilter": "No llegits"
   },
   "AICampaignWizard": {
-    "title": "AI Campaign Assistant",
+    "title": "AI Campaign Wizard",
     "step1Description": "Start by describing your marketing goal. Be specific!",
-    "step1Placeholder": "Ex: I want to get 3 new clients for my consulting service this month through Instagram.",
+    "step1Placeholder": "Ex: I want to gain 3 new clients for my consulting service this month through Instagram.",
     "generateStrategiesButton": "Generate Strategies",
-    "step2Description": "We've generated some ideas for you. Choose the one you like most to develop the content.",
+    "step2Description": "We've generated some ideas for you. Pick the one you like most to develop the content.",
     "creatingMagic": "Creating magic...",
     "backButton": "Back",
     "step3Description": "Perfect! Here’s a draft. You can edit it before saving the campaign.",
     "saveCampaignButton": "Save Campaign",
     "toastErrorAI": "AI Error",
     "toastErrorSave": "Error",
-    "toastErrorSaveDescription": "Could not save the campaign.",
+    "toastErrorSaveDescription": "The campaign could not be saved.",
     "toastSuccessSave": "Campaign Created!",
-    "toastSuccessSaveDescription": "Your new campaign is now on the list."
+    "toastSuccessSaveDescription": "Your new campaign is in the list.",
+    "toast": {
+      "errorAI": "AI Error",
+      "errorSave": "Error Saving",
+      "errorSaveDescription": "The campaign could not be saved.",
+      "successSave": "Campaign Created!",
+      "successSaveDescription": "Your new campaign is now in the list."
+    }
   },
   "CampaignCalendar": {
     "daysOfWeek": {
@@ -126,12 +123,12 @@
   },
   "Marketing": {
     "title": "Marketing Center",
-    "createCampaignButton": "Create AI Campaign",
+    "createCampaignButton": "Create Campaign with AI",
     "kpiNewContacts": "New Contacts (Month)",
     "kpiConversionRate": "Conversion Rate",
     "kpiInteraction": "Interaction (Coming Soon)",
     "yourCampaignsTitle": "Your Campaigns",
-    "noCampaignsMessage": "You haven't created any campaigns yet. Click \"Create AI Campaign\" to get started.",
+    "noCampaignsMessage": "You haven't created any campaigns yet. Click \"Create Campaign with AI\" to get started.",
     "campaignListHeader": "Campaign",
     "typeListHeader": "Type",
     "statusListHeader": "Status",
@@ -144,7 +141,12 @@
     "closeButton": "Close",
     "saveChangesButton": "Save Changes",
     "toastErrorUpdate": "Could not update the campaign.",
-    "toastSuccessUpdate": "Campaign updated."
+    "toastSuccessUpdate": "Campaign updated.",
+    "campaignStatus": {
+      "Completat": "Completed",
+      "Actiu": "Active",
+      "Planificat": "Planned"
+    }
   },
   "TemplatesPage": {
     "pageTitle": "Template Editor",
@@ -778,6 +780,19 @@
       "missingDataDesc": "Please select a client and an issue date."
     }
   },
+  "NetworkPage": {
+    "mapboxError": "Error: The Mapbox API key is not configured correctly.",
+    "logoAltText": "Logo of {companyName}",
+    "visitWebsite": "Visit website",
+    "loadingNetwork": "Loading professional network...",
+    "title": "Professional Network",
+    "searchPlaceholder": "Search by name or service...",
+    "noResults": "No results found.",
+    "errorLoading": "Error loading network data.",
+    "loadingMap": "Loading Map...",
+"unknownCompany": "Unknown company"
+    
+  },
   "SettingsPage": {
     "nav": {
       "title": "Settings",
@@ -883,7 +898,9 @@
       "microsoftDescription": "Sync your Outlook account.",
       "statusConnected": "Connected",
       "connectButton": "Connect",
-      "disconnectButton": "Disconnect"
+      "disconnectButton": "Disconnect",
+      "pageTitle": "Integrations",
+      "pageDescription": "Connect your favorite tools."
     },
     "SettingsProfile": {
       "toastError": "Error",
@@ -927,6 +944,7 @@
       "uploadingLogoButton": "Uploading logo..."
     },
     "SettingsTeam": {
+      "pageTitle": "Team Management",
       "toastNotImplemented": "Feature not implemented",
       "toastNotImplementedDesc": "The option to invite members will be available soon.",
       "title": "Team Members",
@@ -949,5 +967,11 @@
     "newStageButton": "New Stage",
     "tagsTitle": "Manage Contact Tags",
     "newTagButton": "New Tag"
+  },
+  "LanguageSwitcher": {
+    "title": "Change Language",
+    "catalan": "Catalan",
+    "spanish": "Spanish",
+    "english": "English"
   }
 }

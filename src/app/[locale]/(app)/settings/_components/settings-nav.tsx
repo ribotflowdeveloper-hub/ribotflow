@@ -50,7 +50,7 @@ export function SettingsNav() {
               )}
             >
               <item.icon className="w-5 h-5" />
-              <span>{t(item.labelKey as any)}</span>
+              <span>{t(item.labelKey as string)}</span>
             </Link>
           </li>
         ))}

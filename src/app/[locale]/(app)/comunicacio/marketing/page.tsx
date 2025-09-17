@@ -1,20 +1,16 @@
 /**
  * @file page.tsx (Marketing)
- * @summary Aquest fitxer defineix la pàgina principal del Centre de Màrqueting.
- * Com a Component de Servidor, la seva funció principal és carregar totes les dades
- * necessàries des de la base de dades (KPIs, campanyes) de manera segura al servidor
- * i passar-les al component de client `MarketingClient` per a la seva renderització i interacció.
+ * @summary Punt d'entrada per a la pàgina de Màrqueting, implementant React Suspense.
  */
 
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { MarketingClient } from './_components/marketing-client';
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { MarketingData } from './_components/MarketingData';
+import { MarketingSkeleton } from './_components/MarketingSkeleton';
 
-// Metadades de la pàgina per al SEO i el títol de la pestanya.
+// Les metadades es queden igual.
 export const metadata: Metadata = {
-  title: 'Marketing | Ribot',
+  title: 'Marketing | Ribot',
 };
 
 // --- Definició de Tipus de Dades ---
@@ -37,31 +33,14 @@ export type Kpis = {
 };
 
 /**
- * @function MarketingPage
- * @summary El component de servidor asíncron que construeix la pàgina.
- */
-export default async function MarketingPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
-
-  // Comprovació de seguretat: si l'usuari no està autenticat, el redirigim a la pàgina de login.
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    redirect('/login');
-  }
-
-  // En lloc de fer múltiples consultes a la base de dades, cridem a una única funció de PostgreSQL (RPC).
-  // Això és molt més eficient, ja que la lògica de recollida de dades s'executa directament a la base de dades.
-  const { data, error } = await supabase.rpc('get_marketing_page_data');
-
-  if (error) {
-    console.error("Error en obtenir les dades de màrqueting:", error);
-  }
-  
-  // Gestionem el cas on la funció RPC no retorni dades, proporcionant valors per defecte.
-  const kpis = data?.kpis || { totalLeads: 0, conversionRate: 0 };
-  const campaigns = data?.campaigns || [];
-
-  // Passem les dades carregades al component de client, que s'encarregarà de tota la interfície interactiva.
-  return <MarketingClient initialKpis={kpis} initialCampaigns={campaigns} />;
+* @function MarketingPage
+* @summary Aquesta pàgina ja no és 'async'. Mostra un esquelet de càrrega
+* mentre el component 'MarketingData' va a buscar les dades al servidor.
+*/
+export default function MarketingPage() {
+ return (
+   <Suspense fallback={<MarketingSkeleton />}>
+     <MarketingData />
+   </Suspense>
+ );
 }

@@ -1,43 +1,22 @@
-/**
- * @file CustomizationClient.tsx
- * @summary Component de client per a la pàgina de Personalització.
- */
-
 "use client";
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Plus, Trash, GripVertical } from 'lucide-react';
-import { ThemeSwitcher } from './ThemeSwitcher';
+import { useTranslations } from 'next-intl';
+
+// ✅ NOU: Importem els nostres nous components reutilitzables
+import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { type Stage, type Tag } from '../page';
 
-// ✅ 1. Imports necessaris per a la lògica d'idioma
-import { useTranslations, useLocale } from 'next-intl';
-import { usePathname, useRouter } from 'next/navigation';
-import { useTransition } from 'react';
-
-export function CustomizationClient({ initialStages, initialTags }: { initialStages: Stage[], initialTags: Tag[] }) {
+export function CustomizationClient({ initialStages, initialTags }: { 
+  initialStages: Stage[], 
+  initialTags: Tag[] 
+}) {
   const t = useTranslations('CustomizationPage');
   
-  // ✅ 2. Hooks per gestionar la navegació i l'idioma
-  const router = useRouter();
-  const pathname = usePathname();
-  const activeLocale = useLocale();
-  const [isPending, startTransition] = useTransition();
-
-  /**
-   * @summary Canvia l'idioma de l'aplicació.
-   * Reemplaça el codi de l'idioma a la URL actual i redirigeix.
-   */
-  const handleLanguageChange = (nextLocale: string) => {
-    startTransition(() => {
-      // Reconstruïm la URL manualment, que és el mètode més segur.
-      const newPath = pathname.replace(`/${activeLocale}`, `/${nextLocale}`);
-      router.replace(newPath);
-    });
-  };
-
   const handleNotImplemented = () => {
     toast.info("Funcionalitat no implementada", {
       description: "Aviat podràs gestionar etapes i etiquetes des d'aquí."
@@ -50,31 +29,23 @@ export function CustomizationClient({ initialStages, initialTags }: { initialSta
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="glass-card p-6">
           <h2 className="text-xl font-semibold">{t('themeTitle')}</h2>
-          <p className="text-sm text-muted-foreground mt-2 mb-6">
-            {t('themeDescription')}
-          </p>
+          <p className="text-sm text-muted-foreground mt-2 mb-6">{t('themeDescription')}</p>
+          {/* ✅ Utilitzem el component reutilitzable */}
           <ThemeSwitcher />
         </div>
         
         <div className="glass-card p-6">
           <h2 className="text-xl font-semibold">{t('languageTitle')}</h2>
-          <p className="text-sm text-muted-foreground mt-2 mb-6">
-            {t('languageDescription')}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant={activeLocale === 'ca' ? 'default' : 'outline'} onClick={() => handleLanguageChange('ca')} disabled={isPending}>Català</Button>
-            <Button variant={activeLocale === 'es' ? 'default' : 'outline'} onClick={() => handleLanguageChange('es')} disabled={isPending}>Español</Button>
-            <Button variant={activeLocale === 'en' ? 'default' : 'outline'} onClick={() => handleLanguageChange('en')} disabled={isPending}>English</Button>
-          </div>
+          <p className="text-sm text-muted-foreground mt-2 mb-6">{t('languageDescription')}</p>
+          {/* ✅ Utilitzem el component reutilitzable */}
+          <LanguageSwitcher />
         </div>
       </div>
 
-   {/* Etapes del Pipeline */}
-   <div className="glass-card p-8">
+      {/* Etapes del Pipeline (la lògica es queda igual) */}
+      <div className="glass-card p-8">
         <div className="flex justify-between items-center mb-6">
-          {/* ✅ Text traduït */}
           <h2 className="text-xl font-semibold">{t('pipelineTitle')}</h2>
-          {/* ✅ Text traduït */}
           <Button onClick={handleNotImplemented}><Plus className="w-4 h-4 mr-2" />{t('newStageButton')}</Button>
         </div>
         <div className="space-y-3">
@@ -90,12 +61,10 @@ export function CustomizationClient({ initialStages, initialTags }: { initialSta
         </div>
       </div>
 
-      {/* Etiquetes de Contacte */}
+      {/* Etiquetes de Contacte (la lògica es queda igual) */}
       <div className="glass-card p-8">
         <div className="flex justify-between items-center mb-6">
-          {/* ✅ Text traduït */}
           <h2 className="text-xl font-semibold">{t('tagsTitle')}</h2>
-          {/* ✅ Text traduït */}
           <Button onClick={handleNotImplemented}><Plus className="w-4 h-4 mr-2" />{t('newTagButton')}</Button>
         </div>
         <div className="flex flex-wrap gap-3">

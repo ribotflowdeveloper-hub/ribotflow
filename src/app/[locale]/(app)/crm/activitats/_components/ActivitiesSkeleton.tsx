@@ -1,6 +1,5 @@
 "use client";
 
-import { CheckCircle } from 'lucide-react';
 
 // Aquest component mostra un esquelet per a la pàgina d'activitats
 export function ActivitiesSkeleton() {

@@ -1,25 +1,35 @@
-// Aquest arxiu és un Server Component. S'executa al servidor.
+/**
+ * @file page.tsx (Gestió d'Equip)
+ * @summary Component de Servidor per a la pàgina de gestió d'equip.
+ */
 
 import { TeamClient } from './_components/TeamClient';
-
-// En un futur, quan la funcionalitat estigui completa, aquí importaries
-// les funcions necessàries per carregar les dades de l'equip des de la base de dades.
-// import { getTeamMembers } from '@/lib/data/teams';
+import { getTranslations } from 'next-intl/server';
+import type { Metadata } from 'next';
 
 /**
- * Funció principal de la pàgina del servidor per a la ruta '/settings/team'.
- * La seva responsabilitat serà carregar les dades de l'equip i passar-les
- * al component de client per a la seva visualització.
+ * @summary Genera les metadades de la pàgina de manera dinàmica i traduïda.
+ */
+// ✅ CORRECCIÓ: Hem eliminat 'params'. La funció ja no els necessita.
+export async function generateMetadata(): Promise<Metadata> {
+  // ✅ La funció 'getTranslations' sap quin idioma carregar automàticament.
+  const tNav = await getTranslations('SettingsPage.nav');
+  return { title: `${tNav('team')} | Ribot` };
+}
+
+/**
+ * @function TeamPage
+ * @summary Carrega les traduccions i renderitza el component de client.
  */
 export default async function TeamPage() {
-  // Aquesta seria la línia on carregaries les dades. Està comentada perquè
-  // la funcionalitat encara no està implementada.
+  const t = await getTranslations('SettingsPage.SettingsTeam');
+
+  // En un futur, aquí carregaries les dades de l'equip.
   // const members = await getTeamMembers();
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-8">Gestió de l'Equip</h1>
-      {/* Passem les dades carregades (quan existeixin) al component de client. */}
+      <h1 className="text-3xl font-bold mb-8">{t('pageTitle')}</h1>
       <TeamClient /* members={members} */ />
     </div>
   );

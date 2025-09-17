@@ -1,7 +1,6 @@
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Trash2, Inbox, PenSquare, RefreshCw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -31,6 +30,8 @@ interface TicketListProps {
     sentCount: number;
     isPendingRefresh: boolean;
     totalCount: number; // ✅ AFEGIT
+    onSearchChange: (value: string) => void; // ✅ AÑADE ESTA LÍNEA
+    searchTerm: string; // ✅ AÑADE ESTA LÍNEA
 
     onSelectTicket: (ticket: Ticket) => void;
     onDeleteTicket: (ticket: Ticket) => void;
@@ -39,7 +40,7 @@ interface TicketListProps {
     onRefresh: () => void;
     hasMore: boolean;
     onLoadMore: () => void;
-    onLoadAll?: () => void; 
+    onLoadAll?: () => void;
 
 
 
@@ -63,7 +64,7 @@ export const TicketList: React.FC<TicketListProps> = ({
     onRefresh,
     hasMore,
     onLoadMore,
-  
+
 
 
 }) => {
@@ -81,13 +82,13 @@ export const TicketList: React.FC<TicketListProps> = ({
             </div>
 
             {/* Filtres de la safata d'entrada */}
-            <div className="p-2 flex gap-2 border-b border-border flex-shrink-0">
+            <div className=" flex gap-2 border-b border-border flex-shrink-0">
                 <Button
                     variant={activeFilter === 'tots' ? 'secondary' : 'ghost'}
                     size="sm"
                     onClick={() => onSetFilter('tots')}
                 >
-                    Tots <span className="ml-2 text-xs">{totalCount}</span>
+                    Tots <span className=" text-xs">{totalCount}</span>
                 </Button>
 
                 <Button
@@ -95,7 +96,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                     size="sm"
                     onClick={() => onSetFilter('rebuts')}
                 >
-                    Rebuts <span className="ml-2 text-xs">{totalCount - sentCount}</span>
+                    Rebuts <span className=" text-xs">{totalCount - sentCount}</span>
                 </Button>
 
                 <Button
@@ -104,7 +105,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                     onClick={() => onSetFilter('noLlegits')}
                 >
                     No llegits
-                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${unreadCount > 0 ? 'bg-primary text-primary-foreground' : 'text-muted-foreground bg-muted'}`}>
+                    <span className={`text-xs px-1 py-0.5 rounded-full ${unreadCount > 0 ? 'bg-primary text-primary-foreground' : 'text-muted-foreground bg-muted'}`}>
                         {unreadCount}
                     </span>
                 </Button>
@@ -114,7 +115,7 @@ export const TicketList: React.FC<TicketListProps> = ({
                     size="sm"
                     onClick={() => onSetFilter('enviats')}
                 >
-                    Enviats <span className="ml-2 text-xs">{sentCount}</span>
+                    Enviats <span className=" text-xs">{sentCount}</span>
                 </Button>
             </div>
 

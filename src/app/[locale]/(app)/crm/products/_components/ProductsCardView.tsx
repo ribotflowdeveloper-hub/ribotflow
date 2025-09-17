@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 // ✅ 1. Importem els components necessaris per al diàleg de confirmació.
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Edit, Trash2 } from "lucide-react";
-import type { Product } from "../page";
+import type { Product } from "@/types/crm/products";
 import { useTranslations } from "next-intl";
 
 // Propietats que espera aquest component.

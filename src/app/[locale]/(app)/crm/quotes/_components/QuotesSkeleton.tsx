@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus } from "lucide-react";
+
 
 /**
  * @summary Mostra un esquelet de càrrega per a la pàgina de llista de Pressupostos.

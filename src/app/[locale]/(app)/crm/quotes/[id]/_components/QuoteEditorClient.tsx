@@ -20,7 +20,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createClient } from '@/lib/supabase/client';
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
-import type { Quote, Contact, Product, CompanyProfile, Opportunity, QuoteItem } from '../page';
+import type { Quote, Contact, Product, CompanyProfile, Opportunity, QuoteItem } from '@/types/crm';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Importació de subcomponents per mantenir aquest fitxer més net i organitzat.
 import { CompanyProfileDialog } from './CompanyProfileDialog';
@@ -263,7 +263,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
 
             <div className="glass-card p-2">
               <Label>Notes Addicionals</Label>
-              <Textarea value={quote.notes} onChange={(e) => setQuote(q => ({ ...q, notes: e.target.value }))} className="mt-2" />
+              <Textarea value={quote.notes ?? ''} onChange={(e) => setQuote(q => ({ ...q, notes: e.target.value }))} className="mt-2" />
             </div>
           </section>
 

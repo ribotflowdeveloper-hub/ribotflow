@@ -68,9 +68,30 @@ async function AIOracle() {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
-  // Aquesta és l'única crida lenta, ara aïllada aquí.
   const { data: aiInsights, error } = await supabase.functions.invoke('generate-ai-summary');
 
+  // ✅ COMPROBACIÓN DE ERRORES AÑADIDA
+  if (error) {
+    // Registramos el error en la consola del servidor para poder depurarlo.
+    console.error("Error al invocar la función de IA:", error.message);
+    
+    // Mostramos un estado de error claro en la interfaz de usuario.
+    const errorMessage = "No se ha podido contactar con el Oracle de IA.";
+    
+    return (
+      <div className="rounded-2xl p-6 ring-1 ring-white/10 bg-gradient-to-br from-red-900/20 to-red-800/10 border border-red-500/30">
+        <h2 className="text-xl font-bold text-white mb-3">Oracle d’IA</h2>
+        <div className="space-y-3">
+          <div className="p-3 rounded-lg bg-red-500/10">
+            <p className="text-sm font-semibold text-red-300 mb-1">Error</p>
+            <p className="text-sm text-red-400">{errorMessage}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // El resto de la lógica se mantiene igual si no hay error.
   const summary = aiInsights?.summary || 'No s’ha pogut carregar el resum.';
   const suggestion = aiInsights?.suggestion || 'Intenta-ho de nou més tard.';
 
@@ -93,7 +114,6 @@ async function AIOracle() {
     </div>
   );
 }
-
 // --- COMPONENT PRINCIPAL DE LA PÀGINA ---
 
 export default async function DashboardPage() {

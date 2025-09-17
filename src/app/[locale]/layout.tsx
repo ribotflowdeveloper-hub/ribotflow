@@ -1,4 +1,3 @@
-// src/app/[locale]/layout.tsx
 import '../globals.css';
 import 'prismjs/themes/prism-tomorrow.css';
 import { Inter } from 'next/font/google';
@@ -11,13 +10,13 @@ import { getMessages, getTranslations } from 'next-intl/server';
 
 const inter = Inter({ subsets: ['latin'] });
 
-export async function generateMetadata({
-  params,
-}: {
-  params: { locale: string };
-}): Promise<Metadata> {
-  // ✅ Desestructurem dins del cos
-  const { locale } = await params;
+interface LocaleLayoutProps {
+  children: ReactNode;
+  params: Promise<{ locale: string }>;
+}
+
+export async function generateMetadata(props: { params: Promise<{ locale: string }> }): Promise<Metadata> {
+  const { locale } = await props.params;
   const t = await getTranslations({ locale, namespace: 'Metadata' });
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ribotflow.com';
 
@@ -28,23 +27,15 @@ export async function generateMetadata({
   };
 }
 
-export default async function LocaleLayout({
-  children,
-  params,
-}: {
-  children: ReactNode;
-  params: { locale: string };
-}) {
-  // ✅ Esperem params abans d'accedir-hi
-  const { locale } = await params;
+export default async function LocaleLayout(props: LocaleLayoutProps) {
+  const { locale } = await props.params;
+  const { children } = props;
 
   const messages = await getMessages({ locale });
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <body className={inter.className}>
-
-     
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider
             attribute="class"

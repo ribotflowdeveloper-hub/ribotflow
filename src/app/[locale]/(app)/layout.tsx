@@ -1,22 +1,24 @@
-/**
- * @file src/app/[locale]/(app)/layout.tsx
- * @summary Layout de servidor que carrega dades i embolcalla el layout de client.
- */
 import { ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { AppClientLayout } from './_components/AppClientLayout';
 
-type Props = {
+// ✅ CORRECCIÓ 1: Definim el tipus de les propietats
+// indicant que 'params' pot ser una promesa.
+interface AppLayoutProps {
   children: ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 };
 
-export default async function AppLayout({ children, params }: Props) {
-  // ✅ Primer esperem que Next.js resolgui params
-  const { locale } = await params;
+/**
+ * @summary Layout de servidor que embolcalla la part principal de l'aplicació.
+ */
+export default async function AppLayout(props: AppLayoutProps) {
+  // ✅ CORRECCIÓ 2: Fem 'await' per resoldre la promesa i obtenir els paràmetres.
+  const { locale } = await props.params;
+  const { children } = props;
 
-  // ✅ Ara carreguem els missatges
+  // Carreguem els missatges necessaris per als components de client dins d'aquest layout.
   const messages = await getMessages({ locale });
 
   return (

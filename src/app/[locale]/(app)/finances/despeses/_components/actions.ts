@@ -11,7 +11,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-import { type Expense, type ExpenseItem } from "../page";
+import { type Expense, type ExpenseItem } from "../types";
 
 // Definim un tipus de resultat genèric per a les nostres accions.
 interface ActionResult<T = unknown> {

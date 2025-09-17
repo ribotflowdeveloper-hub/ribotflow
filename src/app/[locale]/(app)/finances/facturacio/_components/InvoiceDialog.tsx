@@ -13,7 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Loader2, Plus, Trash2, Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";import { cn } from "@/lib/utils";
-import { type Invoice, type Contact, type InvoiceItem } from '../page';
+import { type Invoice, type Contact, type InvoiceItem } from '../types'; // ✅ Importamos desde el nuevo fichero de tipos
 import { createOrUpdateInvoiceAction, type InvoiceFormData } from '../actions';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -60,7 +60,7 @@ export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSav
      * Funcions per a la gestió dinàmica dels conceptes de la factura.
      */
     // Actualitza un camp específic d'un concepte existent.
-    const handleItemChange = (index: number, field: keyof InvoiceItem, value: any) => {
+    const handleItemChange = (index: number, field: keyof InvoiceItem, value: string | number) => {
         const updatedItems = [...(invoice.invoice_items || [])];
         updatedItems[index] = { ...updatedItems[index], [field]: value };
         setInvoice(prev => ({ ...prev, invoice_items: updatedItems }));

@@ -5,16 +5,6 @@
     "description": "Gestiona tus clientes, proyectos y facturas de forma eficiente con Ribot.",
     "ogImageAlt": "Panel de control de Ribot CRM"
   },
-  "NetworkPage": {
-    "mapboxError": "Error: La clave de API de Mapbox no está configurada correctamente.",
-    "logoAltText": "Logo de {companyName}",
-    "visitWebsite": "Visitar web",
-    "loadingNetwork": "Cargando red profesional...",
-    "title": "Red Profesional",
-    "searchPlaceholder": "Busca por nombre o servicio...",
-    "noResults": "No se han encontrado resultados.",
-    "errorLoading": "Error al cargar los datos de la red."
-  },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparando tu espacio de trabajo..."
   },
@@ -107,11 +97,13 @@
     "backButton": "Atrás",
     "step3Description": "¡Perfecto! Aquí tienes un borrador. Puedes editarlo antes de guardar la campaña.",
     "saveCampaignButton": "Guardar Campaña",
-    "toastErrorAI": "Error de IA",
-    "toastErrorSave": "Error",
-    "toastErrorSaveDescription": "No se pudo guardar la campaña.",
-    "toastSuccessSave": "¡Campaña Creada!",
-    "toastSuccessSaveDescription": "Tu nueva campaña está en la lista."
+    "toast": {
+      "errorAI": "Error de la IA",
+      "errorSave": "Error al Guardar",
+      "errorSaveDescription": "No se ha podido guardar la campaña.",
+      "successSave": "¡Campaña Creada!",
+      "successSaveDescription": "Tu nueva campaña ya está en la lista."
+    }
   },
   "CampaignCalendar": {
     "daysOfWeek": {
@@ -144,7 +136,12 @@
     "closeButton": "Cerrar",
     "saveChangesButton": "Guardar Cambios",
     "toastErrorUpdate": "No se pudo actualizar la campaña.",
-    "toastSuccessUpdate": "Campaña actualizada."
+    "toastSuccessUpdate": "Campaña actualizada.",
+    "campaignStatus": {
+      "Completat": "Completado",
+      "Actiu": "Activo",
+      "Planificat": "Planificado"
+    }
   },
   "TemplatesPage": {
     "pageTitle": "Editor de Plantillas",
@@ -778,6 +775,19 @@
       "missingDataDesc": "Por favor, selecciona un cliente y una fecha de emisión."
     }
   },
+  "NetworkPage": {
+    "mapboxError": "Error: La clave de API de Mapbox no está configurada correctamente.",
+    "logoAltText": "Logo de {companyName}",
+    "visitWebsite": "Visitar web",
+    "loadingNetwork": "Cargando red profesional...",
+    "title": "Red Profesional",
+    "searchPlaceholder": "Busca por nombre o servicio...",
+    "noResults": "No se han encontrado resultados.",
+    "errorLoading": "Error al cargar los datos de la red.",
+    "loadingMap": "Cargando mapa...",
+    "unknownCompany": "Empresa desconocida"
+
+  },
   "SettingsPage": {
     "nav": {
       "title": "Configuración",
@@ -883,7 +893,9 @@
       "microsoftDescription": "Sincroniza tu correo de Outlook.",
       "statusConnected": "Conectado",
       "connectButton": "Conectar",
-      "disconnectButton": "Desconectar"
+      "disconnectButton": "Desconectar",
+      "pageTitle": "Integraciones",
+      "pageDescription": "Conecta tus herramientas favoritas."
     },
     "SettingsProfile": {
       "toastError": "Error",
@@ -927,6 +939,7 @@
       "uploadingLogoButton": "Subiendo logo..."
     },
     "SettingsTeam": {
+      "pageTitle": "Gestión del Equipo",
       "toastNotImplemented": "Función no implementada",
       "toastNotImplementedDesc": "La opción de invitar miembros estará disponible pronto.",
       "title": "Miembros del Equipo",
@@ -949,5 +962,11 @@
     "newStageButton": "Nueva Fase",
     "tagsTitle": "Gestionar Etiquetas de Contacto",
     "newTagButton": "Nueva Etiqueta"
+  },
+  "LanguageSwitcher": {
+    "title": "Cambiar idioma",
+    "catalan": "Catalán",
+    "spanish": "Español",
+    "english": "Inglés"
   }
 }

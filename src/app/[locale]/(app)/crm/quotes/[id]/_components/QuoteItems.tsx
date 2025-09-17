@@ -13,7 +13,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 // Aquesta Server Action es crida per crear un nou producte desable.
 import { createProductAction } from '../actions';
 import { useRouter } from 'next/navigation';
-import type { QuoteItem, Product } from '../page';
+import type { QuoteItem, Product } from '@/types/crm';
 import { useTranslations } from 'next-intl';
 
 /**

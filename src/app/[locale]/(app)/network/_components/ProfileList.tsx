@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react';
-import { PublicProfile } from '@/types/network';
+import type { PublicProfile } from '../types'; // O la ruta relativa correcta a 'network/types.ts'
 import ProfileCard from './ProfileCard';
 import { useTranslations } from 'next-intl'; // ✅ Importem el hook
 

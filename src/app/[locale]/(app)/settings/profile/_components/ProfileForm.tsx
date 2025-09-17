@@ -47,7 +47,7 @@ interface ProfileFormProps {
   email: string;
 }
 
-export function ProfileForm({ profile, email }: ProfileFormProps) {
+export function ProfileForm({ profile }: ProfileFormProps) {
   const t = useTranslations('SettingsPage.SettingsProfile');
   const supabase = createClient();
   const [isPending, startTransition] = useTransition(); // Hook per a l'estat de càrrega principal del formulari.

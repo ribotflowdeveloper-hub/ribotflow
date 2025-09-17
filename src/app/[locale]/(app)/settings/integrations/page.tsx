@@ -1,43 +1,37 @@
 /**
  * @file page.tsx (Integrations)
- * @summary Aquest fitxer defineix la pàgina d'Integracions.
- * Com a Component de Servidor, la seva funció principal és comprovar l'estat actual
- * de les connexions de l'usuari (si té un compte de Google o Microsoft vinculat)
- * i passar aquesta informació al component de client `IntegrationsClient`.
+ * @summary Punt d'entrada de la pàgina d'Integracions, implementant React Suspense.
  */
+import { Suspense } from 'react';
+import { IntegrationsData } from './_components/IntegrationsData';
+import { IntegrationsSkeleton } from './_components/IntegrationsSkeleton';
+import { getTranslations } from 'next-intl/server';
+import type { Metadata } from 'next';
 
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { IntegrationsClient } from './_components/IntegrationsClient';
-import { redirect } from 'next/navigation';
+// ✅ CORRECCIÓ DEFINITIVA 1: Definim el tipus de les propietats
+// indicant que 'params' pot arribar com una promesa.
+interface IntegrationsPageProps {
+  params: Promise<{ locale: string }>;
+}
 
-export default async function IntegrationsPage() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+/**
+ * Funció per generar metadades dinàmiques (el títol de la pàgina).
+ */
+export async function generateMetadata(props: IntegrationsPageProps): Promise<Metadata> {
+  // ✅ CORRECCIÓ DEFINITIVA 2: Fem 'await' per resoldre la promesa i obtenir els paràmetres.
+  const { locale } = await props.params;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
-  }
+  const t = await getTranslations({ locale, namespace: 'SettingsPage.nav' });
+  return { title: `${t('integrations')} | Ribot` };
+}
 
-  // Comprovem en paral·lel si existeix un registre de credencials per a cada proveïdor.
-  // 'maybeSingle()' és útil perquè no retorna un error si no troba cap fila, simplement retorna 'null'.
-  const [googleStatus, microsoftStatus] = await Promise.all([
-    supabase.from('user_credentials').select('id').eq('user_id', user.id).eq('provider', 'google').maybeSingle(),
-    supabase.from('user_credentials').select('id').eq('user_id', user.id).eq('provider', 'azure').maybeSingle()
-  ]);
-  
-  // Creem un objecte simple amb l'estat de les connexions (true/false).
-  const connectionStatuses = {
-    google: !!googleStatus.data, // La doble negació converteix l'objecte (o null) en un booleà.
-    microsoft: !!microsoftStatus.data,
-  };
-  
-  return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Integracions</h1>
-      {/* Passem l'estat inicial de les connexions al component de client. */}
-      <IntegrationsClient initialConnectionStatuses={connectionStatuses} />
-    </div>
-  ); 
+/**
+ * La pàgina principal d'Integracions.
+ */
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={<IntegrationsSkeleton />}>
+      <IntegrationsData />
+    </Suspense>
+  );
 }

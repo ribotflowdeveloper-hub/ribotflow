@@ -7,7 +7,9 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { Users, TrendingUp, DollarSign, UserCheck, AlertTriangle, Crown, Calendar, BarChart3, Activity, FileText } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import { type CrmData } from '../page';
+
+import { type CrmData, type ComposeEmailData } from '@/types/crm';
+
 
 // ✅ Pas 1: Importem tots els sub-components que hem separat
 import { StatCard } from './StatCard';
@@ -33,9 +35,13 @@ export function CrmClient({ initialData }: CrmClientProps) {
 
     // L'estat local manté les dades per a poder actualitzar la UI (ex: eliminar una alerta)
     const [data, setData] = useState(initialData);
-    
+
     // Estat per al diàleg de composició de correu
-    const [composeState, setComposeState] = useState<{ open: boolean; initialData: any | null; }>({ open: false, initialData: null });
+    // ✅ CORRECCIÓ: Utilitzem el nostre nou tipus estricte en lloc de 'any'
+    const [composeState, setComposeState] = useState<{
+        open: boolean;
+        initialData: ComposeEmailData | null;
+    }>({ open: false, initialData: null });
 
     // Lògica per marcar una activitat com a llegida (actualització optimista)
     const handleMarkAsRead = async (activityId: string) => {
@@ -55,18 +61,19 @@ export function CrmClient({ initialData }: CrmClientProps) {
         const date = new Date(activity.created_at).toLocaleDateString(locale);
         const content = activity.content.replace(/\n/g, '\n> ');
         const quotedBody = t('replyBody', { date, content });
-        
-        setComposeState({ 
-            open: true, 
-            initialData: { 
-                contactId: activity.contact_id,
-                to: activity.contact_email, 
-                subject: t('toast.replySubject'), 
-                body: quotedBody 
-            } 
+
+        // Assegurem que les dades que passem compleixen el contracte del tipus
+        setComposeState({
+            open: true,
+            initialData: {
+            contactId: activity.contact_id || '',
+            to: activity.contact_email || '',
+            subject: t('toast.replySubject'),
+            body: quotedBody
+            }
         });
     };
-    
+
     // Si les dades no han arribat del servidor (per un error), mostrem un missatge.
     if (!data) {
         return (
@@ -77,10 +84,10 @@ export function CrmClient({ initialData }: CrmClientProps) {
             </div>
         );
     }
-    
+
     // Calculem el valor màxim de l'embut per a les barres de progrés.
     const funnelMax = Math.max(data.funnel.leads, data.funnel.quoted, data.funnel.clients, 1);
-    
+
     return (
         <>
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
@@ -95,7 +102,7 @@ export function CrmClient({ initialData }: CrmClientProps) {
                         </div>
                     </div>
                 )}
-                
+
                 {/* Targetes de KPIs principals */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <StatCard icon={Users} title={t('totalContacts')} value={data.stats.totalContacts} color="text-blue-400" linkTo={`/${locale}/crm/contactes`} tooltip={t('tooltips.totalContacts')} />
@@ -103,7 +110,7 @@ export function CrmClient({ initialData }: CrmClientProps) {
                     <StatCard icon={TrendingUp} title={t('opportunities')} value={data.stats.opportunities} color="text-purple-400" linkTo={`/${locale}/crm/pipeline`} tooltip={t('tooltips.opportunities')} />
                     <StatCard icon={DollarSign} title={t('pipelineValue')} value={`€${(data.stats.pipelineValue).toLocaleString('es-ES')}`} color="text-orange-400" linkTo={`/${locale}/crm/pipeline`} tooltip={t('tooltips.pipelineValue')} />
                 </div>
-                
+
                 {/* Gràfic d'embut de vendes i llistes de rànquing */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 glass-card p-6">
@@ -134,8 +141,8 @@ export function CrmClient({ initialData }: CrmClientProps) {
                     </div>
                 </div>
 
-                 {/* Estadístiques clau */}
-                 <div className="glass-card p-6">
+                {/* Estadístiques clau */}
+                <div className="glass-card p-6">
                     <h2 className="text-xl font-bold mb-4">{t('keyStatistics')}</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
@@ -156,13 +163,13 @@ export function CrmClient({ initialData }: CrmClientProps) {
                     </div>
                 </div>
             </motion.div>
-            
+
             {/* Diàleg per compondre correus */}
-            <ComposeEmailDialog 
+            <ComposeEmailDialog
                 open={composeState.open}
                 onOpenChange={(isOpen) => setComposeState({ open: isOpen, initialData: isOpen ? composeState.initialData : null })}
                 initialData={composeState.initialData}
-                onEmailSent={() => {}}
+                onEmailSent={() => { }}
             />
         </>
     );

@@ -37,8 +37,10 @@ export async function fetchBranchesAction(): Promise<BranchesActionResult> {
         if (!response.ok) throw new Error(`Error de l'API de GitHub: ${(await response.json()).message}`);
         const data: Branch[] = await response.json();
         return { data: data.map(branch => branch.name), error: null };
-    } catch (error: any) {
-        return { data: null, error: error.message };
+    } catch (error: unknown) { // ✅ CORRECCIÓN: Tipamos el error como 'unknown'
+        // Comprobamos si el error es una instancia de Error para acceder a .message de forma segura
+        const message = error instanceof Error ? error.message : "Un error desconegut ha ocorregut.";
+        return { data: null, error: message };
     }
 }
 
@@ -63,9 +65,10 @@ export async function fetchProjectStructureAction(branch: string = MAIN_BRANCH):
         !node.path.includes('.DS_Store') && !node.path.includes('package-lock.json') && !node.path.endsWith('.md')
     );
     return { data: filteredTree, error: null };
-  } catch (error: any) {
-    return { data: null, error: error.message };
-  }
+} catch (error: unknown) { // ✅ CORRECCIÓN: Tipamos el error como 'unknown'
+    const message = error instanceof Error ? error.message : "Un error desconegut ha ocorregut.";
+    return { data: null, error: message };
+}
 }
 
 /**
@@ -88,8 +91,9 @@ export async function fetchFileContentAction(filePath: string): Promise<ContentA
         const content = Buffer.from(data.content, 'base64').toString('utf-8');
         return { data: content, error: null };
 
-    } catch (error: any) {
-        return { data: null, error: error.message };
+    } catch (error: unknown) { // ✅ CORRECCIÓN: Tipamos el error como 'unknown'
+        const message = error instanceof Error ? error.message : "Un error desconegut ha ocorregut.";
+        return { data: null, error: message };
     }
 }
 

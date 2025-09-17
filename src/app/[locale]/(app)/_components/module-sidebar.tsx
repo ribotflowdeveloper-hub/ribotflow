@@ -12,9 +12,9 @@ import { useNavigationStore } from '@/stores/navigationStore'; // ✅ NOU
 /**
  * @summary Barra lateral para un módulo específico (submenú).
  */
-export function ModuleSidebar({ module, onClose, onSubItemClick }: { 
-    module: NavItem; 
-    onClose: () => void; 
+export function ModuleSidebar({ module, onClose, onSubItemClick }: {
+    module: NavItem;
+    onClose: () => void;
     onSubItemClick: () => void; // ✅ NUEVO: Prop para notificar el clic.
 }) {
     const locale = useLocale();
@@ -22,22 +22,22 @@ export function ModuleSidebar({ module, onClose, onSubItemClick }: {
     const fullPathname = usePathname();
     const cleanPathname = getCleanPathname(fullPathname, locale);
     const setIsNavigating = useNavigationStore((state) => state.setIsNavigating); // ✅ NOU
-    
+
 
     if (!module || !module.children) return null;
 
     return (
         <div className="w-64 h-full glass-effect ...">
-             <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6">
 
-                <h2 className="text-lg font-bold pl-2">{t(module.labelKey as any)}</h2>
+                <h2 className="text-lg font-bold pl-2">{t(module.labelKey as string)}</h2>
 
-                <Button variant="ghost" size="icon" onClick={onClose}>
-                    <ChevronLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={onClose}>
+                    <ChevronLeft className="h-5 w-5" />
 
-                </Button>
+                </Button>
 
-            </div>
+            </div>
             <nav className="flex flex-col gap-2">
                 {module.children.map(item => {
                     const isActive = cleanPathname === item.path;
@@ -48,8 +48,8 @@ export function ModuleSidebar({ module, onClose, onSubItemClick }: {
                             // ✅ NOU: Activem l'estat de navegació en fer clic
                             onClick={() => {
                                 // Notificamos al layout padre para que cierre el menú.
-                                onSubItemClick(); 
-                                
+                                onSubItemClick();
+
                                 // Mantenemos la lógica para mostrar el estado de carga.
 
                                 if (fullPathname !== `/${locale}${item.path}`) {
@@ -64,7 +64,7 @@ export function ModuleSidebar({ module, onClose, onSubItemClick }: {
                             )}
                         >
                             <item.icon className="w-5 h-5" />
-                            <span>{t(item.labelKey)}</span> 
+                            <span>{t(item.labelKey)}</span>
                         </Link>
                     );
                 })}

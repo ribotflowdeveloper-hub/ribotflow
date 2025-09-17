@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { ProductsClient } from "./ProductsClient"; // El teu component de client principal
-import type { Product } from '@/types/crm'; // Importem el tipus des del fitxer central
+import type { Product } from '@/types/crm/products'; // Importem el tipus des del fitxer central
 
 /**
  * @summary Aquest és un Server Component asíncron que carrega les dades dels productes.

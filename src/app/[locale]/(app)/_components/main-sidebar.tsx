@@ -19,6 +19,8 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 import type { NavItem } from '@/types/navigation';
 import logoRibot from '@/../public/icon1.png';
 import Image from 'next/image';
@@ -46,32 +48,50 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
         const activeCheckPath = item.basePath || item.path;
         const isActive = getCleanPathname(fullPathname, locale).startsWith(activeCheckPath);
 
-        // ✅ CORRECCIÓ DE LÒGICA: Aquesta és la clau
+        /**
+         * @summary Gestiona el clic en qualsevol icona de la barra principal.
+         */
         const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-            // Notifiquem al pare per gestionar el submenú
+            // Notifiquem sempre al component pare per gestionar l'obertura/tancament del submenú
             onModuleSelect(item);
+            
+            const newFullPath = `/${locale}${item.path}`;
 
-            // Si l'element NO és un enllaç simple (és a dir, té un submenú),
-            // prevenim la navegació per defecte.
-            if (!item.isSingle) {
+            // ✅ CORRECCIÓ CLAU: Mirem si l'element és un enllaç directe
+            if (item.isSingle) {
+                // Si és un enllaç directe (com el Dashboard), activem l'animació si naveguem a una nova pàgina
+                if (fullPathname !== newFullPath) {
+                    setIsNavigating(true);
+                }
+            } else {
+                // Si NO és un enllaç directe (és un mòdul com CRM), només obrim el submenú.
+                // Prevenim la navegació per defecte del Link.
                 e.preventDefault();
             }
         };
-
         return (
-            <Link
-                href={`/${locale}${item.path}`}
-                onClick={handleClick}
-                className={cn(
-                    'flex items-center justify-center h-12 w-12 rounded-lg transition-colors group relative',
-                    isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-                )}
-            >
-                <item.icon className="w-6 h-6" />
-                <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {t(item.labelKey)}
-                </span>
-            </Link>
+            // ✅ 2. Embolcallem tot amb el TooltipProvider.
+            <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <Link
+                            href={`/${locale}${item.path}`}
+                            onClick={handleClick}
+                            className={cn(
+                                'flex items-center justify-center h-12 w-12 rounded-lg transition-colors relative',
+                                isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+                            )}
+                        >
+                            <item.icon className="w-6 h-6" />
+                        </Link>
+                    </TooltipTrigger>
+                    {/* ✅ 3. El contingut del Tooltip (el text) es renderitza en un portal,
+                        la qual cosa fa que sempre es mostri per sobre de la resta. */}
+                    <TooltipContent side="right" className="ml-2">
+                        <p>{t(item.labelKey as string)}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
         );
     };
     return (
@@ -80,7 +100,7 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
             <aside className="w-24 h-full glass-effect border-r border-border p-4 flex flex-col items-center">
                 {/* ✅ Logo a la part superior */}
                 <div className="flex items-center justify-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
+                    <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
                         {isNavigating ? (
                             <video
                                 src="/videoLoading.webm"
@@ -102,7 +122,7 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
                 </div>
 
                 {/* ✅ Navegació principal */}
-                <nav className="flex-1 flex flex-col items-center gap-4">
+                <nav className="flex-1 flex flex-col items-center gap-4 z-20">
                     {navModules.map(item =>
                         // ✅ CORREGIT: Hem eliminat la propietat 'currentPath'
                         <NavItemComponent key={item.id} item={item} />
@@ -113,7 +133,12 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
                 <div className="flex flex-col items-center gap-4 border-t border-border pt-4 mt-4">
                     {bottomItems.map(item => (
                         item.notImplemented
-                            ? <a key={item.id} href="#" onClick={handleNotImplemented} className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted group relative"><item.icon className="w-6 h-6" /><span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{t(item.labelKey as any)}</span></a>
+                            ? <a key={item.id} href="#" onClick={handleNotImplemented}
+                                className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted group relative">
+                                <item.icon className="w-6 h-6" />
+                                <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                    {t(item.labelKey as string)}
+                                </span></a>
                             : <NavItemComponent key={item.id} item={item} />
 
                     ))}

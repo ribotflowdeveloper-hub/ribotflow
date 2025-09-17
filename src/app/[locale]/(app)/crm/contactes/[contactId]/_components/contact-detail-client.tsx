@@ -18,7 +18,7 @@ import { format } from 'date-fns';
 import { deleteContactAction, updateContactAction } from './actions';
 import { type Contact, type Quote, type Opportunity, type Invoice, type Activity, CONTACT_STATUS_MAP } from '@/types/crm'; // Use central types
 import { Trash } from "lucide-react";
-import { ca, es, enUS } from 'date-fns/locale';// Importem el tipus de dades definit a la pàgina del servidor per a consistència.
+import { ca, es} from 'date-fns/locale';// Importem el tipus de dades definit a la pàgina del servidor per a consistència.
 import { useTranslations, useLocale } from 'next-intl'; // ✅ Importem hooks d'idioma
 
 import {

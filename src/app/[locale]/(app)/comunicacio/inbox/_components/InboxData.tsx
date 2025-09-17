@@ -1,51 +1,36 @@
-// InboxData.tsx (server component)
+/**
+ * @file src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx
+ */
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { InboxClient } from "./InboxClient";
 import type { Ticket, Template } from "@/types/comunicacio/inbox";
 
-interface InboxDataProps {
-  searchParams?: { q?: string };
-}
-
-export async function InboxData({ searchParams }: InboxDataProps) {
+/**
+ * @summary Componente de Servidor 'async' que carga todos los datos necesarios para el Inbox.
+ * @param searchTerm El término de búsqueda recibido como un string.
+ */
+export async function InboxData({ searchTerm }: { searchTerm: string }) {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!user) return null; // El middleware ya se encarga de la redirección
 
-  const searchTerm = searchParams?.q || "";
-
-  // Carrega inicial per UI: PAGE 1 (50)
-  // Això evita carregar 1000+ per defecte i millora el temps de render inicial.
   let ticketsQuery = supabase
-    .from("tickets")
-    .select(`id,user_id,contact_id,sender_name,sender_email,subject,preview,sent_at,status,type,contacts(*)`)
-    .eq("user_id", user.id)
-    .order("sent_at", { ascending: false })
+    .from('tickets')
+    .select(`id, user_id, contact_id, sender_name, sender_email, subject, preview, sent_at, status, type, contacts(*)`)
+    .eq('user_id', user.id)
+    .order('sent_at', { ascending: false })
     .limit(50);
-
+    
+  // La lógica de búsqueda sigue siendo la misma, usando el 'searchTerm' recibido.
   if (searchTerm) {
-    ticketsQuery = ticketsQuery.or(
-      `subject.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%,sender_email.ilike.%${searchTerm}%`
-    );
+    ticketsQuery = ticketsQuery.or(`subject.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%,sender_email.ilike.%${searchTerm}%`);
   }
 
-  // Comptadors totals (sense límit)
-  const receivedCountQuery = supabase
-    .from("tickets")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .or("type.eq.rebut,type.is.null");
-
-  const sentCountQuery = supabase
-    .from("tickets")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("type", "enviat");
-
+  const receivedCountQuery = supabase.from("tickets").select("id", { count: "exact", head: true }).eq("user_id", user.id).or("type.eq.rebut,type.is.null");
+  const sentCountQuery = supabase.from("tickets").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("type", "enviat");
   const templatesQuery = supabase.from("email_templates").select("*").eq("user_id", user.id);
 
   const [ticketsRes, templatesRes, receivedCountRes, sentCountRes] = await Promise.all([

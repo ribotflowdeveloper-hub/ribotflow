@@ -8,13 +8,17 @@ import { notFound } from 'next/navigation';
 export const locales = ['ca', 'es', 'en'] as const;
 export const defaultLocale = 'ca';
 
+// Definim un tipus per als nostres idiomes
+type Locale = typeof locales[number];
+
 export default getRequestConfig(async ({ locale }) => {
   // Si `locale` és undefined, utilitzem l'idioma per defecte
-  const safeLocale = locale ?? defaultLocale;
+  const safeLocale = locale || defaultLocale;
 
-  // Validem que l'idioma existeix
-  if (!locales.includes(safeLocale as any)) {
-    notFound(); // Mostra 404 si no és vàlid
+  
+  // ✅ CORRECCIÓ: Validació segura de tipus sense 'as any'
+  if (!locales.includes(safeLocale as Locale)) {
+    notFound();
   }
 
   return {

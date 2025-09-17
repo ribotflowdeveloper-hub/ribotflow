@@ -12,7 +12,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'; // Importació dels estils CSS base de Ma
 import { useRef, useEffect } from 'react';
 // Importació de components i tipus de la llibreria 'react-map-gl', un embolcall de Mapbox GL per a React.
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
-import type { PublicProfile } from '@/types/network'; // El nostre tipus de dades per a un perfil públic.
+import type { PublicProfile } from '../types';
 import { Building2 } from 'lucide-react'; // Icona per a marcadors sense logo.
 import Image from 'next/image'; // Component optimitzat d'imatges de Next.js.
 import { useTranslations } from 'next-intl'; // ✅ Importem el hook
@@ -97,7 +97,7 @@ export default function MapContainer({ profiles, selectedProfile, onSelectProfil
             {profile.logo_url ? (
               <Image 
                 src={profile.logo_url} 
-                alt={t('logoAltText', { companyName: profile.company_name })}
+                alt={t('logoAltText', { companyName: profile.company_name || t('unknownCompany') })}
                 width={32}
                 height={32}
                 className="rounded-full border-2 border-purple-500 object-cover"

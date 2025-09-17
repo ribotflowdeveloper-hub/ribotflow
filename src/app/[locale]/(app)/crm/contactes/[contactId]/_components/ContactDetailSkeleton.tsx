@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from 'lucide-react';
+
 
 export function ContactDetailSkeleton() {
   return (

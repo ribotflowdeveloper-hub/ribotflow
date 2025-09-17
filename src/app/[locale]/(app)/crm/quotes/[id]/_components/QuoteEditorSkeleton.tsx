@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from 'lucide-react';
+
 
 /**
  * @summary Mostra un esquelet de càrrega per a la pàgina de l'Editor de Pressupostos.

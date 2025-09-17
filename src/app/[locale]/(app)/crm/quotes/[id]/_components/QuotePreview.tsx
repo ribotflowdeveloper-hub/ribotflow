@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import type { Quote, Contact, CompanyProfile } from '@/types/crm';
-import { useTranslations, useLocale } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
 // Definim les propietats que necessita el component per renderitzar-se.
 interface QuotePreviewProps {
@@ -26,7 +26,7 @@ export const QuotePreview = ({ quote, contacts, companyProfile, subtotal, discou
     const contact = contacts.find(c => c.id === quote.contact_id);
     const base = subtotal - discountAmount;
     const t = useTranslations('QuoteEditor');
-    const locale = useLocale();
+ 
 
     // El 'return' renderitza tota l'estructura visual del document.
     // L'ús de '?.' (optional chaining) és important per evitar errors si 'companyProfile' o 'contact' són nuls.

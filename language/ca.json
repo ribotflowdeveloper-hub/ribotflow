@@ -5,16 +5,6 @@
     "description": "Gestiona els teus clients, projectes i factures de manera eficient amb Ribot.",
     "ogImageAlt": "Panell de control de Ribot CRM"
   },
-  "NetworkPage": {
-    "mapboxError": "Error: La clau d'API de Mapbox no està configurada correctament.",
-    "logoAltText": "Logo de {companyName}",
-    "visitWebsite": "Visitar web",
-    "loadingNetwork": "Carregant xarxa professional...",
-    "title": "Xarxa Professional",
-    "searchPlaceholder": "Cerca per nom o servei...",
-    "noResults": "No s'han trobat resultats.",
-    "errorLoading": "Error en carregar les dades de la xarxa"
-  },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparant el teu espai de treball..."
   },
@@ -96,7 +86,6 @@
     "refreshButtonTooltip": "Refrescar Safata d'Entrada",
     "allFilter": "Tots",
     "unreadFilter": "No llegits"
-   
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -112,7 +101,14 @@
     "toastErrorSave": "Error",
     "toastErrorSaveDescription": "No s'ha pogut desar la campanya.",
     "toastSuccessSave": "Campanya Creada!",
-    "toastSuccessSaveDescription": "La teva nova campanya està a la llista."
+    "toastSuccessSaveDescription": "La teva nova campanya està a la llista.",
+    "toast": {
+      "errorAI": "Error de la IA",
+      "errorSave": "Error en Desar",
+      "errorSaveDescription": "No s'ha pogut desar la campanya.",
+      "successSave": "Campanya Creada!",
+      "successSaveDescription": "La teva nova campanya ja està a la llista."
+    }
   },
   "CampaignCalendar": {
     "daysOfWeek": {
@@ -145,7 +141,12 @@
     "closeButton": "Tancar",
     "saveChangesButton": "Desar Canvis",
     "toastErrorUpdate": "No s'ha pogut actualitzar la campanya.",
-    "toastSuccessUpdate": "Campanya actualitzada."
+    "toastSuccessUpdate": "Campanya actualitzada.",
+    "campaignStatus": {
+      "Completat": "Completat",
+      "Actiu": "Actiu",
+      "Planificat": "Planificat"
+    }
   },
   "TemplatesPage": {
     "pageTitle": "Editor de Plantilles",
@@ -779,6 +780,18 @@
       "missingDataDesc": "Si us plau, selecciona un client i una data d'emissió."
     }
   },
+  "NetworkPage": {
+    "mapboxError": "Error: La clau d'API de Mapbox no està configurada correctament.",
+    "logoAltText": "Logo de {companyName}",
+    "visitWebsite": "Visitar web",
+    "loadingNetwork": "Carregant xarxa professional...",
+    "title": "Xarxa Professional",
+    "searchPlaceholder": "Cerca per nom o servei...",
+    "noResults": "No s'han trobat resultats.",
+    "errorLoading": "Error en carregar les dades de la xarxa",
+    "loadingMap": "Carregant mapa...",
+    "unknownCompany": "Empresa desconeguda"
+  },
   "SettingsPage": {
     "nav": {
       "title": "Configuració",
@@ -884,7 +897,9 @@
       "microsoftDescription": "Sincronitza el teu correu d'Outlook.",
       "statusConnected": "Connectat",
       "connectButton": "Connectar",
-      "disconnectButton": "Desconnectar"
+      "disconnectButton": "Desconnectar",
+      "pageTitle": "Integracions",
+      "pageDescription": "Connecta les teves eines preferides."
     },
     "SettingsProfile": {
       "toastError": "Error",
@@ -928,6 +943,7 @@
       "uploadingLogoButton": "Pujant logo..."
     },
     "SettingsTeam": {
+      "pageTitle": "Gestió de l'Equip",
       "toastNotImplemented": "Funció no implementada",
       "toastNotImplementedDesc": "L'opció d'invitar membres aviat estarà disponible.",
       "title": "Membres de l'Equip",
@@ -950,5 +966,11 @@
     "newStageButton": "Nova Etapa",
     "tagsTitle": "Gestionar Etiquetes de Contacte",
     "newTagButton": "Nova Etiqueta"
+  },
+  "LanguageSwitcher": {
+    "title": "Canvia l'idioma",
+    "catalan": "Català",
+    "spanish": "Espanyol",
+    "english": "Anglès"
   }
 }

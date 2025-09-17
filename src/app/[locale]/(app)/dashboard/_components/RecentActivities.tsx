@@ -4,7 +4,7 @@
  */
 "use client";
 
-import React, { useMemo, FC, ElementType } from 'react';
+import React, { useMemo} from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, CheckCircle2, Clock3, Users } from 'lucide-react';
 import type { Invoice, Task, Contact } from '../types';

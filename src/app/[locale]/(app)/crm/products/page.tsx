@@ -7,7 +7,6 @@ export const metadata: Metadata = {
   title: 'Conceptes | Ribot',
 };
 
-// Ja no necessitem definir el tipus 'Product' aquí, ja que ve del fitxer central.
 
 /**
  * @summary La pàgina principal de Productes, que ara actua com a orquestrador de Suspense.

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createProduct, updateProduct } from "../actions";
-import type { Product } from "../page";
+import type { Product } from "@/types/crm/products";
 import type { FormState } from "../actions";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,7 +63,7 @@ export function ProductForm({ product, onSuccess }: { product: Product | null, o
         toast.error(t('toast.error'), { description: state.message });
       }
     }
-  }, [state, onSuccess]);
+  }, [state, onSuccess, t]); // ✅ AFEGEIX 't' AQUÍ
 
   return (
        // L'atribut 'action' connecta directament aquest formulari a la nostra Server Action.
