@@ -1,14 +1,12 @@
 /**
- * @file src/app/page.tsx (Root Redirect Page)
- * @summary Aquesta pàgina no mostra contingut. La seva única funció
- * és redirigir l'usuari a la ruta de l'idioma per defecte.
+ * @file src/app/[locale]/page.tsx
+ * @summary Aquesta és la pàgina arrel per a un idioma (ex: /ca).
+ * El middleware ja ha verificat l'autenticació. La única feina d'aquesta pàgina
+ * és redirigir l'usuari cap a la pàgina principal de l'aplicació.
  */
 import { redirect } from 'next/navigation';
-import { defaultLocale } from '@/../src/i18n'; // Importem l'idioma per defecte
 
-export default function RootPage() {
-  // Redirigim a la pàgina d'inici amb l'idioma per defecte.
-  // El middleware ja fa això, però aquesta és una bona pràctica
-  // com a fallback.
-  redirect(`/${defaultLocale}`);
+export default function LocaleRootPage() {
+  // Simplement redirigim al dashboard. El middleware ja ha fet la feina de seguretat.
+  redirect('/dashboard');
 }
