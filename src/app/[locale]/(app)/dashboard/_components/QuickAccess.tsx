@@ -15,14 +15,15 @@ import { Sparkles, Users, Workflow, FileText, FolderOpen, Mail, BookOpen, Chevro
  */
 const QuickTile: FC<{ href: string; icon: ElementType; label: string; desc: string; }> = ({ href, icon: Icon, label, desc }) => (
   <Link href={href} className="group flex-shrink-0 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/6">
-    <div className="rounded-2xl px-4 py-5 bg-white/5 hover:bg-white/10 transition ring-1 ring-white/10 h-full">
+    {/* ✅ CORRECCIÓ: Usem 'bg-muted/50' y 'hover:bg-muted' que funcionen en ambos temas */}
+    <div className="rounded-2xl px-4 py-5 bg-muted/50 hover:bg-muted transition ring-1 ring-border h-full">
       <div className="flex items-center gap-3">
-        <div className="rounded-xl bg-gradient-to-br from-white/20 to-transparent p-2.5">
-          <Icon className="w-5 h-5 text-white/90" />
+        <div className="rounded-xl bg-gradient-to-br from-primary/20 to-transparent p-2.5">
+          <Icon className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <div className="font-semibold">{label}</div>
-          <div className="text-xs text-white/70">{desc}</div>
+          <div className="font-semibold text-card-foreground">{label}</div>
+          <div className="text-xs text-muted-foreground">{desc}</div>
         </div>
       </div>
     </div>
@@ -65,12 +66,12 @@ export function QuickAccess() {
   }, []);
   
   return (
-    <div className="rounded-2xl p-6 ring-1 ring-white/10 bg-white/5">
-      <div className="flex items-center justify-between gap-2 mb-4">
-        <div className='flex items-center gap-2'>
-          <Sparkles className="w-5 h-5 text-pink-300" />
-          <h2 className="text-xl font-bold text-white">{t('quickAccess')}</h2>
-        </div>
+    <div className="rounded-2xl p-6 ring-1 ring-border bg-card">
+    <div className="flex items-center justify-between gap-2 mb-4">
+      <div className='flex items-center gap-2'>
+        <Sparkles className="w-5 h-5 text-pink-400" />
+        <h2 className="text-xl font-bold text-foreground">{t('quickAccess')}</h2>
+      </div>
         <div className="hidden md:flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => handleScroll('left')} disabled={!canScrollLeft} className="h-8 w-8 rounded-full disabled:opacity-30"><ChevronLeft className="w-5 h-5" /></Button>
           <Button variant="ghost" size="icon" onClick={() => handleScroll('right')} disabled={!canScrollRight} className="h-8 w-8 rounded-full disabled:opacity-30"><ChevronRight className="w-5 h-5" /></Button>

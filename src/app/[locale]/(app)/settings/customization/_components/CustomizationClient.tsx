@@ -7,7 +7,7 @@ import { Plus, Trash, GripVertical } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 // ✅ NOU: Importem els nostres nous components reutilitzables
-import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { type Stage, type Tag } from '../page';
 

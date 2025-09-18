@@ -631,7 +631,28 @@
     "coolingContact": "Contacto enfriándose: {contactName}",
     "noInteraction7Days": "Sin interacciones en +7 días",
     "taskCreatedToast": "¡Tarea creada!",
-    "taskUpdateErrorToast": "No se ha podido actualizar la tarea."
+    "taskUpdateErrorToast": "No se ha podido actualizar la tarea.",
+    "addTaskDialog": {
+      "title": "Crear Nueva Tarea",
+      "description": "Agrega una nueva tarea a tu día a día. Puedes asignarla a un contacto si lo deseas.",
+      "taskTitleLabel": "Título de la Tarea",
+      "taskTitlePlaceholder": "Ej: Hacer seguimiento...",
+      "assignContactLabel": "Asignar a Contacto (Opcional)",
+      "selectContactPlaceholder": "Selecciona un contacto...",
+      "searchContactPlaceholder": "Buscar contacto...",
+      "noContactFound": "No se ha encontrado ningún contacto.",
+      "cancelButton": "Cancelar",
+      "saveButton": "Guardar Tarea",
+      "savingButton": "Guardando...",
+      "toast": {
+        "errorTitle": "Error",
+        "unauthenticated": "Usuario no autenticado.",
+        "emptyTitle": "El título de la tarea no puede estar vacío.",
+        "saveError": "Error al guardar la tarea",
+        "successTitle": "¡Éxito!",
+        "successDescription": "La tarea se ha creado correctamente."
+      }
+    }
   },
   "Expenses": {
     "title": "Gestión de Gastos",
@@ -786,7 +807,6 @@
     "errorLoading": "Error al cargar los datos de la red.",
     "loadingMap": "Cargando mapa...",
     "unknownCompany": "Empresa desconocida"
-
   },
   "SettingsPage": {
     "nav": {
@@ -968,5 +988,154 @@
     "catalan": "Catalán",
     "spanish": "Español",
     "english": "Inglés"
+  },
+  "LandingPage": {
+    "mainTitle": "Tu negocio, bajo control.",
+    "subtitle": "Deja de perder el tiempo entre aplicaciones. Ribotflow unifica tu CRM, ventas y comunicaciones para que te centres en lo que realmente importa: hacer crecer tu negocio.",
+    "days": "Días",
+    "hours": "Horas",
+    "minutes": "Minutos",
+    "seconds": "Segundos",
+    "featuresIntro": "Descubre algunas de las funciones de Ribotflow",
+    "feature1Title": "CRM Todo en Uno para Autónomos y Pymes",
+    "feature1DataTitle": "CRM Todo en Uno",
+    "feature1Text": "Simplifica la gestión de tu negocio con un sistema centralizado. Vista 360° de los clientes, historial completo de interacciones y pipeline de ventas Kanban para reducir tiempo y errores.",
+    "feature2Title": "Comunicación Inteligente y Redes Sociales",
+    "feature2DataTitle": "Comunicación & Redes",
+    "feature2Text": "Sincroniza tu correo para convertir automáticamente nuevos contactos en leads. Programa y automatiza publicaciones en tus redes sociales para mantenerte siempre presente.",
+    "feature3Title": "Mapa Interactivo de Usuarios",
+    "feature3DataTitle": "Comunidad Interactiva",
+    "feature3Text": "Descubre y colabora con otros profesionales cercanos. El mapa comunitario te permite ofrecer servicios, buscar colaboradores o compartir recursos en tu sector y zona.",
+    "feature4Title": "Conserje Digital Vinculado a Telegram",
+    "feature4DataTitle": "Conserje Digital",
+    "feature4Text": "Recibe un resumen instantáneo de facturas pendientes, tareas y citas directamente en Telegram. Tu asistente te mantiene informado sin tener que iniciar sesión constantemente.",
+    "feature5Title": "Alertas Diarias Personalizadas",
+    "feature5DataTitle": "Alertas de Subvenciones",
+    "feature5Text": "Siempre al día de las subvenciones disponibles en tu sector y localidad. No dejes escapar oportunidades de financiación para tu negocio.",
+    "feature6Title": "Asistente de IA y Analítica Avanzada",
+    "feature6DataTitle": "IA & Reports",
+    "feature6Text": "La IA puntúa leads, sugiere respuestas y detecta oportunidades ocultas. Los dashboards personalizables muestran métricas clave para que tomes decisiones con seguridad.",
+    "developedBy": "Desarrollado por"
+  },
+  "CountdownView": {
+    "mainTitle": "Tu negocio, bajo control.",
+    "subtitle": "Deja de perder tiempo entre aplicaciones. Ribotflow unifica tu CRM, ventas y comunicaciones para que te centres en lo que realmente importa: hacer crecer tu negocio.",
+    "days": "Días",
+    "hours": "Horas",
+    "minutes": "Minutos",
+    "seconds": "Segundos",
+    "featuresIntro": "Descubre algunas de las funciones de Ribotflow",
+    "feature1DataTitle": "CRM Todo-en-Uno",
+    "feature1Text": "Simplifica la gestión de tu negocio con un sistema centralizado.",
+    "feature2DataTitle": "Comunicación y Redes",
+    "feature2Text": "Sincroniza tu correo y automatiza publicaciones en redes sociales.",
+    "feature3DataTitle": "Comunidad Interactiva",
+    "feature3Text": "Descubre y colabora con otros profesionales cercanos en el mapa comunitario."
+  },
+  "MainLandingView": {
+    "title": "El trabajo de tu vida, impulsado por nuestra pasión.",
+    "subtitle": "Soluciones de software sólidas y fiables que mejoran la forma en que trabajas. Diseñado para empresas de todos los tamaños.",
+    "ctaButton": "Empieza Gratis Ahora",
+    "featuresPanel": {
+      "title": "Aplicaciones Destacadas",
+      "crm": {
+        "title": "CRM",
+        "desc": "Seguimiento exhaustivo del cliente."
+      },
+      "finances": {
+        "title": "Finanzas",
+        "desc": "Gestión de facturas y gastos."
+      },
+      "comunicacio": {
+        "title": "Comunicación",
+        "desc": "Bandeja de entrada y plantillas."
+      },
+      "network": {
+        "title": "Red Profesional",
+        "desc": "Conéctate con otros usuarios."
+      },
+      "projectStrocture": {
+        "title": "Proyectos",
+        "desc": "Organiza tus tareas y flujos."
+      }
+    }
+  },
+  "LandingNav": {
+    "login": "Acceder",
+    "signup": "Regístrate Gratis"
+  },
+  "SignupPage": {
+    "title": "Crea tu cuenta",
+    "subtitle": "¿Ya tienes una?",
+    "loginLink": "Inicia sesión",
+    "googleButton": "Regístrate con Google",
+    "separator": "O regístrate con tu correo",
+    "emailLabel": "Correo Electrónico",
+    "emailPlaceholder": "tu.correo@ejemplo.com",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "Mínimo 6 caracteres",
+    "submitButton": "Crea la Cuenta",
+    "toastSuccessTitle": "¡Registro casi completo!",
+    "toastSuccessDescription": "Hemos enviado un enlace de verificación a tu correo.",
+    "toastErrorTitle": "Error en el registro",
+    "toastErrorDescription": "No se pudo crear la cuenta.",
+    "welcomeTitle": "Comienza a transformar tu negocio hoy mismo.",
+    "welcomeSubtitle": "Únete a cientos de profesionales que ya optimizan su tiempo y maximizan sus resultados.",
+    "feature1": "Centraliza todos tus clientes y comunicaciones.",
+    "feature2": "Automatiza tareas y ahorra decenas de horas cada mes.",
+    "feature3": "Toma decisiones más inteligentes con análisis claros."
+  },
+  "LoginPage": {
+    "welcomeTitle": "Bienvenido de nuevo",
+    "welcomeSubtitle": "Accede a tu centro de control y comienza a gestionar tu negocio como nunca antes.",
+    "feature1": "Visión 360° de tus clientes.",
+    "feature2": "Pipeline de ventas visual e intuitivo.",
+    "feature3": "Comunicación centralizada y eficiente.",
+    "title": "Inicia Sesión",
+    "subtitle": "¿Aún no tienes una cuenta?",
+    "signupLink": "Regístrate",
+    "googleButton": "Inicia sesión con Google",
+    "separator": "O continúa con tu correo",
+    "emailLabel": "Correo Electrónico",
+    "emailPlaceholder": "tu.correo@ejemplo.com",
+    "passwordLabel": "Contraseña",
+    "forgotPasswordLink": "¿Olvidaste tu contraseña?",
+    "submitButton": "Inicia Sesión",
+    "toastErrorTitle": "Error de inicio de sesión",
+    "toastErrorDescription": "Las credenciales son incorrectas. Por favor, inténtalo de nuevo."
+  },
+  "OnboardingPage": {
+    "step": "Paso {current} de {total}",
+    "step1": {
+      "title": "¿Quién eres?",
+      "namePlaceholder": "Tu nombre completo",
+      "companyPlaceholder": "Nombre de la empresa o marca",
+      "summaryPlaceholder": "Breve descripción de tu negocio, servicios principales..."
+    },
+    "step2": {
+      "title": "¿Dónde te encuentras?",
+      "addressLabel": "Calle (con buscador)",
+      "addressPlaceholder": "Escribe una calle y selecciona...",
+      "cityPlaceholder": "Ciudad",
+      "postcodePlaceholder": "Código Postal",
+      "streetLabel": "Calle",
+      "cityLabel": "Ciudad",
+      "postcodeLabel": "Código Postal",
+      "regionLabel":"Provincia"
+    },
+    "step3": {
+      "title": "Últimos detalles",
+      "phonePlaceholder": "Teléfono de contacto",
+      "servicesPlaceholder": "Servicios (separados por comas)",
+      "servicesExample": "Ej: Diseño web, SEO, Marketing digital"
+    },
+    "backButton": "Atrás",
+    "nextButton": "Siguiente",
+    "finishButton": "Guardar y Finalizar",
+    "toastSuccessTitle": "¡Perfil completado!",
+    "toastSuccessDescription": "¡Bienvenido! Redirigiendo...",
+    "toastErrorTitle": "Error al guardar el perfil",
+    "toastErrorValidation": "Por favor, completa todos los campos obligatorios.",
+    "toastErrorUser": "Usuario no encontrado"
   }
 }

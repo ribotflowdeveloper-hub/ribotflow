@@ -31,5 +31,13 @@ export type CompanyProfileObject = {
   company_phone?: string | null;
   logo_url?: string | null;
 };
-
+// ✅ NOU: Definim i exportem el tipus per a una Tasca (Task)
+export type Task = {
+  id: string; // O number, depenent de la teva BD
+  created_at: string;
+  title: string;
+  is_completed: boolean;
+  contact_id: string | null;
+  user_id: string;
+};
 export type CompanyProfile = CompanyProfileObject | null;

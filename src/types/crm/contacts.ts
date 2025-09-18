@@ -4,7 +4,7 @@
  */
 
 // Importem tipus d'altres mòduls a través del fitxer 'index.ts' per evitar errors de dependència circular.
-import type { Activity, Quote, Opportunity, Invoice } from './index';
+import type { Activity, Quote, Opportunity, Invoice, Task } from './index';
 
 // --- MAPA I TIPUS D'ESTAT DE CONTACTE ---
 
@@ -39,6 +39,9 @@ export type Contact = {
   address?: { city: string | null } | null;
   social_media?: { linkedin: string | null } | null;
   ubicacio?: string | null;
+  last_interaction_at?: string | null;
+  
+
 };
 
 // Tipus Mestre per a les dades relacionades d'un contacte
@@ -80,3 +83,26 @@ export type CrmData = {
   }[];
   unreadActivities: Activity[];
 };
+
+// Interfície per a les estadístiques principals del Dashboard
+export interface DashboardStats {
+  totalContacts: number;
+  activeClients: number;
+  opportunities: number;
+  invoiced: number;
+  pending: number;
+  expenses: number;
+  invoicedChange: string;
+  expensesChange: string;
+  invoicedIsPositive: boolean;
+  expensesIsPositive: boolean;
+}
+
+// Interfície per al conjunt de dades inicials que el Dashboard rep
+export interface DashboardInitialData {
+  stats: DashboardStats;
+  tasks: Task[]; // Assegura't que Task s'importi des de './index'
+  contacts: Contact[];
+  overdueInvoices: Invoice[];
+  attentionContacts: Contact[];
+}

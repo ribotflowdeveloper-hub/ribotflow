@@ -1,169 +1,162 @@
-/**
- * @file page.tsx (Login)
- * @summary Aquest fitxer defineix la pàgina d'inici de sessió i registre de l'aplicació.
- * És un Component de Client, ja que necessita gestionar l'estat del formulari
- * (email, contrasenya), la interacció de l'usuari (clics) i la comunicació
- * amb Supabase des del navegador.
- */
+"use client";
 
-"use client"; // Marca aquest component per executar-se només al navegador.
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
-import { motion } from 'framer-motion';
+import { createClient } from '@/lib/supabase/client';
+import { toast } from 'sonner';
 import Image from 'next/image';
-// Importacions dels components d'UI de shadcn/ui.
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { toast } from 'sonner'; // Llibreria per a notificacions (toasts).
-import { createClient } from '@/lib/supabase/client'; // Client de Supabase per al costat del client.
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Mail, Lock, Loader2, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
 
-// Importacions d'icones de la llibreria lucide-react.
-import { Loader2, Sparkles, Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+// Carreguem el fons de partícules de manera dinàmica per optimitzar el rendiment
+const ParticleBackground = dynamic(
+  () => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground),
+  { ssr: false }
+);
 
+/**
+ * @summary Pàgina d'inici de sessió de la plataforma.
+ */
 export default function LoginPage() {
-  // --- Gestió de l'Estat del Component ---
-  const [email, setEmail] = useState(''); // Estat per al camp d'email.
-  const [password, setPassword] = useState(''); // Estat per al camp de contrasenya.
-  const [loading, setLoading] = useState(false); // Estat per mostrar indicadors de càrrega.
-  const [isSignUp, setIsSignUp] = useState(false); // Estat per canviar entre la vista de Login i la de Sign Up.
-  
-  const router = useRouter(); // Hook de Next.js per a la navegació programàtica.
-  const supabase = createClient(); // Inicialitzem el client de Supabase per al navegador.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL; // URL del lloc, necessària per a les redireccions d'email.
-  
-  /**
-   * @summary Gestor unificat per a l'enviament del formulari, tant per a registre com per a inici de sessió.
-   */
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Prevenim el comportament per defecte del formulari.
-    setLoading(true);
+  const t = useTranslations('LoginPage');
+  const router = useRouter();
+  const supabase = createClient();
+  const [isClient, setIsClient] = useState(false);
 
-    if (isSignUp) {
-      // --- Lògica de Registre (Sign Up) ---
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          // Indiquem a Supabase a quina URL ha de redirigir l'usuari després de fer clic a l'enllaç de verificació.
-          emailRedirectTo: `${siteUrl}/auth/callback`,
-        },
-      });
-      if (error) {
-        toast.error("Error en el registre", { description: error.message });
-      } else {
-        toast.success("Registre completat!", { description: "Revisa el teu correu per verificar el compte." });
-        setIsSignUp(false); // Tornem a la vista de login després del registre.
-      }
-    } else {
-      // --- Lògica d'Inici de Sessió (Sign In) ---
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) {
-        toast.error("Error d'inici de sessió", { description: "Les credencials són incorrectes." });
-      } else {
-        // Després de l'inici de sessió, redirigim al dashboard i refresquem la sessió del servidor.
-        router.push('/dashboard');
-        router.refresh(); 
-      }
-    }
-    setLoading(false);
-  };
+  useEffect(() => { setIsClient(true); }, []);
 
-  /**
-   * @summary Gestor per a l'inici de sessió amb proveïdors externs (OAuth), com Google.
-   * @param {'google' | 'github'} provider - El nom del proveïdor OAuth.
-   */
-  const handleOAuthLogin = async (provider: 'google' | 'github') => {
-    setLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        // La URL a la qual el proveïdor ha de retornar l'usuari després de l'autenticació.
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-      },
-    });
-    // No cal fer res més aquí; Supabase gestiona automàticament la redirecció a la pàgina de Google.
-  };
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${location.origin}/auth/callback` },
+    });
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error(t('toastErrorTitle'), { description: t('toastErrorDescription') });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <>
-      {/* A Next.js, el títol es gestiona amb l'objecte metadata exportat */}
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <motion.div 
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
-          <div className="glass-card p-8 shadow-2xl">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-3 mb-2">
-                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-                  <Sparkles className="w-7 h-7 text-primary" />
-                </div>
-                <h1 className="text-3xl font-bold gradient-text">Ribot</h1>
-              </div>
-              <p className="text-muted-foreground">{isSignUp ? "Crea un nou compte" : "Benvingut de nou"}</p>
-            </div>
+    // ✅ CORRECCIÓ: Contenidor principal amb 'relative' per al 'z-index'
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2 relative">
+      {/* CAPA 1 (Fons): Les partícules. Ocuparan tota la pantalla per sota de la resta. */}
+      {isClient && <ParticleBackground />}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="correu@exemple.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="pl-12 w-full"
-                />
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Contrasenya"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                  className="pl-12 w-full"
-                />
-              </div>
-              <Button type="submit" disabled={loading} className="w-full text-base py-6">
-                {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? <><UserPlus className="mr-2"/>Registrar-se</> : <><LogIn className="mr-2"/>Iniciar sessió</>)}
-              </Button>
-            </form>
+      {/* Columna Esquerra: Branding i Missatge */}
+      {/* ✅ CORRECCIÓ: Afegim 'relative z-10' per posar-la per sobre del fons */}
+      <div className="hidden lg:flex flex-col items-center justify-center p-12 relative z-10">
+        <div className="text-center max-w-md">
+          <Image
+            src="/android-chrome-192x192.png"
+            alt="Logo de Ribotflow"
+            width={80}
+            height={80}
+            className="mx-auto mb-6"
+          />
+          <h1 className="text-4xl font-bold mb-4">{t('welcomeTitle')}</h1>
+          <p className="text-lg text-muted-foreground mb-8">
+            {t('welcomeSubtitle')}
+          </p>
+          <ul className="space-y-4 text-lg text-left">
+            <li className="flex items-start"><Check className="w-6 h-6 text-brand-green mr-3 mt-1 shrink-0" /><span>{t('feature1')}</span></li>
+            <li className="flex items-start"><Check className="w-6 h-6 text-brand-green mr-3 mt-1 shrink-0" /><span>{t('feature2')}</span></li>
+            <li className="flex items-start"><Check className="w-6 h-6 text-brand-green mr-3 mt-1 shrink-0" /><span>{t('feature3')}</span></li>
+          </ul>
+        </div>
+      </div>
 
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border"></div></div>
-              <div className="relative flex justify-center text-sm"><span className="bg-card px-2 text-muted-foreground">O continua amb</span></div>
-            </div>
-
-            <div className="space-y-4">
-              <Button onClick={() => handleOAuthLogin('google')} variant="outline" className="w-full py-6">
-              <Image
-                className="w-5 h-5 mr-3"
-                alt="Google logo"
-                src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
-                width={20}  // ✅ AFEGEIX AIXÒ
-                height={20} // ✅ AFEGEIX AIXÒ
-              />              
-              Inicia sessió amb Google
-              </Button>
-            </div>
-
-            <p className="mt-8 text-center text-sm text-muted-foreground">
-              {isSignUp ? "Ja tens un compte?" : "Encara no tens un compte?"}{' '}
-              <button onClick={() => setIsSignUp(!isSignUp)} className="font-semibold text-primary hover:underline">
-                {isSignUp ? "Entra aquí" : "Registra't"}
-              </button>
+      {/* Columna Dreta: Formulari de Login */}
+      {/* ✅ CORRECCIÓ: Afegim 'relative z-10' i 'bg-background' per posar-la per sobre */}
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold tracking-tight">{t('title')}</h2>
+            <p className="mt-2 text-muted-foreground">
+              {t('subtitle')}{" "}
+              <Link href="/signup" className="font-medium text-primary hover:underline">
+                {t('signupLink')}
+              </Link>
             </p>
           </div>
-        </motion.div>
+
+          <div className="space-y-6">
+            <Button
+              variant="outline"
+              className="w-full text-lg py-6 flex items-center justify-center"
+              onClick={handleGoogleLogin}
+              disabled={isGoogleLoading || isLoading}
+            >
+              {isGoogleLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Image
+                  className="w-5 h-5 mr-3"
+                  alt="Google logo"
+                  src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+                  width={20}  // ✅ AFEGEIX AIXÒ
+                  height={20} // ✅ AFEGEIX AIXÒ
+                />)}
+              <span>{t('googleButton')}</span>
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center"><Separator /></div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">{t('separator')}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleEmailLogin} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t('emailLabel')}</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input id="email" type="email" placeholder={t('emailPlaceholder')} required value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">{t('passwordLabel')}</Label>
+                  <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                    {t('forgotPasswordLink')}
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input id="password" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" />
+                </div>
+              </div>
+              <Button type="submit" className="w-full text-lg py-6" disabled={isLoading || isGoogleLoading}>
+                {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                {t('submitButton')}
+              </Button>
+            </form>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

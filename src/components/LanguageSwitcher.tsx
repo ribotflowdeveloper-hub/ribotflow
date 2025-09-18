@@ -4,52 +4,53 @@ import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+
+import { cn } from '@/lib/utils'; // Importem 'cn' per combinar classes
 
 export function LanguageSwitcher() {
   const t = useTranslations('LanguageSwitcher');
   const [isPending, startTransition] = useTransition();
-  const locale = useLocale(); // <-- Ens diu l'idioma actual (ex: 'ca')
+  const locale = useLocale();
   const router = useRouter();
-  const pathname = usePathname(); // <-- Ens dona la ruta COMPLETA (ex: '/ca/dashboard')
+  const pathname = usePathname();
   
   const handleLanguageChange = (nextLocale: string) => {
-    if (locale === nextLocale) return;
+    if (locale === nextLocale || isPending) return;
     
     startTransition(() => {
-      // ✅ 2. Reconstruïm la ruta manualment. Aquesta és la manera més robusta.
-      // Reemplacem el primer segment de la ruta (l'idioma) pel nou.
       const newPath = pathname.replace(`/${locale}`, `/${nextLocale}`);
       router.replace(newPath);
     });
   };
 
+  const languages = [
+    { code: 'ca', label: t('catalan') },
+    { code: 'es', label: t('spanish') },
+    { code: 'en', label: t('english') },
+  ];
+
   return (
-    <div className="flex items-center gap-2">
-      <Button 
-        variant={locale === 'ca' ? 'default' : 'outline'} 
-        onClick={() => handleLanguageChange('ca')} 
-        disabled={isPending}
-      >
-        {isPending && locale !== 'ca' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {t('catalan')}
-      </Button>
-      <Button 
-        variant={locale === 'es' ? 'default' : 'outline'} 
-        onClick={() => handleLanguageChange('es')} 
-        disabled={isPending}
-      >
-        {isPending && locale !== 'es' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {t('spanish')}
-      </Button>
-      <Button 
-        variant={locale === 'en' ? 'default' : 'outline'} 
-        onClick={() => handleLanguageChange('en')} 
-        disabled={isPending}
-      >
-        {isPending && locale !== 'en' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {t('english')}
-      </Button>
+    // ✅ NOU: Agrupem els botons i els donem un fons i vores per a un millor disseny
+    <div className="flex space-x-1 p-1 bg-muted rounded-lg">
+      {languages.map((lang) => (
+        <Button 
+          key={lang.code}
+          // ✅ CORRECCIÓ: Eliminem 'variant' i gestionem l'estil amb 'className'
+          onClick={() => handleLanguageChange(lang.code)} 
+          disabled={isPending}
+          // ✅ La clau és aquí: utilitzem 'cn' per aplicar les classes condicionalment
+          className={cn(
+            "text-xs px-2 py-1 h-auto transition-all duration-300",
+            locale === lang.code 
+              ? 'bg-gradient-to-r from-green-400 to-cyan-400 text-black font-semibold shadow-md' // Estil actiu (com el botó Accedir)
+              : 'bg-transparent text-muted-foreground hover:bg-background/50' // Estil inactiu
+          )}
+        >
+          {/* Mostrem el loader només al botó que s'està activant */}
+          {isPending && locale !== lang.code }
+          {lang.label}
+        </Button>
+      ))}
     </div>
   );
 }

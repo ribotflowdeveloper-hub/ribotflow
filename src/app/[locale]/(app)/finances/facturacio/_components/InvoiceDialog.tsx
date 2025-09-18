@@ -116,10 +116,11 @@ export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSav
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="glass-effect max-w-4xl h-[90vh] flex flex-col">
+            {/* ✅ CORRECCIÓN: DialogContent ya es adaptable. Eliminamos 'glass-effect'. */}
+            <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
                 <DialogHeader>
-                <DialogTitle className="text-2xl">{invoice.id ? t('editTitle') : t('createTitle')}</DialogTitle>
-                <DialogDescription>{t('description')}</DialogDescription>
+                    <DialogTitle className="text-2xl">{invoice.id ? t('editTitle') : t('createTitle')}</DialogTitle>
+                    <DialogDescription>{t('description')}</DialogDescription>
                 </DialogHeader>
                 
                 <div className="flex-1 overflow-y-auto pr-4 -mr-6 space-y-6 py-4">
@@ -141,16 +142,18 @@ export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSav
                         </div>
                     </div>
 
-                    {/* Llista de conceptes */}
-                    <div>
+            
+                      {/* Llista de conceptes */}
+                      <div>
                         <Label className="font-semibold text-lg">{t('itemsTitle')}</Label>
                         <div className="mt-2 space-y-2">
                             {(invoice.invoice_items || []).map((item, index) => (
-                                <div key={index} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
-                                    <Input placeholder={t('itemDescriptionPlaceholder')}  value={item.description || ''} onChange={e => handleItemChange(index, 'description', e.target.value)} className="flex-grow" />
+                                // ✅ CORRECCIÓN: Usamos 'bg-muted' que se adapta al tema.
+                                <div key={index} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                                    <Input placeholder={t('itemDescriptionPlaceholder')} value={item.description || ''} onChange={e => handleItemChange(index, 'description', e.target.value)} className="flex-grow" />
                                     <Input type="number" placeholder={t('itemQtyPlaceholder')} value={item.quantity || 1} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} className="w-20 text-center" />
                                     <Input type="number" placeholder={t('itemPricePlaceholder')} value={item.unit_price || 0} onChange={e => handleItemChange(index, 'unit_price', Number(e.target.value))} className="w-24 text-right" />
-                                    <span className="w-24 text-right font-mono text-sm">€{(Number(item.quantity || 1) * Number(item.unit_price || 0)).toFixed(2)}</span>
+                                    <span className="w-24 text-right font-mono text-sm text-foreground">€{(Number(item.quantity || 1) * Number(item.unit_price || 0)).toFixed(2)}</span>
                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                                 </div>
                             ))}
@@ -162,11 +165,12 @@ export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSav
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
                         <div className="space-y-2">
                            <Label>{t('notesLabel')}</Label>
-                           <Textarea placeholder={t('notesPlaceholder')}value={invoice.notes || ''} onChange={e => setInvoice(p => ({...p, notes: e.target.value}))} rows={5}/>
+                           <Textarea placeholder={t('notesPlaceholder')} value={invoice.notes || ''} onChange={e => setInvoice(p => ({...p, notes: e.target.value}))} rows={5}/>
                         </div>
-                        <div className="space-y-2 bg-muted/30 p-4 rounded-lg">
-                            <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{t('subtotal')}</p><p className='font-mono'>€{invoice.subtotal?.toFixed(2) || '0.00'}</p></div>
-                            <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{t('vat')}</p><p className='font-mono'>€{invoice.tax_amount?.toFixed(2) || '0.00'}</p></div>
+                        {/* ✅ CORRECCIÓ: Usamos 'bg-muted' para la caja de totales. */}
+                        <div className="space-y-2 bg-muted p-4 rounded-lg">
+                            <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{t('subtotal')}</p><p className='font-mono text-foreground'>€{invoice.subtotal?.toFixed(2) || '0.00'}</p></div>
+                            <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{t('vat')}</p><p className='font-mono text-foreground'>€{invoice.tax_amount?.toFixed(2) || '0.00'}</p></div>
                             <div className="flex justify-between items-center text-lg font-bold border-t pt-2 mt-2"><p>{t('total')}</p><p className='font-mono'>€{invoice.total_amount?.toFixed(2) || '0.00'}</p></div>
                         </div>
                     </div>
@@ -176,7 +180,8 @@ export function InvoiceDialog({ isOpen, onClose, contacts, initialInvoice, onSav
                     <Button type="button" variant="ghost" onClick={onClose}>{t('cancelButton')}</Button>
                     <Button onClick={handleSave} disabled={isSaving}>
                         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {invoice.id ? t('saveChanges') : t('createDraft')}                    </Button>
+                        {invoice.id ? t('saveChanges') : t('createDraft')}
+                    </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>

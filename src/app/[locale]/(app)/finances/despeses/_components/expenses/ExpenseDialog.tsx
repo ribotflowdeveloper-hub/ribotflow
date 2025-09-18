@@ -181,7 +181,8 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="glass-effect max-w-4xl h-[95vh] flex flex-col">
+            {/* ✅ CORRECCIÓ: DialogContent ja és adaptable per defecte. */}
+            <DialogContent className="max-w-4xl h-[95vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="text-2xl">{initialData ? t('dialogEditTitle') : t('dialogNewTitle')}</DialogTitle>
                     <DialogDescription>{t('dialogDescription')}</DialogDescription>
@@ -189,10 +190,10 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
 
                 <div className='flex-1 overflow-y-auto pr-4 -mr-6'>
                     <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} className="space-y-6 pt-4">
-
-                        <div className='bg-white/5 p-4 rounded-lg'>
+                        {/* ✅ CORRECCIÓ: Usem 'bg-muted/50' que funciona en ambdós temes. */}
+                        <div className='bg-muted/50 p-4 rounded-lg'>
                             <Label htmlFor="ocr-file-dialog" className='flex items-center gap-2 font-bold mb-2 cursor-pointer'>
-                                <BrainCircuit className='w-5 h-5 text-purple-400' /> {t('fillWithAI')}
+                                <BrainCircuit className='w-5 h-5 text-primary' /> {t('fillWithAI')}
                             </Label>
                             <Input id="ocr-file-dialog" type="file" accept="image/*,application/pdf" className='text-xs' onChange={(e) => handleOcrUpload(e.target.files?.[0])} disabled={isProcessingOcr} />
                             {isProcessingOcr && <p className='text-xs mt-2 flex items-center gap-2'><Loader2 className='w-4 h-4 animate-spin' />{t('processing')}</p>}
@@ -202,6 +203,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                             <Label>{t('generalDescription')}</Label>
                             <Input placeholder={t('descriptionPlaceholder')} value={currentExpense.description || ''} onChange={e => setCurrentExpense(p => ({ ...p, description: e.target.value }))} required />
                         </div>
+
 
                         <div className='grid md:grid-cols-2 gap-4'>
                             <div className="space-y-2">
@@ -216,10 +218,12 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                                             <CommandList>
                                                 <CommandEmpty>{t('noSupplierFound')}</CommandEmpty>
                                                 <CommandGroup>
-                                                    {suppliers.map((s) => (<CommandItem key={s.id} value={s.nom} onSelect={() => { setSelectedSupplier(s); setCurrentExpense(p =>
-                                                         ({ ...p, supplier_id: s.id })); setComboboxOpen(false); }}>
-                                                            <Check className={cn("mr-2 h-4 w-4", currentExpense.supplier_id === s.id ? "opacity-100" : "opacity-0")} />
-                                                            {s.nom}</CommandItem>))}
+                                                    {suppliers.map((s) => (<CommandItem key={s.id} value={s.nom} onSelect={() => {
+                                                        setSelectedSupplier(s); setCurrentExpense(p =>
+                                                            ({ ...p, supplier_id: s.id })); setComboboxOpen(false);
+                                                    }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", currentExpense.supplier_id === s.id ? "opacity-100" : "opacity-0")} />
+                                                        {s.nom}</CommandItem>))}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>
@@ -244,29 +248,61 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
 
                         <div className='space-y-2'>
                             <Label className='font-bold'>{t('items')}</Label>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="border-b-white/10">
-                                        <TableHead className='w-2/4'>{t('itemDescription')}</TableHead>
-                                        <TableHead>{t('itemQuantity')}</TableHead>
-                                        <TableHead>{t('itemUnitPrice')}</TableHead>
-                                        <TableHead>{t('itemTotal')}</TableHead>
-                                        <TableHead />
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {(currentExpense.expense_items || []).map((item, index) => (
-                                        <TableRow key={index} className="border-b-white/10">
-                                            <TableCell><Input value={item.description || ''} onChange={e => handleItemChange(index, 'description', e.target.value)} /></TableCell>
-                                            <TableCell><Input type="number" value={item.quantity || 1} onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)} className="w-20" /></TableCell>
-                                            <TableCell><Input type="number" step="0.01" value={item.unit_price || 0} onChange={e => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)} className="w-24" /></TableCell>
-                                            <TableCell className='font-mono'>€{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}</TableCell>
-                                            <TableCell><Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="w-4 h-4 text-red-500" /></Button></TableCell>
+                            <div className="border rounded-lg overflow-hidden">
+                                <Table>
+                                    <TableHeader>
+                                        {/* ✅ Estructura correcta: una sola fila para la cabecera */}
+                                        <TableRow>
+                                            <TableHead className='w-2/4'>{t('itemDescription')}</TableHead>
+                                            <TableHead>{t('itemQuantity')}</TableHead>
+                                            <TableHead>{t('itemUnitPrice')}</TableHead>
+                                            <TableHead className="text-right">{t('itemTotal')}</TableHead>
+                                            <TableHead className="w-[50px]"></TableHead> {/* Espacio para el botón */}
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                            <Button type="button" variant="outline" size="sm" onClick={addItem} className='mt-2'><Plus className='w-4 h-4 mr-2' />{t('addItem')}</Button>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {(currentExpense.expense_items || []).map((item, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>
+                                                    <Input
+                                                        value={item.description || ''}
+                                                        onChange={e => handleItemChange(index, 'description', e.target.value)}
+                                                        placeholder={t('descriptionPlaceholder')}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={e => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                                                        className="w-20"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={item.unit_price}
+                                                        onChange={e => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                                                        className="w-24"
+                                                    />
+                                                </TableCell>
+                                                <TableCell className='text-right font-mono'>
+                                                    €{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                                                        <Trash2 className="w-4 h-4 text-destructive" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            <Button type="button" variant="outline" size="sm" onClick={addItem} className='mt-2'>
+                                <Plus className='w-4 h-4 mr-2' />{t('addItem')}
+                            </Button>
                         </div>
 
                         <div className='grid md:grid-cols-2 gap-8'>
@@ -274,7 +310,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                                 <Label>{t('notes')}</Label>
                                 <Textarea value={currentExpense.notes || ''} onChange={e => setCurrentExpense(p => ({ ...p, notes: e.target.value }))} rows={5} />
                             </div>
-                            <div className='space-y-4 bg-white/5 p-4 rounded-lg'>
+                            <div className='space-y-4 bg-muted p-4 rounded-lg'>
                                 <div className='flex justify-between items-center text-sm'>
                                     <p className="text-muted-foreground">{t('subtotal')}</p>
                                     <p className='font-mono'>€{(currentExpense.subtotal || 0).toFixed(2)}</p></div>
@@ -311,7 +347,7 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                                 {(currentExpense.expense_attachments || []).length > 0 && (
                                     <div className='space-y-1 pt-2'>
                                         {currentExpense.expense_attachments.map(att => (
-                                            <div key={att.id} className='flex items-center justify-between text-sm bg-white/5 p-2 rounded'>
+                                            <div key={att.id} className='flex items-center justify-between text-sm bg-muted p-2 rounded'>
                                                 <div className='flex items-center gap-2'><Paperclip className='w-4 h-4' />{att.filename}</div>
                                             </div>
                                         ))}

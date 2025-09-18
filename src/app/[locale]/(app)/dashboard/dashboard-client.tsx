@@ -1,8 +1,3 @@
-/**
- * @file dashboard-client.tsx
- * @summary Orquestra la interfície interactiva del Dashboard, unint tots els seus sub-components.
- * Gestiona l'estat centralitzat (com les tasques) i passa les dades als fills.
- */
 "use client";
 
 import React, { useState, useMemo } from 'react';
@@ -10,12 +5,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslations } from 'next-intl';
-import { Users, Target, Euro, BadgePercent } from 'lucide-react';
+import type { DashboardInitialData, Task } from '@/types/crm'; 
 
-// Importació dels tipus de dades des del fitxer centralitzat.
-import type { DashboardInitialData, Task } from './types';
-
-// Importació dels nous sub-components.
+// Importació dels sub-components. Hauràs de crear cada un al seu propi fitxer.
 import { StatCard } from './_components/StartCard';
 import { SalesPerformance } from './_components/SalesPerformance';
 import { QuickAccess } from './_components/QuickAccess';
@@ -23,40 +15,35 @@ import { Agenda } from './_components/Agenda';
 import { Radar } from './_components/Radar';
 import { RecentActivities } from './_components/RecentActivities';
 import AddTaskDialog from './_components/AddTaskDialog';
+import { BadgePercent, Euro, Target, Users } from 'lucide-react';
 
-// Definim la meta de facturació mensual.
+
+
 const MONTHLY_GOAL = 50000;
 
-export function DashboardClient({ initialData, children }: { initialData: DashboardInitialData, children: React.ReactNode }) {
+export function DashboardClient({ initialData, children }: { 
+  initialData: DashboardInitialData, 
+  children: React.ReactNode 
+}) {
   const t = useTranslations('DashboardClient');
   const router = useRouter();
   const supabase = createClient();
   
-  // L'estat de les tasques es manté aquí perquè diversos components fills el necessiten.
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
   const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
 
-  /**
-   * @summary Gestor per marcar/desmarcar una tasca com a completada amb UI Optimista.
-   */
   const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
     const originalTasks = [...tasks];
-    // Actualització optimista de la UI.
     setTasks(currentTasks => currentTasks.map(t => (t.id === taskId ? { ...t, is_completed: !currentStatus } : t)));
     
     const { error } = await supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', taskId);
     
-    // Si hi ha un error, revertim l'estat i notifiquem.
     if (error) {
       toast.error(t('toast.errorTitle'), { description: t('taskUpdateError') });
       setTasks(originalTasks);
     }
   };
 
-  /**
-   * @summary Dades derivades amb 'useMemo' per a optimitzar el rendiment.
-   * Aquests càlculs només es tornen a fer si les seves dependències canvien.
-   */
   const pendingTasks = useMemo(() => tasks.filter(t => !t.is_completed), [tasks]);
   
   const percentGoal = useMemo(() => {

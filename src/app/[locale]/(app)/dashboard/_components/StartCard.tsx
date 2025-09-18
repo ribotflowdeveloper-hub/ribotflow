@@ -14,7 +14,9 @@ interface StatCardProps {
 
 export const StatCard: FC<StatCardProps> = ({ href, icon: Icon, title, value, color, openText }) => (
   <Link href={href} className="group block">
-    <div className={`rounded-2xl p-5 text-white shadow-xl transition-all ring-1 ring-white/10 hover:-translate-y-0.5 hover:shadow-2xl ${color}`}>
+    {/* ✅ CORRECCIÓN: Eliminamos 'text-white'. El color de fondo ya define
+        que el texto debe ser 'primary-foreground' (blanco) según tus variables CSS. */}
+    <div className={`rounded-2xl p-5 shadow-xl transition-all ring-1 ring-black/10 dark:ring-white/10 hover:-translate-y-0.5 hover:shadow-2xl ${color}`}>
       <div className="flex items-start justify-between">
         <div className="text-sm/5 opacity-90">{title}</div>
         <Icon className="w-6 h-6 opacity-90" />

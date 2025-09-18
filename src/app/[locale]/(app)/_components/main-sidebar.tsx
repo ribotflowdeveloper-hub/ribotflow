@@ -36,7 +36,7 @@ export function MainSidebar({ onModuleSelect }: { onModuleSelect: (module: NavIt
 
     const handleSignOut = async () => {
         await supabase.auth.signOut();
-        window.location.href = '/login';
+        window.location.href = '/';
     };
 
     const handleNotImplemented = (e: React.MouseEvent) => {

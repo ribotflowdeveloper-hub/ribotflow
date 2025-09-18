@@ -636,7 +636,28 @@
     "coolingContact": "Contacte refredant-se: {contactName}",
     "noInteraction7Days": "Sense interaccions en +7 dies",
     "taskCreatedToast": "Tasca creada!",
-    "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca."
+    "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca.",
+    "addTaskDialog": {
+      "title": "Crear Nova Tasca",
+      "description": "Afegeix una nova tasca al teu dia a dia. Pots assignar-la a un contacte si vols.",
+      "taskTitleLabel": "Títol de la Tasca",
+      "taskTitlePlaceholder": "Ex: Fer seguiment...",
+      "assignContactLabel": "Assignar a Contacte (Opcional)",
+      "selectContactPlaceholder": "Selecciona un contacte...",
+      "searchContactPlaceholder": "Buscar contacte...",
+      "noContactFound": "No s'ha trobat cap contacte.",
+      "cancelButton": "Cancel·lar",
+      "saveButton": "Desar Tasca",
+      "savingButton": "Desant...",
+      "toast": {
+        "errorTitle": "Error",
+        "unauthenticated": "Usuari no autenticat.",
+        "emptyTitle": "El títol de la tasca no pot estar buit.",
+        "saveError": "Error en desar la tasca",
+        "successTitle": "Èxit!",
+        "successDescription": "La tasca s'ha creat correctament."
+      }
+    }
   },
   "Expenses": {
     "title": "Gestió de Despeses",
@@ -972,5 +993,154 @@
     "catalan": "Català",
     "spanish": "Espanyol",
     "english": "Anglès"
+  },
+  "LandingPage": {
+    "mainTitle": "El teu negoci, sota control.",
+    "subtitle": "Deixa de perdre el temps entre aplicacions. Ribotflow unifica el teu CRM, vendes i comunicacions perquè et centris en el que realment importa: fer créixer el teu negoci.",
+    "days": "Dies",
+    "hours": "Hores",
+    "minutes": "Minuts",
+    "seconds": "Segons",
+    "featuresIntro": "Descobreix algunes de les funcions de Ribotflow",
+    "feature1Title": "CRM Tot-en-Un per a Autònoms i Pimes",
+    "feature1DataTitle": "CRM Tot-en-Un",
+    "feature1Text": "Simplifica la gestió del teu negoci amb un sistema centralitzat. Vista 360° dels clients, historial complet d’interaccions i pipeline de vendes Kanban per reduir temps i errors.",
+    "feature2Title": "Comunicació Intel·ligent i Xarxes Socials",
+    "feature2DataTitle": "Comunicació & Xarxes",
+    "feature2Text": "Sincronitza el teu correu per convertir automàticament nous contactes en leads. Programa i automatitza publicacions a les teves xarxes socials per mantenir-te sempre present.",
+    "feature3Title": "Mapa Interactiu d’Usuaris",
+    "feature3DataTitle": "Comunitat Interactiva",
+    "feature3Text": "Descobreix i col·labora amb altres professionals propers. El mapa comunitari et permet oferir serveis, buscar col·laboradors o compartir recursos dins el teu sector i zona.",
+    "feature4Title": "Conserge Digital Vinculat a Telegram",
+    "feature4DataTitle": "Conserge Digital",
+    "feature4Text": "Rep un resum instantani de factures pendents, tasques i cites directament a Telegram. El teu assistent et manté informat sense haver d’iniciar sessió constantment.",
+    "feature5Title": "Alertes Diàries Personalitzades",
+    "feature5DataTitle": "Alertes de Subvencions",
+    "feature5Text": "Sempre al dia de les subvencions disponibles al teu sector i localitat. No deixis escapar oportunitats de finançament per al teu negoci.",
+    "feature6Title": "Assistent d’IA i Analítica Avançada",
+    "feature6DataTitle": "IA & Reports",
+    "feature6Text": "L’IA puntua leads, suggereix respostes i detecta oportunitats amagades. Els dashboards personalitzables mostren mètriques clau perquè prenguis decisions amb seguretat.",
+    "developedBy": "Desenvolupat per"
+  },
+  "CountdownView": {
+    "mainTitle": "El teu negoci, sota control.",
+    "subtitle": "Deixa de perdre el temps entre aplicacions. Ribotflow unifica el teu CRM, vendes i comunicacions perquè et centris en el que realment importa: fer créixer el teu negoci.",
+    "days": "Dies",
+    "hours": "Hores",
+    "minutes": "Minuts",
+    "seconds": "Segons",
+    "featuresIntro": "Descobreix algunes de les funcions de Ribotflow",
+    "feature1DataTitle": "CRM Tot-en-Un",
+    "feature1Text": "Simplifica la gestió del teu negoci amb un sistema centralitzat.",
+    "feature2DataTitle": "Comunicació i Xarxes",
+    "feature2Text": "Sincronitza el teu correu i automatitza publicacions a les xarxes socials.",
+    "feature3DataTitle": "Comunitat Interactiva",
+    "feature3Text": "Descobreix i col·labora amb altres professionals propers al mapa comunitari."
+  },
+  "MainLandingView": {
+    "title": "El treball de la teva vida, impulsat per la nostra passió.",
+    "subtitle": "Solucions de software sòlides i fidedignes que milloren la forma en què treballes. Dissenyat per a empreses de totes les mides.",
+    "ctaButton": "Comença Gratis Ara",
+    "featuresPanel": {
+      "title": "Aplicacions Destacades",
+      "crm": {
+        "title": "CRM",
+        "desc": "Seguiment exhaustiu del client."
+      },
+      "finances": {
+        "title": "Finances",
+        "desc": "Gestió de factures i despeses."
+      },
+      "comunicacio": {
+        "title": "Comunicació",
+        "desc": "Safata d'entrada i plantilles."
+      },
+      "network": {
+        "title": "Xarxa Professional",
+        "desc": "Connecta amb altres usuaris."
+      },
+      "projectStrocture": {
+        "title": "Projectes",
+        "desc": "Organitza les teves tasques i fluxos."
+      }
+    }
+  },
+  "LandingNav": {
+    "login": "Inicia sessió",
+    "signup": "Registra't Gratis"
+  },
+  "SignupPage": {
+    "title": "Crea el teu compte",
+    "subtitle": "Ja en tens un?",
+    "loginLink": "Inicia sessió",
+    "googleButton": "Registra't amb Google",
+    "separator": "O registra't amb el teu correu",
+    "emailLabel": "Correu Electrònic",
+    "emailPlaceholder": "el.teu@correu.com",
+    "passwordLabel": "Contrasenya",
+    "passwordPlaceholder": "Mínim 6 caràcters",
+    "submitButton": "Crea el Compte",
+    "toastSuccessTitle": "Registre gairebé complet!",
+    "toastSuccessDescription": "Hem enviat un enllaç de verificació al teu correu.",
+    "toastErrorTitle": "Error en el registre",
+    "toastErrorDescription": "No s'ha pogut crear el compte.",
+    "welcomeTitle": "Comença a transformar el teu negoci avui mateix.",
+    "welcomeSubtitle": "Uneix-te a centenars de professionals que ja estan optimitzant el seu temps i maximitzant els seus resultats.",
+    "feature1": "Centralitza tots els teus clients i comunicacions.",
+    "feature2": "Automatitza tasques i estalvia desenes d'hores cada mes.",
+    "feature3": "Pren decisions més intel·ligents amb analítiques clares."
+  },
+  "LoginPage": {
+    "welcomeTitle": "Benvingut de nou",
+    "welcomeSubtitle": "Accedeix al teu centre de control i comença a gestionar el teu negoci com mai abans.",
+    "feature1": "Visió 360° dels teus clients.",
+    "feature2": "Pipeline de vendes visual i intuïtiu.",
+    "feature3": "Comunicació centralitzada i eficient.",
+    "title": "Inicia Sessió",
+    "subtitle": "Encara no tens un compte?",
+    "signupLink": "Registra't",
+    "googleButton": "Inicia sessió amb Google",
+    "separator": "O continua amb el teu correu",
+    "emailLabel": "Correu Electrònic",
+    "emailPlaceholder": "el.teu@correu.com",
+    "passwordLabel": "Contrasenya",
+    "forgotPasswordLink": "Has oblidat la contrasenya?",
+    "submitButton": "Inicia Sessió",
+    "toastErrorTitle": "Error d'inici de sessió",
+    "toastErrorDescription": "Les credencials són incorrectes. Si us plau, torna-ho a provar."
+  },
+  "OnboardingPage": {
+    "step": "Pas {current} de {total}",
+    "step1": {
+      "title": "Qui ets?",
+      "namePlaceholder": "El teu nom complet",
+      "companyPlaceholder": "Nom de l'empresa o marca",
+      "summaryPlaceholder": "Petita descripció del teu negoci, serveis principals..."
+    },
+    "step2": {
+      "title": "On et trobes?",
+      "addressLabel": "Carrer (amb cercador)",
+      "addressPlaceholder": "Escriu un carrer i selecciona...",
+      "cityPlaceholder": "Població",
+      "postcodePlaceholder": "Codi Postal",
+      "streetLabel": "Carrer",
+      "cityLabel": "Població",
+      "postcodeLabel": "Codi Postal",
+      "regionLabel":"Província"
+    },
+    "step3": {
+      "title": "Últims detalls",
+      "phonePlaceholder": "Telèfon de contacte",
+      "servicesPlaceholder": "Serveis (separats per comes)",
+      "servicesExample": "Ex: Disseny web, SEO, Marketing digital"
+    },
+    "backButton": "Enrere",
+    "nextButton": "Següent",
+    "finishButton": "Guardar i Finalitzar",
+    "toastSuccessTitle": "Perfil completat!",
+    "toastSuccessDescription": "Benvingut! Redirigint...",
+    "toastErrorTitle": "Error en desar el perfil",
+    "toastErrorValidation": "Si us plau, omple tots els camps obligatoris.",
+    "toastErrorUser": "No s'ha trobat l'usuari"
   }
 }

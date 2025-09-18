@@ -6,6 +6,7 @@ import { Building2 } from 'lucide-react';
 import type { PublicProfile } from '../types';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { cn } from '@/lib/utils';
 
 interface ProfileCardProps {
   profile: PublicProfile;
@@ -19,9 +20,12 @@ export default function ProfileCard({ profile, isSelected, onClick }: ProfileCar
   return (
     <div
       onClick={onClick}
-      className={`p-4 mb-2 rounded-lg cursor-pointer ... ${
-        isSelected ? 'bg-purple-800/50 ...' : 'bg-gray-800/50 ...'
-      }`}
+      className={cn(
+        'p-4 mb-2 rounded-lg cursor-pointer transition-all duration-200',
+        isSelected 
+          ? 'bg-primary/20 ring-2 ring-primary' 
+          : 'bg-card hover:bg-muted'
+      )}
     >
       <div className="flex items-center gap-4">
         {profile.logo_url ? (
@@ -31,10 +35,10 @@ export default function ProfileCard({ profile, isSelected, onClick }: ProfileCar
             alt={t('logoAltText', { companyName: profile.company_name || '' })}
             width={48} 
             height={48}
-            className="rounded-full object-cover bg-gray-700"
+            className="rounded-full object-cover bg-muted"
           />
         ) : (
-          <div className="w-12 h-12 rounded-full ...">
+          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
             <Building2 className="w-6 h-6 text-gray-400" />
           </div>
         )}

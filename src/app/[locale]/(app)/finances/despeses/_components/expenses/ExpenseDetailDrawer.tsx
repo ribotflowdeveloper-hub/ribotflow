@@ -95,7 +95,8 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
 
   return (
     <Drawer open={isOpen} onClose={onClose}>
-      <DrawerContent className="glass-effect text-foreground p-6">
+      {/* ✅ CORRECCIÓ: DrawerContent ja gestiona els colors de fons i text per a cada tema. */}
+      <DrawerContent className="p-6">
         <div className="max-w-4xl mx-auto w-full">
           <DrawerHeader className="text-left p-0 mb-4">
             <DrawerTitle className="text-2xl font-bold">
@@ -110,11 +111,13 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
             {/* --- Adjunts --- */}
             <div className="md:col-span-1 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
-                <Paperclip className="w-4 h-4" /> {t('attachments')}</h3>
+                <Paperclip className="w-4 h-4" /> {t('attachments')}
+              </h3>
               {attachmentUrls.length > 0 ? (
                 <div className="space-y-2">
                   {attachmentUrls.map(att => (
-                    <div key={att.id} className="bg-white/5 p-2 rounded-lg flex items-center justify-between">
+                    // ✅ CORRECCIÓ: Usem 'bg-muted' per a un fons que s'adapta.
+                    <div key={att.id} className="bg-muted p-2 rounded-lg flex items-center justify-between">
                       <a href={att.publicUrl} target="_blank" rel="noopener noreferrer" className="truncate text-sm hover:underline">
                         {att.filename}
                       </a>
@@ -129,42 +132,31 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
               )}
             </div>
 
+
             {/* --- Detall --- */}
-            <div className="md:col-span-2 bg-white/5 p-6 rounded-xl space-y-4">
+            {/* ✅ CORRECCIÓ: Usem 'bg-muted' per a un fons que s'adapta. */}
+            <div className="md:col-span-2 bg-muted p-6 rounded-xl space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">{t('date')}</span>
-                <span>
-                  {expense.expense_date
-                    ? format(new Date(expense.expense_date), "PPP", { locale: getDateLocale() })
-                    : '-'}
-                </span>
+                <span>{expense.expense_date ? format(new Date(expense.expense_date), "PPP", { locale: getDateLocale() }) : '-'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">{t('category')}</span>
                 <Badge variant="secondary" className={undefined}>{expense.category || t('noCategory')}</Badge>
               </div>
-              <div className="border-t border-white/10 my-4"></div>
+              <div className="border-t border-border my-4"></div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <p className="text-muted-foreground">{t('subtotal')}</p>
-                  <p className="font-mono">€{(expense.subtotal || 0).toFixed(2)}</p>
-                </div>
+                <div className="flex justify-between"><p className="text-muted-foreground">{t('subtotal')}</p><p className="font-mono">€{(expense.subtotal || 0).toFixed(2)}</p></div>
                 {expense.discount_amount && expense.discount_amount > 0 && (
-                  <div className="flex justify-between items-center text-orange-400">
+                  <div className="flex justify-between text-orange-500 dark:text-orange-400">
                     <p>{t('discount')}</p>
                     <p className="font-mono">-€{(expense.discount_amount).toFixed(2)}</p>
                   </div>
                 )}
-                <div className="flex justify-between items-center">
-                  <p className="text-muted-foreground">{t('taxBase')}</p>
-                  <p className="font-mono">€{baseImposable.toFixed(2)}</p>
-                </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-muted-foreground">{t('vat', {taxRate: expense.tax_rate || 21})}</p>
-                  <p className="font-mono">€{(expense.tax_amount || 0).toFixed(2)}</p>
-                </div>
+                <div className="flex justify-between"><p className="text-muted-foreground">{t('taxBase')}</p><p className="font-mono">€{baseImposable.toFixed(2)}</p></div>
+                <div className="flex justify-between"><p className="text-muted-foreground">{t('vat', { taxRate: expense.tax_rate || 21 })}</p><p className="font-mono">€{(expense.tax_amount || 0).toFixed(2)}</p></div>
               </div>
-              <div className="flex justify-between items-center text-xl font-bold border-t border-white/20 pt-2 mt-2">
+              <div className="flex justify-between items-center text-xl font-bold border-t border-foreground/20 pt-2 mt-2">
                 <p>{t('total')}</p>
                 <p className="font-mono">- €{(expense.total_amount || 0).toFixed(2)}</p>
               </div>
@@ -177,7 +169,7 @@ export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isO
               <Edit className="w-4 h-4 mr-2" />  {t('editButton')}
             </Button>
             <Button variant="outline" onClick={onClose}>
-            {t('closeButton')}
+              {t('closeButton')}
             </Button>
           </DrawerFooter>
         </div>

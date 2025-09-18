@@ -92,7 +92,8 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="glass-effect">
+            {/* ✅ CORRECCIÓN: Eliminamos 'glass-effect'. DialogContent ya es adaptable. */}
+            <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{t('companyProfileDialog.title')}</DialogTitle>
                     <DialogDescription>{t('companyProfileDialog.description')}</DialogDescription>
@@ -106,7 +107,8 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                                     src={localProfile.logo_url}
                                     alt={t('companyProfileDialog.logoAlt')}
                                     width={64} height={64}
-                                    className="object-contain rounded-lg bg-white/10 p-1"
+                                    // ✅ CORRECCIÓN: Usamos 'bg-muted' para un fondo neutro
+                                    className="object-contain rounded-lg bg-muted p-1"
                                 />
                             ) : <div className="h-16 w-16 bg-muted rounded-lg" />}
                             <Button asChild variant="outline">
@@ -118,7 +120,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                             <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploading} />
                         </div>
                     </div>
-                    {/* ✅ MILLORA: Inputs controlats i genèrics */}
                     <div><Label htmlFor="company_name">{t('companyProfileDialog.nameLabel')}</Label><Input id="company_name" name="company_name" value={localProfile.company_name || ''} onChange={handleInputChange} /></div>
                     <div><Label htmlFor="company_tax_id">{t('companyProfileDialog.taxIdLabel')}</Label><Input id="company_tax_id" name="company_tax_id" value={localProfile.company_tax_id || ''} onChange={handleInputChange} /></div>
                     <div><Label htmlFor="company_address">{t('companyProfileDialog.addressLabel')}</Label><Input id="company_address" name="company_address" value={localProfile.company_address || ''} onChange={handleInputChange} /></div>

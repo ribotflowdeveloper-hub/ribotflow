@@ -98,7 +98,7 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="glass-effect">
+      <DialogContent>
         <DialogHeader><DialogTitle>{opportunityToEdit?.id ? t('editTitle') : t('newTitle')}</DialogTitle></DialogHeader>
         <form action={handleSubmit} className="grid gap-4 pt-4">
           <Input name="name" placeholder={t('namePlaceholder')} defaultValue={opportunityToEdit?.name || ''} required />
@@ -110,7 +110,7 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-effect">
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0 ">
               <Command>
                 <CommandInput placeholder={t('searchContactPlaceholder')} />
                 <CommandList>
@@ -134,7 +134,7 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
           {/* ✅ CORRECCIÓ: Utilitzem el mapa per al desplegable d'etapes */}
           <Select name="stage_name" defaultValue={opportunityToEdit?.stage_name || stages[0]?.name}>
             <SelectTrigger><SelectValue placeholder={t('selectStagePlaceholder')} /></SelectTrigger>
-            <SelectContent className="glass-effect">
+            <SelectContent>
               {PIPELINE_STAGES_MAP.map(stage => (
                 <SelectItem key={stage.key} value={stage.name}>
                   {statePipline(`stageNames.${stage.key}`)}

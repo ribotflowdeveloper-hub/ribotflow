@@ -1,9 +1,16 @@
 /**
- * @file src/app/page.tsx (Root Page)
- * @summary Aquesta pàgina no renderitza res. El middleware interceptarà
- * la petició i la redirigirà a la ruta amb l'idioma correcte.
+ * @file src/app/[locale]/page.tsx
+ * @summary Aquesta és la pàgina d'inici (Landing Page).
+ * No fa cap redirecció. El middleware s'encarrega de tot.
  */
-export default function RootPage() {
-  // Aquesta pàgina no necessita fer res, ja que el middleware actua abans.
-  return null;
+import { LandingClient } from './_components/LandingClient';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Ribotflow - El Futur de la Gestió Empresarial',
+  description: 'Unifica el teu CRM, vendes i comunicacions.',
+};
+
+export default function LandingPage() {
+  return <LandingClient />;
 }

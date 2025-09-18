@@ -82,4 +82,6 @@ export type Invoice = {
   total: number;
   contact_id: string;
   contacts?: { nom: string | null; } | null;
+  due_date: string; // ✅ Ha de ser obligatori
+
 };

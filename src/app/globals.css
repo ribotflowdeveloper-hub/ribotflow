@@ -13,28 +13,46 @@
      Aquestes variables són compatibles amb el sistema de theming de shadcn/ui.
      Estan definides en format HSL (Hue, Saturation, Lightness) sense les unitats,
      perquè Tailwind/shadcn pugui aplicar opacitat dinàmicament (ex: bg-primary/50). */
-  :root {
-    --background: 0 0% 98%;
-    --foreground: 230 15% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 230 15% 10%;
-    --popover: 0 0% 97%;
-    --popover-foreground: 230 15% 15%;
-    --primary: 262 83% 58%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 230 25% 90%;
-    --secondary-foreground: 230 15% 20%;
-    --muted: 230 15% 88%;
-    --muted-foreground: 230 10% 35%;
-    --accent: 262 70% 75%;
-    --accent-foreground: 262 70% 25%;
-    --destructive: 0 84.2% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 230 15% 75%;
-    --input: 230 15% 85%;
-    --ring: 262 83% 58%;
-    --radius: 0.75rem;
-  }
+     :root {
+      /* Fons: Un gris molt clar en lloc de blanc pur (menys brillant) */
+      --background: 220 20% 97%;
+      /* Text principal: Un gris molt fosc, gairebé negre, per a un millor contrast */
+      --foreground: 220 15% 15%;
+      
+      /* Targetes: Blanques, però el fons general apagat fa que no siguin tan cridaneres */
+      --card: 0 0% 100%;
+      --card-foreground: 220 15% 15%;
+      
+      /* Popovers: Un gris lleugerament més fosc que el fons */
+      --popover: 220 20% 95%;
+      --popover-foreground: 220 15% 15%;
+      
+      /* Colors d'accentuació (els mantenim vibrants) */
+      --primary: 262 83% 58%;
+      --primary-foreground: 0 0% 100%;
+      
+      /* Secundari: Grisos més definits per a botons i fons */
+      --secondary: 220 15% 90%;
+      --secondary-foreground: 220 15% 20%;
+      
+      /* Silenciat (Muted): Tons de gris per a textos menys importants */
+      --muted: 220 15% 92%;
+      --muted-foreground: 220 10% 45%;
+      
+      /* Colors d'èmfasi */
+      --accent: 262 80% 95%;
+      --accent-foreground: 262 83% 50%;
+      
+      /* Destructiu (vermell per a eliminacions) */
+      --destructive: 0 84.2% 50%;
+      --destructive-foreground: 0 0% 100%;
+  
+      /* Vores i camps d'entrada */
+      --border: 220 15% 88%;
+      --input: 220 15% 88%;
+      --ring: 262 83% 58%;
+      --radius: 0.75rem;
+    }
 
   /* La classe '.dark' s'aplica a l'etiqueta <html> quan el tema fosc està actiu.
   Aquí sobreescrivim les mateixes variables CSS amb els seus valors per al tema fosc. */
@@ -85,7 +103,20 @@
 /* === EFECTES I ESTILS PERSONALITZATS === */
 /* Aquestes són classes personalitzades que pots utilitzar a qualsevol lloc de l'aplicació. */
 
-/* Efecte de vidre translúcid (Glassmorphism). */
+/* === EFECTES I ESTILS PERSONALITZATS === */
+@layer components {
+  /* ✅ EFECTE DE VIDRE (GLASSMORPHISM) ADAPTAT PER AL TEMA CLAR */
+  .glass-effect {
+    /* Tema clar per defecte */
+    @apply backdrop-blur-xl border border-black/10 rounded-xl bg-white/50;
+  }
+  .dark .glass-effect {
+    /* Tema fosc */
+    @apply bg-white/5 border-white/10;
+  }
+}
+
+  /* Efecte de vidre translúcid (Glassmorphism). */
 /* === GLASS & GRADIENTS === */
 .glass-effect {
   @apply backdrop-blur-xl border border-black/10 rounded-xl bg-white/5;
@@ -152,7 +183,37 @@
   @apply bg-yellow-500/10 text-yellow-400 border border-yellow-400/30;
 }
 
+/* Animació per als títols amb degradat */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
+.animate-gradient-shift {
+  background-size: 200% auto;
+  animation: gradient-shift 6s ease infinite;
+}
+.animate-gradient-slow {
+  background-size: 400% 400%;
+  animation: gradient-shift 8s ease infinite;
+}
+
+/* Classe per a activar les funcionalitats en fer scroll */
+.feature-block.opacity-100 {
+  opacity: 1;
+}
+
+/* Popup del mapa fosc (si el fas servir en altres llocs) */
+.mapboxgl-popup-content {
+  background-color: #2d3748;
+  color: #edf2f7;
+  border-radius: 8px;
+  padding: 10px 15px;
+}
+.mapboxgl-popup-close-button {
+  color: #edf2f7;
+}
 
 /* === EFECTES ANIMATS === */
 /* === EFECTES ANIMATS === */
