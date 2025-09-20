@@ -85,6 +85,8 @@ export function DashboardClient({ initialData, children }: {
             <Radar 
               attentionContacts={initialData.attentionContacts} 
               overdueInvoices={initialData.overdueInvoices} 
+              notifications={initialData.notifications}
+
             />
             {/* El component Oracle d'IA es passa com a 'children' des del servidor per a streaming. */}
             {children}

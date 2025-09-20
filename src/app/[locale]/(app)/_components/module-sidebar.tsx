@@ -27,7 +27,8 @@ export function ModuleSidebar({ module, onClose, onSubItemClick }: {
     if (!module || !module.children) return null;
 
     return (
-        <div className="w-64 h-full glass-effect ...">
+         // 'hidden lg:flex' oculta el submenú en móvil/tablet
+        <div className="hidden lg:flex w-64 h-full glass-effect border-r border-border flex-col p-4 flex-shrink-0">
             <div className="flex items-center justify-between mb-6">
 
                 <h2 className="text-lg font-bold pl-2">{t(module.labelKey as string)}</h2>

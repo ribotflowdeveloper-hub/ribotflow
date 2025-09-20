@@ -127,7 +127,6 @@ export function OnboardingClient({ initialFullName }: { initialFullName: string 
         
         toast.success(t('toastSuccessTitle'), { description: t('toastSuccessDescription') });
         router.refresh();
-        router.push('/dashboard');
       
       } catch (error) {
         toast.error(t('toastErrorTitle'), { description: (error as Error).message });

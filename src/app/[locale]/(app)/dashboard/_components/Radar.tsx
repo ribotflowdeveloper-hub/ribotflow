@@ -6,19 +6,22 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { FileWarning, MessageSquare } from 'lucide-react';
-import type { Invoice, Contact } from '@/types/crm';
+import { FileWarning, MessageSquare , Link2Off} from 'lucide-react';
+import type { Invoice, Contact , Notification } from '@/types/crm';
 import { ActivityItem } from './ActivityItem';
 
 interface RadarProps {
   attentionContacts: Contact[];
   overdueInvoices: Invoice[];
+  notifications: Notification[];
+
 }
 
-export function Radar({ attentionContacts, overdueInvoices }: RadarProps) {
+export function Radar({ attentionContacts, overdueInvoices, notifications }: RadarProps) {
   const t = useTranslations('DashboardClient');
-  
-  const hasItems = attentionContacts.length > 0 || overdueInvoices.length > 0;
+    // Actualitzem la comprovació per a incloure les noves notificacions.
+
+  const hasItems = attentionContacts.length > 0 || overdueInvoices.length > 0 || notifications.length > 0;
 
   return (
     // ✅ CORRECCIÓ: Usem 'bg-card' que s'adapta al tema.
@@ -29,6 +32,17 @@ export function Radar({ attentionContacts, overdueInvoices }: RadarProps) {
           <p className="text-sm text-muted-foreground">{t('allInOrder')}</p>
         ) : (
           <>
+          {/* ✅ NOU: Renderitzem les notificacions d'integracions caducades */}
+          {notifications.map(notif => (
+              <ActivityItem 
+                key={notif.id} 
+                href="/settings/integrations" 
+                icon={Link2Off} 
+                tone={{bg: 'bg-amber-500/10', text: 'text-amber-500'}} 
+                title={notif.message} 
+                meta={t('actionRequired')} // Podries afegir una traducció per a "Acció requerida"
+              />
+            ))}
             {overdueInvoices.map(inv => (
               <ActivityItem 
                 key={inv.id} 

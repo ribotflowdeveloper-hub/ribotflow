@@ -4,7 +4,7 @@
  */
 
 // Importem tipus d'altres mòduls a través del fitxer 'index.ts' per evitar errors de dependència circular.
-import type { Activity, Quote, Opportunity, Invoice, Task } from './index';
+import type { Activity, Quote, Opportunity, Invoice, Task , Notification } from './index';
 
 // --- MAPA I TIPUS D'ESTAT DE CONTACTE ---
 
@@ -105,4 +105,5 @@ export interface DashboardInitialData {
   contacts: Contact[];
   overdueInvoices: Invoice[];
   attentionContacts: Contact[];
+  notifications: Notification[]; // ✅ Afegim el nou camp de notificacions
 }

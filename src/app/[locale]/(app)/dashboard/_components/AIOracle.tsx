@@ -1,47 +1,55 @@
-import { createClient } from '@/lib/supabase/server'
-import { cookies } from 'next/headers'
-import { Button } from '@/components/ui/button'
-
 /**
- * @summary Component de servidor aïllat que carrega i mostra les dades de la IA.
+ * @file AIOracle.tsx
+ * @summary Component de servidor aïllat que carrega i mostra les dades de la IA,
+ * ara amb disseny adaptable i traduccions.
  */
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { Button } from '@/components/ui/button';
+import { getTranslations } from 'next-intl/server'; // ✅ Importem la funció de traducció del servidor
+
 export async function AIOracle() {
+  // ✅ Obtenim les traduccions per a aquest component
+  const t = await getTranslations('DashboardClient.aiOracle');
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
 
   try {
     const { data: aiInsights, error } = await supabase.functions.invoke('generate-ai-summary');
 
-    if (error) throw error; // L'error serà capturat per un Error Boundary
+    if (error) throw error;
 
-    const summary = aiInsights?.summary || 'No s’ha pogut carregar el resum.';
-    const suggestion = aiInsights?.suggestion || 'Intenta-ho de nou més tard.';
+    const summary = aiInsights?.summary || t('noSummary');
+    const suggestion = aiInsights?.suggestion || t('noSuggestion');
 
     return (
-      <div className="rounded-2xl p-6 ring-1 ring-white/10 bg-gradient-to-br from-white/10 to-white/5">
-        <h2 className="text-xl font-bold text-white mb-3">Oracle d’IA</h2>
+      // ✅ CORRECCIÓ: Usem 'bg-card' i 'ring-border' per adaptar-se al tema.
+      <div className="rounded-2xl p-6 ring-1 ring-border bg-card">
+        <h2 className="text-xl font-bold text-foreground mb-3">{t('title')}</h2>
         <div className="space-y-3">
-          <div className="p-3 rounded-lg bg-white/5 ring-1 ring-white/10">
-            <p className="text-sm font-semibold text-white/90 mb-1">Resum</p>
-            <p className="text-sm text-white/80">{summary}</p>
+          {/* ✅ CORRECCIÓ: Usem 'bg-muted' i colors de text semàntics. */}
+          <div className="p-3 rounded-lg bg-muted ring-1 ring-border">
+            <p className="text-sm font-semibold text-foreground mb-1">{t('summary')}</p>
+            <p className="text-sm text-muted-foreground">{summary}</p>
           </div>
-          <div className="p-3 rounded-lg bg-white/5 ring-1 ring-white/10">
-            <p className="text-sm font-semibold text-white/90 mb-1">Suggeriment</p>
-            <p className="text-sm text-white/80">{suggestion}</p>
+          <div className="p-3 rounded-lg bg-muted ring-1 ring-border">
+            <p className="text-sm font-semibold text-foreground mb-1">{t('suggestion')}</p>
+            <p className="text-sm text-muted-foreground">{suggestion}</p>
           </div>
-          <Button variant="outline" className="w-full">Parlar amb l’assistent</Button>
+          <Button variant="outline" className="w-full">{t('button')}</Button>
         </div>
       </div>
     );
   } catch (error) {
     console.error("Error al invocar la funció de IA:", error);
-    const errorMessage = "No s'ha pogut contactar amb l'Oracle de IA.";
+    
     return (
-      <div className="rounded-2xl p-6 ring-1 ring-red-500/30 bg-gradient-to-br from-red-900/20 to-red-800/10">
-        <h2 className="text-xl font-bold text-white mb-3">Oracle d’IA</h2>
-        <div className="p-3 rounded-lg bg-red-500/10">
-          <p className="text-sm font-semibold text-red-300 mb-1">Error</p>
-          <p className="text-sm text-red-400">{errorMessage}</p>
+      // ✅ CORRECCIÓ: Usem colors de 'destructive' per a l'estat d'error.
+      <div className="rounded-2xl p-6 ring-1 ring-destructive/30 bg-destructive/10">
+        <h2 className="text-xl font-bold text-destructive-foreground mb-3">{t('title')}</h2>
+        <div className="p-3 rounded-lg bg-destructive/10">
+          <p className="text-sm font-semibold text-destructive-foreground mb-1">{t('errorTitle')}</p>
+          <p className="text-sm text-destructive-foreground/80">{t('loadError')}</p>
         </div>
       </div>
     );

@@ -67,19 +67,28 @@ export function ContactsClient({ initialContacts, totalPages, currentPage }: {
 
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
-            <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-6 flex-shrink-0">
+            {/* ✅ CAPÇALERA AMB DISSENY ADAPTABLE */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 flex-shrink-0">
                 <h1 className="text-3xl font-bold">{t('title')}</h1>
-                <div className="flex items-center gap-2">
-                    <div className="relative w-full md:w-auto">
+                <div className="flex w-full sm:w-auto items-center gap-2">
+                    {/* El cercador ara ocupa tot l'ample disponible en mòbil */}
+                    <div className="relative flex-grow">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input placeholder="Cerca..." className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
+                    {/* Canviadors de vista */}
                     <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
                         <Button variant={viewMode === 'cards' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('cards')}><LayoutGrid className="w-4 h-4" /></Button>
                         <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="w-4 h-4" /></Button>
                     </div>
+                    {/* Botó de "Nou Contacte" més compacte en mòbil */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" />{t('newContactButton')}</Button></DialogTrigger>
+                        <DialogTrigger asChild>
+                            <Button className="flex-shrink-0">
+                                <Plus className="w-4 h-4 md:mr-2" />
+                                <span className="hidden md:inline">{t('newContactButton')}</span>
+                            </Button>
+                        </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
                                 <DialogTitle>{t('dialogTitle')}</DialogTitle>
@@ -135,15 +144,23 @@ export function ContactsClient({ initialContacts, totalPages, currentPage }: {
                     </motion.div>
                 </AnimatePresence>
             </div>
-            {/* ✅ NOU: Afegeix els botons de paginació al final */}
-            {totalPages > 1 && (
-                <div className="flex justify-center items-center gap-4 mt-8">
-                    <Button asChild disabled={currentPage <= 1}>
-                        <Link href={`/crm/contactes?page=${currentPage - 1}`}>Anterior</Link>
+             {/* ✅ PAGINACIÓ AMB DISSENY ADAPTABLE */}
+             {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 md:gap-4 mt-8 flex-shrink-0">
+                    <Button asChild disabled={currentPage <= 1} size="sm" className="px-3">
+                        <Link href={`/crm/contactes?page=${currentPage - 1}`}>
+                            <span className="hidden md:inline">{t('pagination.previous')}</span>
+                            <span className="md:hidden">←</span>
+                        </Link>
                     </Button>
-                    <span>Pàgina {currentPage} de {totalPages}</span>
-                    <Button asChild disabled={currentPage >= totalPages}>
-                        <Link href={`/crm/contactes?page=${currentPage + 1}`}>Següent</Link>
+                    <span className="text-sm text-muted-foreground">
+                        {t('pagination.page', { currentPage, totalPages })}
+                    </span>
+                    <Button asChild disabled={currentPage >= totalPages} size="sm" className="px-3">
+                        <Link href={`/crm/contactes?page=${currentPage + 1}`}>
+                             <span className="hidden md:inline">{t('pagination.next')}</span>
+                             <span className="md:hidden">→</span>
+                        </Link>
                     </Button>
                 </div>
             )}

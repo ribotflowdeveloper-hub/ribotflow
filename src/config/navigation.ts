@@ -14,7 +14,9 @@ import {
   Settings,
   Users,
   Workflow,
-  Activity
+  Activity,
+  CalendarDays, // ✅ Importem la nova icona
+
 } from 'lucide-react';
 
 
@@ -68,6 +70,8 @@ export const navModules: NavItem[] = [
       { id: 'inbox', labelKey: 'inbox', icon: Headphones, path: '/comunicacio/inbox', isSingle: true },
       { id: 'templates', labelKey: 'templates', icon: LayoutTemplate, path: '/comunicacio/templates', isSingle: true },
       { id: 'marketing', labelKey: 'marketing', icon: Mail, path: '/comunicacio/marketing', isSingle: true },
+      { id: 'planificador', labelKey: 'planner', icon: CalendarDays, path: '/comunicacio/planificador', isSingle: true },
+
     ]
   },
   {

@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { DashboardClient } from '../dashboard-client'
 // ✅ Assegurem que importem tots els tipus necessaris des del lloc correcte
-import type { Contact, Invoice, Task } from '@/types/crm';
+import type { Contact, Invoice, Task, Notification } from '@/types/crm';
 import React from 'react';
 
 const calculatePercentageChange = (current: number, previous: number): string => {
@@ -28,13 +28,15 @@ export async function DashboardData({ children }: { children: React.ReactNode })
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // ✅ CORRECCIÓ: Canviem la consulta de 'invoices' per demanar totes les dades.
-  const [statsRes, tasksRes, overdueInvoicesRes, contactsRes] = await Promise.all([
+  const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes] = await Promise.all([
     supabase.rpc('get_dashboard_stats'),
     supabase.from('tasks').select('*').order('is_completed, created_at'),
     // ✅ CORRECCIÓ: Demanem tots els camps de les factures
     supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
     // ✅ CORRECCIÓ: Demanem tots els camps dels contactes
     supabase.from('contacts').select('*').order('created_at', { ascending: false }),
+    supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
+
   ]);
 
   const statsData = statsRes.data?.[0] || {};
@@ -66,6 +68,8 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     attentionContacts: contactsData
       .filter((c: Contact) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
       .slice(0, 5),
+    notifications: (notificationsRes.data as Notification[]) || [],
+
   };
 
   // ✅ CORRECCIÓ: Passem 'children' directament al DashboardClient

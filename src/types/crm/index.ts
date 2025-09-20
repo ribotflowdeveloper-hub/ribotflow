@@ -11,4 +11,4 @@ export * from './contacts';
 export * from './quotes';
 export * from '../comunicacio/inbox';
 export * from './general';
-
+export * from './notification';

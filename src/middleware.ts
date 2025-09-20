@@ -32,34 +32,42 @@ export async function middleware(request: NextRequest) {
   const isRootPath = pathname === '/';
 
 
-  // Si la ruta és la landing page PÚBLICA (/) i no hi ha usuari, el deixem passar
-  if (!user && isRootPath) {
-    return response;
-  }
-  
-  if (!user && !isPublicPath) {
+ // CAS 1: Usuari NO connectat
+ if (!user) {
+  // Si la ruta NO és pública i NO és la pàgina d'inici, el redirigim al login
+  if (!isPublicPath && !isRootPath) {
     return NextResponse.redirect(new URL(`/${localePrefix}/login`, request.url));
   }
-  
-  if (user) {
-    const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
-    const onboardingCompleted = profile?.onboarding_completed || false;
-    
-    const allowedPathsForNewUser = ['/onboarding', '/settings'];
-    const isTryingToOnboard = allowedPathsForNewUser.some(p => pathname.startsWith(p));
-
-    if (!onboardingCompleted && !isTryingToOnboard) {
-      return NextResponse.redirect(new URL(`/${localePrefix}/onboarding`, request.url));
-    }
-    
-    if (onboardingCompleted && (pathname.startsWith('/login') || pathname.startsWith('/onboarding') || isRootPath)) {
-        return NextResponse.redirect(new URL(`/${localePrefix}/dashboard`, request.url));
-    }
-  }
-
   return response;
 }
 
+// CAS 2: Usuari SÍ connectat
+if (user) {
+  const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
+  const onboardingCompleted = profile?.onboarding_completed || false;
+  
+  const allowedPathsForNewUser = ['/onboarding', '/settings'];
+  const isTryingToOnboard = allowedPathsForNewUser.some(p => pathname.startsWith(p));
+
+  // CAS 2.1: L'usuari és NOU (onboarding incomplet)
+  if (!onboardingCompleted) {
+    // Si no està intentant anar a l'onboarding, el forcem a anar-hi
+    if (!isTryingToOnboard) {
+      return NextResponse.redirect(new URL(`/${localePrefix}/onboarding`, request.url));
+    }
+  } 
+  // CAS 2.2: L'usuari ja EXISTEIX (onboarding complet)
+  else {
+    // Si intenta anar a pàgines que ja no li pertoquen, el redirigim al dashboard
+    if (pathname.startsWith('/login') || pathname.startsWith('/onboarding') || isRootPath) {
+      return NextResponse.redirect(new URL(`/${localePrefix}/dashboard`, request.url));
+    }
+  }
+}
+
+return response;
+}
+
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)'],
+matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)'],
 };
