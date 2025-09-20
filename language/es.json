@@ -37,7 +37,9 @@
     "signOutConfirmTitle": "¿Estás seguro de que quieres cerrar la sesión?",
     "signOutConfirmDescription": "Tendrás que volver a iniciar sesión para acceder a tu cuenta.",
     "cancel": "Cancelar",
-    "confirmSignOut": "Sí, cerrar sesión"
+    "confirmSignOut": "Sí, cerrar sesión",
+    "menuTitle": "Menú",
+    "planner": "Planificador"
   },
   "InboxPage": {
     "composeDialogTitle": "Escribir un Correo",
@@ -200,7 +202,20 @@
     "toastSuccessTitle": "¡Éxito!",
     "toastSuccessDescription": "El contacto se ha guardado correctamente.",
     "noCompany": "Sin empresa",
-    "notSpecified": "No especificado"
+    "notSpecified": "No especificado",
+    "table": {
+      "name": "Nombre",
+      "status": "Estado",
+      "email": "Email",
+      "phone": "Teléfono",
+      "company": "Empresa",
+      "viewDetails": "Ver detalles"
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page": "Página {currentPage} de {totalPages}"
+    }
   },
   "ContactDetailPage": {
     "backToContacts": "Volver a Contactos",
@@ -632,6 +647,7 @@
     "noInteraction7Days": "Sin interacciones en +7 días",
     "taskCreatedToast": "¡Tarea creada!",
     "taskUpdateErrorToast": "No se ha podido actualizar la tarea.",
+    "actionRequired": "Acción requerida",
     "addTaskDialog": {
       "title": "Crear Nueva Tarea",
       "description": "Agrega una nueva tarea a tu día a día. Puedes asignarla a un contacto si lo deseas.",
@@ -652,6 +668,16 @@
         "successTitle": "¡Éxito!",
         "successDescription": "La tarea se ha creado correctamente."
       }
+    },
+    "aiOracle": {
+      "title": "Oráculo de IA",
+      "summary": "Resumen",
+      "suggestion": "Sugerencia",
+      "button": "Hablar con el asistente",
+      "noSummary": "No se ha podido cargar el resumen.",
+      "noSuggestion": "Inténtalo de nuevo más tarde.",
+      "errorTitle": "Error",
+      "loadError": "No se ha podido contactar con el Oráculo de IA."
     }
   },
   "Expenses": {
@@ -915,7 +941,22 @@
       "connectButton": "Conectar",
       "disconnectButton": "Desconectar",
       "pageTitle": "Integraciones",
-      "pageDescription": "Conecta tus herramientas favoritas."
+      "pageDescription": "Conecta tus herramientas favoritas.",
+      "instagramTitle": "Instagram",
+      "instagramDescription": "Conecta tu cuenta de Instagram para publicar automáticamente y gestionar mensajes.",
+      "linkedinTitle": "LinkedIn",
+      "linkedinDescription": "Conecta tu perfil o página de empresa de LinkedIn para programar publicaciones y gestionar interacciones.",
+      "facebookTitle": "Facebook",
+      "facebookDescription": "Conecta tu cuenta o página de Facebook para publicar contenido y gestionar comentarios.",
+      "success": "¡Éxito!",
+      "error": "Error",
+      "toast": {
+        "success": "Éxito",
+        "error": "Error",
+        "connectedSuccess": "Cuenta vinculada correctamente.",
+        "identityExists": "Esta cuenta social ya está vinculada a otro usuario.",
+        "genericError": "Ha ocurrido un error durante la conexión."
+      }
     },
     "SettingsProfile": {
       "toastError": "Error",
@@ -1121,7 +1162,7 @@
       "streetLabel": "Calle",
       "cityLabel": "Ciudad",
       "postcodeLabel": "Código Postal",
-      "regionLabel":"Provincia"
+      "regionLabel": "Provincia"
     },
     "step3": {
       "title": "Últimos detalles",

@@ -4,116 +4,148 @@
  */
 "use client";
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useTransition, useEffect, Key } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
-import { connectGoogleAction, disconnectGoogleAction, connectMicrosoftAction, disconnectMicrosoftAction } from '../actions';
+import { 
+  connectGoogleAction, disconnectGoogleAction, 
+  connectMicrosoftAction, disconnectMicrosoftAction,
+  connectLinkedInAction, disconnectLinkedInAction 
+} from '../actions';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import instagram from '@/../public/instagram.jpeg';
+import facebook from '@/../public/facebook.jpeg';
+import linkedin from '@/../public/linkedin.png';
 
 interface IntegrationsClientProps {
   initialConnectionStatuses: {
     google: boolean;
     microsoft: boolean;
+    linkedin: boolean;
+    Facebook: boolean;
+    Instagram: boolean;
   };
 }
+
+// ✅ REFACTORITZACIÓ: Creem un tipus per als proveïdors per a més seguretat.
+type Provider = 'google' | 'microsoft' | 'linkedin';
 
 export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsClientProps) {
   const t = useTranslations('SettingsPage.integrations');
   const router = useRouter();
-  
+  const searchParams = useSearchParams();
+
   const [connections, setConnections] = useState(initialConnectionStatuses);
-  const [isPendingGoogle, startGoogleTransition] = useTransition();
-  const [isPendingMicrosoft, startMicrosoftTransition] = useTransition();
+  
+  // ✅ REFACTORITZACIÓ: Utilitzem un sol 'useTransition' per a totes les accions.
+  const [isPending, startTransition] = useTransition();
 
-  /**
-   * @summary Gestor per iniciar el flux de connexió (vinculació) amb un proveïdor.
-   */
-  const handleConnect = (provider: 'google' | 'microsoft') => {
-    if (provider === 'google') {
-      // 'startTransition' embolcalla l'acció asíncrona. Mentre s'executa, 'isPendingGoogle' serà 'true'.
-      startGoogleTransition(async () => { await connectGoogleAction(); });
-    } else {
-      startMicrosoftTransition(async () => { await connectMicrosoftAction(); });
+  const width = 34;
+  const height = 34;
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    const success = searchParams.get('success');
+
+    if (error) {
+      toast.error(t('toast.error'), { description: t('toast.genericError') });
     }
+
+    if (success === 'true') {
+      toast.success(t('toast.success'), { description: t('toast.connectedSuccess') });
+      router.refresh();
+    }
+
+    if (error || success) {
+      router.replace('/settings/integrations', { scroll: false });
+    }
+  }, [searchParams, router, t]);
+
+  const handleConnect = (provider: Provider) => {
+    startTransition(() => {
+      if (provider === 'google') connectGoogleAction();
+      if (provider === 'microsoft') connectMicrosoftAction();
+      if (provider === 'linkedin') connectLinkedInAction();
+    });
   };
 
-  /**
-   * @summary Gestor per desconnectar un proveïdor.
-   */
-  const handleDisconnect = (provider: 'google' | 'microsoft') => {
-    if (provider === 'google') {
-      startGoogleTransition(async () => {
-        const result = await disconnectGoogleAction();
-        if (result.success) {
-          toast.success(t('success'), { description: result.message });
-          // Actualitzem l'estat de la UI immediatament.
-          setConnections(prev => ({ ...prev, google: false }));
-          router.refresh(); // Refresquem les dades del servidor.
-        } else {
-          toast.error(t('error'), { description: result.message });
-        }
-      });
-    } else {
-      startMicrosoftTransition(async () => {
-        const result = await disconnectMicrosoftAction();
-        if (result.success) {
-          toast.success("Èxit!", { description: result.message });
-          setConnections(prev => ({ ...prev, microsoft: false }));
-          router.refresh();
-        } else {
-          toast.error("Error", { description: result.message });
-        }
-      });
-    }
+  const handleDisconnect = (provider: Provider) => {
+    startTransition(async () => {
+      const action = provider === 'google' ? disconnectGoogleAction : 
+                     provider === 'microsoft' ? disconnectMicrosoftAction : 
+                     disconnectLinkedInAction;
+      
+      const result = await action();
+      if (result.success) {
+        toast.success(t('success'), { description: result.message });
+        setConnections(prev => ({ ...prev, [provider]: false }));
+      } else {
+        toast.error(t('error'), { description: result.message });
+      }
+    });
   };
+  
+  // ✅ REFACTORITZACIÓ: Definim les dades de les integracions en un array per a renderitzar-les en un bucle.
+  // Això fa que el codi sigui molt més net i fàcil d'ampliar.
+  const integrationList = [
+    { name: 'google', title: t('googleTitle'), description: t('googleDescription'), icon: "https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" },
+    { name: 'microsoft', title: t('microsoftTitle'), description: t('microsoftDescription'), icon: "https://img.icons8.com/?size=100&id=117562&format=png&color=000000" },
+    { name: 'linkedin', title: t('linkedinTitle'), description: t('linkedinDescription'), icon: linkedin },
+  ] as const; // 'as const' ajuda a TypeScript a entendre millor els tipus.
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="glass-card p-8 space-y-4">
         <h2 className="text-xl font-semibold mb-2">{t('title')}</h2>
+
+        {integrationList.map((item) => (
+          <div key={item.name} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-4">
+              <Image src={item.icon} width={width} height={height} alt={`${item.name} logo`} />
+              <div>
+                <h3 className="font-semibold">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+              </div>
+            </div>
+            {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : connections[item.name] ? (
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-2 text-green-500"><CheckCircle className="w-5 h-5" /> {t('statusConnected')}</span>
+                <Button variant="destructive" size="sm" onClick={() => handleDisconnect(item.name)}><XCircle className="w-4 h-4 mr-2" /> {t('disconnectButton')}</Button>
+              </div>
+            ) : (
+              <Button onClick={() => handleConnect(item.name)}>{t('connectButton')}</Button>
+            )}
+          </div>
+        ))}
         
-        {/* Google / Gmail */}
-        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+        {/* Integracions futures */}
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg opacity-50">
           <div className="flex items-center gap-4">
-            <Image src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" width={24} height={24} alt="Google logo" />
+            <Image src={instagram} width={width} height={height} alt="Instagram logo" />
             <div>
-              <h3 className="font-semibold">{t('googleTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('googleDescription')}</p>
+              <h3 className="font-semibold">{t('instagramTitle')}</h3>
+              <p className="text-sm text-muted-foreground">{t('instagramDescription')}</p>
             </div>
           </div>
-          {isPendingGoogle ? <Loader2 className="w-5 h-5 animate-spin" /> : connections.google ? (
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-2 text-green-500 ..."><CheckCircle className="w-5 h-5" /> {t('statusConnected')}</span>
-              <Button variant="destructive" size="sm" onClick={() => handleDisconnect('google')}><XCircle className="w-4 h-4 mr-2"/> {t('disconnectButton')}</Button>
-            </div>
-          ) : (
-            <Button onClick={() => handleConnect('google')}>{t('connectButton')}</Button>
-          )}
+          <Button disabled>{t('connectButton')}</Button>
         </div>
-        
-        {/* Microsoft / Outlook */}
-        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg opacity-50">
           <div className="flex items-center gap-4">
-            <Image src="https://img.icons8.com/?size=100&id=117562&format=png&color=000000" width={24} height={24} alt="Microsoft logo" />
+            <Image src={facebook} width={width} height={height} alt="Facebook logo" />
             <div>
-              <h3 className="font-semibold">{t('microsoftTitle')}</h3>
-              <p className="text-sm text-muted-foreground">{t('microsoftDescription')}</p>
+              <h3 className="font-semibold">{t('facebookTitle')}</h3>
+              <p className="text-sm text-muted-foreground">{t('facebookDescription')}</p>
             </div>
           </div>
-          {isPendingMicrosoft ? <Loader2 className="w-5 h-5 animate-spin" /> : connections.microsoft ? (
-            <div className="flex items-center gap-4">
-              <span className="flex items-center gap-2 text-green-500 ..."><CheckCircle className="w-5 h-5" /> {t('statusConnected')}</span>
-              <Button variant="destructive" size="sm" onClick={() => handleDisconnect('microsoft')}><XCircle className="w-4 h-4 mr-2"/> {t('disconnectButton')}</Button>
-            </div>
-          ) : (
-            <Button onClick={() => handleConnect('microsoft')}>{t('connectButton')}</Button>
-          )}
+           <Button disabled>{t('connectButton')}</Button>
         </div>
+        
       </div>
     </motion.div>
   );
 }
+

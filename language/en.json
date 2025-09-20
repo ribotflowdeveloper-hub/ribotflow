@@ -37,7 +37,9 @@
     "signOutConfirmTitle": "Are you sure you want to sign out?",
     "signOutConfirmDescription": "You will need to sign in again to access your account.",
     "cancel": "Cancel",
-    "confirmSignOut": "Yes, sign out"
+    "confirmSignOut": "Yes, sign out",
+    "menuTitle": "Menu",
+     "planner": "Planificador"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
@@ -205,7 +207,20 @@
     "toastSuccessTitle": "Success!",
     "toastSuccessDescription": "The contact has been saved successfully.",
     "noCompany": "No company",
-    "notSpecified": "Not specified"
+    "notSpecified": "Not specified",
+    "table": {
+      "name": "Name",
+      "status": "Status",
+      "email": "Email",
+      "phone": "Phone",
+      "company": "Company",
+      "viewDetails": "View details"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {currentPage} of {totalPages}"
+    }
   },
   "ContactDetailPage": {
     "backToContacts": "Back to Contacts",
@@ -637,6 +652,8 @@
     "noInteraction7Days": "No interactions in 7+ days",
     "taskCreatedToast": "Task created!",
     "taskUpdateErrorToast": "Could not update the task.",
+    "actionRequired": "Action required",
+
     "addTaskDialog": {
       "title": "Create New Task",
       "description": "Add a new task to your daily routine. You can assign it to a contact if you wish.",
@@ -657,6 +674,16 @@
         "successTitle": "Success!",
         "successDescription": "The task has been created successfully."
       }
+    },
+    "aiOracle": {
+      "title": "AI Oracle",
+      "summary": "Summary",
+      "suggestion": "Suggestion",
+      "button": "Talk to the assistant",
+      "noSummary": "The summary could not be loaded.",
+      "noSuggestion": "Please try again later.",
+      "errorTitle": "Error",
+      "loadError": "Could not contact the AI Oracle."
     }
   },
   "Expenses": {
@@ -920,7 +947,22 @@
       "connectButton": "Connect",
       "disconnectButton": "Disconnect",
       "pageTitle": "Integrations",
-      "pageDescription": "Connect your favorite tools."
+      "pageDescription": "Connect your favorite tools.",
+      "instagramTitle": "Instagram",
+      "instagramDescription": "Connect your Instagram account to publish automatically and manage messages.",
+      "linkedinTitle": "LinkedIn",
+      "linkedinDescription": "Connect your LinkedIn profile or company page to schedule posts and manage interactions.",
+      "facebookTitle": "Facebook",
+      "facebookDescription": "Connect your Facebook account or page to publish content and manage comments.",
+      "success": "Success!",
+      "error": "Error",
+      "toast": {
+        "success": "Success",
+        "error": "Error",
+        "connectedSuccess": "Account linked successfully.",
+        "identityExists": "This social account is already linked to another user.",
+        "genericError": "An error occurred during the connection."
+      }
     },
     "SettingsProfile": {
       "toastError": "Error",
@@ -1126,7 +1168,7 @@
       "streetLabel": "Street",
       "cityLabel": "City",
       "postcodeLabel": "Postal Code",
-      "regionLabel":"Region"
+      "regionLabel": "Region"
     },
     "step3": {
       "title": "Final details",

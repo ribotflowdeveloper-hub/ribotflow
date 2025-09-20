@@ -1,37 +1,50 @@
-/**
- * @file page.tsx (Integrations)
- * @summary Punt d'entrada de la pàgina d'Integracions, implementant React Suspense.
- */
-import { Suspense } from 'react';
-import { IntegrationsData } from './_components/IntegrationsData';
-import { IntegrationsSkeleton } from './_components/IntegrationsSkeleton';
-import { getTranslations } from 'next-intl/server';
-import type { Metadata } from 'next';
+import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { IntegrationsClient } from "./_components/IntegrationsClient";
+import { getTranslations } from "next-intl/server";
 
-// ✅ CORRECCIÓ DEFINITIVA 1: Definim el tipus de les propietats
-// indicant que 'params' pot arribar com una promesa.
-interface IntegrationsPageProps {
-  params: Promise<{ locale: string }>;
+export async function generateMetadata() {
+  const t = await getTranslations('SettingsPage.integrations');
+  return {
+    title: t('title'),
+  };
 }
 
-/**
- * Funció per generar metadades dinàmiques (el títol de la pàgina).
- */
-export async function generateMetadata(props: IntegrationsPageProps): Promise<Metadata> {
-  // ✅ CORRECCIÓ DEFINITIVA 2: Fem 'await' per resoldre la promesa i obtenir els paràmetres.
-  const { locale } = await props.params;
+// Aquest és el component de servidor que s'executa primer.
+export default async function IntegrationsPage() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
-  const t = await getTranslations({ locale, namespace: 'SettingsPage.nav' });
-  return { title: `${t('integrations')} | Ribot` };
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Valors per defecte si l'usuari no està connectat o no té credencials.
+  const connectionStatuses = {
+    google: false,
+    microsoft: false,
+    linkedin: false,
+    Facebook: false,
+    Instagram: false,
+  };
+
+  if (user) {
+    // ✅ AQUESTA ÉS LA LÒGICA CORRECTA:
+    // Anem a la taula 'user_credentials' a buscar les connexions actives.
+    const { data: credentials } = await supabase
+      .from('user_credentials')
+      .select('provider')
+      .eq('user_id', user.id);
+
+    if (credentials) {
+      // Mirem quins proveïdors ha trobat i actualitzem l'estat.
+      // Aquests noms han de coincidir EXACTAMENT amb els que guardes al callback.
+      connectionStatuses.google = credentials.some(c => c.provider === 'google');
+      connectionStatuses.microsoft = credentials.some(c => c.provider === 'microsoft');
+      connectionStatuses.linkedin = credentials.some(c => c.provider === 'linkedin_oidc');
+    }
+  }
+
+  // Passem aquest objecte al component de client.
+  // Quan fem 'router.refresh()', aquest codi es torna a executar i el client rep l'estat actualitzat.
+  return <IntegrationsClient initialConnectionStatuses={connectionStatuses} />;
 }
 
-/**
- * La pàgina principal d'Integracions.
- */
-export default function IntegrationsPage() {
-  return (
-    <Suspense fallback={<IntegrationsSkeleton />}>
-      <IntegrationsData />
-    </Suspense>
-  );
-}

@@ -37,7 +37,10 @@
     "signOutConfirmTitle": "Estàs segur que vols tancar la sessió?",
     "signOutConfirmDescription": "Hauràs de tornar a iniciar sessió per accedir al teu compte.",
     "cancel": "Cancel·lar",
-    "confirmSignOut": "Sí, tanca la sessió"
+    "confirmSignOut": "Sí, tanca la sessió",
+    "menuTitle": "Menú",
+    "planner": "Planificador"
+
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -205,7 +208,20 @@
     "toastSuccessTitle": "Èxit!",
     "toastSuccessDescription": "El contacte s'ha desat correctament.",
     "noCompany": "Sense empresa",
-    "notSpecified": "No especificat"
+    "notSpecified": "No especificat",
+    "table": {
+      "name": "Nom",
+      "status": "Estat",
+      "email": "Email",
+      "phone": "Telèfon",
+      "company": "Empresa",
+      "viewDetails": "Veure detalls"
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Següent",
+      "page": "Pàgina {currentPage} de {totalPages}"
+    }
   },
   "ContactDetailPage": {
     "backToContacts": "Tornar a Contactes",
@@ -637,6 +653,8 @@
     "noInteraction7Days": "Sense interaccions en +7 dies",
     "taskCreatedToast": "Tasca creada!",
     "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca.",
+    "actionRequired": "Acció requerida",
+
     "addTaskDialog": {
       "title": "Crear Nova Tasca",
       "description": "Afegeix una nova tasca al teu dia a dia. Pots assignar-la a un contacte si vols.",
@@ -657,6 +675,16 @@
         "successTitle": "Èxit!",
         "successDescription": "La tasca s'ha creat correctament."
       }
+    },
+    "aiOracle": {
+      "title": "Oracle d’IA",
+      "summary": "Resum",
+      "suggestion": "Suggeriment",
+      "button": "Parlar amb l’assistent",
+      "noSummary": "No s’ha pogut carregar el resum.",
+      "noSuggestion": "Intenta-ho de nou més tard.",
+      "errorTitle": "Error",
+      "loadError": "No s'ha pogut contactar amb l'Oracle d'IA."
     }
   },
   "Expenses": {
@@ -920,7 +948,23 @@
       "connectButton": "Connectar",
       "disconnectButton": "Desconnectar",
       "pageTitle": "Integracions",
-      "pageDescription": "Connecta les teves eines preferides."
+      "pageDescription": "Connecta les teves eines preferides.",
+      "instagramTitle": "Instagram",
+      "instagramDescription": "Connecta el teu compte d’Instagram per publicar automàticament i gestionar missatges.",
+      "linkedinTitle": "LinkedIn",
+      "linkedinDescription": "Connecta el teu perfil o pàgina d’empresa de LinkedIn per programar publicacions i gestionar interaccions.",
+      "facebookTitle": "Facebook",
+      "facebookDescription": "Connecta el teu compte o pàgina de Facebook per publicar contingut i gestionar els comentaris.",
+      "success": "Èxit!",
+      "error": "Error",
+      "toast": {
+        "success": "Èxit",
+        "error": "Error",
+        "connectedSuccess": "Compte vinculat correctament.",
+        "identityExists": "Aquest compte social ja està vinculat a un altre usuari.",
+        "genericError": "Hi ha hagut un error durant la connexió."
+      }
+      
     },
     "SettingsProfile": {
       "toastError": "Error",
