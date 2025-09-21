@@ -25,7 +25,7 @@ export type InvoiceFormData = {
 
 export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
@@ -70,7 +70,7 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
 
 export async function deleteInvoiceAction(invoiceId: string) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
@@ -106,7 +106,7 @@ type FunctionsError = Error & {
  */
 export async function issueInvoiceAction(draftInvoiceId: string) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };

@@ -10,7 +10,7 @@ import { cookies } from "next/headers";
  */
 export async function addRuleAction(formData: FormData) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData?.user) {
@@ -49,7 +49,7 @@ export async function addRuleAction(formData: FormData) {
  */
 export async function deleteRuleAction(id: string) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData?.user) {

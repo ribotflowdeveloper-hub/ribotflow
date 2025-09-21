@@ -10,7 +10,7 @@ import type { Invoice, Contact } from '../types';
 
 export async function FacturacioData() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null; // El middleware ya debería haber redirigido

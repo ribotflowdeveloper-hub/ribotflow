@@ -22,7 +22,7 @@ serve(async (req) => {
     
     // Creem un client de Supabase utilitzant el token d'autenticació de l'usuari
     // que ve a la capçalera de la petició. Això ens permet verificar qui fa la crida.
-    const supabase = createClient(/* ... */);
+    const supabase = createClient();
     
     // Verifiquem que l'usuari que fa la crida estigui realment autenticat.
     const { data: { user } } = await supabase.auth.getUser();

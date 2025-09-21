@@ -7,7 +7,7 @@ import type { Stage, Contact } from '../page';
 export async function PipelineData() {
   // Aquesta és la part lenta que abans bloquejava tota la pàgina
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

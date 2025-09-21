@@ -8,7 +8,7 @@ import type { Product } from '@/types/crm/products'; // Importem el tipus des de
  */
 export async function ProductsData() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
 

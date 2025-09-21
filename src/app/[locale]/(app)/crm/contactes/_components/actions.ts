@@ -10,7 +10,7 @@ export async function createContactAction(
 ): Promise<{ data: Contact | null; error: { message: string } | null }> {
   
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

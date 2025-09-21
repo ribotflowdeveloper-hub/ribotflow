@@ -12,7 +12,7 @@ export async function AIOracle() {
   // ✅ Obtenim les traduccions per a aquest component
   const t = await getTranslations('DashboardClient.aiOracle');
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   try {
     const { data: aiInsights, error } = await supabase.functions.invoke('generate-ai-summary');

@@ -5,7 +5,7 @@ import { CrmData as CrmDataType } from '../page';
 
 export async function CrmData() {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
 
     const { data, error } = await supabase.rpc('get_crm_dashboard_data');
     

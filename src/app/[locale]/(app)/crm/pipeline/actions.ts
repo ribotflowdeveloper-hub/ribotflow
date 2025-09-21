@@ -18,7 +18,7 @@ import { cookies } from "next/headers";
  */
 export async function saveOpportunityAction(formData: FormData) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
   
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: { message: "No autenticat." } };
@@ -64,7 +64,7 @@ export async function saveOpportunityAction(formData: FormData) {
     newStage: string
   ) {
     const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
   
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: { message: "No autenticat." } };

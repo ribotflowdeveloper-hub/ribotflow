@@ -20,7 +20,7 @@ export default async function PublicQuotePage(props: PublicQuotePageProps) {
   // Utilitzem un client de Supabase de servidor, ja que no hi ha una sessió d'usuari
   // pròpia de l'aplicació (és una pàgina pública).
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   // Resolem la promesa per obtenir els paràmetres de la URL.
   const params = await props.params;

@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 export async function connectGoogleAction() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect('/login');
@@ -39,7 +39,7 @@ export async function connectGoogleAction() {
 
 export async function connectMicrosoftAction() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect('/login');
@@ -63,7 +63,7 @@ export async function connectMicrosoftAction() {
 // Acció per iniciar OAuth amb LinkedIn
 export async function connectLinkedInAction() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect('/login');
@@ -87,7 +87,7 @@ export async function connectLinkedInAction() {
 // ✅ CORRECCIÓ: La funció de Facebook ara segueix el mateix patró que les altres.
 export async function connectFacebookAction() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return redirect('/login');
@@ -121,7 +121,7 @@ export async function connectFacebookAction() {
 
 async function handleDisconnect(provider: 'google' | 'azure' | 'linkedin_oidc' | 'facebook') {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "Usuari no trobat." };
 

@@ -6,7 +6,7 @@ import type { SocialPost } from "@/types/comunicacio/SocialPost";
 
 // Aquest és el component de servidor que s'executa quan l'usuari visita la pàgina.
 export default async function SocialPlannerPage() {
-  const supabase = createClient(cookies());
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   
   const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30)).toISOString();

@@ -45,7 +45,7 @@ serve(async (req) => {
       throw new Error("Falten paràmetres: 'contactId', 'subject', o 'htmlBody'.");
     }
 
-    const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const supabaseAdmin = createClient();
 
     // PAS 1: Obtenir l'email del contacte destinatari.
     const { data: contact, error: contactError } = await supabaseAdmin.from('contacts').select('email, nom').eq('id', contactId).single();

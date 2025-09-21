@@ -12,7 +12,7 @@ import type { PublicProfile } from '../types';
 export async function NetworkData() {
   const t = await getTranslations('NetworkPage');
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data, error } = await supabase.rpc('get_public_profiles');
   const profiles = (data as PublicProfile[]) || [];

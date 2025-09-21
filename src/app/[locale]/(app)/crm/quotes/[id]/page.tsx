@@ -23,7 +23,7 @@ export async function generateMetadata(props: QuoteEditorPageProps): Promise<Met
   }
 
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: quote } = await supabase.from('quotes').select('quote_number').eq('id', id).single();
   
   const title = quote ? `Editar Pressupost #${quote.quote_number}` : 'Editar Pressupost';

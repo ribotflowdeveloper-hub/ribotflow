@@ -9,7 +9,7 @@ import { TemplatesClient } from './templates-client';
 
 export async function TemplatesData() {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   
   const { data: templates, error } = await supabase
     .from('email_templates')

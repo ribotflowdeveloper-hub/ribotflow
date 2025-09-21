@@ -1,32 +1,34 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
-import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies'
 
 /**
- * Crea un client de Supabase per al servidor.
- * Aquesta versió és síncrona i accepta el 'cookieStore' ja resolt com a paràmetre.
+ * Aquesta és l'única funció que necessites per crear un client de Supabase
+ * a qualsevol lloc del servidor (Server Components, Route Handlers, Server Actions).
  */
-export const createClient = (cookieStore: ReadonlyRequestCookies) => {
+export function createClient() {
+  const cookieStore = cookies()
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
+        async get(name: string) {
+          return (await cookieStore).get(name)?.value
         },
-        set(name: string, value: string, options: CookieOptions) {
+        async set(name: string, value: string, options: CookieOptions) {
           try {
-            cookieStore.set({ name, value, ...options })
-          } catch (_error) {
-            // Ignorem errors si s'intenta escriure una cookie des d'un Server Component.
+            (await cookieStore).set({ name, value, ...options })
+          } catch (error) {
+            // Aquest error pot passar si s'intenta escriure una cookie des d'un Server Component.
+            // Es pot ignorar si tens un middleware que refresca les sessions.
           }
         },
-        remove(name: string, options: CookieOptions) {
+        async remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.set({ name, value: '', ...options })
-          } catch (_error) {
-            // Ignorem errors.
+            (await cookieStore).set({ name, value: '', ...options })
+          } catch (error) {
+            // El mateix que a dalt.
           }
         },
       },

@@ -8,7 +8,7 @@ const ITEMS_PER_PAGE = 50;
 // Aquest component ja està correcte, no necessita canvis.
 export async function ContactsData({ page }: { page: string }) {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   
   const currentPage = Number(page) || 1;
   const from = (currentPage - 1) * ITEMS_PER_PAGE;

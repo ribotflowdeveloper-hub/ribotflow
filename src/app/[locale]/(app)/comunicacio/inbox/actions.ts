@@ -5,7 +5,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import type { Ticket } from "@/types/comunicacio/inbox";
 import type { TicketFilter } from "@/types/comunicacio/inbox";
 
@@ -29,8 +28,7 @@ interface Contact {
  * Sempre retorna un objecte { body: string } per evitar undefined/null al client.
  */
 export async function getTicketBodyAction(ticketId: number): Promise<{ body: string }> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { body: "<p>Error: Usuari no autenticat</p>" };
 
@@ -52,8 +50,7 @@ export async function getTicketBodyAction(ticketId: number): Promise<{ body: str
  * deleteTicketAction
  */
 export async function deleteTicketAction(ticketId: number): Promise<ActionResult> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "No autenticat." };
 
@@ -71,8 +68,7 @@ export async function deleteTicketAction(ticketId: number): Promise<ActionResult
  * markTicketAsReadAction
  */
 export async function markTicketAsReadAction(ticketId: number): Promise<ActionResult> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "No autenticat." };
 
@@ -90,8 +86,7 @@ export async function markTicketAsReadAction(ticketId: number): Promise<ActionRe
  * saveSenderAsContactAction
  */
 export async function saveSenderAsContactAction(ticket: Ticket): Promise<ActionResult> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || !ticket.sender_email) return { success: false, message: "Dades invàlides." };
 
@@ -142,8 +137,7 @@ export async function sendEmailAction({
   htmlBody,
   isReply,
 }: SendEmailParams): Promise<ActionResult> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "No autenticat." };
 
@@ -186,8 +180,7 @@ export async function sendEmailAction({
  * Ara accepta TicketFilter (inclou 'noLlegits').
  */
 export async function loadMoreTicketsAction(page: number, filter: TicketFilter): Promise<Ticket[]> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
@@ -223,8 +216,7 @@ export async function loadMoreTicketsAction(page: number, filter: TicketFilter):
  * Útil quan l'usuari fa click a "Tots" i vol veure absolutament tot.
  */
 export async function loadAllTicketsAction(filter: TicketFilter): Promise<Ticket[]> {
-  const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 

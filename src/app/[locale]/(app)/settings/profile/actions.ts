@@ -11,7 +11,7 @@ import { revalidatePath } from "next/cache";
  */
 export async function updateProfileAction(formData: FormData) {
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -84,7 +84,7 @@ return { success: true, message: "Perfil actualitzat correctament." };
 */
 export async function updateProfileVisibilityAction(isPublic: boolean) {
 const cookieStore = cookies();
-const supabase = createClient(cookieStore);
+const supabase = createClient();
 
 const { data: { user } } = await supabase.auth.getUser();
 if (!user) {

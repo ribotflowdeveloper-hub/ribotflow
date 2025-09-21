@@ -15,7 +15,7 @@ export default async function PipelineLoading() {
   // 3. (Opcional, però recomanat) Carreguem les dades mínimes per a l'esquelet,
   // com les etapes, per fer-lo més realista. Aquesta consulta és molt ràpida.
   const cookieStore = cookies();
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
   
   const { data: stagesData } = await supabase
     .from('pipeline_stages')

@@ -42,7 +42,7 @@ export async function GET(
   }
   
   // PAS 3: Creem el client passant les cookies ja resoltes
-  const supabase = createClient(cookieStore);
+  const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
