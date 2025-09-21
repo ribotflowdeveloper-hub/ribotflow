@@ -32,7 +32,6 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
     const { setIsNavigating } = useNavigationStore();
     const supabase = createClient();
 
-    // Estats per a la gestió dels menús laterals d'escriptori
     const [activeModule, setActiveModule] = useState<NavItem | null>(null);
     const [isModuleSidebarOpen, setIsModuleSidebarOpen] = useState(false);
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
@@ -42,7 +41,6 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
      * @summary Sincronitza el menú actiu amb la ruta actual i gestiona l'estat de càrrega.
      */
     useEffect(() => {
-        // En arribar a una nova pàgina, la navegació ha acabat. Aturem l'animació.
         setIsNavigating(false);
 
         const prefix = `/${locale}`;
@@ -56,7 +54,6 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
 
         setActiveModule(currentModule || null);
 
-        // Tanquem el submenú si naveguem a una pàgina que no pertany a cap mòdul.
         if (!currentModule) {
             setIsModuleSidebarOpen(false);
         }
@@ -80,17 +77,15 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
     };
 
     /**
-     * @summary S'executa en fer clic a un enllaç del submenú (escriptori).
+     * @summary S'executa en fer clic a un enllaç del submenú.
+     * ✅ CORRECCIÓ: Ara sempre tanca el submenú, independentment de la mida de la pantalla.
      */
     const handleSubItemClick = () => {
-        // En pantalles petites, tancaríem el menú. En escriptori, el deixem obert.
-        if (window.innerWidth < 1024) {
-            setIsModuleSidebarOpen(false);
-        }
+        setIsModuleSidebarOpen(false);
     };
 
     /**
-     * @summary Funcions per als botons del menú (es passen a MainSidebar i MobileMenu).
+     * @summary Funcions per als botons del menú.
      */
     const handleSignOut = async () => {
         await supabase.auth.signOut();
@@ -104,10 +99,9 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
 
     return (
         <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
-            {/* --- NAVEGACIÓ D'ESCRIPTORI (oculta en mòbil) --- */}
+            {/* --- NAVEGACIÓ D'ESCRIPTORI --- */}
             <MainSidebar 
                 onModuleSelect={handleModuleSelect} 
-                // ✅ 2. Passem una funció per OBRIR el diàleg
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                 onNotImplemented={handleNotImplementedClick} 
             />
@@ -126,16 +120,16 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                 )}
             </motion.div>
 
-            {/* --- CONTENIDO PRINCIPAL --- */}
-                <div className="flex-1 flex flex-col overflow-hidden">
-                     <header className="lg:hidden flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-                     <MobileMenu 
-                        // ✅ 3. Passem la mateixa funció al menú mòbil
+            {/* --- CONTINGUT PRINCIPAL --- */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                <header className="lg:hidden flex items-center justify-between p-4 border-b border-border flex-shrink-0">
+                    <MobileMenu 
                         onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)} 
                         onNotImplementedClick={handleNotImplementedClick} 
-                    />                    <span className="font-bold text-lg">Ribotflow</span>
+                    />
+                    <span className="font-bold text-lg">Ribotflow</span>
                     <Image
-                        src={logoRibot} // Assegura't que 'logo' estigui importat
+                        src={logoRibot}
                         alt={t('logoAlt')}
                         className="object-cover"
                         priority
@@ -148,7 +142,8 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                     </div>
                 </main>
             </div>
-            {/* ✅ 4. EL DIÀLEG DE CONFIRMACIÓ ARA VIU AQUÍ, AL NIVELL MÉS ALT */}
+            
+            {/* DIÀLEG DE CONFIRMACIÓ */}
             <AlertDialog open={isSignOutDialogOpen} onOpenChange={setIsSignOutDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

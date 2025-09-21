@@ -62,3 +62,4 @@ export const activitySchema = z.object({
 });
 
 export type Activity = z.infer<typeof activitySchema>;
+

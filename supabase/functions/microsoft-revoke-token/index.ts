@@ -26,7 +26,7 @@ serve(async (req) => {
       .from('user_credentials')
       .select('refresh_token')
       .eq('user_id', user.id)
-      .eq('provider', 'azure') // Busquem específicament la credencial d'Azure/Microsoft.
+      .eq('provider', 'microsoft') // Busquem específicament la credencial d'Azure/Microsoft.
       .single()
 
     // Si l'usuari no tenia cap token guardat, no cal fer res.

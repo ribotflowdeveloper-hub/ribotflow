@@ -40,7 +40,6 @@
     "confirmSignOut": "Sí, tanca la sessió",
     "menuTitle": "Menú",
     "planner": "Planificador"
-
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -88,7 +87,12 @@
     "composeButtonTooltip": "Redactar Nou Correu",
     "refreshButtonTooltip": "Refrescar Safata d'Entrada",
     "allFilter": "Tots",
-    "unreadFilter": "No llegits"
+    "unreadFilter": "No llegits",
+    "hideContactPanel": "Amaga el panell de contactes",
+    "showContactPanel": "Mostra el panell de contactes",
+    "closeButton": "Tancar vista detallada" ,
+    "fromLabel": "Label"
+
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -654,6 +658,8 @@
     "taskCreatedToast": "Tasca creada!",
     "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca.",
     "actionRequired": "Acció requerida",
+    "publishedSuccess": "Publicat amb èxit",
+
 
     "addTaskDialog": {
       "title": "Crear Nova Tasca",
@@ -839,7 +845,11 @@
     "noResults": "No s'han trobat resultats.",
     "errorLoading": "Error en carregar les dades de la xarxa",
     "loadingMap": "Carregant mapa...",
-    "unknownCompany": "Empresa desconeguda"
+    "unknownCompany": "Empresa desconeguda",
+    "networkTitle": "Xarxa Professional",
+    "listView": "Llista",
+    "mapView": "Mapa"
+
   },
   "SettingsPage": {
     "nav": {
@@ -953,8 +963,8 @@
       "instagramDescription": "Connecta el teu compte d’Instagram per publicar automàticament i gestionar missatges.",
       "linkedinTitle": "LinkedIn",
       "linkedinDescription": "Connecta el teu perfil o pàgina d’empresa de LinkedIn per programar publicacions i gestionar interaccions.",
-      "facebookTitle": "Facebook",
-      "facebookDescription": "Connecta el teu compte o pàgina de Facebook per publicar contingut i gestionar els comentaris.",
+      "metaTitle": "Meta",
+      "metaDescription": "Connecta el teu compte o pàgina de Facebook i Instagram per publicar contingut i gestionar els comentaris.",
       "success": "Èxit!",
       "error": "Error",
       "toast": {
@@ -964,7 +974,6 @@
         "identityExists": "Aquest compte social ja està vinculat a un altre usuari.",
         "genericError": "Hi ha hagut un error durant la connexió."
       }
-      
     },
     "SettingsProfile": {
       "toastError": "Error",
@@ -1170,7 +1179,7 @@
       "streetLabel": "Carrer",
       "cityLabel": "Població",
       "postcodeLabel": "Codi Postal",
-      "regionLabel":"Província"
+      "regionLabel": "Província"
     },
     "step3": {
       "title": "Últims detalls",
@@ -1186,5 +1195,58 @@
     "toastErrorTitle": "Error en desar el perfil",
     "toastErrorValidation": "Si us plau, omple tots els camps obligatoris.",
     "toastErrorUser": "No s'ha trobat l'usuari"
+  },
+  "SocialPlanner": {
+    "createPost": "Crear Publicació",
+    "pendingDrafts": "Esborranys Pendents",
+    "weekdays": {
+      "mon": "Dl",
+      "tue": "Dm",
+      "wed": "Dc",
+      "thu": "Dj",
+      "fri": "Dv",
+      "sat": "Ds",
+      "sun": "Dg"
+    },
+    "schedulePostTitle": "Planificar Publicació",
+    "schedulePostDescription": "Selecciona l'hora. La publicació es farà segons la teva hora local.",
+    "timeZone": "(Zona horària: {timeZone})",
+    "confirm": "Confirmar",
+    "cancel": "Cancel·lar",
+    "planning": "Planificant...",
+    "viewPostTitle": "Previsualització de la Publicació",
+    "brandName": "Ribotflow",
+    "postToLinkedIn": "Publicació a LinkedIn",
+    "mediaContentAlt": "Contingut multimèdia",
+    "returnToDraft": "Tornar a esborrany",
+    "deleteDraft": "Eliminar Esborrany",
+    "close": "Tancar",
+    "createDialogTitle": "Crear Nova Publicació",
+    "whatsOnYourMind": "Què vols compartir avui?",
+    "preview": "Previsualització (LinkedIn)",
+    "textWillAppearHere": "El teu text apareixerà aquí...",
+    "previewAlt": "Previsualització",
+    "saveDraft": "Guardar Esborrany",
+    "saving": "Guardant...",
+    "published": "Publicat",
+    "failed": "Error",
+    "noContent": "Sense text",
+    "deleteDraftAria": "Eliminar esborrany",
+    "publishTo": "Publicar a:",
+    "partialSuccess": "Èxit Parcial",
+
+
+    "toasts": {
+      "errorNotAuthenticated": "Usuari no autenticat. Si us plau, torna a iniciar sessió.",
+      "errorMediaUpload": "No s'ha pogut iniciar la pujada de l'arxiu.",
+      "errorPostCreation": "No s'ha pogut guardar la publicació.",
+      "successDraftCreated": "Esborrany creat correctament.",
+      "errorScheduling": "No s'ha pogut planificar la publicació.",
+      "successScheduled": "Publicació planificada correctament!",
+      "errorUnscheduling": "No s'ha pogut moure a esborranys.",
+      "successUnscheduled": "Publicació moguda a esborranys.",
+      "errorDeleting": "No s'ha pogut eliminar la publicació.",
+      "successPostDeleted": "Publicació eliminada correctament."
+    }
   }
 }

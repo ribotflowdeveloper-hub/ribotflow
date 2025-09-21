@@ -22,8 +22,8 @@ export default async function IntegrationsPage() {
     google: false,
     microsoft: false,
     linkedin: false,
-    Facebook: false,
-    Instagram: false,
+    facebook: false, // ✅ Canviat a minúscula per consistència
+    instagram: false, // ✅ Canviat a minúscula per consistència
   };
 
   if (user) {
@@ -40,6 +40,8 @@ export default async function IntegrationsPage() {
       connectionStatuses.google = credentials.some(c => c.provider === 'google');
       connectionStatuses.microsoft = credentials.some(c => c.provider === 'microsoft');
       connectionStatuses.linkedin = credentials.some(c => c.provider === 'linkedin_oidc');
+      connectionStatuses.facebook = credentials.some(c => c.provider === 'facebook');
+      connectionStatuses.instagram = credentials.some(c => c.provider === 'instagram');
     }
   }
 

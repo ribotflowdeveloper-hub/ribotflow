@@ -24,6 +24,14 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     title: { template: `%s | ${t('siteName')}`, default: t('defaultTitle') },
     description: t('description'),
     metadataBase: new URL(siteUrl),
+    
+    // ✅ NOU: Afegim la configuració per a les icones i el manifest.
+    // Next.js buscarà automàticament aquests fitxers a la carpeta /app.
+    icons: {
+      icon: '/favicon.ico',
+      apple: '/apple-icon.png',
+    },
+    manifest: '/site.webmanifest',
   };
 }
 

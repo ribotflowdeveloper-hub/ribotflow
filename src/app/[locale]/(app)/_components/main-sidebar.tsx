@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -26,7 +26,6 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
     const fullPathname = usePathname();
     const locale = useLocale();
     const t = useTranslations('Navigation');
-    const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
     const { isNavigating, setIsNavigating } = useNavigationStore();
 
     const NavItemComponent = ({ item }: { item: NavItem }) => {

@@ -1,19 +1,22 @@
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { ProfileData } from './_components/ProfileData';
-import { ProfileSkeleton } from './_components/ProfileSkeleton';
+import { getTranslations } from "next-intl/server";
+import { ProfileData } from "./_components/ProfileData";
+import { Suspense } from "react";
 
-export const metadata: Metadata = {
-  title: 'El Teu Perfil | Ribot',
-};
+// Aquest és un exemple de com hauria de ser una pàgina de contingut
+// dins de la secció de configuració.
+export default async function ProfilePage() {
+  const t = await getTranslations('SettingsPage.nav');
 
-/**
- * @summary La pàgina principal de Perfil, que ara actua com a orquestradora de Suspense.
- */
-export default function ProfilePage() {
   return (
-    <Suspense fallback={<ProfileSkeleton />}>
-      <ProfileData />
-    </Suspense>
+    <div className="space-y-8">
+      {/* ✅ NOU: Afegim el títol aquí, però només el mostrem en pantalles petites (lg:hidden)
+          perquè en escriptori ja apareix al menú lateral. */}
+      <h1 className="text-3xl font-bold lg:hidden">{t('title')}</h1>
+      
+      {/* El teu contingut, com el formulari de perfil, va aquí */}
+      <Suspense fallback={<div>Carregant perfil...</div>}>
+        <ProfileData />
+      </Suspense>
+    </div>
   );
 }

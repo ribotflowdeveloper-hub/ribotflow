@@ -19,37 +19,39 @@ function decodeJwtPayload(token: string) {
     return null;
   }
 }
+type RouteParams = Promise<{ provider: string }>;
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ provider: string }> }
+  { params }: { params: RouteParams }
 ) {
-  const { provider } = await context.params; // 🔧 await necessari
-  const cookieStore = cookies();  
+  // ✅ PAS 1: Resolem la promesa dels paràmetres amb 'await'
+  const { provider } = await params;
   
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
-  // NOU: Console.log per a depuració
-  console.log(`\n--- INICIANT CALLBACK PER A ${provider.toUpperCase()} ---`);
-  console.log(`Codi rebut: ${code ? 'Sí' : 'No'}`);
-  console.log(`State rebut: ${state ? 'Sí' : 'No'}`);
-  const savedState = (await cookieStore).get("oauth_state")?.value;
-  (await cookieStore).delete("oauth_state");
+  
+  // PAS 2: Resolem la promesa de les cookies amb 'await'
+  const cookieStore = await cookies();
+  const savedState = cookieStore.get("oauth_state")?.value;
+  cookieStore.delete("oauth_state");
 
   if (!code || !state || state !== savedState) {
-    return NextResponse.redirect(new URL("/settings/integrations?error=auth_failed", request.url));
+      return NextResponse.redirect(new URL("/settings/integrations?error=auth_failed", request.url));
   }
-
+  
+  // PAS 3: Creem el client passant les cookies ja resoltes
   const supabase = createClient(cookieStore);
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url));
+      return NextResponse.redirect(new URL('/login', request.url));
   }
 
   try {
     let tokenUrl = '';
-    let body = new URLSearchParams();
+    const body = new URLSearchParams();
     const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/${provider}`;
 
     switch (provider) {

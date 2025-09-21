@@ -84,19 +84,50 @@ export async function connectLinkedInAction() {
   const authUrl = `https://www.linkedin.com/oauth/v2/authorization?${linkedinParams.toString()}`;
   redirect(authUrl);
 }
+// ✅ CORRECCIÓ: La funció de Facebook ara segueix el mateix patró que les altres.
+export async function connectFacebookAction() {
+  const cookieStore = cookies();
+  const supabase = createClient(cookieStore);
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return redirect('/login');
 
+  const state = uuidv4();
+  (await cookieStore).set('oauth_state', state, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
 
+  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/facebook`;
+  
+  // ✅ CORRECCIÓ DEFINITIVA: Demanem tots els permisos necessaris des del principi.
+  const scopes = [
+    'pages_show_list',
+    'pages_manage_posts',
+    'business_management', // Aquest és el permís clau que ens faltava
+    'instagram_basic',
+    'instagram_content_publish'
+  ].join(',');
+
+  const facebookParams = new URLSearchParams({
+    client_id: process.env.FACEBOOK_CLIENT_ID!,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: scopes,
+    state: state,
+  });
+
+  const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?${facebookParams.toString()}`;
+  redirect(authUrl);
+}
 // --- FUNCIONS DE DESCONNEXIÓ ---
 
-async function handleDisconnect(provider: 'google' | 'azure' | 'linkedin_oidc') {
+async function handleDisconnect(provider: 'google' | 'azure' | 'linkedin_oidc' | 'facebook') {
   const cookieStore = cookies();
   const supabase = createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "Usuari no trobat." };
 
   try {
-    const providerName = provider === 'linkedin_oidc' ? 'linkedin' : provider;
+    const providerName = provider.replace('_oidc', '');
+    // Assegura't que tens una Edge Function anomenada 'facebook-revoke-token'
     await supabase.functions.invoke(`${providerName}-revoke-token`);
     await supabase.from('user_credentials').delete().match({ user_id: user.id, provider: provider });
 
@@ -121,3 +152,7 @@ export async function disconnectLinkedInAction() {
   return await handleDisconnect('linkedin_oidc');
 }
 
+// ✅ NOU: Funció de desconnexió per a Facebook
+export async function disconnectFacebookAction() {
+  return await handleDisconnect('facebook');
+}

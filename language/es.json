@@ -39,7 +39,10 @@
     "cancel": "Cancelar",
     "confirmSignOut": "Sí, cerrar sesión",
     "menuTitle": "Menú",
-    "planner": "Planificador"
+    "planner": "Planificador",
+    "networkTitle": "Red Profesional",
+    "listView": "Lista",
+    "mapView": "Mapa"
   },
   "InboxPage": {
     "composeDialogTitle": "Escribir un Correo",
@@ -87,7 +90,10 @@
     "composeButtonTooltip": "Redactar Nuevo Correo",
     "refreshButtonTooltip": "Refrescar Bandeja de Entrada",
     "allFilter": "Tots",
-    "unreadFilter": "No llegits"
+    "unreadFilter": "No llegits",
+    "hideContactPanel": "Ocultar el panel de contactos",
+    "showContactPanel": "Mostrar el panel de contactos",
+    "fromLabel": "Label"
   },
   "AICampaignWizard": {
     "title": "Asistente de Campañas de IA",
@@ -648,6 +654,7 @@
     "taskCreatedToast": "¡Tarea creada!",
     "taskUpdateErrorToast": "No se ha podido actualizar la tarea.",
     "actionRequired": "Acción requerida",
+    "publishedSuccess": "Publicado con éxito",
     "addTaskDialog": {
       "title": "Crear Nueva Tarea",
       "description": "Agrega una nueva tarea a tu día a día. Puedes asignarla a un contacto si lo deseas.",
@@ -946,8 +953,8 @@
       "instagramDescription": "Conecta tu cuenta de Instagram para publicar automáticamente y gestionar mensajes.",
       "linkedinTitle": "LinkedIn",
       "linkedinDescription": "Conecta tu perfil o página de empresa de LinkedIn para programar publicaciones y gestionar interacciones.",
-      "facebookTitle": "Facebook",
-      "facebookDescription": "Conecta tu cuenta o página de Facebook para publicar contenido y gestionar comentarios.",
+      "metaTitle": "Facebook",
+      "metaDescription": "Conecta tu cuenta o página de Facebook y Instagram para publicar contenido y gestionar comentarios.",
       "success": "¡Éxito!",
       "error": "Error",
       "toast": {
@@ -1178,5 +1185,56 @@
     "toastErrorTitle": "Error al guardar el perfil",
     "toastErrorValidation": "Por favor, completa todos los campos obligatorios.",
     "toastErrorUser": "Usuario no encontrado"
+  },
+  "SocialPlanner": {
+    "createPost": "Create Post",
+    "pendingDrafts": "Pending Drafts",
+    "weekdays": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "schedulePostTitle": "Schedule Post",
+    "schedulePostDescription": "Select the time. The post will be published according to your local time.",
+    "timeZone": "(Time Zone: {timeZone})",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "planning": "Scheduling...",
+    "viewPostTitle": "Post Preview",
+    "brandName": "Ribotflow",
+    "postToLinkedIn": "Post to LinkedIn",
+    "mediaContentAlt": "Media Content",
+    "returnToDraft": "Return to Draft",
+    "deleteDraft": "Delete Draft",
+    "close": "Close",
+    "createDialogTitle": "Create New Post",
+    "whatsOnYourMind": "What do you want to share today?",
+    "preview": "Preview (LinkedIn)",
+    "textWillAppearHere": "Your text will appear here...",
+    "previewAlt": "Preview",
+    "saveDraft": "Save Draft",
+    "saving": "Saving...",
+    "published": "Published",
+    "failed": "Failed",
+    "noContent": "No text",
+    "deleteDraftAria": "Delete draft",
+    "publishTo": "Publicar a:",
+    "partialSuccess": "Èxit Parcial",
+    "toasts": {
+      "errorNotAuthenticated": "Usuario no autenticado. Por favor, vuelve a iniciar sesión.",
+      "errorMediaUpload": "No se pudo iniciar la subida del archivo.",
+      "errorPostCreation": "No se pudo guardar la publicación.",
+      "successDraftCreated": "Borrador creado correctamente.",
+      "errorScheduling": "No se pudo programar la publicación.",
+      "successScheduled": "¡Publicación programada correctamente!",
+      "errorUnscheduling": "No se pudo mover a borradores.",
+      "successUnscheduled": "Publicación movida a borradores.",
+      "errorDeleting": "No se pudo eliminar la publicación.",
+      "successPostDeleted": "Publicación eliminada correctamente."
+    }
   }
 }

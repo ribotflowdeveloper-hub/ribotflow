@@ -20,7 +20,7 @@ serve(async (req) => {
   try {
     // --- LÒGICA 1: RENOVACIÓ AUTOMÀTICA (Google & Microsoft) ---
     const renewalThreshold = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 dies a partir d'ara
-    
+
     const { data: tokensToRenew, error: renewError } = await supabaseAdmin
       .from('user_credentials')
       .select('*')
@@ -35,7 +35,7 @@ serve(async (req) => {
       for (const token of tokensToRenew) {
         try {
           const newTokens = await refreshToken(token.provider, token.refresh_token!);
-          
+
           await supabaseAdmin
             .from('user_credentials')
             .update({
@@ -44,7 +44,7 @@ serve(async (req) => {
               expires_at: new Date(Date.now() + (newTokens.expires_in - 300) * 1000),
             })
             .eq('id', token.id);
-          
+
           logs.push(`Token per a ${token.provider} de l'usuari ${token.user_id} renovat amb èxit.`);
         } catch (e) {
           logs.push(`Error en renovar el token de ${token.provider} per a l'usuari ${token.user_id}: ${e.message}`);
@@ -59,6 +59,8 @@ serve(async (req) => {
       .from('user_credentials')
       .select('*')
       .is('refresh_token', null)
+      .in('provider', ['linkedin_oidc', 'facebook', 'instagram'])
+
       .lt('expires_at', now.toISOString());
 
     if (expireError) throw new Error(`Error buscant tokens caducats: ${expireError.message}`);
@@ -67,19 +69,19 @@ serve(async (req) => {
       logs.push(`S'han trobat ${tokensToExpire.length} tokens caducats (LinkedIn).`);
       for (const token of tokensToExpire) {
         await supabaseAdmin.from('user_credentials').delete().eq('id', token.id);
-        
+
         await supabaseAdmin.from('notifications').insert({
           user_id: token.user_id,
           message: `La teva integració amb ${token.provider.replace('_oidc', '')} ha caducat. Si us plau, torna a connectar-la.`,
           type: 'integration_expired'
         });
-        
+
         logs.push(`Token de ${token.provider} de l'usuari ${token.user_id} eliminat i notificació creada.`);
       }
     } else {
       logs.push("No s'han trobat tokens caducats per a eliminar.");
     }
-    
+
     return new Response(JSON.stringify({ status: 'ok', logs }), {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -117,11 +119,11 @@ async function refreshToken(provider: string, refreshToken: string): Promise<{ a
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
   });
-  
+
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(`Error de l'API de ${provider}: ${JSON.stringify(errorData)}`);
   }
-  
+
   return await response.json();
 }

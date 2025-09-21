@@ -18,48 +18,41 @@ interface ProfileListProps {
  * està seleccionat) es gestiona en un component de nivell superior (el pare).
  */
 export default function ProfileList({ profiles, searchTerm, onSearchChange, onSelectProfile, selectedProfileId }: ProfileListProps) {
-  const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
+  const t = useTranslations('NetworkPage');
 
   return (
-    <>
-      {/* Capçalera amb el títol i el camp de cerca */}
-      <div className="p-4 border-b border-gray-700">
-        <h2 className="text-xl font-bold mb-4">Xarxa Professional</h2>
-        <div className="relative">
-          <Search className="absolute  top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder={t('searchPlaceholder')} 
-            // El valor i el canvi de l'input estan controlats per les 'props' del component pare.
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full bg-gray-800 border border-gray-600 rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-purple-500 focus:outline-none"
-          />
-        </div>
+      // ✅ NOU: El contenidor principal ara és un flex-col que omple l'alçada.
+      <div className="flex flex-col h-full glass-effect rounded-lg">
+          {/* Capçalera amb el títol i el camp de cerca (no fa scroll) */}
+          <div className="p-4 border-b border-border flex-shrink-0">
+              <h2 className="text-xl font-bold mb-4">{t('networkTitle')}</h2>
+              <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                      type="text"
+                      placeholder={t('searchPlaceholder')}
+                      value={searchTerm}
+                      onChange={(e) => onSearchChange(e.target.value)}
+                      className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                  />
+              </div>
+          </div>
+          
+          {/* ✅ NOU: Aquesta és l'àrea que farà scroll. */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+              {profiles.length > 0 ? (
+                  profiles.map(profile => (
+                      <ProfileCard
+                          key={profile.id}
+                          profile={profile}
+                          isSelected={profile.id === selectedProfileId}
+                          onClick={() => onSelectProfile(profile)}
+                      />
+                  ))
+              ) : (
+                  <p className="text-center text-muted-foreground p-4">{t('noResults')}</p>
+              )}
+          </div>
       </div>
-      
-      {/* Llista de perfils amb scroll */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-        {/* Renderitzat condicional: si hi ha perfils, els mostrem. */}
-        {profiles.length > 0 ? (
-          // Aquesta és la manera estàndard a React de renderitzar una llista d'elements.
-          // Fem un 'map' sobre l'array de 'profiles' i per a cada un, creem un component 'ProfileCard'.
-          profiles.map(profile => (
-            <ProfileCard
-              // La 'key' és molt important per a React. Ajuda a optimitzar el renderitzat de llistes.
-              // Ha de ser un valor únic per a cada element.
-              key={profile.id}
-              profile={profile}
-              // Passem les dades i funcions necessàries al component fill.
-              isSelected={profile.id === selectedProfileId}
-              onClick={() => onSelectProfile(profile)}
-            />
-          ))
-        ) : (
-          // Si l'array 'profiles' està buit, mostrem un missatge a l'usuari.
-          <p className="text-center text-gray-400 p-4">{t('noResults')}</p> /* ✅ Text traduït */
-        )}
-      </div>
-    </>
   );
 }

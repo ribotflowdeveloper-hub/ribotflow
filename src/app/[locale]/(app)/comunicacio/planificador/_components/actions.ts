@@ -4,63 +4,66 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
+import { getTranslations } from "next-intl/server";
 
-// Tipus per a la resposta de les nostres accions
-type ActionResult = {
+type ActionResult<T = unknown> = {
   success: boolean;
-  message?: string;
-  data?: SocialPost | SocialPost[];
+  message: string;
+  data?: T;
 };
 
 /**
- * Puja un arxiu a Supabase Storage i crea un registre de publicació en esborrany.
+ * Crea una URL de pujada signada (presigned URL) a Supabase Storage.
  */
-export async function createSocialPostAction(formData: FormData): Promise<ActionResult> {
+export async function getPresignedUploadUrlAction(fileName: string): Promise<ActionResult<{ signedUrl: string; token: string; path: string; filePath: string }>> {
+  const t = await getTranslations('SocialPlanner.toasts');
   const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuari no autenticat." };
+  if (!user) return { success: false, message: t('errorNotAuthenticated') };
 
-  const content = formData.get('content') as string;
-  const provider = formData.get('provider') as string;
-  const mediaFile = formData.get('media') as File;
+  const fileExt = fileName.split('.').pop();
+  const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+  
+  const { data, error } = await supabase.storage
+    .from('social_media')
+    .createSignedUploadUrl(filePath);
 
-  let media_url = null;
-  let media_type = null;
-
-  if (mediaFile && mediaFile.size > 0) {
-    const fileExt = mediaFile.name.split('.').pop();
-    const fileName = `${user.id}/${new Date().getTime()}.${fileExt}`;
-    
-    // Pugem l'arxiu al bucket 'social_media'
-    const { data: uploadData, error: uploadError } = await supabase
-      .storage
-      .from('social_media')
-      .upload(fileName, mediaFile);
-
-    if (uploadError) {
-      console.error("Error pujant l'arxiu:", uploadError);
-      return { success: false, message: "No s'ha pogut pujar l'arxiu multimèdia." };
-    }
-    
-    // Obtenim la URL pública de l'arxiu
-    const { data: publicUrlData } = supabase
-      .storage
-      .from('social_media')
-      .getPublicUrl(uploadData.path);
-      
-    media_url = publicUrlData.publicUrl;
-    media_type = mediaFile.type.startsWith('image') ? 'image' : 'video';
+  if (error) {
+    console.error("Error creant la URL signada:", error);
+    return { success: false, message: t('errorMediaUpload') };
   }
 
-  // Creem el registre a la taula 'social_posts'
+  return { success: true, message: "URL creada.", data: { ...data, filePath } };
+}
+
+/**
+ * Crea un registre de publicació en esborrany.
+ */
+export async function createSocialPostAction(
+  content: string,
+  providers: string[],
+  mediaPath: string | null,
+  mediaType: string | null
+): Promise<ActionResult<SocialPost>> {
+  const t = await getTranslations('SocialPlanner.toasts');
+  const supabase = createClient(cookies());
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: t('errorNotAuthenticated') };
+
+  let media_url = null;
+  if (mediaPath) {
+    const { data: publicUrlData } = supabase.storage.from('social_media').getPublicUrl(mediaPath);
+    media_url = publicUrlData.publicUrl;
+  }
+
   const { data: postData, error: postError } = await supabase
     .from('social_posts')
     .insert({
       user_id: user.id,
-      provider: provider,
+      provider: providers,
       content: content,
       media_url: media_url,
-      media_type: media_type,
+      media_type: mediaType,
       status: 'draft',
     })
     .select()
@@ -68,92 +71,89 @@ export async function createSocialPostAction(formData: FormData): Promise<Action
 
   if (postError) {
     console.error("Error creant la publicació:", postError);
-    return { success: false, message: "No s'ha pogut guardar la publicació." };
+    return { success: false, message: t('errorPostCreation') };
   }
 
   revalidatePath('/comunicacio/planificador');
-  return { success: true, message: "Esborrany creat correctament.", data: postData };
+  return { success: true, message: t('successDraftCreated'), data: postData };
 }
 
 /**
- * Planifica una publicació per a una data i hora concretes.
+ * Planifica una publicació.
  */
 export async function scheduleSocialPostAction(postId: number, scheduledAt: string): Promise<ActionResult> {
+  const t = await getTranslations('SocialPlanner.toasts');
   const supabase = createClient(cookies());
   const { error } = await supabase
     .from('social_posts')
-    .update({
-      status: 'scheduled',
-      scheduled_at: scheduledAt
-    })
+    .update({ status: 'scheduled', scheduled_at: scheduledAt })
     .eq('id', postId);
 
   if (error) {
     console.error("Error planificant la publicació:", error);
-    return { success: false, message: "No s'ha pogut planificar la publicació." };
+    return { success: false, message: t('errorScheduling') };
   }
 
   revalidatePath('/comunicacio/planificador');
-  return { success: true };
+  return { success: true, message: t('successScheduled') };
 }
 
 /**
- * ✅ NOU: Converteix una publicació planificada de nou en un esborrany.
+ * Retorna una publicació a l'estat d'esborrany.
  */
 export async function unscheduleSocialPostAction(postId: number): Promise<ActionResult> {
+  const t = await getTranslations('SocialPlanner.toasts');
   const supabase = createClient(cookies());
   const { error } = await supabase
     .from('social_posts')
-    .update({
-      status: 'draft',
-      scheduled_at: null
-    })
+    .update({ status: 'draft', scheduled_at: null })
     .eq('id', postId);
 
   if (error) {
     console.error("Error desplanificant la publicació:", error);
-    return { success: false, message: "No s'ha pogut moure a esborranys." };
+    return { success: false, message: t('errorUnscheduling') };
   }
 
   revalidatePath('/comunicacio/planificador');
-  return { success: true };
+  return { success: true, message: t('successUnscheduled') };
 }
-
 
 /**
- * ✅ NOU: Elimina una publicació social.
+ * Elimina una publicació social.
  */
 export async function deleteSocialPostAction(postId: number): Promise<ActionResult> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
+  const t = await getTranslations('SocialPlanner.toasts');
+  const supabase = createClient(cookies());
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: t('errorNotAuthenticated') };
 
-    // Primer, obtenim la URL de l'arxiu per a poder esborrar-lo de l'Storage
-    const { data: post } = await supabase
-        .from('social_posts')
-        .select('media_url')
-        .eq('id', postId)
-        .single();
-    
-    if (post && post.media_url) {
-        const fileName = post.media_url.split('/').pop();
-        if (fileName) {
-            await supabase.storage.from('social_media').remove([`${user.id}/${fileName}`]);
-        }
+  const { data: post } = await supabase
+    .from('social_posts')
+    .select('media_url')
+    .eq('id', postId)
+    .single();
+
+  if (post && post.media_url) {
+    try {
+      const url = new URL(post.media_url);
+      const filePath = url.pathname.split('/social_media/')[1];
+      if (filePath) await supabase.storage.from('social_media').remove([filePath]);
+    } catch (e) {
+      console.error("URL de mèdia invàlida o error en eliminar de Storage:", e);
     }
+  }
 
-    // Després, eliminem el registre de la base de dades
-    const { error } = await supabase
-        .from('social_posts')
-        .delete()
-        .eq('id', postId);
+  const { error: deleteError } = await supabase
+    .from('social_posts')
+    .delete()
+    .eq('id', postId)
+    .eq('user_id', user.id);
 
-    if (error) {
-        console.error("Error eliminant la publicació:", error);
-        return { success: false, message: "No s'ha pogut eliminar la publicació." };
-    }
+  if (deleteError) {
+    console.error("Error eliminant la publicació:", deleteError);
+    return { success: false, message: t('errorDeleting') };
+  }
 
-    revalidatePath('/comunicacio/planificador');
-    return { success: true };
+  revalidatePath('/comunicacio/planificador');
+  return { success: true, message: t('successPostDeleted') };
 }
-

@@ -1,21 +1,16 @@
 /**
  * @file SettingsNav.tsx
- * @summary Aquest fitxer defineix el component de navegació lateral per a la secció de Configuració.
- * És un component de client reutilitzable que mostra els diferents apartats de la configuració
- * i ressalta l'enllaç actiu basant-se en la ruta actual de la URL.
+ * @summary Component de navegació per a la secció de Configuració,
+ * ara adaptable per a escriptori i mòbil.
  */
-
-
 "use client";
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-
 import { User, CreditCard, Users, Puzzle, Wrench, ShieldOff } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Utilitat de ShadCN per a classes condicionals
-// Definim els elements de navegació en un array.
-// Aquest patró fa que sigui molt fàcil afegir, eliminar o reordenar enllaços en el futur.
+import { cn, getCleanPathname } from '@/lib/utils';
+
 const settingsNavItems = [
   { id: 'profile', labelKey: 'profile', icon: User, path: '/settings/profile' },
   { id: 'billing', labelKey: 'billing', icon: CreditCard, path: '/settings/billing' },
@@ -24,36 +19,45 @@ const settingsNavItems = [
   { id: 'blacklist', labelKey: 'blacklist', icon: ShieldOff, path: '/settings/blacklist' },
   { id: 'customization', labelKey: 'customization', icon: Wrench, path: '/settings/customization' },
 ];
-/**
- * @function SettingsNav
- * @summary El component que renderitza el menú de navegació.
- */
-export function SettingsNav() {
-  
-  const t = useTranslations('SettingsPage.nav');
-  const pathname = usePathname(); // Aquest pathname no té l'idioma
-  const locale = useLocale();
-  return (
-    <nav>
-  <h1 className="text-3xl font-bold mb-8">{t('title')}</h1>
-  <ul className="space-y-2">
-        {/* Mapegem l'array d'elements per renderitzar cada enllaç. */}
 
-        {settingsNavItems.map(item => (
-          <li key={item.id}>
-            <Link
-              href={`/${locale}${item.path}`} // ✅ Construïm l'enllaç amb l'idioma
-              className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-accent',
-                // La funció 'cn' aplica la classe 'bg-primary' només si la ruta actual coincideix amb la de l'ítem.
-                pathname === item.path && 'bg-primary text-primary-foreground'
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{t(item.labelKey as string)}</span>
-            </Link>
-          </li>
-        ))}
+export function SettingsNav() {
+  const t = useTranslations('SettingsPage.nav');
+  const fullPathname = usePathname();
+  const locale = useLocale();
+  const cleanPathname = getCleanPathname(fullPathname, locale);
+
+  return (
+    // Aquest <nav> és ara un contenidor flexible.
+    <nav className="flex flex-col gap-4">
+      {/* El títol principal només es mostra en pantalles grans */}
+      <h1 className="text-3xl font-bold mb-4 hidden lg:block">{t('title')}</h1>
+      
+      {/* ✅ DISSENY ADAPTABLE:
+        - En mòbil ('flex-row'), és una fila.
+        - En escriptori ('lg:flex-col'), és una columna.
+        - 'overflow-x-auto' permet fer scroll horitzontal en mòbil si no hi caben tots els elements.
+      */}
+      <ul className="flex flex-row lg:flex-col space-x-2 lg:space-x-0 lg:space-y-1 overflow-x-auto pb-2 -mb-2">
+        {settingsNavItems.map(item => {
+          // Comprovem si l'enllaç està actiu
+          const isActive = cleanPathname === item.path;
+          return (
+            <li key={item.id} className="flex-shrink-0">
+              <Link
+                href={`/${locale}${item.path}`}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 hover:bg-accent text-sm lg:text-base',
+                  isActive
+                    ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <item.icon className="w-5 h-5" />
+                <span>{t(item.labelKey as string)}</span>
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );

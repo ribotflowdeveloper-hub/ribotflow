@@ -3,7 +3,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { User, Building, UserPlus } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+// import { useTranslations } from 'next-intl';
 import type { Ticket } from '../page';
 
 interface ContactPanelProps {
@@ -16,10 +16,22 @@ interface ContactPanelProps {
  * @summary Component que renderitza la columna dreta de l'Inbox: els detalls del contacte.
  */
 export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSave, onSaveContact }) => {
-    const t = useTranslations('InboxPage');
+    const t = (key: string) => {
+         const translations: { [key: string]: string } = {
+            'noContactAssociated': "Selecciona un tiquet per veure els detalls del contacte.",
+            'contactDetailsTitle': "Detalls del Contacte",
+            'emailLabel': "Correu",
+            'phoneLabel': "Telèfon",
+            'locationLabel': "Ubicació",
+            'notSpecified': "No especificat",
+            'saveContactButton': "Desa com a contacte"
+        };
+        return translations[key] || key;
+    };
 
     return (
-        <div className="w-80 lg:w-96 flex-col flex-shrink-0 border-l border-border glass-card hidden lg:flex">
+        // ✅ SOLUCIÓ: El contenidor principal és un flex-col que ocupa tota l'alçada.
+        <div className="flex flex-col h-full border-l border-border bg-background/95">
             {!ticket ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
                     <User className="w-16 h-16 text-muted-foreground mb-4" />
@@ -27,7 +39,8 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                 </div>
             ) : ticket.contacts ? (
                 <>
-                    <div className="p-4 border-b"><h2 className="text-xl font-bold">{t('contactDetailsTitle')}</h2></div>
+                    <div className="p-4 border-b flex-shrink-0"><h2 className="text-xl font-bold">{t('contactDetailsTitle')}</h2></div>
+                    {/* ✅ SOLUCIÓ: Aquesta secció ocupa l'espai restant i fa scroll si cal. */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-4">
                         <div className="flex items-center gap-4">
                             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center"><User className="w-8 h-8 text-primary" /></div>

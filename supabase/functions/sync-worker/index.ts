@@ -78,17 +78,17 @@ class MicrosoftMailProvider implements MailProvider {
     const tokens = await res.json();
     return tokens.access_token;
   }
-// Mètode principal per obtenir nous missatges. Crida a la funció auxiliar per a
+  // Mètode principal per obtenir nous missatges. Crida a la funció auxiliar per a
   // la bústia d'entrada i la de sortida.
   async getNewMessages(accessToken: string, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
     const inboxMessages = await this.fetchMessagesFromFolder(accessToken, 'inbox', lastSyncDate, 'rebut');
     const sentMessages = await this.fetchMessagesFromFolder(accessToken, 'sentitems', lastSyncDate, 'enviat');
     return [...inboxMessages, ...sentMessages];
   }
-/**
-   * Funció privada per obtenir missatges d'una carpeta específica (entrada o sortida).
-   * Gestiona la paginació de l'API de Microsoft Graph per obtenir tots els resultats.
-   */
+  /**
+     * Funció privada per obtenir missatges d'una carpeta específica (entrada o sortida).
+     * Gestiona la paginació de l'API de Microsoft Graph per obtenir tots els resultats.
+     */
   private async fetchMessagesFromFolder(accessToken: string, folder: 'inbox' | 'sentitems', lastSyncDate: Date | null, type: 'rebut' | 'enviat'): Promise<NormalizedEmail[]> {
     let allMessages: any[] = [];
     let filterQuery = "";
@@ -96,8 +96,9 @@ class MicrosoftMailProvider implements MailProvider {
       filterQuery = `$filter=sentDateTime gt ${lastSyncDate.toISOString()}`;
     }
     const selectQuery = "$select=id,subject,body,bodyPreview,sentDateTime,from,sender,isRead";
-    
-    let url: string | null = `https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages?${filterQuery}&${selectQuery}&$top=50`;
+    const expandQuery = "$expand=attachments";
+
+    let url: string | null = `https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages?${filterQuery}&${selectQuery}&${expandQuery}&$top=50`;
 
     while (url) {
       const res = await fetch(url, {
@@ -111,19 +112,39 @@ class MicrosoftMailProvider implements MailProvider {
       allMessages = allMessages.concat(data.value || []);
       url = data['@odata.nextLink'] || null;
     }
-    
+
     return allMessages.map(this.normalizeMicrosoftEmail(type));
   }
-/**
-   * Mètode privat que transforma un objecte de missatge de l'API de Microsoft
-   * a la nostra estructura normalitzada 'NormalizedEmail'.
-   */
+  /**
+     * Mètode privat que transforma un objecte de missatge de l'API de Microsoft
+     * a la nostra estructura normalitzada 'NormalizedEmail'.
+     */
+  // Dins de la classe MicrosoftMailProvider
+
   private normalizeMicrosoftEmail = (type: 'rebut' | 'enviat') => (msg: any): NormalizedEmail => {
     const sender = type === 'rebut' ? msg.from : msg.sender;
+    let body = msg.body?.content || '';
+
+    // ✅ NOU: Lògica per reemplaçar les imatges CID
+    if (body && msg.attachments && msg.attachments.length > 0) {
+      const inlineAttachments = msg.attachments.filter((att: any) => att.isInline);
+      for (const attachment of inlineAttachments) {
+        const cid = attachment.contentId;
+        const contentType = attachment.contentType;
+        const base64Data = attachment.contentBytes; // Microsoft ja ens el dóna en Base64
+
+        if (cid && contentType && base64Data) {
+          const dataUri = `data:${contentType};base64,${base64Data}`;
+          const cidRegex = new RegExp(`cid:${cid}`, "g");
+          body = body.replace(cidRegex, dataUri);
+        }
+      }
+    }
+
     return {
       provider_message_id: msg.id,
       subject: msg.subject || '(Sense assumpte)',
-      body: msg.body?.content || '',
+      body: body, // 🔄 MODIFICAT: Ara 'body' conté les imatges!
       preview: msg.bodyPreview || '',
       sent_at: new Date(msg.sentDateTime).toISOString(),
       sender_name: sender?.emailAddress?.name || 'Desconegut',
@@ -144,7 +165,7 @@ class MicrosoftMailProvider implements MailProvider {
 class GoogleMailProvider implements MailProvider {
   private clientId = Deno.env.get("GOOGLE_CLIENT_ID")!;
   private clientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
-// Funció utilitària per decodificar el format Base64URL que utilitza Gmail.
+  // Funció utilitària per decodificar el format Base64URL que utilitza Gmail.
   private decodeBase64Url(base64Url: string): string {
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const decoded = atob(base64);
@@ -152,7 +173,7 @@ class GoogleMailProvider implements MailProvider {
       Array.from(decoded).map(c => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2)).join("")
     );
   }
-// Obté un nou 'access token' de curta durada.
+  // Obté un nou 'access token' de curta durada.
   async refreshAccessToken(refreshToken: string): Promise<string> {
     const res = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
@@ -170,10 +191,10 @@ class GoogleMailProvider implements MailProvider {
     const tokens = await res.json();
     return tokens.access_token;
   }
-/**
-   * Mètode principal per obtenir nous missatges de Gmail.
-   * Primer obté una llista d'IDs de missatges i després processa cada missatge individualment.
-   */
+  /**
+     * Mètode principal per obtenir nous missatges de Gmail.
+     * Primer obté una llista d'IDs de missatges i després processa cada missatge individualment.
+     */
   async getNewMessages(accessToken: string, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
     let gmailQuery = "-in:draft";
     if (lastSyncDate) {
@@ -189,12 +210,12 @@ class GoogleMailProvider implements MailProvider {
     do {
       let url = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=${encodeURIComponent(gmailQuery)}`;
       if (nextPageToken) url += `&pageToken=${nextPageToken}`;
-      
+
       const messagesRes = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       const messagesData = await messagesRes.json();
-      
+
       if (messagesData.messages) messageIds.push(...messagesData.messages);
-      
+
       nextPageToken = messagesData.nextPageToken;
       currentPage++;
     } while (nextPageToken && currentPage < MAX_PAGES);
@@ -209,8 +230,11 @@ class GoogleMailProvider implements MailProvider {
    */
   private async fetchAndNormalizeEmail(messageId: string, accessToken: string): Promise<NormalizedEmail | null> {
     try {
+      // 🔄 MODIFICAT: Afegim una capçalera per a les crides addicionals
+      const authHeader = { Authorization: `Bearer ${accessToken}` };
+
       const emailRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}?format=full`, {
-        headers: { Authorization: `Bearer ${accessToken}` }
+        headers: authHeader
       });
       if (!emailRes.ok) return null;
 
@@ -218,11 +242,47 @@ class GoogleMailProvider implements MailProvider {
       const payload = emailData.payload;
       const getHeader = (name: string) => payload?.headers?.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value || "";
 
-      const fromHeader = getHeader("From");
-      const fromEmail = (fromHeader.match(/<(.+)>/)?.[1] || fromHeader).toLowerCase();
-      
+      // ✅ NOU: Pas 1 - Crear un mapa per guardar les imatges CID
+      const cidMap = new Map<string, string>();
+      const attachmentPromises: Promise<void>[] = [];
+
+      // ✅ NOU: Pas 2 - Funció recursiva per trobar adjunts incrustats
+      const findInlineAttachments = (parts: any[]) => {
+        for (const part of parts) {
+          const contentIdHeader = part.headers?.find((h: any) => h.name.toLowerCase() === 'content-id');
+          if (contentIdHeader && part.body?.attachmentId) {
+            const contentId = contentIdHeader.value.replace(/[<>]/g, ""); // Netejem el <...>
+            const mimeType = part.mimeType;
+            const attachmentId = part.body.attachmentId;
+
+            // Creem una promesa per obtenir les dades de l'adjunt
+            const promise = fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}/attachments/${attachmentId}`, { headers: authHeader })
+              .then(res => res.json())
+              .then(attachment => {
+                if (attachment.data) {
+                  const base64Data = attachment.data.replace(/-/g, '+').replace(/_/g, '/');
+                  cidMap.set(contentId, `data:${mimeType};base64,${base64Data}`);
+                }
+              });
+            attachmentPromises.push(promise);
+          }
+          // Busquem recursivament en parts anidades
+          if (part.parts) {
+            findInlineAttachments(part.parts);
+          }
+        }
+      };
+
+      if (payload?.parts) {
+        findInlineAttachments(payload.parts);
+      }
+
+      // ✅ NOU: Pas 3 - Esperar que totes les imatges es descarreguin en paral·lel
+      await Promise.all(attachmentPromises);
+
       let body = "";
       const findPart = (parts: any[], mimeType: string): string | null => {
+        // ... (aquesta funció auxiliar es manté igual)
         for (const part of parts) {
           if (part.mimeType === mimeType && part.body?.data) return part.body.data;
           if (part.parts) {
@@ -241,12 +301,22 @@ class GoogleMailProvider implements MailProvider {
         body = this.decodeBase64Url(payload.body.data);
       }
 
+      // ✅ NOU: Pas 4 - Reemplaçar les referències CID a l'HTML amb les dades Base64
+      if (body && cidMap.size > 0) {
+        for (const [cid, dataUri] of cidMap.entries()) {
+          const cidRegex = new RegExp(`cid:${cid}`, "g");
+          body = body.replace(cidRegex, dataUri);
+        }
+      }
+
+      const fromHeader = getHeader("From");
+      const fromEmail = (fromHeader.match(/<(.+)>/)?.[1] || fromHeader).toLowerCase();
       const isSent = emailData.labelIds?.includes("SENT");
 
       return {
         provider_message_id: emailData.id,
         subject: getHeader("Subject") || "(Sense assumpte)",
-        body: body || emailData.snippet || "",
+        body: body || emailData.snippet || "", // 🔄 MODIFICAT: Ara 'body' conté les imatges!
         preview: (body ? body.replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ").trim().substring(0, 150) : emailData.snippet || ""),
         sent_at: new Date(getHeader("Date") || Date.now()).toISOString(),
         sender_name: fromHeader.includes("<") ? fromHeader.split("<")[0].trim().replace(/"/g, "") : fromEmail,
@@ -289,20 +359,30 @@ serve(async (req) => {
   }
 
   let userId: string | null = null;
+  let provider: string | null = null;
+
   try {
     const body = await req.json();
     userId = body.userId;
+    provider = body.provider; // ✅ NOU: Llegim el proveïdor del cos de la petició
+
     if (!userId) throw new Error("Falta el paràmetre 'userId'.");
+    // ✅ NOU: Comprovació per al proveïdor
+    if (!provider || (provider !== 'google' && provider !== 'azure')) {
+      throw new Error("Falta el paràmetre 'provider' o no és vàlid ('google', 'azure').");
+    }
 
     // 1. Obtenir credencials i proveïdor de l'usuari
     const { data: creds, error: userError } = await supabaseAdmin
       .from("user_credentials")
       .select("refresh_token, provider")
       .eq("user_id", userId)
+      .eq("provider", provider)
+
       .single();
-    
+
     if (userError || !creds) throw new Error(`No s'han trobat credencials per a l'usuari ${userId}`);
-    
+
     // 2. Seleccionar el proveïdor de correu correcte
     const mailProvider = getMailProvider(creds.provider);
 
@@ -315,7 +395,7 @@ serve(async (req) => {
       .limit(1)
       .maybeSingle();
     const lastSyncDate = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
-    
+
     // 4. Obtenir un nou 'access token'
     const accessToken = await mailProvider.refreshAccessToken(creds.refresh_token);
     if (!accessToken) throw new Error(`No s'ha pogut obtenir l'access token per a ${userId}`);
@@ -324,7 +404,7 @@ serve(async (req) => {
     const newEmails = await mailProvider.getNewMessages(accessToken, lastSyncDate);
     console.log(`[SYNC ${creds.provider.toUpperCase()}] ${newEmails.length} missatges nous trobats per a ${userId}`);
     if (newEmails.length === 0) {
-       return new Response(JSON.stringify({ message: `No hi ha nous emails per sincronitzar per a ${userId}.` }), {
+      return new Response(JSON.stringify({ message: `No hi ha nous emails per sincronitzar per a ${userId}.` }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
       });
     }
@@ -332,9 +412,9 @@ serve(async (req) => {
     // 6. Obtenir la blacklist de l'usuari
     const { data: blacklistRules } = await supabaseAdmin.from('blacklist_rules').select('value').eq('user_id', userId);
     const userBlacklist = (blacklistRules || []).map(r => r.value);
-    
+
     let processedCount = 0;
-    
+
     // 7. Processar i inserir cada correu
     for (const email of newEmails) {
       try {
@@ -345,8 +425,8 @@ serve(async (req) => {
         // Comprovar blacklist
         const fromDomain = email.sender_email.split('@')[1];
         if (userBlacklist.some(item => email.sender_email.includes(item) || fromDomain?.includes(item))) {
-            console.log(`[BLACKLIST] Ignorant email de ${email.sender_email}`);
-            continue;
+          console.log(`[BLACKLIST] Ignorant email de ${email.sender_email}`);
+          continue;
         }
 
         // Buscar contacte associat
@@ -381,9 +461,9 @@ serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-    
+
   } catch (err) {
-    console.error(`[Worker Error General] (Usuari: ${userId || 'N/A'}):`, err);
+    console.error(`[Worker Error General] (Usuari: ${userId || 'N/A'}, Provider: ${provider || 'N/A'}):`, err);
     return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
