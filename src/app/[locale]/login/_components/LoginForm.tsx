@@ -1,0 +1,149 @@
+// /app/[locale]/login/_components/LoginForm.tsx
+
+"use client";
+
+import { useTransition } from 'react';
+import { loginAction, googleAuthAction } from '@/app/[locale]/auth/actions'; // Assegura't que la ruta a les teves accions és correcta
+import Image from 'next/image';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Mail, Lock, Loader2, Check } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation'; // Import the hook
+
+const ParticleBackground = dynamic(
+    () => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground),
+    { ssr: false }
+);
+
+/**
+ * Component de client que renderitza el formulari d'inici de sessió.
+ */
+export default function LoginForm() {
+    const searchParams = useSearchParams(); // ✅ Read params here
+    const message = searchParams.get('message');
+    const error = searchParams.get('error');
+    
+    const t = useTranslations('LoginPage');
+    const [isPending, startTransition] = useTransition();
+    const [isGoogleLoading, startGoogleTransition] = useTransition();
+
+    const handleEmailLogin = (formData: FormData) => {
+        startTransition(() => {
+            // Cridem la Server Action. La redirecció es gestiona al servidor.
+            loginAction(formData);
+        });
+    };
+
+    const handleGoogleLogin = () => {
+        startGoogleTransition(() => {
+            // Cridem la Server Action per a Google.
+            googleAuthAction();
+        });
+    };
+
+    return (
+        <div className="w-full min-h-screen lg:grid lg:grid-cols-2 relative">
+            <ParticleBackground />
+
+            {/* Columna Esquerra: Branding i Missatge */}
+            <div className="hidden lg:flex flex-col items-center justify-center p-12 relative z-10">
+                <div className="text-center max-w-md">
+                    <Image
+                        src="/android-chrome-192x192.png"
+                        alt="Logo de Ribotflow"
+                        width={80}
+                        height={80}
+                        className="mx-auto mb-6"
+                    />
+                    <h1 className="text-4xl font-bold mb-4">{t('welcomeTitle')}</h1>
+                    <p className="text-lg text-muted-foreground mb-8">{t('welcomeSubtitle')}</p>
+                    <ul className="space-y-4 text-lg text-left">
+                        <li className="flex items-start"><Check className="w-6 h-6 text-brand-green mr-3 mt-1 shrink-0" /><span>{t('feature1')}</span></li>
+                        <li className="flex items-start"><Check className="w-6 h-6 text-brand-green mr-3 mt-1 shrink-0" /><span>{t('feature2')}</span></li>
+                        <li className="flex items-start"><Check className="w-6 h-6 text-brand-green mr-3 mt-1 shrink-0" /><span>{t('feature3')}</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            {/* Columna Dreta: Formulari de Login */}
+            <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10">
+                <div className="w-full max-w-md space-y-8">
+                    <div className="text-center lg:text-left">
+                        <h2 className="text-3xl font-bold tracking-tight">{t('title')}</h2>
+                        <p className="mt-2 text-muted-foreground">
+                            {t('subtitle')}{" "}
+                            <Link href="/signup" className="font-medium text-primary hover:underline">
+                                {t('signupLink')}
+                            </Link>
+                        </p>
+                    </div>
+
+                    <div className="space-y-6">
+                        <Button
+                            variant="outline"
+                            className="w-full text-lg py-6 flex items-center justify-center"
+                            onClick={handleGoogleLogin}
+                            disabled={isGoogleLoading || isPending}
+                        >
+                            {isGoogleLoading ? (
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            ) : (
+                                <Image
+                                    className="w-5 h-5 mr-3"
+                                    alt="Google logo"
+                                    src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+                                    width={20}
+                                    height={20}
+                                />)}
+                            <span>{t('googleButton')}</span>
+                        </Button>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center"><Separator /></div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">{t('separator')}</span>
+                            </div>
+                        </div>
+
+                        <form action={handleEmailLogin} className="space-y-6">
+                            {(message || error) && (
+                                <p className="text-sm text-center p-2 bg-muted rounded-md">
+                                    {message || (error === 'auth_failed' ? "L'autenticació ha fallat. Intenta-ho de nou." : "Hi ha hagut un error.")}
+                                </p>
+                            )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="email">{t('emailLabel')}</Label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <Input id="email" name="email" type="email" placeholder={t('emailPlaceholder')} required className="pl-10" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label htmlFor="password">{t('passwordLabel')}</Label>
+                                    <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                                        {t('forgotPasswordLink')}
+                                    </Link>
+                                </div>
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <Input id="password" name="password" type="password" required minLength={6} className="pl-10" />
+                                </div>
+                            </div>
+                            <Button type="submit" className="w-full text-lg py-6" disabled={isPending || isGoogleLoading}>
+                                {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                                {t('submitButton')}
+                            </Button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

@@ -27,47 +27,47 @@ export async function middleware(request: NextRequest) {
   
   const { data: { user } } = await supabase.auth.getUser();
 
-  const publicPaths = ['/login', '/auth', '/quote', '/signup']; // L'arrel (/) és la landing page, ja gestionada
-  const isPublicPath = publicPaths.some(p => pathname.startsWith(p));
-  const isRootPath = pathname === '/';
-
-
- // CAS 1: Usuari NO connectat
- if (!user) {
-  // Si la ruta NO és pública i NO és la pàgina d'inici, el redirigim al login
-  if (!isPublicPath && !isRootPath) {
-    return NextResponse.redirect(new URL(`/${localePrefix}/login`, request.url));
-  }
-  return response;
-}
-
-// CAS 2: Usuari SÍ connectat
-if (user) {
-  const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
-  const onboardingCompleted = profile?.onboarding_completed || false;
-  
-  const allowedPathsForNewUser = ['/onboarding', '/settings'];
-  const isTryingToOnboard = allowedPathsForNewUser.some(p => pathname.startsWith(p));
-
-  // CAS 2.1: L'usuari és NOU (onboarding incomplet)
-  if (!onboardingCompleted) {
-    // Si no està intentant anar a l'onboarding, el forcem a anar-hi
-    if (!isTryingToOnboard) {
-      return NextResponse.redirect(new URL(`/${localePrefix}/onboarding`, request.url));
+    const publicPaths = ['/login', '/signup', '/auth', '/accept-invite'];
+    if (!user) {
+        if (!publicPaths.some(p => pathname.startsWith(p))) {
+            return NextResponse.redirect(new URL(`/${localePrefix}/login`, request.url));
+        }
+        return response;
     }
-  } 
-  // CAS 2.2: L'usuari ja EXISTEIX (onboarding complet)
-  else {
-    // Si intenta anar a pàgines que ja no li pertoquen, el redirigim al dashboard
-    if (pathname.startsWith('/login') || pathname.startsWith('/onboarding') || isRootPath) {
-      return NextResponse.redirect(new URL(`/${localePrefix}/dashboard`, request.url));
-    }
-  }
-}
 
-return response;
+    // --- LÒGICA DE REDIRECCIÓ PER A USUARIS AUTENTICATS ---
+    const { data: profile } = await supabase.from('profiles').select('onboarding_completed, full_name').eq('id', user.id).single();
+    const { data: teamMember } = await supabase.from('team_members').select('team_id').eq('user_id', user.id).maybeSingle();
+
+    const onboardingCompleted = profile?.onboarding_completed || false;
+    const profileCompleted = !!profile?.full_name; // Considerem el perfil complet si té nom.
+    const hasTeam = !!teamMember;
+
+    // CAS 1: Propietari nou que ha de configurar l'empresa.
+    // Condició: No ha completat l'onboarding D'EMPRESA i encara no té equip.
+    if (!onboardingCompleted && !hasTeam) {
+        if (!pathname.startsWith('/onboarding')) {
+            return NextResponse.redirect(new URL(`/${localePrefix}/onboarding`, request.url));
+        }
+    }
+    // CAS 2: Membre convidat que ha de completar el seu perfil.
+    // Condició: Ja té un equip però encara no ha omplert el seu nom.
+    else if (hasTeam && !profileCompleted) {
+        if (!pathname.startsWith('/onboarding-invite')) {
+            return NextResponse.redirect(new URL(`/${localePrefix}/onboarding-invite`, request.url));
+        }
+    }
+    // CAS 3: Usuari amb tot configurat.
+    else {
+        // Si intenta anar a pàgines que ja no li pertoquen, el redirigim al dashboard.
+        if (pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/onboarding') || pathname.startsWith('/onboarding-invite')) {
+            return NextResponse.redirect(new URL(`/${localePrefix}/dashboard`, request.url));
+        }
+    }
+
+    return response;
 }
 
 export const config = {
-matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)'],
+    matcher: ['/((?!api|_next/static|_next/image|.*\\..*).*)'],
 };

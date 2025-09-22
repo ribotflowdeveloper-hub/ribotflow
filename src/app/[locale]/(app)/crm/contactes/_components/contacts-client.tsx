@@ -50,8 +50,8 @@ export function ContactsClient({
     const pathname = usePathname();
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
     const [viewMode, setViewMode] = useState<'cards' | 'list'>(initialViewMode);
-    const [sortBy, setSortBy] = useState(initialSortBy);
-    const [statusFilter, setStatusFilter] = useState(initialStatus);
+    const [sortBy] = useState(initialSortBy);
+    const [statusFilter] = useState(initialStatus);
     // Funció per navegar a la pàgina de detall d'un contacte.
     const handleContactClick = (contact: Contact) => {
         router.push(`/crm/contactes/${contact.id}`);

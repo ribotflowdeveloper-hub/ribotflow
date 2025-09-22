@@ -38,7 +38,7 @@ export function ProductsClient({ initialProducts }: { initialProducts: Product[]
     // 'useMemo' per a optimitzar la generació de la llista de categories úniques.
     // Aquest càlcul només es farà de nou si 'initialProducts' canvia.
     const categories = useMemo(() => {
-        const uniqueCategories = new Set(initialProducts.map(p => p.category).filter((c): c is string => c != null));
+        const uniqueCategories = new Set(initialProducts.map(p => p.category).filter((c): c is string => !!c));
         // ✅ 2. La llista de categories també utilitza el valor neutre "all".
         return ["all", ...Array.from(uniqueCategories)];
     }, [initialProducts]);
