@@ -18,6 +18,8 @@ import ContactCard from '@/app/[locale]/(app)/crm/contactes/_components/ContactC
 import ContactTable from '@/app/[locale]/(app)/crm/contactes/_components/ContactTable';
 import { createContactAction } from './actions';
 
+import { ExportContactsButton } from './ExportContactsButton'; // ✅ 1. IMPORTA EL NOU COMPONENT
+
 
 /**
  * Component principal i interactiu per a la pàgina de llista de contactes.
@@ -154,6 +156,8 @@ export function ContactsClient({
                             <List className="w-4 h-4" />
                         </Button>
                     </div>
+                    <ExportContactsButton /> {/* ✅ 2. COL·LOCA EL BOTÓ AQUÍ */}
+
                     {/* Botó de "Nou Contacte" més compacte en mòbil */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
