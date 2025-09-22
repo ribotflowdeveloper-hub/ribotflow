@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation';
 import { CustomizationClient } from './CustomizationClient';
 
 export async function CustomizationData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

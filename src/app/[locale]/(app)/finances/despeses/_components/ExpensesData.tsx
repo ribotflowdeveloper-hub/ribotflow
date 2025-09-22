@@ -8,8 +8,8 @@ import { cookies } from 'next/headers';
 import { ExpensesClient } from './expenses-client';
 
 export async function ExpensesData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   // Ejecutamos las consultas para gastos y proveedores en paralelo para mayor eficiencia.
   const [expensesRes, suppliersRes] = await Promise.all([

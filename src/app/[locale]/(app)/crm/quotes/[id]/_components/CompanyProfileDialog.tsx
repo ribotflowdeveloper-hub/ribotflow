@@ -27,7 +27,8 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
     const [localProfile, setLocalProfile] = useState<EditableProfile>(profile || {});
     const [isSaving, startSaveTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
-    const supabase = createClient();
+    const supabase = createClient()
+;
 
     useEffect(() => { setLocalProfile(profile || {}); }, [profile]);
 

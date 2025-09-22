@@ -27,7 +27,8 @@ export function DashboardClient({ initialData, children }: {
 }) {
   const t = useTranslations('DashboardClient');
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createClient()
+;
   
   const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
   const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);

@@ -1,37 +1,48 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { cookies } from "next/headers";
+import { createClient as createStandardClient } from "@supabase/supabase-js";
 
 /**
- * Aquesta és l'única funció que necessites per crear un client de Supabase
- * a qualsevol lloc del servidor (Server Components, Route Handlers, Server Actions).
+ * Crea un client de Supabase per al servidor que actua en nom de l'usuari.
+ * Aquesta és la versió definitiva que accepta 'cookieStore' com a paràmetre.
  */
-export function createClient() {
-  const cookieStore = cookies()
+export const createClient = (cookieStore: ReturnType<typeof cookies>) => {
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                // Utilitzem els mètodes moderns 'getAll' i 'setAll'
+                async getAll() {
+                    return (await cookieStore).getAll();
+                },
+                setAll(cookiesToSet) {
+                    try {
+                        cookiesToSet.forEach(async ({ name, value, options }) =>
+                            (await cookieStore).set(name, value, options)
+                        );
+                    } catch {
+                        // Ignorem errors si s'executa en un context on no es poden modificar cookies.
+                    }
+                },
+            },
+        }
+    );
+};
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        async get(name: string) {
-          return (await cookieStore).get(name)?.value
-        },
-        async set(name: string, value: string, options: CookieOptions) {
-          try {
-            (await cookieStore).set({ name, value, ...options })
-          } catch (error) {
-            // Aquest error pot passar si s'intenta escriure una cookie des d'un Server Component.
-            // Es pot ignorar si tens un middleware que refresca les sessions.
-          }
-        },
-        async remove(name: string, options: CookieOptions) {
-          try {
-            (await cookieStore).set({ name, value: '', ...options })
-          } catch (error) {
-            // El mateix que a dalt.
-          }
-        },
-      },
-    }
-  )
-}
+/**
+ * Crea un client de Supabase amb permisos d'administrador per al servidor.
+ */
+export const createAdminClient = () => {
+    return createStandardClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+            auth: {
+                autoRefreshToken: false,
+                persistSession: false,
+            },
+        }
+    );
+};
+

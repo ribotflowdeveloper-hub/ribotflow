@@ -4,8 +4,8 @@ import { ActivitatsClient } from './activitats-client';
 
 // Aquest és un Server Component asíncron que fa la feina pesada.
 export async function ActivitiesData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: activities, error } = await supabase
     .from('activities')

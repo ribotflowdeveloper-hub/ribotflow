@@ -12,8 +12,8 @@ interface QuoteEditorDataProps {
  * @summary Server Component asíncron que gestiona tota la lògica de càrrega de dades per a l'editor.
  */
 export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

@@ -18,8 +18,8 @@ export async function sendEmailWithGmailAction(
   htmlBody: string
 ): Promise<{ success: boolean; message: string }> {
   
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   // Verificació de seguretat: assegurem que l'usuari està logat.
   // El token de sessió JWT s'inclourà automàticament a la capçalera de la crida a la funció,

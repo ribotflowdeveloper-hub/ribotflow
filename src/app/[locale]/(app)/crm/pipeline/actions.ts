@@ -17,8 +17,8 @@ import { cookies } from "next/headers";
  * @returns {Promise<{ success: boolean } | { error: { message: string } }>} Un objecte indicant l'èxit o un error.
  */
 export async function saveOpportunityAction(formData: FormData) {
-    const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
   
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: { message: "No autenticat." } };
@@ -64,7 +64,8 @@ export async function saveOpportunityAction(formData: FormData) {
     newStage: string
   ) {
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
   
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { error: { message: "No autenticat." } };

@@ -45,7 +45,8 @@ serve(async (req) => {
       throw new Error("Falten paràmetres: 'contactId', 'subject', o 'htmlBody'.");
     }
 
-    const supabaseAdmin = createClient();
+    const supabaseAdmin = createClient(cookies())
+;
 
     // PAS 1: Obtenir l'email del contacte destinatari.
     const { data: contact, error: contactError } = await supabaseAdmin.from('contacts').select('email, nom').eq('id', contactId).single();

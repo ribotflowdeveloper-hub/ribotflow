@@ -8,6 +8,7 @@ type InvoiceItemData = {
     description: string | null;
     quantity: number | null;
     unit_price: number | null;
+    
 };
 
 export type InvoiceFormData = {
@@ -24,8 +25,8 @@ export type InvoiceFormData = {
 };
 
 export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
-    const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
@@ -69,8 +70,8 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
 }
 
 export async function deleteInvoiceAction(invoiceId: string) {
-    const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
@@ -105,8 +106,8 @@ type FunctionsError = Error & {
  * @param draftInvoiceId L'ID de l'esborrany de factura a emetre.
  */
 export async function issueInvoiceAction(draftInvoiceId: string) {
-    const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };

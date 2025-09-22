@@ -28,7 +28,8 @@ interface AddTaskDialogProps {
 
 const AddTaskDialog: FC<AddTaskDialogProps> = ({ open, onOpenChange, contacts, onTaskCreated }) => {
   const t = useTranslations('DashboardClient.addTaskDialog');
-  const supabase = createClient();
+  const supabase = createClient()
+;
   const [title, setTitle] = useState('');
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);

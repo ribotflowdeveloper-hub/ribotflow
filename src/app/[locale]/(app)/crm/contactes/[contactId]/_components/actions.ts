@@ -23,8 +23,8 @@ export async function updateContactAction(
   formData: FormData
 ): Promise<{ data: Contact | null; error: { message: string } | null }> {
   
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -87,7 +87,8 @@ export async function deleteContactAction(
 ): Promise<{ success: boolean; message: string }> {
   
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

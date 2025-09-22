@@ -26,7 +26,8 @@ const ParticleBackground = dynamic(
 export default function LoginPage() {
   const t = useTranslations('LoginPage');
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createClient()
+;
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => { setIsClient(true); }, []);

@@ -42,7 +42,10 @@
     "planner": "Planificador",
     "networkTitle": "Red Profesional",
     "listView": "Lista",
-    "mapView": "Mapa"
+    "mapView": "Mapa",
+    "excel": "Excel",
+    "CrearTemplate": "Crear plantilla",
+    "LoadFile": "Cargar fichero"
   },
   "InboxPage": {
     "composeDialogTitle": "Escribir un Correo",
@@ -209,6 +212,13 @@
     "toastSuccessDescription": "El contacto se ha guardado correctamente.",
     "noCompany": "Sin empresa",
     "notSpecified": "No especificado",
+    "filters": {
+      "sortBy": "Ordenar por",
+      "newest": "Más nuevos",
+      "oldest": "Más antiguos",
+      "status": "Estado",
+      "allStatuses": "Todos los estados"
+    },
     "table": {
       "name": "Nombre",
       "status": "Estado",
@@ -764,6 +774,10 @@
   "InvoicingPage": {
     "title": "Facturación",
     "newDraftButton": "Nuevo Borrador",
+    "filterByStatus": "Filtrar por estado",
+    "allStatuses": "Todos los estados",
+    "searchProductPlaceholder": "Busca un producto...",
+    "noProductFound": "No se ha encontrado ningún producto.",
     "table": {
       "invoiceNo": "Nº Factura",
       "client": "Cliente",
@@ -815,7 +829,9 @@
       "total": "Total",
       "saveChanges": "Guardar Cambios",
       "createDraft": "Crear Borrador",
-      "cancelButton": "Cancelar"
+      "cancelButton": "Cancelar",
+      "searchProductPlaceholder": "Busca un producto...",
+      "noProductFound": "No se ha encontrado ningún producto."
     },
     "toast": {
       "notAllowed": "Acción no permitida",

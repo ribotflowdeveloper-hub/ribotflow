@@ -9,8 +9,8 @@ import { cookies } from "next/headers";
  * @param formData Dades del formulari amb la nova regla.
  */
 export async function addRuleAction(formData: FormData) {
-    const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData?.user) {
@@ -49,7 +49,8 @@ export async function addRuleAction(formData: FormData) {
  */
 export async function deleteRuleAction(id: string) {
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData?.user) {

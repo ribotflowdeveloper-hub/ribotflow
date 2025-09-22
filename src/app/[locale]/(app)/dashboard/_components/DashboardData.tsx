@@ -18,8 +18,9 @@ const calculatePercentageChange = (current: number, previous: number): string =>
  */
 // ✅ CORRECCIÓ: Canviem el nom de la prop a 'children'
 export async function DashboardData({ children }: { children: React.ReactNode }) {
-  const cookieStore = cookies();
-  const supabase = createClient();
+
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

@@ -9,7 +9,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-
+import type { QuoteWithContact } from "./page";
 /**
  * @summary Elimina un pressupost i tots els seus ítems associats de la base de dades.
  * @param {string} quoteId - L'ID del pressupost que es vol eliminar.
@@ -21,8 +21,8 @@ export async function deleteQuoteAction(quoteId: string) {
     return { success: false, message: "L'ID del pressupost és invàlid." };
   }
   
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -63,4 +63,47 @@ export async function deleteQuoteAction(quoteId: string) {
   revalidatePath('/crm/quotes');
 
   return { success: true, message: "Pressupost esborrat correctament." };
+}
+/**
+ * ✅ NOVA SERVER ACTION PER A ORDENAR PRESSUPOSTOS
+ * Rep l'estat d'ordenació des del client, fa la consulta a la BD i retorna les dades ordenades.
+ */
+export async function sortQuotesAction(
+  sortState: { [key: string]: 'asc' | 'desc' }
+): Promise<{ success: boolean; data?: QuoteWithContact[]; message?: string }> {
+  try {
+      const supabase = createClient(cookies());
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuari no autenticat.");
+
+      let query = supabase
+          .from('quotes')
+          .select('*, contacts(nom, empresa)')
+          .eq('user_id', user.id);
+      
+      const sortCriteria = Object.entries(sortState);
+      if (sortCriteria.length > 0) {
+          for (const [column, order] of sortCriteria) {
+              const ascending = order === 'asc';
+              if (column.includes('.')) {
+                  const [referencedTable, referencedColumn] = column.split('.');
+                  query = query.order(referencedColumn, { referencedTable, ascending });
+              } else {
+                  query = query.order(column, { ascending });
+              }
+          }
+      } else {
+          query = query.order('issue_date', { ascending: false });
+      }
+
+      const { data: quotes, error } = await query;
+      if (error) throw error;
+      
+      return { success: true, data: quotes as QuoteWithContact[] };
+
+  } catch (error) {
+      const message = error instanceof Error ? error.message : "Error desconegut";
+      console.error("Error a sortQuotesAction:", message);
+      return { success: false, message };
+  }
 }

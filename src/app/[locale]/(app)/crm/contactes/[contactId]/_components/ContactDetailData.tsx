@@ -6,8 +6,8 @@ import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm
 
 // Aquest component rep l'ID del contacte i fa tota la feina pesada
 export async function ContactDetailData({ contactId }: { contactId: string }) {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   // Carreguem les dades principals del contacte
   const { data: contact, error } = await supabase

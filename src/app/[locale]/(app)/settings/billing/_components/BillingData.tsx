@@ -18,7 +18,8 @@ const plansStructure = [
 export async function BillingData() {
     const t = await getTranslations('SettingsPage.billing');
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;

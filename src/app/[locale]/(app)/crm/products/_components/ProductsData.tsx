@@ -7,8 +7,9 @@ import type { Product } from '@/types/crm/products'; // Importem el tipus des de
  * @summary Aquest és un Server Component asíncron que carrega les dades dels productes.
  */
 export async function ProductsData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
 

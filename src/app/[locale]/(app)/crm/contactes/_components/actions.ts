@@ -1,16 +1,16 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import type { Contact } from '@/types/crm';
+import { cookies } from "next/headers";
 
 export async function createContactAction(
   formData: FormData
 ): Promise<{ data: Contact | null; error: { message: string } | null }> {
   
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

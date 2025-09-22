@@ -49,7 +49,8 @@ interface ProfileFormProps {
 
 export function ProfileForm({ profile }: ProfileFormProps) {
   const t = useTranslations('SettingsPage.SettingsProfile');
-  const supabase = createClient();
+  const supabase = createClient()
+;
   const [isPending, startTransition] = useTransition(); // Hook per a l'estat de càrrega principal del formulari.
   const [isSwitchSaving, setIsSwitchSaving] = useState(false); // Estat de càrrega específic per a l'interruptor d'autodesat.
   const [isUploading, setIsUploading] = useState(false); // Estat de càrrega per a la pujada del logo.

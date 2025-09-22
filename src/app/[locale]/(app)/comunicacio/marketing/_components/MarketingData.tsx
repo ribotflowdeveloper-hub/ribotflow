@@ -10,7 +10,8 @@ import type { Campaign, Kpis } from '../page';
 
 export async function MarketingData() {
  
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   // Cridem a la funció RPC per obtenir totes les dades en una sola petició.
   const { data, error } = await supabase.rpc('get_marketing_page_data');

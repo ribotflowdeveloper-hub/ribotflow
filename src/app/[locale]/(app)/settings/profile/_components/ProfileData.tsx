@@ -7,8 +7,8 @@ import { ProfileForm } from "./ProfileForm";
  * @summary Server Component asíncron que carrega les dades del perfil de l'usuari.
  */
 export async function ProfileData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

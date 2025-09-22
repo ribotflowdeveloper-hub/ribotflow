@@ -99,7 +99,8 @@ export type InitialData = {
     useEffect(() => {
         const initDialog = async () => {
             if (open) {
-                const supabase = createClient();
+                const supabase = createClient()
+;
                 const { data: { user } } = await supabase.auth.getUser();
                 if(!user) return;
 

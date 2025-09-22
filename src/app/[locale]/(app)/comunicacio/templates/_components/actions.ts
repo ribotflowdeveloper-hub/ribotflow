@@ -24,7 +24,8 @@ export async function saveTemplateAction(
   templateId: string | null
 ): Promise<{ data: EmailTemplate | null; error: PostgrestError | null }> {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: { message: "Not authenticated" } as PostgrestError };
@@ -72,7 +73,8 @@ export async function deleteTemplateAction(
   templateId: string
 ): Promise<{ error: PostgrestError | null }> {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: { message: "Not authenticated" } as PostgrestError };

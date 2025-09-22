@@ -7,8 +7,8 @@ import { OnboardingClient } from './OnboardingClient';
  * @summary Carrega les dades inicials necessàries per a l'onboarding.
  */
 export async function OnboardingData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

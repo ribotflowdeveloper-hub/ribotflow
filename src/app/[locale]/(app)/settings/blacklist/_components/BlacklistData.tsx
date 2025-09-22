@@ -8,8 +8,8 @@ import type { Rule } from '../page';
  * @summary Server Component asíncron que carrega les regles de la blacklist.
  */
 export async function BlacklistData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

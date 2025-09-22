@@ -19,7 +19,8 @@ export async function withUser<T>(
     // Obtenim les cookies resolent la promesa
     const cookieStore = await cookies();
     // Creem el client passant les cookies ja resoltes
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
     
     const { data: { user } } = await supabase.auth.getUser();
 

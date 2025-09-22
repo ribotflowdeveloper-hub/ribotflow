@@ -6,8 +6,8 @@ import type { Stage, Contact } from '../page';
 // Aquest és un Server Component asíncron
 export async function PipelineData() {
   // Aquesta és la part lenta que abans bloquejava tota la pàgina
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

@@ -17,7 +17,8 @@ type ActionResult<T = unknown> = {
  */
 export async function getPresignedUploadUrlAction(fileName: string): Promise<ActionResult<{ signedUrl: string; token: string; path: string; filePath: string }>> {
   const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: t('errorNotAuthenticated') };
 
@@ -46,7 +47,8 @@ export async function createSocialPostAction(
   mediaType: string | null
 ): Promise<ActionResult<SocialPost>> {
   const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: t('errorNotAuthenticated') };
 
@@ -83,7 +85,8 @@ export async function createSocialPostAction(
  */
 export async function scheduleSocialPostAction(postId: number, scheduledAt: string): Promise<ActionResult> {
   const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { error } = await supabase
     .from('social_posts')
     .update({ status: 'scheduled', scheduled_at: scheduledAt })
@@ -103,7 +106,8 @@ export async function scheduleSocialPostAction(postId: number, scheduledAt: stri
  */
 export async function unscheduleSocialPostAction(postId: number): Promise<ActionResult> {
   const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { error } = await supabase
     .from('social_posts')
     .update({ status: 'draft', scheduled_at: null })
@@ -123,7 +127,8 @@ export async function unscheduleSocialPostAction(postId: number): Promise<Action
  */
 export async function deleteSocialPostAction(postId: number): Promise<ActionResult> {
   const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: t('errorNotAuthenticated') };
 

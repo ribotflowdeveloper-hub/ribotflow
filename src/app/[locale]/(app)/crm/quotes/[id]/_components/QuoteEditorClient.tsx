@@ -38,7 +38,8 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
   initialOpportunities: Opportunity[];
 }) {
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = createClient()
+;
   const t = useTranslations('QuoteEditor');
   const locale = useLocale();
   // --- Gestió de l'Estat ---

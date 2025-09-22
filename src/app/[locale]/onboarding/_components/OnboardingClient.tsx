@@ -27,7 +27,8 @@ const InputWithIcon: FC<InputProps & { icon: ElementType }> = ({ icon: Icon, ...
  */
 export function OnboardingClient({ initialFullName }: { initialFullName: string }) {
   const t = useTranslations('OnboardingPage');
-  const supabase = createClient();
+  const supabase = createClient()
+;
   const router = useRouter();
   
   const [isPending, startTransition] = useTransition();

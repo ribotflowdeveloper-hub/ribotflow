@@ -18,7 +18,8 @@ serve(async (req) => {
 try {
     // Aquesta funció utilitza la 'SERVICE_ROLE_KEY' per actuar com a administrador,
     // ja que necessita buscar i potencialment crear contactes/proveïdors a la base de dades.
-    const supabaseAdmin = createClient();
+    const supabaseAdmin = createClient(cookies())
+;
     
     // Verifiquem l'usuari que fa la petició a través del seu token JWT.
     const { data: { user } } = await supabaseAdmin.auth.getUser(req.headers.get('Authorization')!.replace('Bearer ', ''));

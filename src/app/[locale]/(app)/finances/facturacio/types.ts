@@ -24,6 +24,9 @@ export const INVOICE_STATUS_MAP = [
     description: string;
     quantity: number;
     unit_price: number;
+    tax_rate?: number | null; // ✅ CANVIA AIXÒ
+    product_id?: number; // ✅ AFEGEIX AQUESTA LÍNIA
+
   };
   
   export type Invoice = {

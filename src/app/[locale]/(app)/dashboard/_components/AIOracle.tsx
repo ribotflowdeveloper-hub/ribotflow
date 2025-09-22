@@ -11,8 +11,8 @@ import { getTranslations } from 'next-intl/server'; // ✅ Importem la funció d
 export async function AIOracle() {
   // ✅ Obtenim les traduccions per a aquest component
   const t = await getTranslations('DashboardClient.aiOracle');
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   try {
     const { data: aiInsights, error } = await supabase.functions.invoke('generate-ai-summary');

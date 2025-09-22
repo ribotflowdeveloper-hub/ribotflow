@@ -39,7 +39,13 @@
     "cancel": "Cancel",
     "confirmSignOut": "Yes, sign out",
     "menuTitle": "Menu",
-    "planner": "Planificador"
+    "planner": "Planner",
+    "networkTitle": "Profesional network",
+    "listView": "List",
+    "mapView": "Map",
+    "excel": "Excel",
+    "CrearTemplate": "Create template",
+    "LoadFile": "Load file"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
@@ -211,6 +217,13 @@
     "toastSuccessDescription": "The contact has been saved successfully.",
     "noCompany": "No company",
     "notSpecified": "Not specified",
+    "filters": {
+      "sortBy": "Sort by",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "status": "Status",
+      "allStatuses": "All statuses"
+    },
     "table": {
       "name": "Name",
       "status": "Status",
@@ -766,6 +779,10 @@
   "InvoicingPage": {
     "title": "Invoicing",
     "newDraftButton": "New Draft",
+    "filterByStatus": "Filter by status",
+    "allStatuses": "All statuses",
+    "searchProductPlaceholder": "Search for a product...",
+    "noProductFound": "No product found.",
     "table": {
       "invoiceNo": "Invoice No.",
       "client": "Client",
@@ -817,7 +834,9 @@
       "total": "Total",
       "saveChanges": "Save Changes",
       "createDraft": "Create Draft",
-      "cancelButton": "Cancel"
+      "cancelButton": "Cancel",
+      "searchProductPlaceholder": "Search for a product...",
+      "noProductFound": "No product found."
     },
     "toast": {
       "notAllowed": "Action not allowed",

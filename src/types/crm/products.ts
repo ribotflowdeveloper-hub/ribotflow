@@ -1,7 +1,7 @@
 // Ja no necessitem definir el tipus 'Product' aquí, ja que ve del fitxer central.
 // ✅ AFEGEIX L'EXPORTACIÓ DELS TIPUS AQUÍ
 export type Product = {
-  id: string;
+  id: number; // Asegúrate de que sea 'number', no 'string'
   name: string;
   description: string | null;
   price: number;
@@ -9,4 +9,5 @@ export type Product = {
   unit: string | null;
   iva: number | null;
   is_active: boolean;
+  
 };

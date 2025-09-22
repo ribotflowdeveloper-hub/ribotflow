@@ -87,7 +87,8 @@ export async function sendQuoteAction(quoteId: string) {
   if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
   
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "Usuari no autenticat." };
@@ -112,7 +113,8 @@ export async function sendQuoteAction(quoteId: string) {
  */
 export async function updateCompanyProfileAction(profileData: CompanyProfileObject) {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { data: { user } } = await supabase.auth.getUser();
   
   // ✅ Assegurem que profileData no sigui null
@@ -145,7 +147,8 @@ export async function updateCompanyProfileAction(profileData: CompanyProfileObje
  */
 export async function createProductAction(newProduct: { name: string, price: number }) {
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
 

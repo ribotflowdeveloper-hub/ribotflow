@@ -41,7 +41,8 @@ export function PipelineClient({ initialStages, initialContacts }: {
 
     useEffect(() => {
         const fetchOpportunities = async () => {
-            const supabase = createClient();
+            const supabase = createClient()
+;
             const { data: opportunitiesData, error } = await supabase
                 .from('opportunities')
                 .select('*, contacts(id, nom)');

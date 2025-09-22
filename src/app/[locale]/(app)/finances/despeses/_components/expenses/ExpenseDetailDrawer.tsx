@@ -36,7 +36,8 @@ type AttachmentWithUrl = {
 
 export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isOpen, onClose, onEdit }) => {
   const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
-  const supabase = createClient();
+  const supabase = createClient()
+;
   const t = useTranslations('Expenses');
   const locale = useLocale();
 

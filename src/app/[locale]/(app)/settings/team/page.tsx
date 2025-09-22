@@ -1,36 +1,44 @@
-/**
- * @file page.tsx (Gestió d'Equip)
- * @summary Component de Servidor per a la pàgina de gestió d'equip.
- */
+// /app/settings/team/page.tsx
 
-import { TeamClient } from './_components/TeamClient';
-import { getTranslations } from 'next-intl/server';
-import type { Metadata } from 'next';
+import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { redirect } from 'next/navigation';
+import { TeamClient } from "./_components/TeamClient";
 
-/**
- * @summary Genera les metadades de la pàgina de manera dinàmica i traduïda.
- */
-// ✅ CORRECCIÓ: Hem eliminat 'params'. La funció ja no els necessita.
-export async function generateMetadata(): Promise<Metadata> {
-  // ✅ La funció 'getTranslations' sap quin idioma carregar automàticament.
-  const tNav = await getTranslations('SettingsPage.nav');
-  return { title: `${tNav('team')} | Ribot` };
-}
+// Definim els tipus aquí perquè són específics d'aquesta pàgina
+export type Team = { id: string; name: string; } | null;
+export type TeamMember = { role: string; profiles: { id: string; full_name: string | null; email: string | null; } | null; };
+export type Invitation = { id: string; email: string; role: string; };
 
-/**
- * @function TeamPage
- * @summary Carrega les traduccions i renderitza el component de client.
- */
-export default async function TeamPage() {
-  const t = await getTranslations('SettingsPage.SettingsTeam');
+export default async function TeamSettingsPage() {
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) redirect('/login');
 
-  // En un futur, aquí carregaries les dades de l'equip.
-  // const members = await getTeamMembers();
+    // Busquem si l'usuari és membre d'algun equip
+    const { data: member } = await supabase
+        .from('team_members')
+        .select('teams(id, name)')
+        .eq('user_id', user.id)
+        .maybeSingle(); // Usar maybeSingle és més segur
 
-  return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">{t('pageTitle')}</h1>
-      <TeamClient /* members={members} */ />
-    </div>
-  );
+    let team: Team = null;
+    let teamMembers: TeamMember[] = [];
+    let pendingInvitations: Invitation[] = [];
+
+    // Si l'usuari té un equip, busquem les dades addicionals
+    if (member && member.teams) {
+        team = member.teams as unknown as Team;
+        
+        const [membersRes, invitesRes] = await Promise.all([
+            supabase.from('team_members').select('role, profiles(id, full_name, email)').eq('team_id', team!.id),
+            supabase.from('invitations').select('id, email, role').eq('team_id', team!.id)
+        ]);
+
+        teamMembers = (membersRes.data as unknown as TeamMember[]) || [];
+        pendingInvitations = (invitesRes.data as Invitation[]) || [];
+    }
+    
+    // Passem totes les dades al component de client
+    return <TeamClient user={user} team={team} teamMembers={teamMembers} pendingInvitations={pendingInvitations} />;
 }

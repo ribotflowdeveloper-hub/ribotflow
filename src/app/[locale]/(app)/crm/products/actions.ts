@@ -45,7 +45,8 @@ export type FormState = {
  */
 export async function createProduct(prevState: FormState, formData: FormData): Promise<FormState> {
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "No autoritzat" };
@@ -81,7 +82,8 @@ export async function createProduct(prevState: FormState, formData: FormData): P
  */
 export async function updateProduct(id: string, prevState: FormState, formData: FormData): Promise<FormState> {
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "No autoritzat" };
 
@@ -110,7 +112,8 @@ export async function updateProduct(id: string, prevState: FormState, formData: 
  */
 export async function deleteProduct(id: string) {
     const cookieStore = cookies();
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "No autoritzat" };
 

@@ -2,11 +2,13 @@
 import { getTranslations } from 'next-intl/server';
 import { createClient } from "@/lib/supabase/server";
 import { IntegrationsClient } from "./IntegrationsClient";
+import { cookies } from 'next/headers';
 
 export async function IntegrationsData() {
     // ✅ 2. Utilitzem 'await getTranslations' en lloc de 'useTranslations'
     const t = await getTranslations('SettingsIntegrationsPage');
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;

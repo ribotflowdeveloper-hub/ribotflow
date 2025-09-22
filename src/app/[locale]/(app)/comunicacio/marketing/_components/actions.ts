@@ -97,7 +97,8 @@ export async function draftContentAction(goal: string, strategy: Strategy): Prom
  */
 export async function saveCampaignAction(campaignData: Partial<Campaign>, goal: string) {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { data: null, error: { message: "Not authenticated" } };
 
@@ -126,7 +127,8 @@ export async function saveCampaignAction(campaignData: Partial<Campaign>, goal: 
  */
 export async function updateCampaignAction(campaignId: string, name: string, content: string) {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   // No cal comprovar l'usuari aquí perquè les Row Level Security (RLS) de Supabase
   // ja s'encarreguen de verificar que l'usuari només pot modificar les seves pròpies campanyes.
   const { error } = await supabase.from('campaigns').update({ name, content }).eq('id', campaignId);

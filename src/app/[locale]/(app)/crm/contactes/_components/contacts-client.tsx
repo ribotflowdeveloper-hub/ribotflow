@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from "sonner"; // ✅ Canviem la importació
 import { Button } from '@/components/ui/button';
@@ -24,19 +24,32 @@ import { createContactAction } from './actions';
  * Gestiona l'estat de la cerca, el mode de visualització (targetes o llista)
  * i el diàleg per crear nous contactes.
  */
-export function ContactsClient({ initialContacts, totalPages, currentPage }: {
+export function ContactsClient({
+    initialContacts,
+    totalPages,
+    currentPage,
+    initialSortBy,
+    initialStatus,
+    initialViewMode // ✅ NOU: Rebem el mode de vista inicial
+}: {
     initialContacts: Contact[],
     totalPages: number,
-    currentPage: number
+    currentPage: number,
+    initialSortBy: string,
+    initialStatus: string,
+    initialViewMode: 'cards' | 'list' // ✅ NOU
 }) {
     const t = useTranslations('ContactsClient');
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [contacts, setContacts] = useState<Contact[]>(initialContacts);
-    const [searchTerm, setSearchTerm] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
-
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
+    const [viewMode, setViewMode] = useState<'cards' | 'list'>(initialViewMode);
+    const [sortBy, setSortBy] = useState(initialSortBy);
+    const [statusFilter, setStatusFilter] = useState(initialStatus);
     // Funció per navegar a la pàgina de detall d'un contacte.
     const handleContactClick = (contact: Contact) => {
         router.push(`/crm/contactes/${contact.id}`);
@@ -64,7 +77,31 @@ export function ContactsClient({ initialContacts, totalPages, currentPage }: {
             }
         });
     };
+    // ✅ NOU: Inicialitzem l'estat amb el valor de la URL
 
+
+    // ✅ MODIFICAT: La funció de canvi de filtre ara també gestiona la vista
+    const handleFilterChange = (type: 'sort' | 'status' | 'view', value: string) => {
+        const current = new URLSearchParams(Array.from(searchParams.entries()));
+        current.set(type, value);
+
+        // Si no és un canvi de vista, resetejem la pàgina
+        if (type !== 'view') {
+            current.set('page', '1');
+        }
+
+        const search = current.toString();
+        const query = search ? `?${search}` : "";
+
+        // Actualitzem l'estat local de la vista immediatament per a una resposta ràpida de la UI
+        if (type === 'view') {
+            setViewMode(value as 'cards' | 'list');
+        }
+
+        startTransition(() => {
+            router.push(`${pathname}${query}`);
+        });
+    };
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
             {/* ✅ CAPÇALERA AMB DISSENY ADAPTABLE */}
@@ -76,10 +113,46 @@ export function ContactsClient({ initialContacts, totalPages, currentPage }: {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
-                    {/* Canviadors de vista */}
+                    {/* ✅ NOU: Filtres */}
+                    <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder={t('filters.sortBy')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="newest">{t('filters.newest')}</SelectItem>
+                            <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
+                        <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder={t('filters.status')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
+                            {CONTACT_STATUS_MAP.map(status => (
+                                <SelectItem key={status.code} value={status.code}>
+                                    {t(`contactStatuses.${status.key}`)}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {/* ✅ MODIFICAT: Els botons de vista ara criden a handleFilterChange */}
                     <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                        <Button variant={viewMode === 'cards' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('cards')}><LayoutGrid className="w-4 h-4" /></Button>
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('list')}><List className="w-4 h-4" /></Button>
+                        <Button
+                            variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                            size="icon"
+                            onClick={() => handleFilterChange('view', 'cards')}
+                        >
+                            <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                            size="icon"
+                            onClick={() => handleFilterChange('view', 'list')}
+                        >
+                            <List className="w-4 h-4" />
+                        </Button>
                     </div>
                     {/* Botó de "Nou Contacte" més compacte en mòbil */}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -144,8 +217,8 @@ export function ContactsClient({ initialContacts, totalPages, currentPage }: {
                     </motion.div>
                 </AnimatePresence>
             </div>
-             {/* ✅ PAGINACIÓ AMB DISSENY ADAPTABLE */}
-             {totalPages > 1 && (
+            {/* ✅ PAGINACIÓ AMB DISSENY ADAPTABLE */}
+            {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 md:gap-4 mt-8 flex-shrink-0">
                     <Button asChild disabled={currentPage <= 1} size="sm" className="px-3">
                         <Link href={`/crm/contactes?page=${currentPage - 1}`}>
@@ -158,8 +231,8 @@ export function ContactsClient({ initialContacts, totalPages, currentPage }: {
                     </span>
                     <Button asChild disabled={currentPage >= totalPages} size="sm" className="px-3">
                         <Link href={`/crm/contactes?page=${currentPage + 1}`}>
-                             <span className="hidden md:inline">{t('pagination.next')}</span>
-                             <span className="md:hidden">→</span>
+                            <span className="hidden md:inline">{t('pagination.next')}</span>
+                            <span className="md:hidden">→</span>
                         </Link>
                     </Button>
                 </div>

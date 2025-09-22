@@ -24,7 +24,8 @@ const ParticleBackground = dynamic(
  */
 export default function SignupPage() {
     const t = useTranslations('SignupPage');
-    const supabase = createClient();
+    const supabase = createClient()
+;
 
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

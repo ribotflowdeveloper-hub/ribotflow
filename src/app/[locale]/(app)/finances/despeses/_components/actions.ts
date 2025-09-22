@@ -33,8 +33,8 @@ export async function saveExpenseAction(
   >,
   expenseId: string | null
 ): Promise<ActionResult<Expense>> {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const {
     data: { user },
@@ -103,7 +103,8 @@ export async function processOcrAction(
   formData: FormData
 ): Promise<ActionResult<Record<string, unknown>>> {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 // Deleguem tota la lògica complexa de l'OCR a una Edge Function.
   const { data, error } = await supabase.functions.invoke("process-ocr", {
     body: formData,
@@ -124,7 +125,8 @@ export async function uploadAttachmentAction(
   formData: FormData
 ): Promise<ActionResult<null>> {
   const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   const {
     data: { user },
   } = await supabase.auth.getUser();

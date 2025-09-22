@@ -30,7 +30,8 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false); // Controla la visibilitat del diàleg de creació/edició.
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false); // Controla la visibilitat del calaix de detalls.
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null); // Emmagatzema la despesa seleccionada.
-  const supabase = createClient();
+  const supabase = createClient()
+;
 
   /**
    * @summary Gestor per obrir el diàleg per crear una nova despesa.

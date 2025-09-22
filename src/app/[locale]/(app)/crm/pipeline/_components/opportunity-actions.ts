@@ -14,8 +14,8 @@ export async function saveOpportunityAction(
   formData: FormData
 ): Promise<{ error: { message: string } | null }> {
   
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   // Verificació de seguretat: assegurem que l'usuari està autenticat.
   const { data: { user } } = await supabase.auth.getUser();

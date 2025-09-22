@@ -10,8 +10,8 @@ import { revalidatePath } from "next/cache";
  * @param formData Les dades del formulari enviades des del component de client.
  */
 export async function updateProfileAction(formData: FormData) {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -83,8 +83,8 @@ return { success: true, message: "Perfil actualitzat correctament." };
 * @param isPublic Un booleà que indica el nou estat de visibilitat.
 */
 export async function updateProfileVisibilityAction(isPublic: boolean) {
-const cookieStore = cookies();
-const supabase = createClient();
+const supabase = createClient(cookies())
+;
 
 const { data: { user } } = await supabase.auth.getUser();
 if (!user) {

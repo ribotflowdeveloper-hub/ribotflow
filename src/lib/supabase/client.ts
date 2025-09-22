@@ -1,4 +1,4 @@
-// Aquest arxiu crea un client de Supabase dissenyat per ser utilitzat de forma segura
+// Aquest arxiu crea un client de Supabase dissenyat per a ser utilitzat de forma segura
 // als "Client Components" (arxius amb la directiva "use client").
 
 import { createBrowserClient } from '@supabase/ssr';
@@ -10,7 +10,7 @@ import { createBrowserClient } from '@supabase/ssr';
  */
 export function createClient() {
   // 'createBrowserClient' és la funció recomanada de la llibreria '@supabase/ssr'
-  // per a la interacció des del navegador.
+  // per a la interacció des del navegador. No necessita gestionar les cookies manualment.
   return createBrowserClient(
     // Aquestes són variables d'entorn públiques. El prefix 'NEXT_PUBLIC_'
     // les fa accessibles al codi del navegador. MAI s'han de posar claus

@@ -46,7 +46,7 @@ export function InboxClient({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const t = useTranslations('Inbox');
+  const t = useTranslations('InboxPage');
 
   const [tickets, setTickets] = useState<Ticket[]>(initialTickets || []);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(initialSelectedTicket);

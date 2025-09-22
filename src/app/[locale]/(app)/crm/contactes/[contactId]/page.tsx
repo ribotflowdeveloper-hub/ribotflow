@@ -17,8 +17,8 @@ export async function generateMetadata(props: ContactDetailPageProps): Promise<M
   // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
   const { contactId } = await props.params;
 
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   
   const { data: contact } = await supabase
     .from('contacts')

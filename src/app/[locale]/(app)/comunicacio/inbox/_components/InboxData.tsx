@@ -9,7 +9,8 @@ import type { Ticket, Template } from "@/types/comunicacio/inbox";
 import { getTicketBodyAction } from "../actions";
 
 export async function InboxData({ searchTerm }: { searchTerm: string }) {
-    const supabase = createClient();
+    const supabase = createClient(cookies())
+;
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;

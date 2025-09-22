@@ -8,8 +8,8 @@ import { TemplatesClient } from './templates-client';
 
 
 export async function TemplatesData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+  const supabase = createClient(cookies())
+;
   
   const { data: templates, error } = await supabase
     .from('email_templates')

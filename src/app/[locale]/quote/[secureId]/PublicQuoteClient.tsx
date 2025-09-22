@@ -46,7 +46,8 @@ export function PublicQuoteClient({
   
   const [isRejecting, setIsRejecting] = useState(false); // Controla la visibilitat del diàleg de rebuig.
   const [rejectionReason, setRejectionReason] = useState(""); // Emmagatzema el motiu del rebuig.
-  const supabase = createClient();
+  const supabase = createClient()
+;
 /**
    * Crida l'Edge Function 'accept-quote' per marcar el pressupost com a acceptat.
    */

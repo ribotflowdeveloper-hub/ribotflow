@@ -1,31 +1,65 @@
-/**
- * @file FacturacioData.tsx
- * @summary Componente de Servidor que carga los datos iniciales para la página de facturación.
- */
+// /app/finances/facturacio/_components/FacturacioData.tsx
 
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { FacturacioClient } from './FacturacioClient';
-import type { Invoice, Contact } from '../types';
+import type { Invoice, Contact } from '../types'; 
+import type {  Product } from '@/types/crm/products'; 
 
-export async function FacturacioData() {
-  const cookieStore = cookies();
-  const supabase = createClient();
+// /app/[locale]/(app)/finances/facturacio/_components/FacturacioData.tsx
 
+// ✅ LA FUNCIÓ ARA REP PROPS SIMPLES (STRINGS), NO 'searchParams'
+export async function FacturacioData({
+  status,
+  sortBy,
+  order
+}: {
+  status?: string;
+  sortBy?: string;
+  order?: string;
+}) {
+  const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return null; // El middleware ya debería haber redirigido
+  if (!user) return null;
 
-  const [invoicesRes, contactsRes] = await Promise.all([
-    supabase.from('invoices').select('*, contacts(id, nom)').eq('user_id', user.id).order('issue_date', { ascending: false }),
-    supabase.from('contacts').select('id, nom').eq('user_id', user.id)
+  let query = supabase
+    .from('invoices')
+    .select('*, contacts(id, nom), invoice_items(*)')
+    .eq('user_id', user.id);
+
+  // ✅ UTILITZEM LES PROPS DIRECTAMENT
+  if (status) {
+    query = query.eq('status', status);
+  }
+
+  // ✅ LA LÒGICA D'ORDENACIÓ ARA ÉS MOLT MÉS NETA
+  if (sortBy && (order === 'asc' || order === 'desc')) {
+      const ascending = order === 'asc';
+      if (sortBy.includes('.')) {
+        const [referencedTable, referencedColumn] = sortBy.split('.');
+        query = query.order(referencedColumn, { referencedTable, ascending });
+      } else {
+        query = query.order(sortBy, { ascending });
+      }
+  } else {
+    // Ordenació per defecte
+    query = query.order('issue_date', { ascending: false });
+  }
+
+  // La resta del component es queda exactament igual
+  const [invoicesRes, contactsRes, productsRes] = await Promise.all([
+    query,
+    supabase.from('contacts').select('id, nom').eq('user_id', user.id),
+    supabase.from('products').select('*').eq('user_id', user.id).eq('is_active', true)
   ]);
 
-  if (invoicesRes.error || contactsRes.error) {
-    console.error("Error al cargar datos de facturación:", invoicesRes.error || contactsRes.error);
+  if (invoicesRes.error || contactsRes.error || productsRes.error) {
+    console.error("Error al carregar dades:", invoicesRes.error || contactsRes.error || productsRes.error);
   }
 
   const invoices = invoicesRes.data as Invoice[] || [];
   const contacts = contactsRes.data as Contact[] || [];
+  const products = productsRes.data as Product[] || [];
 
-  return <FacturacioClient initialInvoices={invoices} initialContacts={contacts} />;
+  return <FacturacioClient initialInvoices={invoices} initialContacts={contacts} initialProducts={products} />;
 }

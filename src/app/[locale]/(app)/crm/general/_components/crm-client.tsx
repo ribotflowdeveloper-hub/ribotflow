@@ -31,7 +31,8 @@ export function CrmClient({ initialData }: CrmClientProps) {
     const t = useTranslations('CrmGeneralPage');
     const locale = useLocale();
     const router = useRouter();
-    const supabase = createClient();
+    const supabase = createClient()
+;
 
     // L'estat local manté les dades per a poder actualitzar la UI (ex: eliminar una alerta)
     const [data, setData] = useState(initialData);
