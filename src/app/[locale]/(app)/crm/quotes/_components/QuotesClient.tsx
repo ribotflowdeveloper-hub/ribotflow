@@ -63,19 +63,6 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
         router.push(`${pathname}?${params.toString()}`);
     };
 
-    // ✨ FUNCIÓ D'EXEMPLE PER A UN FILTRE (p. ex., un <select> per l'estat)
-    const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const status = e.target.value;
-        const params = new URLSearchParams(searchParams.toString());
-
-        if (status) {
-            params.set('status', status);
-        } else {
-            // Si l'usuari selecciona "Tots", eliminem el paràmetre
-            params.delete('status');
-        }
-        router.push(`${pathname}?${params.toString()}`);
-    };
 
     const SortableHeader = ({ column, label }: { column: string, label: string }) => {
         // Obtenim l'ordenació directament dels searchParams

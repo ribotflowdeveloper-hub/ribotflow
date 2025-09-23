@@ -162,12 +162,14 @@ export function FacturacioClient({ initialInvoices, initialContacts, initialProd
         if (!invoiceToIssue) return;
         startSaveTransition(async () => {
             const result = await issueInvoiceAction(invoiceToIssue.id);
-            if (result.success) {
+            if (result?.success) {
                 toast.success(t('toast.issueSuccess'), { description: t('toast.issueSuccessDesc', { invoiceNumber: result.invoice?.invoice_number }) });
                 setInvoiceToIssue(null);
                 router.refresh();
             } else {
-                toast.error(t('toast.issueError'), { description: result.message });
+                if (result) {
+                    toast.error(t('toast.issueError'), { description: result.message });
+                }
             }
         });
     };

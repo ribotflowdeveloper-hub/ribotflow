@@ -383,7 +383,9 @@
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "No s'ha pogut marcar com a llegida.",
-      "replySubject": "Re: El teu pressupost"
+      "replySubject": "Re: El teu pressupost",
+      "fetchError": "No s'han pogut carregar les dades del CRM."
+
     },
     "replyBody": "\n\n\n--- En resposta al teu feedback del {date} ---\n>{content}"
   },
@@ -783,7 +785,7 @@
     "filterByStatus": "Filtrar per estat",
     "allStatuses": "Tots els estats",
     "searchProductPlaceholder": "Cerca un producte...",
-    "noProductFound": "No s'ha trobat cap producte.", 
+    "noProductFound": "No s'ha trobat cap producte.",
     "table": {
       "invoiceNo": "Nº Factura",
       "client": "Client",
@@ -837,7 +839,16 @@
       "createDraft": "Crear Esborrany",
       "cancelButton": "Cancelar",
       "searchProductPlaceholder": "Cerca un producte...",
-      "noProductFound": "No s'ha trobat cap producte."
+      "noProductFound": "No s'ha trobat cap producte.",
+      "itemDescriptionLabel": "Descripció",
+      "itemQtyLabel": "Quantitat",
+      "itemTaxLabel": "Impost",
+      "itemPriceLabel": "Preu",
+      "itemTotalLabel": "Total",
+      "error": "An error has occurred",
+      "success": "Èxit!"
+
+
     },
     "toast": {
       "notAllowed": "Acció no permesa",
@@ -848,7 +859,9 @@
       "deleteSuccess": "Èxit!",
       "deleteError": "Error en eliminar",
       "missingData": "Falten dades",
-      "missingDataDesc": "Si us plau, selecciona un client i una data d'emissió."
+      "missingDataDesc": "Si us plau, selecciona un client i una data d'emissió.",
+      "error": "An error has occurred"
+
     }
   },
   "NetworkPage": {
@@ -1085,7 +1098,6 @@
         "admin": "Administrador",
         "member": "Membre"
       }
-    
     }
   },
   "ThemeSwitcher": {

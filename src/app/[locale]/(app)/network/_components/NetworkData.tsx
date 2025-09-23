@@ -1,27 +1,33 @@
-/**
- * @file NetworkData.tsx
- * @summary Componente de Servidor que carga los datos de los perfiles públicos.
- */
+// /app/[locale]/network/_components/NetworkData.tsx
 
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { NetworkClient } from './NetworkClient';
 import { getTranslations } from 'next-intl/server';
-import type { PublicProfile } from '../types';
+import type { PublicProfileListItem } from '../types';
 
 export async function NetworkData() {
-  const t = await getTranslations('NetworkPage');
-  const supabase = createClient(cookies())
-;
+    const t = await getTranslations('NetworkPage');
+    const supabase = createClient(cookies());
 
-  const { data, error } = await supabase.rpc('get_public_profiles');
-  const profiles = (data as PublicProfile[]) || [];
+    // Consulta simple per a la llista inicial. Només les dades bàsiques.
+    const { data, error } = await supabase
+        .from('teams')
+        .select(`
+            id,
+            name,
+            sector,
+            logo_url,
+            latitude,
+            longitude
+        `);
 
-  if (error) {
-    console.error('Error al cargar los perfiles:', error.message);
-    // Devuelve el cliente con una lista vacía para que pueda mostrar un mensaje de error si es necesario.
-    return <NetworkClient profiles={[]} errorMessage={t('errorLoading')} />;
-  }
+    if (error) {
+        console.error('Error al carregar la llista de perfils:', error.message);
+        return <NetworkClient profiles={[]} errorMessage={t('errorLoading')} />;
+    }
 
-  return <NetworkClient profiles={profiles} />;
+    const profiles = (data as PublicProfileListItem[]) || [];
+
+    return <NetworkClient profiles={profiles} />;
 }

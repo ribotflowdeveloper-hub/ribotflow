@@ -382,7 +382,9 @@
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "Could not mark as read.",
-      "replySubject": "Re: Your quote"
+      "replySubject": "Re: Your quote",
+      "fetchError": "Failed to load CRM data."
+
     },
     "replyBody": "\n\n\n--- In response to your feedback from {date} ---\n>{content}"
   },
@@ -836,7 +838,16 @@
       "createDraft": "Create Draft",
       "cancelButton": "Cancel",
       "searchProductPlaceholder": "Search for a product...",
-      "noProductFound": "No product found."
+      "noProductFound": "No product found.",
+      "itemDescriptionLabel": "Description",
+      "itemQtyLabel": "Quantity",
+      "itemTaxLabel": "Tax",
+      "itemPriceLabel": "Price",
+      "itemTotalLabel": "Total",
+      "error": "An error has occurred",
+      "success": "Success!"
+
+
     },
     "toast": {
       "notAllowed": "Action not allowed",
@@ -847,7 +858,9 @@
       "deleteSuccess": "Success!",
       "deleteError": "Error deleting",
       "missingData": "Missing data",
-      "missingDataDesc": "Please select a client and an issue date."
+      "missingDataDesc": "Please select a client and an issue date.",
+      "error": "An error has occurred"
+
     }
   },
   "NetworkPage": {

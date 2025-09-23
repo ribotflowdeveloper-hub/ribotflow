@@ -40,7 +40,7 @@ export function ProductForm({ product, onSuccess }: { product: Product | null, o
   // Determina quina Server Action s'ha d'executar: 'updateProduct' si estem editant,
   // o 'createProduct' si estem creant. 'bind' s'utilitza per pre-configurar
   // el primer paràmetre de 'updateProduct' (l'ID del producte).
-  const action = product ? updateProduct.bind(null, product.id) : createProduct;
+  const action = product ? updateProduct.bind(null, String(product.id)) : createProduct;
 
   // Estat inicial per a 'useActionState'.
   const initialState: FormState = { success: false, message: "" };

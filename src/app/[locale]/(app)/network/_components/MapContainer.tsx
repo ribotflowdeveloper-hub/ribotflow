@@ -1,139 +1,100 @@
-/**
- * @file MapContainer.tsx
- * @summary Component de client que renderitza un mapa interactiu utilitzant Mapbox GL i react-map-gl.
- * Mostra una sèrie de marcadors per a cada perfil professional i permet seleccionar-los per veure'n
- * els detalls en un Popup. També anima el mapa per centrar-se en el perfil seleccionat.
- */
+"use client";
 
-"use client"; // Directiva de Next.js. Necessària per a la interactivitat del mapa i l'ús de hooks.
-
-
-import 'mapbox-gl/dist/mapbox-gl.css'; // Importació dels estils CSS base de Mapbox.
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { useRef, useEffect } from 'react';
-// Importació de components i tipus de la llibreria 'react-map-gl', un embolcall de Mapbox GL per a React.
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
-import type { PublicProfile } from '../types';
-import { Building2 } from 'lucide-react'; // Icona per a marcadors sense logo.
-import Image from 'next/image'; // Component optimitzat d'imatges de Next.js.
-import { useTranslations } from 'next-intl'; // ✅ Importem el hook
+import type { PublicProfileListItem, PublicProfileDetail } from '../types';
+import { Building2, Globe, Briefcase, Loader2, Mail, Phone } from 'lucide-react';
+import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 
-/**
- * @interface MapContainerProps
- * @summary Defineix les propietats que el component MapContainer espera rebre.
- */
 interface MapContainerProps {
-    /** Array de perfils públics que s'han de mostrar al mapa. */
-    profiles: PublicProfile[];
-    /** El perfil que està actualment seleccionat (pot ser null si no n'hi ha cap). */
-    selectedProfile: PublicProfile | null;
-    /** Funció callback per notificar al component pare quan es selecciona o deselecciona un perfil. */
-    onSelectProfile: (profile: PublicProfile | null) => void;
-  }
-  
-/**
- * @function MapContainer
- * @summary El component principal que renderitza i gestiona la lògica del mapa.
- */
-export default function MapContainer({ profiles, selectedProfile, onSelectProfile }: MapContainerProps) {
-    // Utilitzem una 'ref' per obtenir una referència directa a la instància del mapa.
-  // Això ens permetrà cridar a mètodes de l'API del mapa, com 'flyTo'.
-  const mapRef = useRef<MapRef>(null);
-  const t = useTranslations('NetworkPage'); // ✅ Cridem el hook
-  // Guardem el token en una variable per fer una comprovació de seguretat abans de renderitzar.
-  const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-/**
-   * @effect useEffect
-   * @summary Aquest efecte s'activa cada vegada que la propietat `selectedProfile` canvia.
-   * Si es selecciona un perfil nou, utilitza el mètode 'flyTo' per animar el mapa
-   * i centrar-lo suaument a les coordenades del perfil seleccionat.
-   */
-  
-  useEffect(() => {
-    if (selectedProfile && mapRef.current) {
-      mapRef.current.flyTo({
-        center: [selectedProfile.longitude, selectedProfile.latitude],
-        zoom: 14,
-        duration: 1500,
-      });
-    }
-  }, [selectedProfile]);
+  profiles: PublicProfileListItem[];
+  selectedProfile: PublicProfileListItem | null;
+  onSelectProfile: (profile: PublicProfileListItem | null) => void;
+  detailedProfile: PublicProfileDetail | null;
+  isLoading: boolean;
+}
 
-    // Comprovació de seguretat: si el token de Mapbox no està configurat, mostrem un missatge d'error
-  // en lloc de deixar que l'aplicació falli o mostri un mapa buit.
-  if (!mapboxToken) {
+// ✅ 2. Creem una funció per a formatar l'URL del web
+const formatWebsiteUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+  }
+  return `https://${url}`;
+};
+ 
+export default function MapContainer({ profiles, selectedProfile, onSelectProfile, detailedProfile, isLoading }: MapContainerProps) {
+    const mapRef = useRef<MapRef>(null);
+    const t = useTranslations('NetworkPage');
+    const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+
+    useEffect(() => {
+        if (selectedProfile && selectedProfile.latitude != null && selectedProfile.longitude != null && mapRef.current) {
+            mapRef.current.flyTo({ center: [selectedProfile.longitude, selectedProfile.latitude], zoom: 14, duration: 1500 });
+        }
+    }, [selectedProfile]);
+
+    if (!mapboxToken) return <div className="w-full h-full flex items-center justify-center bg-gray-800 text-red-400 p-4">{t('mapboxError')}</div>;
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-800 text-red-400 p-4">
-        {t('mapboxError')} {/* ✅ Text traduït */}
-        </div>
-    );
-  }
-// Renderització del component.
-  return (
-      <Map
-        ref={mapRef}
-        initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }} // Vista inicial centrada a Catalunya.
-        style={{ width: '100%', height: '100%' }}
-        mapStyle="mapbox://styles/mapbox/dark-v11" // Estil del mapa (en aquest cas, un tema fosc).
-        mapboxAccessToken={mapboxToken} // Passem el token d'API al mapa.
-        onDragStart={() => onSelectProfile(null)} // Si l'usuari arrossega el mapa, deseleccionem qualsevol perfil.
-    >
-       {/* Afegeix els controls de zoom i rotació al mapa. */}
-      <NavigationControl position="top-right" />
-  {/* Iterem sobre l'array de perfils per crear un marcador per a cadascun. */}
-      {profiles.map((profile) => (
-        <Marker
-          key={profile.id} // Clau única per a cada element de la llista.
-          longitude={profile.longitude}
-          latitude={profile.latitude}
-          onClick={(e) => {
-            e.originalEvent.stopPropagation(); // Evitem que l'esdeveniment de clic es propagui al mapa.
-              onSelectProfile(profile); // Notifiquem al pare que s'ha seleccionat un perfil.
-          }}
-        >
-          {/* Contenidor per a l'estil i l'animació del marcador. */}
+      <Map ref={mapRef} initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }} style={{ width: '100%', height: '100%' }} mapStyle="mapbox://styles/mapbox/dark-v11" mapboxAccessToken={mapboxToken} onDragStart={() => onSelectProfile(null)}>
+          <NavigationControl position="top-right" />
+          
+          {profiles.filter(p => p.latitude != null && p.longitude != null).map((profile) => (
+              <Marker key={profile.id} longitude={profile.longitude!} latitude={profile.latitude!} onClick={(e) => { e.originalEvent.stopPropagation(); onSelectProfile(profile); }}>
+                  <div className="transform transition-transform duration-200 hover:scale-125">
+                      {profile.logo_url ? <Image src={profile.logo_url} alt={t('logoAltText', { companyName: profile.name })} width={32} height={32} className="rounded-full border-2 border-purple-500 object-cover" /> : <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-purple-500 flex items-center justify-center"><Building2 className="w-4 h-4 text-purple-300" /></div>}
+                  </div>
+              </Marker>
+          ))}
+          
+          {selectedProfile && selectedProfile.latitude != null && selectedProfile.longitude != null && (
+              <Popup longitude={selectedProfile.longitude} latitude={selectedProfile.latitude} onClose={() => onSelectProfile(null)} closeOnClick={false} anchor="bottom" className="popup-dark">
+                  {isLoading && <div className="p-4 flex justify-center"><Loader2 className="animate-spin text-white" /></div>}
+                  {detailedProfile && !isLoading && (
+                      <div className="max-w-xs p-1 text-white space-y-2">
+                          <div className="flex items-center gap-3">
+                              {detailedProfile.logo_url ? <Image src={detailedProfile.logo_url} alt={`Logo de ${detailedProfile.name}`} width={40} height={40} className="rounded-full object-cover bg-gray-700" /> : <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0"><Building2 className="w-5 h-5 text-gray-400" /></div>}
+                              <div>
+                                  <h3 className="font-bold">{detailedProfile.name}</h3>
+                                  {detailedProfile.owner?.full_name && <p className="text-xs text-gray-400">de {detailedProfile.owner.full_name}</p>}
+                              </div>
+                          </div>
 
-          <div className="transform transition-transform duration-200 hover:scale-125">
-            {/* Si el perfil té un logo, el mostrem. Si no, mostrem una icona genèrica. */}
-            {profile.logo_url ? (
-              <Image 
-                src={profile.logo_url} 
-                alt={t('logoAltText', { companyName: profile.company_name || t('unknownCompany') })}
-                width={32}
-                height={32}
-                className="rounded-full border-2 border-purple-500 object-cover"
-              />
-            ) : (
-              <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-purple-500 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-purple-300" />
-              </div>
-            )}
-          </div>
-        </Marker>
-      ))}
-      {/* Renderització condicional del Popup: només es mostra si hi ha un perfil seleccionat. */}
+                          {detailedProfile.summary && <p className="text-sm text-gray-300">{detailedProfile.summary}</p>}
+                          
+                          {/* ✅ 3. AFEGIM ELS NOUS CAMPS I CORREGIM L'ENLLAÇ */}
+                          <div className="text-xs space-y-1 pt-2 border-t border-gray-700">
+                              {detailedProfile.phone && (
+                                  <a href={`tel:${detailedProfile.phone}`} className="flex items-center gap-2 text-gray-300 hover:text-white">
+                                      <Phone className="w-3 h-3" /> {detailedProfile.phone}
+                                  </a>
+                              )}
+                              {detailedProfile.email && (
+                                  <a href={`mailto:${detailedProfile.email}`} className="flex items-center gap-2 text-gray-300 hover:text-white">
+                                      <Mail className="w-3 h-3" /> {detailedProfile.email}
+                                  </a>
+                              )}
+                              {detailedProfile.website && (
+                                  <a href={formatWebsiteUrl(detailedProfile.website)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-purple-400 hover:underline">
+                                      <Globe className="w-3 h-3" /> Visitar web
+                                  </a>
+                              )}
+                          </div>
 
-      {selectedProfile && (
-        <Popup
-          longitude={selectedProfile.longitude}
-          latitude={selectedProfile.latitude}
-          onClose={() => onSelectProfile(null)} // Permet tancar el popup.
-          closeOnClick={false} // El popup no es tanca si es fa clic al mapa.
-          anchor="bottom" // El popup apareix a sobre del marcador.
-          className="popup-dark" // Classe CSS personalitzada per a l'estil fosc.
-        >
-          <div className="max-w-xs p-1">
-            <h3 className="font-bold">{selectedProfile.company_name}</h3>
-            <p className="text-sm text-gray-300 my-1">{selectedProfile.summary}</p>
-            {selectedProfile.services && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {selectedProfile.services.map((s) => (
-                  <span key={s} className="bg-gray-700 text-xs px-2 py-1 rounded-full">{s}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        </Popup>
-      )}
-    </Map>
+                          {detailedProfile.services && detailedProfile.services.length > 0 && (
+                              <div className="pt-2 border-t border-gray-700">
+                                  <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1 flex items-center gap-2"><Briefcase className="w-3 h-3"/> Serveis</h4>
+                                  <div className="flex flex-wrap gap-1">
+                                      {detailedProfile.services.map((s) => (<span key={s} className="bg-gray-700 text-xs px-2 py-1 rounded-full">{s}</span>))}
+                                  </div>
+                              </div>
+                          )}
+                      </div>
+                  )}
+              </Popup>
+          )}
+      </Map>
   );
 }

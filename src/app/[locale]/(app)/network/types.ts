@@ -1,16 +1,29 @@
-/**
- * @file types.ts (Network)
- * @summary Fichero centralizado para las definiciones de tipos del módulo de Network.
- */
+// /app/[locale]/network/types.ts
 
-export type PublicProfile = {
-    id: string;
-    full_name: string | null;
-    company_name: string | null;
-    summary: string | null;
-    services: string[] | null;
-    logo_url: string | null;
-    website_url: string | null;
-    latitude: number;
-    longitude: number;
-  };
+/**
+ * Representa les dades MÍNIMES d'una empresa (team) que es mostren a la llista inicial.
+ */
+export type PublicProfileListItem = {
+  id: string;
+  name: string;
+  sector: string | null;
+  logo_url: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+/**
+* Representa les dades COMPLETES d'una empresa, incloent el nom del propietari.
+* Aquestes dades es carreguen quan l'usuari fa clic.
+*/
+export type PublicProfileDetail = PublicProfileListItem & {
+  summary: string | null;
+  services: string[] | null;
+  website: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  owner: {
+      full_name: string | null;
+  } | null;
+};

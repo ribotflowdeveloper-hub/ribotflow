@@ -1,7 +1,3 @@
-/**
- * @file src/app/[locale]/(app)/crm/pipeline/_components/pipeline-client.tsx
- * @summary Component de client que gestiona la interfície interactiva del Pipeline.
- */
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -10,129 +6,86 @@ import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { toast } from 'sonner';
 import { Plus, LayoutGrid, Rows } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { Contact, Stage, Opportunity } from './page';
 import { OpportunityDialog } from './_components/OpportunityDialog';
 import { updateOpportunityStageAction } from './actions';
-import { createClient } from '@/lib/supabase/client';
 
-// Importació dels nous sub-components per a les vistes
+// Suposem que aquests components existeixen i reben les dades necessàries
 import { ColumnsView } from './_components/ColumnsView';
 import { RowsView } from './_components/RowsView';
-import { PipelineSkeleton } from './_components/PipelineSkeleton';
 
-/**
- * @summary Component de Client principal per al Pipeline.
- * @description Orquestra l'estat i la lògica per a les diferents vistes del pipeline.
- */
-export function PipelineClient({ initialStages, initialContacts }: {
+// Definim les propietats que rep aquest component des de PipelineData
+interface PipelineClientProps {
     initialStages: Stage[];
     initialContacts: Contact[];
-}) {
+    initialOpportunities: Opportunity[]; // ✅ Rebrem les oportunitats directament
+}
+
+/**
+ * Component de client principal per al Pipeline.
+ * Orquestra l'estat, la interactivitat (drag-and-drop) i les diferents vistes.
+ */
+export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
     const t = useTranslations('PipelinePage');
-    const router = useRouter();
-    const [stages] = useState(initialStages);
     const [opportunitiesByStage, setOpportunitiesByStage] = useState<Record<string, Opportunity[]>>({});
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOpportunity, setEditingOpportunity] = useState<Partial<Opportunity> | null>(null);
     const [viewMode, setViewMode] = useState<'columns' | 'rows'>('columns');
-    const [isLoading, setIsLoading] = useState(true);
 
+    // ✅ AQUEST ÉS EL CANVI CLAU:
+    // Ja no fem un 'fetch' de dades aquí. Utilitzem les dades que ens arriben
+    // des del Server Component (`PipelineData.tsx`) per inicialitzar l'estat.
     useEffect(() => {
-        const fetchOpportunities = async () => {
-            const supabase = createClient()
-;
-            const { data: opportunitiesData, error } = await supabase
-                .from('opportunities')
-                .select('*, contacts(id, nom)');
+        const groupedOpportunities = initialStages.reduce((acc, stage) => {
+            acc[stage.name] = initialOpportunities
+                .filter(op => op.stage_name === stage.name)
+                .sort((a, b) => (a.value ?? 0) - (b.value ?? 0));
+            return acc;
+        }, {} as Record<string, Opportunity[]>);
+        setOpportunitiesByStage(groupedOpportunities);
+    }, [initialStages, initialOpportunities]);
 
-            if (error) {
-                toast.error(t('toast.errorTitle'), { description: t('loadingError') });
-                setIsLoading(false);
-                return;
-            }
-
-            const opportunities = (opportunitiesData as Opportunity[]) || [];
-            const groupedOpportunities = initialStages.reduce((acc, stage) => {
-                acc[stage.name] = opportunities.filter(op => op.stage_name === stage.name)
-                                                .sort((a, b) => (a.value ?? 0) - (b.value ?? 0));
-                return acc;
-            }, {} as Record<string, Opportunity[]>);
-
-            setOpportunitiesByStage(groupedOpportunities);
-            setIsLoading(false);
-        };
-        fetchOpportunities();
-    }, [initialStages, t]);
-
-     /**
-     * @summary Funció que s'executa quan s'acaba d'arrossegar una oportunitat.
-     * ✅ CORREGIT I REESTRUCTURAT per gestionar correctament el reordenament i el moviment.
+    /**
+     * S'executa quan s'acaba d'arrossegar una oportunitat (drag-and-drop).
      */
-     const onDragEnd = async (result: DropResult) => {
+    const onDragEnd = async (result: DropResult) => {
         const { source, destination, draggableId } = result;
-
-        // Si l'element es deixa anar fora d'una zona vàlida, no fem res.
-        if (!destination) return;
-
-        // Si es deixa anar a la mateixa posició exacta, tampoc fem res.
-        if (source.droppableId === destination.droppableId && source.index === destination.index) {
+        if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) {
             return;
         }
 
-        // --- Patró d'UI Optimista (Optimistic UI Update) ---
+        // Patró d'UI Optimista: actualitzem la UI a l'instant
         const originalState = JSON.parse(JSON.stringify(opportunitiesByStage));
-
-        // CAS 1: Reordenar dins de la MATEIXA columna
-        if (source.droppableId === destination.droppableId) {
-            const column = opportunitiesByStage[source.droppableId];
-            const newOpportunitiesInColumn = Array.from(column);
-            const [movedOpportunity] = newOpportunitiesInColumn.splice(source.index, 1);
-            newOpportunitiesInColumn.splice(destination.index, 0, movedOpportunity);
-
-            // Actualitzem l'estat de la UI a l'instant
+        const sourceColumn = Array.from(opportunitiesByStage[source.droppableId]);
+        const [movedOpportunity] = sourceColumn.splice(source.index, 1);
+        
+        // Si es mou a una columna diferent
+        if (source.droppableId !== destination.droppableId) {
+            const destColumn = Array.from(opportunitiesByStage[destination.droppableId] || []);
+            destColumn.splice(destination.index, 0, movedOpportunity);
+            
             const newState = {
                 ...opportunitiesByStage,
-                [source.droppableId]: newOpportunitiesInColumn,
+                [source.droppableId]: sourceColumn,
+                [destination.droppableId]: destColumn,
             };
             setOpportunitiesByStage(newState);
             
-            // TODO: Crida a una Server Action per guardar el nou ordre (opcional però recomanat)
-            // const updateResult = await updateOpportunityOrderAction(newOpportunitiesInColumn);
-            // if (updateResult.error) {
-            //     setOpportunitiesByStage(originalState);
-            //     toast.error("Error al reordenar");
-            // }
-
-        // CAS 2: Moure a una columna DIFERENT
-        } else {
-            const sourceColumn = opportunitiesByStage[source.droppableId];
-            const destColumn = opportunitiesByStage[destination.droppableId] || [];
-            
-            const newSourceOpportunities = Array.from(sourceColumn);
-            const newDestOpportunities = Array.from(destColumn);
-            
-            const [movedOpportunity] = newSourceOpportunities.splice(source.index, 1);
-            newDestOpportunities.splice(destination.index, 0, movedOpportunity);
-
-            // Actualitzem l'estat de la UI a l'instant
-            const newState = {
-                ...opportunitiesByStage,
-                [source.droppableId]: newSourceOpportunities,
-                [destination.droppableId]: newDestOpportunities,
-            };
-            setOpportunitiesByStage(newState);
-            
-            // Cridem a la Server Action per actualitzar l'etapa a la base de dades
+            // Cridem la Server Action per desar el canvi a la BD
             const updateResult = await updateOpportunityStageAction(draggableId, destination.droppableId);
-
             if (updateResult.error) {
-                setOpportunitiesByStage(originalState);
-                toast.error(t('toastErrorTitle'), { description: updateResult.error.message });
+                setOpportunitiesByStage(originalState); // Revertim si hi ha error
+                toast.error(t('toast.errorTitle'), { description: updateResult.error.message });
             } else {
-                toast.success(t('toastSuccessTitle'), { description: t('toastMoved', { stageName: destination.droppableId }) });
+                toast.success(t('toast.successTitle'));
             }
+        } else {
+            // Reordenar dins la mateixa columna (lògica similar)
+            sourceColumn.splice(destination.index, 0, movedOpportunity);
+            const newState = { ...opportunitiesByStage, [source.droppableId]: sourceColumn };
+            setOpportunitiesByStage(newState);
+            // Aquí podries cridar a una acció per desar el nou ordre si fos necessari
         }
     };
 
@@ -142,9 +95,13 @@ export function PipelineClient({ initialStages, initialContacts }: {
     };
 
     const handleOpenCreateDialog = (stageName?: string) => {
-        const initialData = stageName ? { stage_name: stageName } : {};
-        setEditingOpportunity(initialData);
+        setEditingOpportunity(stageName ? { stage_name: stageName } : {});
         setIsDialogOpen(true);
+    };
+    
+    // Funció per refrescar la pàgina després de desar amb èxit
+    const handleSuccess = () => {
+        window.location.reload();
     };
 
     return (
@@ -153,8 +110,8 @@ export function PipelineClient({ initialStages, initialContacts }: {
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 contacts={initialContacts}
-                stages={stages}
-                onSuccess={() => router.refresh()}
+                stages={initialStages}
+                onSuccess={handleSuccess}
                 opportunityToEdit={editingOpportunity}
             />
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
@@ -175,28 +132,25 @@ export function PipelineClient({ initialStages, initialContacts }: {
                     </div>
                 </div>
 
-                {isLoading ? (
-                    <PipelineSkeleton stages={initialStages} viewMode={viewMode} />
-                ) : (
-                    <DragDropContext onDragEnd={onDragEnd}>
-                        {viewMode === 'columns' ? (
-                            <ColumnsView
-                                stages={stages}
-                                opportunitiesByStage={opportunitiesByStage}
-                                onEditOpportunity={handleOpenEditDialog}
-                                onAddClick={handleOpenCreateDialog}
-                            />
-                        ) : (
-                            <RowsView
-                                stages={stages}
-                                opportunitiesByStage={opportunitiesByStage}
-                                onEditOpportunity={handleOpenEditDialog}
-                                onAddClick={handleOpenCreateDialog}
-                            />
-                        )}
-                    </DragDropContext>
-                )}
+                <DragDropContext onDragEnd={onDragEnd}>
+                    {viewMode === 'columns' ? (
+                        <ColumnsView
+                            stages={initialStages}
+                            opportunitiesByStage={opportunitiesByStage}
+                            onEditOpportunity={handleOpenEditDialog}
+                            onAddClick={handleOpenCreateDialog}
+                        />
+                    ) : (
+                        <RowsView
+                            stages={initialStages}
+                            opportunitiesByStage={opportunitiesByStage}
+                            onEditOpportunity={handleOpenEditDialog}
+                            onAddClick={handleOpenCreateDialog}
+                        />
+                    )}
+                </DragDropContext>
             </motion.div>
         </>
     );
 }
+

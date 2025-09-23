@@ -31,6 +31,8 @@ interface InvoiceDialogProps {
 
 export function InvoiceDialog({ isOpen, onClose, contacts, products, initialInvoice, onSaveSuccess }: InvoiceDialogProps) {
     const t = useTranslations('InvoicingPage.formDialog');
+    const toast_ = useTranslations('InvoicingPage.toast');
+
     const locale = useLocale();
     const dateLocale = { ca, es, en: enUS }[locale] || ca;
 
@@ -89,7 +91,7 @@ export function InvoiceDialog({ isOpen, onClose, contacts, products, initialInvo
 
     const handleSave = () => {
         if (!invoice.contact_id || !invoice.issue_date) {
-            toast.error(t('toast.missingData'), { description: t('toast.missingDataDesc') });
+            toast.error(toast_('missingData'), { description: toast_('missingDataDesc') });
             return;
         }
         
@@ -108,17 +110,17 @@ export function InvoiceDialog({ isOpen, onClose, contacts, products, initialInvo
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 tax_rate: item.tax_rate,
-                product_id: item.product_id,
+                product_id: item.product_id ? String(item.product_id) : null,
             })),
         };
         
         startSaveTransition(async () => {
             const result = await createOrUpdateInvoiceAction(invoiceDataToSend);
             if (result.success) {
-                toast.success(t('toast.success'), { description: result.message });
+                toast.success(toast_('success'), { description: result.message });
                 onSaveSuccess();
             } else {
-                toast.error(t('toast.error'), { description: result.message });
+                toast.error(toast_('error'), { description: result.message });
             }
         });
     };

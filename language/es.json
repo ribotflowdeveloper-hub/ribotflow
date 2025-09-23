@@ -377,7 +377,9 @@
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "No se ha podido marcar como leída.",
-      "replySubject": "Re: Tu presupuesto"
+      "replySubject": "Re: Tu presupuesto",
+      "fetchError": "No se han podido cargar los datos del CRM."
+
     },
     "replyBody": "\n\n\n--- En respuesta a tu feedback del {date} ---\n>{content}"
   },
@@ -831,7 +833,14 @@
       "createDraft": "Crear Borrador",
       "cancelButton": "Cancelar",
       "searchProductPlaceholder": "Busca un producto...",
-      "noProductFound": "No se ha encontrado ningún producto."
+      "noProductFound": "No se ha encontrado ningún producto.",
+      "itemDescriptionLabel": "Descripción",
+      "itemQtyLabel": "Cantidad",
+      "itemTaxLabel": "Impuesto",
+      "itemPriceLabel": "Precio",
+      "itemTotalLabel": "Total",
+      "error": "Se ha producido un error"
+
     },
     "toast": {
       "notAllowed": "Acción no permitida",
@@ -842,7 +851,11 @@
       "deleteSuccess": "¡Éxito!",
       "deleteError": "Error al eliminar",
       "missingData": "Faltan datos",
-      "missingDataDesc": "Por favor, selecciona un cliente y una fecha de emisión."
+      "missingDataDesc": "Por favor, selecciona un cliente y una fecha de emisión.",
+      "error": "Se ha producido un error",
+      "success": "¡Éxito!"
+
+
     }
   },
   "NetworkPage": {

@@ -42,6 +42,8 @@ export type QuoteItem = {
   description: string;
   quantity: number;
   unit_price: number;
+  user_id: string; // Added user_id property
+
 };
 
 export type Quote = {

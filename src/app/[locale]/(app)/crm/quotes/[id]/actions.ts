@@ -86,7 +86,7 @@ export async function deleteQuoteAction(quoteId: string) {
 export async function sendQuoteAction(quoteId: string) {
   if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
   
-  const cookieStore = cookies();
+
   const supabase = createClient(cookies())
 ;
 
@@ -112,7 +112,7 @@ export async function sendQuoteAction(quoteId: string) {
  * Acció per actualitzar el perfil de l'empresa de l'usuari.
  */
 export async function updateCompanyProfileAction(profileData: CompanyProfileObject) {
-  const cookieStore = cookies();
+  
   const supabase = createClient(cookies())
 ;
   const { data: { user } } = await supabase.auth.getUser();
@@ -146,7 +146,7 @@ export async function updateCompanyProfileAction(profileData: CompanyProfileObje
  * Acció per crear un nou producte desable des de l'editor de pressupostos.
  */
 export async function createProductAction(newProduct: { name: string, price: number }) {
-    const cookieStore = cookies();
+   
     const supabase = createClient(cookies())
 ;
     const { data: { user } } = await supabase.auth.getUser();

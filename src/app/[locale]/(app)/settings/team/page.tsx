@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { TeamClient } from "./_components/TeamClient";
 
 export type Team = { id: string; name: string; } | null;
-export type TeamMember = { role: string; profiles: { id: string; full_name: string | null; email: string | null; } | null; };
+export type TeamMember = { role: string; profiles: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; } | null; };
 export type Invitation = { id: string; email: string; role: string; };
 
 export default async function TeamSettingsPage() {
@@ -12,39 +12,62 @@ export default async function TeamSettingsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 
-    const { data: member } = await supabase
+    console.log("--- PAS 1: BUSCANT EQUIP PER A L'USUARI ---");
+    console.log("ID de l'usuari actual:", user.id);
+
+    const { data: member, error: memberError } = await supabase
         .from('team_members')
-        .select('team_id')
+        .select('team_id, role')
         .eq('user_id', user.id)
         .maybeSingle();
 
+    if (memberError) {
+        console.error("!!! ERROR en buscar el membre de l'equip:", memberError);
+    }
+
     if (!member || !member.team_id) {
-        return <TeamClient user={user} team={null} teamMembers={[]} pendingInvitations={[]} />;
+        console.log("Resultat: L'usuari no pertany a cap equip. Mostrant formulari de creació.");
+        return <TeamClient user={user} team={null} teamMembers={[]} pendingInvitations={[]} currentUserRole={null} />;
     }
 
     const teamId = member.team_id;
+    const currentUserRole = member.role;
+    console.log("--- PAS 2: EQUIP TROBAT ---");
+    console.log("ID de l'equip trobat:", teamId);
+    console.log("Rol de l'usuari actual:", currentUserRole);
 
-    const [teamRes, membersRes, invitesRes] = await Promise.all([
+    console.log("\n--- PAS 3: BUSCANT TOTS ELS MEMBRES DE L'EQUIP ---");
+    // Separem la consulta per poder depurar-la millor
+    const { data: membersData, error: membersError } = await supabase
+        .from('team_members')
+        .select('role, profiles!left(id, full_name, email, avatar_url)')
+        .eq('team_id', teamId);
+
+    console.log("Resultat de la consulta de membres (raw):");
+    console.log("Dades rebudes:", JSON.stringify(membersData, null, 2));
+    if (membersError) {
+        console.error("!!! ERROR en buscar els membres:", membersError);
+    } else {
+        console.log(`Consulta finalitzada. S'han trobat ${membersData?.length ?? 0} registres.`);
+    }
+    console.log("------------------------------------------");
+
+    // La resta de la càrrega de dades
+    const [teamRes, invitesRes] = await Promise.all([
         supabase.from('teams').select('id, name').eq('id', teamId).single(),
-        // ✅ Canvi: 'profiles!left(...)' fa un LEFT JOIN.
-        supabase.from('team_members').select('role, profiles!left(id, full_name, email)').eq('team_id', teamId),
         supabase.from('invitations').select('id, email, role').eq('team_id', teamId)
     ]);
 
-    if (teamRes.error) {
-        console.error("Error en carregar l'equip:", teamRes.error);
-        return <TeamClient user={user} team={null} teamMembers={[]} pendingInvitations={[]} />;
-    }
-
     const team: Team = teamRes.data;
-    const teamMembers: TeamMember[] = (membersRes.data as unknown as TeamMember[]) || [];
+    // Assegurem que el tipat sigui correcte
+    const teamMembers: TeamMember[] = (membersData as never) || []; 
     const pendingInvitations: Invitation[] = (invitesRes.data as Invitation[]) || [];
 
-    // ✅ TRAMPA DE DEPURACIÓ 1: MIREM QUÈ ARRIBA DEL SERVIDOR
-    console.log("\n--- DADES DEL SERVIDOR (page.tsx) ---");
-    console.log("Membres de l'equip rebuts de Supabase:", JSON.stringify(teamMembers, null, 2));
-    console.log(`S'han trobat ${teamMembers.length} membres.`);
-    console.log("------------------------------------\n");
-
-    return <TeamClient user={user} team={team} teamMembers={teamMembers} pendingInvitations={pendingInvitations} />;
+    return <TeamClient 
+        user={user} 
+        team={team} 
+        teamMembers={teamMembers} 
+        pendingInvitations={pendingInvitations} 
+        currentUserRole={currentUserRole}
+    />;
 }
