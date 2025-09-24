@@ -1,9 +1,10 @@
+// /app/[locale]/crm/pipeline/_components/PipelineData.tsx
+
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { PipelineClient } from '../pipeline-client';
 import type { Stage, Contact, Opportunity } from '../page';
 
-// Aquest Server Component carrega TOTES les dades de l'equip per al pipeline
 export async function PipelineData() {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
@@ -11,29 +12,34 @@ export async function PipelineData() {
         return <PipelineClient initialStages={[]} initialContacts={[]} initialOpportunities={[]} />;
     }
 
-    // 1. Busquem l'equip de l'usuari actual.
-    const { data: member, error: memberError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .single();
+    // --- NOVA LÒGICA D'EQUIP ACTIU ---
+    // Obtenim l'equip actiu real des del token per evitar problemes de memòria cau.
+    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
 
-    if (memberError || !member) {
-        console.error("L'usuari no pertany a cap equip.", memberError);
+    if (claimsError || !claimsString) {
+        console.error("Error crític en obtenir els claims del token:", claimsError);
         return <PipelineClient initialStages={[]} initialContacts={[]} initialOpportunities={[]} />;
     }
-    const teamId = member.team_id;
 
-    // ✅ Modifiquem TOTES les consultes per filtrar per 'team_id'
+    const claims = JSON.parse(claimsString);
+    const activeTeamId = claims.app_metadata?.active_team_id;
+
+    if (!activeTeamId) {
+        return <PipelineClient initialStages={[]} initialContacts={[]} initialOpportunities={[]} />;
+    }
+    // ------------------------------------
+
+    // ✅ Les consultes ara són simples. La RLS s'encarregarà de filtrar per 'team_id' a les tres taules.
     const [stagesRes, contactsRes, opportunitiesRes] = await Promise.all([
-        supabase.from('pipeline_stages').select('id, name, position').eq('team_id', teamId).order('position', { ascending: true }),
-        supabase.from('contacts').select('id, nom').eq('team_id', teamId),
-        supabase.from('opportunities').select('*, contacts(id, nom)').eq('team_id', teamId)
+        supabase.from('pipeline_stages').select('id, name, position').order('position', { ascending: true }),
+        supabase.from('contacts').select('id, nom'),
+        supabase.from('opportunities').select('*, contacts(id, nom)')
     ]);
     
-    if (stagesRes.error) console.error("Error en carregar etapes:", stagesRes.error);
-    if (contactsRes.error) console.error("Error en carregar contactes:", contactsRes.error);
-    if (opportunitiesRes.error) console.error("Error en carregar oportunitats:", opportunitiesRes.error);
+    // La gestió d'errors es manté igual, però ara un error podria indicar un problema de RLS.
+    if (stagesRes.error) console.error("Error en carregar etapes (RLS?):", stagesRes.error);
+    if (contactsRes.error) console.error("Error en carregar contactes (RLS?):", contactsRes.error);
+    if (opportunitiesRes.error) console.error("Error en carregar oportunitats (RLS?):", opportunitiesRes.error);
 
     const stages = (stagesRes.data as Stage[]) || [];
     const contacts = (contactsRes.data as Contact[]) || [];
@@ -47,4 +53,3 @@ export async function PipelineData() {
         />
     );
 }
-

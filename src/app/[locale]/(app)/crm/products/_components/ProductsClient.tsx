@@ -65,7 +65,7 @@ export function ProductsClient({ initialProducts }: { initialProducts: Product[]
 
     const handleDelete = async (id: string) => {
          // ✅ CORRECCIÓ: Cridem l'acció sense guardar el resultat a 'result'.
-         await deleteProduct(id);
+         await deleteProduct(Number(id));
         // Aquí podríem afegir una gestió d'errors més detallada si calgués.
         toast.success(t('toast.success'), { description: t('toast.productDeleted') });
     };

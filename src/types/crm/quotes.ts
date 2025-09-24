@@ -87,3 +87,4 @@ export type Invoice = {
   due_date: string; // ✅ Ha de ser obligatori
 
 };
+

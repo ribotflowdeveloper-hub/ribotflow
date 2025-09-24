@@ -4,19 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
-// Funció d'ajuda per obtenir el team_id (per no repetir codi)
-import { SupabaseClient } from "@supabase/supabase-js";
-
-async function getTeamId(supabase: SupabaseClient, userId: string): Promise<string | null> {
-    const { data: member } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', userId)
-        .single();
-    return member?.team_id || null;
-}
-
-// Tipus de dades que rebem del formulari del client
+// El tipus de dades que rebem del formulari del client
 type InvoiceItemData = {
     description: string | null;
     quantity: number | null;
@@ -39,45 +27,41 @@ export type InvoiceFormData = {
 };
 
 /**
- * ✅ VERSIÓ CORREGIDA I ROBUSTA
- * Crea o actualitza una factura i els seus ítems, assignant-los a l'equip correcte.
+ * Crea o actualitza una factura. La política RLS de la base de dades
+ * s'encarregarà de verificar que l'operació pertany a l'equip actiu.
  */
 export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
 
-    const teamId = await getTeamId(supabase, user.id);
-    if (!teamId) return { success: false, message: "No s'ha pogut determinar l'equip." };
+    // ✅ Obtenim l'equip actiu directament del token de l'usuari
+    const teamId = user.app_metadata?.active_team_id;
+    if (!teamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
     
     try {
         let savedInvoiceId: string;
         const { invoice_items, id, ...invoiceFields } = invoiceData;
 
-        // Si tenim un ID, actualitzem una factura existent.
         if (id) {
+            // En actualitzar, la política RLS 'WITH CHECK' verificarà el team_id automàticament
             const { error: updateError } = await supabase
                 .from('invoices')
                 .update({ ...invoiceFields, user_id: user.id, team_id: teamId })
-                .eq('id', id)
-                .eq('team_id', teamId); // Assegurem que només actualitzem factures del nostre equip
-
+                .eq('id', id);
             if (updateError) throw updateError;
             savedInvoiceId = id;
         } else {
-            // Si no tenim ID, creem una factura nova.
+            // En crear, afegim el team_id actiu. La RLS 'WITH CHECK' ho validarà.
             const { data: newInvoice, error: insertError } = await supabase
                 .from('invoices')
                 .insert({ ...invoiceFields, user_id: user.id, team_id: teamId })
                 .select('id')
                 .single();
-
-            if (insertError || !newInvoice) throw insertError || new Error("No s'ha pogut crear la factura i obtenir-ne l'ID.");
+            if (insertError || !newInvoice) throw insertError || new Error("No s'ha pogut crear la factura.");
             savedInvoiceId = newInvoice.id;
         }
 
-        // Un cop tenim un ID garantit, gestionem els ítems.
-        // Primer esborrem els antics per evitar duplicats.
         await supabase.from('invoice_items').delete().eq('invoice_id', savedInvoiceId);
 
         if (invoice_items && invoice_items.length > 0) {
@@ -95,30 +79,27 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
         return { success: true, message: `Esborrany ${id ? 'actualitzat' : 'creat'} correctament.` };
     
     } catch (error) {
-        // Afegim un console.error per poder depurar millor des del servidor si torna a passar.
-        console.error("Error detallat en createOrUpdateInvoiceAction:", error);
         const message = error instanceof Error ? error.message : "Error desconegut en desar la factura.";
         return { success: false, message };
     }
 }
 
 /**
- * Elimina un esborrany de factura, verificant que pertanyi a l'equip.
+ * Elimina un esborrany de factura. La RLS s'encarregarà de la seguretat.
  */
 export async function deleteInvoiceAction(invoiceId: string) {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
     
-    const teamId = await getTeamId(supabase, user.id);
-    if (!teamId) return { success: false, message: "No s'ha pogut determinar l'equip." };
-
     try {
-        const { data: existingInvoice } = await supabase.from('invoices').select('status').eq('id', invoiceId).eq('team_id', teamId).single();
-        if (!existingInvoice) return { success: false, message: "La factura no existeix o no tens permisos." };
-        if (existingInvoice.status !== 'Draft') return { success: false, message: "No es pot eliminar una factura que ja ha estat emesa." };
+        // La RLS impedirà que s'esborri una factura d'un altre equip
+        const { data: existingInvoice } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
+        if (existingInvoice && existingInvoice.status !== 'Draft') {
+            return { success: false, message: "Error: No es pot eliminar una factura que ja ha estat emesa." };
+        }
 
-        const { error } = await supabase.from('invoices').delete().match({ id: invoiceId, team_id: teamId });
+        const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
         if (error) throw error;
         
         revalidatePath('/finances/facturacio');
@@ -130,31 +111,21 @@ export async function deleteInvoiceAction(invoiceId: string) {
 }
 
 /**
- * Emet una factura legal, verificant que pertanyi a l'equip.
+ * Emet una factura legal (Veri*factu). La RLS s'encarregarà de la seguretat.
  */
 export async function issueInvoiceAction(draftInvoiceId: string) {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuari no autenticat." };
 
-    const teamId = await getTeamId(supabase, user.id);
-    if (!teamId) return { success: false, message: "No s'ha pogut determinar l'equip." };
-
-    const { data: invoiceToIssue } = await supabase
-        .from('invoices')
-        .select('id')
-        .eq('id', draftInvoiceId)
-        .eq('team_id', teamId)
-        .single();
-    
-    if (!invoiceToIssue) return { success: false, message: "No tens permís per emetre aquesta factura." };
-
+    // La RLS ja s'haurà assegurat que l'usuari té accés a aquesta factura
+    // abans de cridar l'acció, per la qual cosa no cal una doble comprovació aquí.
     try {
         const { data, error } = await supabase.functions.invoke('issue-verifactu-invoice', {
             body: { draft_invoice_id: draftInvoiceId, user_id: user.id },
         });
 
-        if (error) throw error;
+        if (error) throw (error);
 
         revalidatePath('/finances/facturacio');
         return { success: true, message: "Factura emesa correctament.", invoice: data };
@@ -164,4 +135,3 @@ export async function issueInvoiceAction(draftInvoiceId: string) {
         return { success: false, message: errorMessage };
     }
 }
-

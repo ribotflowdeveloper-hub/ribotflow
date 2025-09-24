@@ -20,7 +20,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { createClient } from '@/lib/supabase/client';
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
-import type { Quote, Contact, Product, CompanyProfile, Opportunity, QuoteItem } from '@/types/crm';
+import type { Quote, Contact, Product, Opportunity, QuoteItem } from '@/types/crm';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Importació de subcomponents per mantenir aquest fitxer més net i organitzat.
 import { CompanyProfileDialog } from './CompanyProfileDialog';
@@ -29,31 +29,44 @@ import { QuoteItems } from './QuoteItems';
 import { QuoteTotals } from './QuoteTotals';
 import { QuotePreview } from './QuotePreview';
 import { useTranslations, useLocale } from 'next-intl';
+import type { TeamData} from '@/types/settings';
 
-export function QuoteEditorClient({ initialQuote, contacts, products, companyProfile, initialOpportunities }: {
+// ✅ Definim les props de manera clara, incloent el userId que necessitem.
+interface QuoteEditorClientProps {
   initialQuote: Quote;
   contacts: Contact[];
   products: Product[];
-  companyProfile: CompanyProfile;
+  companyProfile: TeamData | null;
+
   initialOpportunities: Opportunity[];
-}) {
+  userId: string;
+}
+
+export function QuoteEditorClient({
+  initialQuote,
+  contacts,
+  products,
+  companyProfile,
+  initialOpportunities,
+  userId // <-- Rebem el userId del component de servidor
+}: QuoteEditorClientProps) {
   const router = useRouter();
-  const supabase = createClient()
-;
+  const supabase = createClient();
   const t = useTranslations('QuoteEditor');
   const locale = useLocale();
+
   // --- Gestió de l'Estat ---
-  const [quote, setQuote] = useState<Quote>(initialQuote); // L'estat principal amb totes les dades del pressupost.
-  const [currentCompanyProfile, setCurrentCompanyProfile] = useState<CompanyProfile>(companyProfile); // Dades de l'empresa (pot canviar si s'editen al diàleg).
-  const [contactOpportunities, setContactOpportunities] = useState<Opportunity[]>(initialOpportunities); // Oportunitats del contacte seleccionat.
+  const [quote, setQuote] = useState<Quote>(initialQuote);
+  const [currentTeamData, setCurrentTeamData] = useState<TeamData | null>(companyProfile);
+
+  const [contactOpportunities, setContactOpportunities] = useState<Opportunity[]>(initialOpportunities);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
   const [isSaving, startSaveTransition] = useTransition();
   const [isSending, startSendTransition] = useTransition();
-  const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'uploading' | 'sending'>('idle'); // Estat detallat per al procés d'enviament.
+  const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'uploading' | 'sending'>('idle');
 
-  // 'useMemo' s'utilitza per a càlculs que poden ser costosos. Aquest hook només recalcula
-  // els totals quan les partides (items) o el descompte canvien, millorant el rendiment.
+  // Càlculs memoritzats per a un rendiment òptim
   const { subtotal, discountAmount, tax, total } = useMemo(() => {
     if (!quote?.items) return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
     const sub = quote.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0), 0);
@@ -63,42 +76,34 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
     return { subtotal: sub, discountAmount: calculatedDiscountAmount, tax: taxAmount, total: subAfterDiscount + taxAmount };
   }, [quote?.items, quote?.discount]);
 
-  /**
-   * @summary Gestor per desar el pressupost. Crida a la Server Action 'saveQuoteAction'.
-   */
+  // ✅ La funció handleSave ara passa l'objecte complet del pressupost a l'acció
   const handleSave = () => {
     startSaveTransition(async () => {
       const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
-      if (result.success) {
-        toast.success('Èxit!', { description: result.message });
-        // Si és un pressupost nou, fem un 'replace' de la URL per incloure el nou ID.
-        // Això evita que l'usuari pugui crear duplicats si refresca la pàgina.
-        if (quote.id === 'new' && result.newId) {
-          router.replace(`/crm/quotes/${result.newId}`);
-        } else {
-          router.refresh(); // Si és una edició, només refresquem les dades del servidor.
+      if (result.success && result.data) {
+        toast.success(result.message);
+        // Si és un pressupost nou, fem 'replace' de la URL per incloure el nou ID.
+        if (quote.id === 'new') {
+          router.replace(`/crm/quotes/${result.data}`);
         }
       } else {
-        toast.error(t('toast.errorTitle'), { description: t('toast.saveFirst') });
+        toast.error(t('toast.errorTitle'), { description: result.message });
       }
     });
   };
-
-  /**
-   * @summary Gestor per eliminar el pressupost.
-   */
 
   const handleDelete = () => {
     startSaveTransition(async () => {
       const result = await deleteQuoteAction(quote.id);
       if (result.success) {
-        toast.success('Esborrat!', { description: result.message });
+        toast.success(result.message);
         router.push('/crm/quotes');
       } else {
-        toast.error('Error', { description: result.message });
+        toast.error(t('toast.errorTitle'), { description: result.message });
       }
     });
   };
+
   /**
   * @summary Gestor per enviar el pressupost. Aquest és un procés complex de múltiples passos.
   */
@@ -156,6 +161,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
       }
     });
   };
+
   // Efecte per carregar les oportunitats del contacte seleccionat.
   useEffect(() => {
     const fetchOpportunities = async () => {
@@ -163,11 +169,28 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         setContactOpportunities([]);
         return;
       }
+      // Aquesta consulta també està protegida per RLS, assegurant que només veiem
+      // oportunitats de l'equip actiu.
       const { data } = await supabase.from('opportunities').select('*').eq('contact_id', quote.contact_id);
       setContactOpportunities(data || []);
     };
     fetchOpportunities();
   }, [quote.contact_id, supabase]);
+
+  // ✅ La funció per afegir un ítem nou ara inclou el userId, solucionant l'error de tipat.
+  const handleAddNewItem = () => {
+    const newItem: QuoteItem = {
+      product_id: null,
+      description: '',
+      quantity: 1,
+      unit_price: 0,
+      user_id: userId // <-- CORRECCIÓ CLAU
+    };
+    setQuote(prevQuote => ({
+      ...prevQuote,
+      items: [...prevQuote.items, newItem]
+    }));
+  };
 
   return (
     <>
@@ -175,8 +198,10 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
       <CompanyProfileDialog
         open={isProfileDialogOpen}
         onOpenChange={setIsProfileDialogOpen}
-        profile={currentCompanyProfile}
-        onProfileUpdate={setCurrentCompanyProfile}
+        // ✅ Passem les dades de l'equip directament. Ara els tipus coincideixen.
+        profile={currentTeamData}
+        // ✅ Passem la funció per actualitzar l'estat. Ara els tipus coincideixen.
+        onProfileUpdate={setCurrentTeamData}
       />
       <div className="flex flex-col h-full">
         <header className="flex justify-between items-center mb-6 flex-shrink-0">
@@ -191,7 +216,7 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
             {quote.id !== 'new' && (
               <Button onClick={handleSend} disabled={isSaving || isSending}>
                 {isSending ? (
-                    <>
+                  <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     {sendingStatus === 'generating' && t('quoteEditor.generatingPDF')}
                     {sendingStatus === 'uploading' && t('quoteEditor.uploadingFile')}
@@ -199,9 +224,9 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
                   </>
                 ) : (
                   <>
-                  <Send className="mr-2 h-4 w-4" />
-                  {quote.sent_at ? t('quoteEditor.resendButton') : t('quoteEditor.sendButton')}
-                </>
+                    <Send className="mr-2 h-4 w-4" />
+                    {quote.sent_at ? t('quoteEditor.resendButton') : t('quoteEditor.sendButton')}
+                  </>
                 )}
               </Button>
             )}
@@ -209,9 +234,9 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         </header>
 
         {quote.sent_at && (
-            <div className="mb-4 p-2 text-center bg-green-100 text-green-800 rounded-md text-sm">
-                {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
-            </div>
+          <div className="mb-4 p-2 text-center bg-green-100 text-green-800 rounded-md text-sm">
+            {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
+          </div>
         )}
 
         <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
@@ -221,8 +246,8 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
             </div>
 
             <div className="">
-            <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
-            {contactOpportunities.length > 0 ? (
+              <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
+              {contactOpportunities.length > 0 ? (
                 <Select
                   value={quote.opportunity_id?.toString() || ''}
                   onValueChange={(value) => setQuote(q => ({ ...q, opportunity_id: Number(value) || null }))}
@@ -251,6 +276,9 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
                 items={quote.items}
                 setItems={(newItems: QuoteItem[]) => setQuote(q => ({ ...q, items: newItems }))}
                 products={products}
+                onAddNewItem={handleAddNewItem} // ✅ Assegurem que passem la funció aquí
+                userId={userId}
+
               />
               <QuoteTotals
                 subtotal={subtotal}
@@ -274,7 +302,8 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
               <QuotePreview
                 quote={quote}
                 contacts={contacts}
-                companyProfile={currentCompanyProfile}
+                // ✅ Passem les dades de l'equip directament. Ara els tipus coincideixen.
+                companyProfile={currentTeamData}
                 subtotal={subtotal}
                 discountAmount={discountAmount}
                 tax={tax}
@@ -285,19 +314,19 @@ export function QuoteEditorClient({ initialQuote, contacts, products, companyPro
         </main>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>{t('quoteEditor.deleteDialogTitle')}</AlertDialogTitle>
-                    <AlertDialogDescription>{t('quoteEditor.deleteDialogDescription')}</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isSaving}>{t('companyProfileDialog.saveButton')}</AlertDialogCancel> {/* Reutilitzem la traducció de Cancel·lar */}
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>
-                        {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {t('buttons.confirmDelete')} {/* Reutilitzem la traducció del botó de confirmació */}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('quoteEditor.deleteDialogTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('quoteEditor.deleteDialogDescription')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSaving}>{t('companyProfileDialog.saveButton')}</AlertDialogCancel> {/* Reutilitzem la traducció de Cancel·lar */}
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>
+                {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t('buttons.confirmDelete')} {/* Reutilitzem la traducció del botó de confirmació */}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
       </div>
     </>

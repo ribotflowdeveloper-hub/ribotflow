@@ -22,34 +22,32 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         return redirect(`/${locale}/login`);
     }
     
-    // --- LÒGICA D'EQUIP ---
-    const { data: member, error: memberError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .single();
-        
-    // Si l'usuari no té equip, no podem carregar dades de l'equip.
-    // Redirigim a la pàgina de configuració de l'equip.
-    if (memberError || !member) {
-        console.error("Usuari sense equip intentant accedir al dashboard:", user.id, memberError);
+    // --- LÒGICA D'EQUIP ACTIU DEFINITIVA ---
+    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
+    if (claimsError || !claimsString) {
+        // En cas d'error, redirigim a la selecció d'equip per seguretat.
         return redirect(`/${locale}/settings/team`);
     }
-    const teamId = member.team_id;
-    // ----------------------
+    const claims = JSON.parse(claimsString);
+    const activeTeamId = claims.app_metadata?.active_team_id;
 
+    if (!activeTeamId) {
+        return redirect(`/${locale}/settings/team`);
+    }
+    // ------------------------------------
+    
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // ✅ ACTUALITZEM TOTES LES CONSULTES PER FILTRAR PER 'teamId'
+    // ✅ Les consultes ara són segures. La RLS filtrarà 'tasks', 'invoices', i 'contacts'.
+    // La funció RPC 'get_dashboard_stats' ara també filtra internament.
     const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes] = await Promise.all([
-        // Cridem a la NOVA funció RPC, passant l'ID de l'equip
-        supabase.rpc('get_dashboard_stats_for_team', { p_team_id: teamId }),
-        supabase.from('tasks').select('*').eq('team_id', teamId).order('is_completed, created_at'),
-        supabase.from('invoices').select('*, contacts(nom)').eq('team_id', teamId).in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
-        supabase.from('contacts').select('*').eq('team_id', teamId).order('created_at', { ascending: false }),
-        // Les notificacions són personals, les seguim filtrant per 'user_id'
+        supabase.rpc('get_dashboard_stats'), 
+        supabase.from('tasks').select('*').order('is_completed, created_at'),
+        supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
+        supabase.from('contacts').select('*').order('created_at', { ascending: false }),
         supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
     ]);
+    
     
     const statsData = statsRes.data?.[0] || {};
     const contactsData = (contactsRes.data as Contact[]) || [];

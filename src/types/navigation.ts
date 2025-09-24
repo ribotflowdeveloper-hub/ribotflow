@@ -33,4 +33,11 @@ export interface NavItem {
   basePath?: string;
   children?: NavItem[];
   notImplemented?: boolean;
+  // ✅ AQUÍ AFEGIM LA NOVA PROPIETAT
+  // És opcional ('?') perquè no tots els enllaços requeriran un pla específic.
+  // Serà un array de strings, ex: ['plus', 'premium'].
+  requiredPlan?: string[];
+  allowedRoles?: string[]; // Rols que poden accedir (ex: ['owner', 'admin'])
+
+
 }

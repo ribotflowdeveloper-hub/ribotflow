@@ -1,73 +1,94 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from 'next/navigation';
 import { TeamClient } from "./_components/TeamClient";
 
-export type Team = { id: string; name: string; } | null;
+// Tipus de dades (sense canvis)
+export type Team = { id: string; name: string; };
 export type TeamMember = { role: string; profiles: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; } | null; };
 export type Invitation = { id: string; email: string; role: string; };
+export type UserTeam = { role: string; teams: Team | null; };
+export type ActiveTeamData = {
+    team: Team;
+    teamMembers: TeamMember[];
+    pendingInvitations: Invitation[];
+    currentUserRole: string;
+};
 
 export default async function TeamSettingsPage() {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 
-    console.log("--- PAS 1: BUSCANT EQUIP PER A L'USUARI ---");
-    console.log("ID de l'usuari actual:", user.id);
+    const activeTeamId = user.app_metadata?.active_team_id;
 
-    const { data: member, error: memberError } = await supabase
+    // --- CAS 1: VISTA DE VESTÍBUL (Això ja funcionava bé, no es toca) ---
+ 
+    // --- CAS 1: VISTA DE VESTÍBUL ---
+    if (!activeTeamId) {
+        // Aquesta part funciona, la deixem com estava.
+        const { data: userTeamsData } = await supabase
+            .from('team_members')
+            .select('role, teams!inner(id, name)')
+            .eq('user_id', user.id);
+        
+        const userTeams: UserTeam[] = (userTeamsData || []).map(m => ({
+            role: m.role,
+            teams: Array.isArray(m.teams) ? m.teams[0] : m.teams,
+        }));
+        
+        return <TeamClient user={user} userTeams={userTeams} activeTeamData={null} />;
+    }
+    // --- CAS 2: VISTA DE PANELL DE CONTROL (AQUÍ APLIQUEM LA SOLUCIÓ) ---
+    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
+    if (!member) {
+        const supabaseAdmin = createAdminClient();
+        await supabaseAdmin.auth.admin.updateUserById(user.id, { app_metadata: { active_team_id: null } });
+        return redirect('/settings/team');
+    }
+
+    // PAS A: Obtenim la llista de membres (només ID i rol) des de 'team_members'.
+    // Aquesta és una consulta simple i segura.
+    const { data: members, error: membersError } = await supabase
         .from('team_members')
-        .select('team_id, role')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .select('user_id, role')
+        .eq('team_id', activeTeamId);
 
-    if (memberError) {
-        console.error("!!! ERROR en buscar el membre de l'equip:", memberError);
+    if (membersError) throw membersError;
+
+    let teamMembers: TeamMember[] = [];
+
+    if (members && members.length > 0) {
+        // PAS B: Obtenim els IDs de tots els membres de l'equip.
+        const memberUserIds = members.map(m => m.user_id);
+
+        // PAS C: Busquem tots els perfils d'aquests membres en una sola consulta a 'profiles'.
+        const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email, avatar_url')
+            .in('id', memberUserIds);
+
+        if (profilesError) throw profilesError;
+        
+        // PAS D: Unim manualment les dues llistes al nostre codi.
+        teamMembers = members.map(member => ({
+            role: member.role,
+            profiles: profiles?.find(p => p.id === member.user_id) || null,
+        }));
     }
-
-    if (!member || !member.team_id) {
-        console.log("Resultat: L'usuari no pertany a cap equip. Mostrant formulari de creació.");
-        return <TeamClient user={user} team={null} teamMembers={[]} pendingInvitations={[]} currentUserRole={null} />;
-    }
-
-    const teamId = member.team_id;
-    const currentUserRole = member.role;
-    console.log("--- PAS 2: EQUIP TROBAT ---");
-    console.log("ID de l'equip trobat:", teamId);
-    console.log("Rol de l'usuari actual:", currentUserRole);
-
-    console.log("\n--- PAS 3: BUSCANT TOTS ELS MEMBRES DE L'EQUIP ---");
-    // Separem la consulta per poder depurar-la millor
-    const { data: membersData, error: membersError } = await supabase
-        .from('team_members')
-        .select('role, profiles!left(id, full_name, email, avatar_url)')
-        .eq('team_id', teamId);
-
-    console.log("Resultat de la consulta de membres (raw):");
-    console.log("Dades rebudes:", JSON.stringify(membersData, null, 2));
-    if (membersError) {
-        console.error("!!! ERROR en buscar els membres:", membersError);
-    } else {
-        console.log(`Consulta finalitzada. S'han trobat ${membersData?.length ?? 0} registres.`);
-    }
-    console.log("------------------------------------------");
-
-    // La resta de la càrrega de dades
+    
+    // La resta de consultes per al nom de l'equip i les invitacions es queden igual.
     const [teamRes, invitesRes] = await Promise.all([
-        supabase.from('teams').select('id, name').eq('id', teamId).single(),
-        supabase.from('invitations').select('id, email, role').eq('team_id', teamId)
+        supabase.from('teams').select('id, name').eq('id', activeTeamId).single(),
+        supabase.from('invitations').select('id, email, role').eq('team_id', activeTeamId)
     ]);
 
-    const team: Team = teamRes.data;
-    // Assegurem que el tipat sigui correcte
-    const teamMembers: TeamMember[] = (membersData as never) || []; 
-    const pendingInvitations: Invitation[] = (invitesRes.data as Invitation[]) || [];
+    const activeTeamData: ActiveTeamData = {
+        team: teamRes.data as Team,
+        teamMembers: teamMembers, // Ara conté les dades unides
+        pendingInvitations: (invitesRes.data as Invitation[]) || [],
+        currentUserRole: member.role
+    };
 
-    return <TeamClient 
-        user={user} 
-        team={team} 
-        teamMembers={teamMembers} 
-        pendingInvitations={pendingInvitations} 
-        currentUserRole={currentUserRole}
-    />;
+    return <TeamClient user={user} userTeams={[]} activeTeamData={activeTeamData} />;
 }

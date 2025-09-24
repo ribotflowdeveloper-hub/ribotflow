@@ -7,11 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { Users, TrendingUp, DollarSign, UserCheck, AlertTriangle, Crown, Calendar, BarChart3, Activity, FileText } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-
 import { type CrmData, type ComposeEmailData } from '@/types/crm';
-
-
-// ✅ Pas 1: Importem tots els sub-components que hem separat
 import { StatCard } from './StatCard';
 import { FunnelBar } from './FunnelBar';
 import { ListItem } from './ListItem';
@@ -22,60 +18,17 @@ interface CrmClientProps {
     initialData: CrmData | null;
 }
 
-/**
- * @summary Component de Client per al panell del CRM.
- * Ara actua com un "orquestrador": rep les dades ja carregades i les passa
- * als sub-components corresponents. Gestiona la interactivitat de la pàgina.
- */
 export function CrmClient({ initialData }: CrmClientProps) {
+    // ✅ PAS 1: Cridem TOTS els Hooks a l'inici, sense condicions.
     const t = useTranslations('CrmGeneralPage');
     const locale = useLocale();
     const router = useRouter();
-    const supabase = createClient()
-;
-
-    // L'estat local manté les dades per a poder actualitzar la UI (ex: eliminar una alerta)
+    const supabase = createClient();
     const [data, setData] = useState(initialData);
+    const [composeState, setComposeState] = useState<{ open: boolean; initialData: ComposeEmailData | null; }>({ open: false, initialData: null });
 
-    // Estat per al diàleg de composició de correu
-    // ✅ CORRECCIÓ: Utilitzem el nostre nou tipus estricte en lloc de 'any'
-    const [composeState, setComposeState] = useState<{
-        open: boolean;
-        initialData: ComposeEmailData | null;
-    }>({ open: false, initialData: null });
-
-    // Lògica per marcar una activitat com a llegida (actualització optimista)
-    const handleMarkAsRead = async (activityId: string) => {
-        if (!data) return;
-        // Eliminem l'activitat de la UI a l'instant
-        setData({ ...data, unreadActivities: data.unreadActivities.filter(a => a.id !== activityId) });
-        // Cridem a la base de dades en segon pla
-        const { error } = await supabase.from('activities').update({ is_read: true }).eq('id', activityId);
-        if (error) {
-            toast.error(t('toast.errorTitle'), { description: t('toast.markAsReadError') });
-            router.refresh(); // Si falla, refresquem per consistència
-        }
-    };
-
-    // Lògica per obrir el diàleg de resposta
-    const handleReply = (activity: CrmData['unreadActivities'][0]) => {
-        const date = new Date(activity.created_at).toLocaleDateString(locale);
-        const content = activity.content.replace(/\n/g, '\n> ');
-        const quotedBody = t('replyBody', { date, content });
-
-        // Assegurem que les dades que passem compleixen el contracte del tipus
-        setComposeState({
-            open: true,
-            initialData: {
-            contactId: activity.contact_id || '',
-            to: activity.contact_email || '',
-            subject: t('toast.replySubject'),
-            body: quotedBody
-            }
-        });
-    };
-
-    // Si les dades no han arribat del servidor (per un error), mostrem un missatge.
+    // ✅ PAS 2: ARA SÍ, un cop tots els Hooks s'han cridat, fem la comprovació.
+    // Utilitzem la variable d'estat 'data' en lloc de la prop 'initialData'.
     if (!data) {
         return (
             <div className="flex flex-col justify-center items-center h-full text-center">
@@ -86,14 +39,40 @@ export function CrmClient({ initialData }: CrmClientProps) {
         );
     }
 
-    // Calculem el valor màxim de l'embut per a les barres de progrés.
+    const handleMarkAsRead = async (activityId: string) => {
+        if (!data) return;
+        setData({ ...data, unreadActivities: data.unreadActivities.filter(a => a.id !== activityId) });
+        const { error } = await supabase.from('activities').update({ is_read: true }).eq('id', activityId);
+        if (error) {
+            toast.error(t('toast.errorTitle'), { description: t('toast.markAsReadError') });
+            router.refresh();
+        }
+    };
+
+    const handleReply = (activity: CrmData['unreadActivities'][0]) => {
+        const date = new Date(activity.created_at).toLocaleDateString(locale);
+        const content = activity.content.replace(/\n/g, '\n> ');
+        const quotedBody = t('replyBody', { date, content });
+
+        setComposeState({
+            open: true,
+            initialData: {
+                contactId: activity.contact_id || '',
+                to: activity.contact_email || '',
+                subject: t('toast.replySubject'),
+                body: quotedBody
+            }
+        });
+    };
+
     const funnelMax = Math.max(data.funnel.leads, data.funnel.quoted, data.funnel.clients, 1);
 
     return (
         <>
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                 {/* Secció d'alertes recents */}
-                {data.unreadActivities.length > 0 && (
+                {data.unreadActivities && data.unreadActivities.length > 0 && (
+
                     <div className="glass-card p-6">
                         <h2 className="text-xl font-bold mb-4">{t('recentAlerts', { count: data.unreadActivities.length })}</h2>
                         <div className="space-y-2">

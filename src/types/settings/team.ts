@@ -53,4 +53,27 @@ export type Invitation = {
     role: string;
 };
 
-// Pots afegir aquí altres tipus compartits com Quote, Invoice, etc.
+// Aquest tipus representa les dades tal com venen de la taula 'teams' de Supabase
+export type TeamData = {
+    id: string;
+    name: string | null;
+    tax_id: string | null;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+    logo_url: string | null;
+    // afegeix altres camps de la taula 'teams' que necessitis
+};
+
+// Aquest tipus representa les dades tal com les esperen els components de React.
+// És el format que volem obtenir DESPRÉS de mapejar les dades de 'teams'.
+export type CompanyProfile = {
+    id: string;
+    user_id?: string; // El fem opcional per si no sempre hi és
+    company_name: string | null;
+    company_tax_id: string | null;
+    company_address: string | null;
+    company_email: string | null;
+    company_phone: string | null;
+    logo_url: string | null;
+};

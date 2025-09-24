@@ -70,6 +70,9 @@ export function FacturacioClient({ initialInvoices, initialContacts, initialProd
 
         return result;
     }, [initialInvoices, searchParams]);
+
+    console.log("[CLIENT] Component FacturacioClient renderitzat amb", initialInvoices.length, "factures inicials.");
+
     // ✅ 3. Funció per actualitzar la URL amb nous paràmetres
     const updateSearchParams = (key: string, value: string | null) => {
         const params = new URLSearchParams(searchParams.toString());

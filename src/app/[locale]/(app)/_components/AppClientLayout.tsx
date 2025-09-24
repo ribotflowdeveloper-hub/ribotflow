@@ -1,67 +1,77 @@
-/**
- * @file AppClientLayout.tsx
- * @summary Layout principal de cliente que gestiona la estructura de navegación de dos niveles,
- * adaptándose a vistas de escritorio y móvil.
- */
 "use client";
 
 import React, { useState, useEffect, ReactNode } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslations } from 'next-intl';
-
-// Importació de components
+import { useUser } from '@/hooks/useUser';
 import { MainSidebar } from './main-sidebar';
 import { ModuleSidebar } from './module-sidebar';
 import { MobileMenu } from './MobileMenu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-
-// Importació de tipus i estats globals
 import { navModules } from '@/config/navigation';
 import type { NavItem } from '@/types/navigation';
 import { useNavigationStore } from '@/stores/navigationStore';
-
 import logoRibot from '@/../public/icon1.png';
 import Image from 'next/image';
 
 export function AppClientLayout({ children, locale }: { children: ReactNode, locale: string }) {
     const pathname = usePathname();
+    const router = useRouter();
     const t = useTranslations('Navigation');
     const { setIsNavigating } = useNavigationStore();
     const supabase = createClient();
+    const { user, teamRole } = useUser();
 
     const [activeModule, setActiveModule] = useState<NavItem | null>(null);
     const [isModuleSidebarOpen, setIsModuleSidebarOpen] = useState(false);
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
 
-    /**
-     * @effect
-     * @summary Sincronitza el menú actiu amb la ruta actual i gestiona l'estat de càrrega.
-     */
     useEffect(() => {
         setIsNavigating(false);
-
         const prefix = `/${locale}`;
-        const pathnameWithoutLocale = pathname.startsWith(prefix)
-            ? pathname.slice(prefix.length) || '/'
-            : pathname;
-
-        const currentModule = navModules.find(module =>
-            !module.isSingle && module.basePath && pathnameWithoutLocale.startsWith(module.basePath)
-        );
-
+        const pathnameWithoutLocale = pathname.startsWith(prefix) ? pathname.slice(prefix.length) || '/' : pathname;
+        const currentModule = navModules.find(module => !module.isSingle && module.basePath && pathnameWithoutLocale.startsWith(module.basePath));
         setActiveModule(currentModule || null);
-
         if (!currentModule) {
             setIsModuleSidebarOpen(false);
         }
     }, [pathname, locale, setIsNavigating]);
+    
+    const handleNavigation = (item: NavItem) => {
+        const plan = user?.app_metadata?.active_team_plan;
+        if (item.requiredPlan && !item.requiredPlan.includes(plan)) {
+            toast.info("Funcionalitat Premium", {
+                description: `El mòdul '${t(item.labelKey)}' només està disponible als plans ${item.requiredPlan.join(' o ')}.`,
+                action: {
+                    label: "Veure Plans",
+                    onClick: () => router.push(`/${locale}/settings/billing`),
+                },
+            });
+            return;
+        }
 
-    /**
-     * @summary Gestiona el clic a la barra d'icones principal (escriptori).
-     */
+        if (item.allowedRoles && (!teamRole || !item.allowedRoles.includes(teamRole))) {
+            toast.error("Accés restringit", { description: "No tens els permisos necessaris per a accedir a aquesta secció." });
+            return;
+        }
+
+        if (item.isSingle || item.children) { // Si és un mòdul amb fills, també navega a la seva pàgina per defecte
+            if (pathname !== `/${locale}${item.path}`) {
+                setIsNavigating(true);
+            }
+            router.push(`/${locale}${item.path}`);
+        }
+        
+        if (!item.isSingle) {
+            handleModuleSelect(item);
+        } else {
+             setIsModuleSidebarOpen(false);
+        }
+    };
+
     const handleModuleSelect = (module: NavItem) => {
         if (!module.isSingle) {
             if (activeModule?.id === module.id) {
@@ -76,17 +86,6 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
         }
     };
 
-    /**
-     * @summary S'executa en fer clic a un enllaç del submenú.
-     * ✅ CORRECCIÓ: Ara sempre tanca el submenú, independentment de la mida de la pantalla.
-     */
-    const handleSubItemClick = () => {
-        setIsModuleSidebarOpen(false);
-    };
-
-    /**
-     * @summary Funcions per als botons del menú.
-     */
     const handleSignOut = async () => {
         await supabase.auth.signOut();
         window.location.href = `/${locale}/login`;
@@ -99,9 +98,8 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
 
     return (
         <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
-            {/* --- NAVEGACIÓ D'ESCRIPTORI --- */}
             <MainSidebar 
-                onModuleSelect={handleModuleSelect} 
+                onModuleSelect={handleNavigation}
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                 onNotImplemented={handleNotImplementedClick} 
             />
@@ -115,35 +113,27 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                     <ModuleSidebar
                         module={activeModule}
                         onClose={() => setIsModuleSidebarOpen(false)}
-                        onSubItemClick={handleSubItemClick}
+                        // ✅ CORRECCIÓ: Passem la funció de navegació completa
+                        handleNavigation={handleNavigation} 
                     />
                 )}
             </motion.div>
 
-            {/* --- CONTINGUT PRINCIPAL --- */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="lg:hidden flex items-center justify-between p-4 border-b border-border flex-shrink-0">
                     <MobileMenu 
                         onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)} 
-                        onNotImplementedClick={handleNotImplementedClick} 
+                        onNotImplementedClick={handleNotImplementedClick}
+                        handleNavigation={handleNavigation}
                     />
                     <span className="font-bold text-lg">Ribotflow</span>
-                    <Image
-                        src={logoRibot}
-                        alt={t('logoAlt')}
-                        className="object-cover"
-                        priority
-                        height={40}
-                    />
+                    <Image src={logoRibot} alt={t('logoAlt')} className="object-cover" priority height={40} />
                 </header>
                 <main className="flex-1 overflow-y-auto">
-                    <div className="h-full p-4 sm:p-6 md:p-8">
-                        {children}
-                    </div>
+                    <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>
                 </main>
             </div>
             
-            {/* DIÀLEG DE CONFIRMACIÓ */}
             <AlertDialog open={isSignOutDialogOpen} onOpenChange={setIsSignOutDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -152,9 +142,7 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSignOut} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            {t('confirmSignOut')}
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleSignOut} className="bg-destructive hover:bg-destructive/90">{t('confirmSignOut')}</AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

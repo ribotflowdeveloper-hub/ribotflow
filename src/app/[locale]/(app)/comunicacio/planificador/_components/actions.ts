@@ -47,33 +47,37 @@ export async function createSocialPostAction(
   mediaType: string | null
 ): Promise<ActionResult<SocialPost>> {
   const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient(cookies())
-;
+  const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: t('errorNotAuthenticated') };
 
+  // Obtenim l'equip actiu del token
+  const activeTeamId = user.app_metadata?.active_team_id;
+  if (!activeTeamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
+
   let media_url = null;
   if (mediaPath) {
-    const { data: publicUrlData } = supabase.storage.from('social_media').getPublicUrl(mediaPath);
-    media_url = publicUrlData.publicUrl;
+      const { data: publicUrlData } = supabase.storage.from('social_media').getPublicUrl(mediaPath);
+      media_url = publicUrlData.publicUrl;
   }
 
   const { data: postData, error: postError } = await supabase
-    .from('social_posts')
-    .insert({
-      user_id: user.id,
-      provider: providers,
-      content: content,
-      media_url: media_url,
-      media_type: mediaType,
-      status: 'draft',
-    })
-    .select()
-    .single();
+      .from('social_posts')
+      .insert({
+          user_id: user.id,
+          team_id: activeTeamId, // ✅ Assignem l'equip actiu
+          provider: providers,
+          content: content,
+          media_url: media_url,
+          media_type: mediaType,
+          status: 'draft',
+      })
+      .select()
+      .single();
 
   if (postError) {
-    console.error("Error creant la publicació:", postError);
-    return { success: false, message: t('errorPostCreation') };
+      console.error("Error creant la publicació:", postError);
+      return { success: false, message: t('errorPostCreation') };
   }
 
   revalidatePath('/comunicacio/planificador');

@@ -102,7 +102,6 @@ export async function saveExpenseAction(
 export async function processOcrAction(
   formData: FormData
 ): Promise<ActionResult<Record<string, unknown>>> {
-  const cookieStore = cookies();
   const supabase = createClient(cookies())
 ;
 // Deleguem tota la lògica complexa de l'OCR a una Edge Function.
@@ -124,7 +123,6 @@ export async function uploadAttachmentAction(
   expenseId: string,
   formData: FormData
 ): Promise<ActionResult<null>> {
-  const cookieStore = cookies();
   const supabase = createClient(cookies())
 ;
   const {

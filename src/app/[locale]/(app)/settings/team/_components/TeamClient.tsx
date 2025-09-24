@@ -1,39 +1,70 @@
-"use client"; // ✅ AQUESTA ÉS LA LÍNIA QUE HO SOLUCIONA TOT
+"use client";
 
-import { useTransition, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserPlus, Trash2 } from 'lucide-react';
-import { createTeamAction, inviteUserAction, revokeInvitationAction } from '../actions';
+import { useRouter, usePathname } from 'next/navigation';
+import { Loader2, UserPlus, Trash2, Plus, ArrowRight, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { useTransition, useRef } from 'react';
+
+// ✅ PAS 1: IMPORTA EL CLIENT CORRECTE I LES ACCIONS
+import { createClient } from '@/lib/supabase/client';
+import { 
+    switchActiveTeamAction, 
+    clearActiveTeamAction, 
+    createTeamAction,
+    inviteUserAction,
+    revokeInvitationAction 
+} from '../actions';
 import type { User } from '@supabase/supabase-js';
-import type { Team, TeamMember, Invitation } from '../page';
+import type { UserTeam, ActiveTeamData } from '../page';
 
 /**
- * Component principal de client amb una UI millorada i lògica de permisos.
+ * Component de client intel·ligent que renderitza o el HUB o el DASHBOARD de l'equip.
  */
-export function TeamClient({ user, team, teamMembers, pendingInvitations, currentUserRole }: {
-    user: User;
-    team: Team;
-    teamMembers: TeamMember[];
-    pendingInvitations: Invitation[];
-    currentUserRole: string | null;
+export function TeamClient({ user, userTeams, activeTeamData }: { 
+    user: User, 
+    userTeams: UserTeam[],
+    activeTeamData: ActiveTeamData | null
 }) {
     const router = useRouter();
+    const pathname = usePathname();
     const [isPending, startTransition] = useTransition();
     const formRef = useRef<HTMLFormElement>(null);
+    
+    // ✅ PAS 2: CREA LA INSTÀNCIA DEL CLIENT CORRECTE
+    const supabase = createClient();
 
-    const getInitials = (name: string | null | undefined) => {
-        if (!name) return '??';
-        return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    const handleSwitchTeam = (teamId: string) => {
+        startTransition(async () => {
+            const result = await switchActiveTeamAction(teamId);
+            
+            if (result.success) {
+                await supabase.auth.refreshSession();
+                // Utilitzem router.push per assegurar la recàrrega de dades
+                router.push(pathname, { scroll: false }); 
+                toast.success("Has canviat d'equip correctament.");
+            } else {
+                toast.error("No s'ha pogut canviar d'equip", { description: result.message });
+            }
+        });
     };
 
-    const canManage = currentUserRole === 'owner' || currentUserRole === 'admin';
+    const handleClearTeam = () => {
+        startTransition(async () => {
+            const result = await clearActiveTeamAction();
+            if(result.success) {
+                 await supabase.auth.refreshSession();
+                 router.push(pathname, { scroll: false });
+            }
+        });
+    };
 
     const handleCreateTeam = (formData: FormData) => {
         startTransition(async () => {
@@ -57,29 +88,71 @@ export function TeamClient({ user, team, teamMembers, pendingInvitations, curren
         });
     };
 
-    if (!team) {
+    const handleRevoke = (invitationId: string) => {
+        startTransition(async () => {
+            await revokeInvitationAction(invitationId);
+            toast.success("Invitació revocada");
+            router.refresh();
+        });
+    };
+    
+    const getInitials = (name: string | null | undefined) => {
+        if (!name) return '??';
+        return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    };
+
+    // --- VISTA 1: El "vestíbul" o HUB d'equips ---
+    if (!activeTeamData) {
         return (
-            <Card className="max-w-lg mx-auto mt-10">
-                <CardHeader>
-                    <CardTitle>Crea el teu equip</CardTitle>
-                    <CardDescription>Comença donant un nom al teu espai de treball.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form action={handleCreateTeam} className="flex gap-2">
-                        <Input name="teamName" placeholder="Nom de la teva empresa" required disabled={isPending} />
-                        <Button type="submit" disabled={isPending}>
-                            {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : "Crear Equip"}
-                        </Button>
-                    </form>
-                </CardContent>
-            </Card>
+            <div className="max-w-4xl mx-auto space-y-8 p-4">
+                <div>
+                    <h1 className="text-3xl font-bold">Els Teus Equips</h1>
+                    <p className="text-muted-foreground">Selecciona un equip per a començar a treballar o crea'n un de nou.</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    {userTeams.map(({ teams, role }) => teams && (
+                        <Card key={teams.id} className="flex flex-col">
+                            <CardHeader>
+                                <CardTitle>{teams.name}</CardTitle>
+                                <CardDescription>El teu rol: <span className="font-semibold capitalize">{role}</span></CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex-grow flex items-end">
+                                <Button onClick={() => handleSwitchTeam(teams.id)} disabled={isPending} className="w-full">
+                                    {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : "Entrar"}
+                                    {!isPending && <ArrowRight className="w-4 h-4 ml-2"/>}
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    <Card className="border-dashed">
+                        <CardHeader><CardTitle>Crear un nou equip</CardTitle></CardHeader>
+                        <CardContent>
+                            <form action={handleCreateTeam} className="space-y-4">
+                                <Input name="teamName" placeholder="Nom del nou equip" required disabled={isPending} />
+                                <Button type="submit" disabled={isPending} className="w-full">
+                                    {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : <Plus className="w-4 h-4 mr-2" />} Crear Equip
+                                </Button>
+                            </form>
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         );
     }
+    
+    // --- VISTA 2: El panell de control de l'equip actiu ---
+    const { team, teamMembers, pendingInvitations, currentUserRole } = activeTeamData;
+    const canManage = currentUserRole === 'owner' || currentUserRole === 'admin';
 
     return (
-        <div className="space-y-8 max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold">{team.name}</h1>
-
+         <div className="space-y-8 max-w-4xl mx-auto">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">{team.name}</h1>
+                <Button variant="outline" onClick={handleClearTeam} disabled={isPending}>
+                    <LogOut className="w-4 h-4 mr-2"/> Canviar d'equip
+                </Button>
+            </div>
+            
             {canManage && (
                 <Card>
                     <CardHeader><CardTitle>Convida nous membres</CardTitle></CardHeader>
@@ -111,13 +184,8 @@ export function TeamClient({ user, team, teamMembers, pendingInvitations, curren
                                     <p className="font-medium">{invite.email}</p>
                                     <p className="text-sm text-muted-foreground capitalize">{invite.role}</p>
                                 </div>
-                                <form action={(formData) => {
-                                    const invitationId = formData.get('invitationId') as string;
-                                    if (invitationId) {
-                                        revokeInvitationAction(invitationId);
-                                    }
-                                }}>                                    <input type="hidden" name="invitationId" value={invite.id} />
-                                    <Button type="submit" variant="ghost" size="sm"><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                                <form action={() => handleRevoke(invite.id)}>
+                                    <Button type="submit" variant="ghost" size="sm" disabled={isPending}><Trash2 className="w-4 h-4 text-destructive"/></Button>
                                 </form>
                             </div>
                         ))}
@@ -128,13 +196,6 @@ export function TeamClient({ user, team, teamMembers, pendingInvitations, curren
             <Card>
                 <CardHeader><CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle></CardHeader>
                 <CardContent className="divide-y">
-                    {/* ✅ NOU: Missatge per quan no es troben membres */}
-                    {teamMembers.length === 0 && (
-                        <div className="text-center text-muted-foreground py-8">
-                            <p>No s'han trobat membres a l'equip.</p>
-                            <p className="text-xs mt-1">Això pot ser un problema amb la relació entre taules o les polítiques de seguretat (RLS).</p>
-                        </div>
-                    )}
                     {teamMembers.map(member => member.profiles && (
                         <div key={member.profiles.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
                             <div className="flex items-center gap-4">
@@ -150,9 +211,9 @@ export function TeamClient({ user, team, teamMembers, pendingInvitations, curren
                             <div className="flex items-center gap-2 sm:gap-4">
                                 <Badge variant={member.role === 'owner' ? 'default' : 'secondary'} className="capitalize">{member.role}</Badge>
                                 {canManage && member.role !== 'owner' && user.id !== member.profiles.id && (
-                                     <Button variant="ghost" size="icon" disabled>
+                                    <Button variant="ghost" size="icon" disabled> {/* Lògica d'eliminar membre pendent */}
                                         <Trash2 className="w-4 h-4 text-destructive" />
-                                     </Button>
+                                    </Button>
                                 )}
                             </div>
                         </div>
@@ -162,4 +223,3 @@ export function TeamClient({ user, team, teamMembers, pendingInvitations, curren
         </div>
     );
 }
-

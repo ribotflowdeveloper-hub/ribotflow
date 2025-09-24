@@ -70,8 +70,15 @@ export const navModules: NavItem[] = [
       { id: 'inbox', labelKey: 'inbox', icon: Headphones, path: '/comunicacio/inbox', isSingle: true },
       { id: 'templates', labelKey: 'templates', icon: LayoutTemplate, path: '/comunicacio/templates', isSingle: true },
       { id: 'marketing', labelKey: 'marketing', icon: Mail, path: '/comunicacio/marketing', isSingle: true },
-      { id: 'planificador', labelKey: 'planner', icon: CalendarDays, path: '/comunicacio/planificador', isSingle: true },
-
+      {
+        id: 'planificador',
+        labelKey: 'planner',
+        icon: CalendarDays,
+        path: '/comunicacio/planificador',
+        // ✅ AQUÍ ESTÀ LA MÀGIA: Especifiquem els plans que tenen accés
+        requiredPlan: ['plus', 'premium'],
+        isSingle: false
+      },
     ]
   },
   {

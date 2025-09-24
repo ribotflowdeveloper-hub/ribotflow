@@ -171,49 +171,71 @@ export async function resolveInvitationAction(token: string) {
  * L'afegeix a l'equip i esborra la invitació.
  */
 // Aquesta acció ara accepta l'ID de l'usuari directament
-export async function acceptInviteAction(token: string, userId: string) {
-    // Utilitzem el client d'admin per poder operar sense una sessió activa
-    const supabaseAdmin = createAdminClient(); 
-
-    // 1. Busquem la invitació per obtenir el team_id i el rol
-    const { data: invitation, error: invitationError } = await supabaseAdmin
-        .from('invitations')
-        .select('team_id, role, email')
-        .eq('token', token)
-        .single();
-
-    if (invitationError || !invitation) {
-        console.error("Error: Invitació invàlida o no trobada", invitationError);
-        return; // No redirigim, simplement sortim
-    }
-
-    // 2. Afegim l'usuari a la taula de membres
-    const { error: insertError } = await supabaseAdmin
-        .from('team_members')
-        .insert({ team_id: invitation.team_id, user_id: userId, role: invitation.role });
-
-    if (insertError) {
-        console.error("Error en inserir el nou membre:", insertError);
-        return;
-    }
-
-    // 3. Actualitzem el perfil de l'usuari per marcar l'onboarding com a completat
-    const { error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update({ onboarding_completed: true })
-        .eq('id', userId);
-
-    if (updateError) {
-        console.error("Error en actualitzar el perfil:", updateError);
-        return;
-    }
-
-    // 4. Esborrem la invitació per netejar
-    await supabaseAdmin.from('invitations').delete().eq('token', token);
-
-    console.log(`Usuari ${userId} afegit correctament a l'equip ${invitation.team_id}`);
+/**
+ * S'executa DESPRÉS que un usuari hagi iniciat sessió o s'hagi registrat amb un token.
+ * AFEGEIX l'usuari a l'equip, ESBORRA la invitació i ACTUALITZA EL SEU TOKEN.
+ */
+export async function acceptInviteAction(token: string) {
+    const supabase = createClient(cookies());
+    const supabaseAdmin = createAdminClient();
     
-    // Aquesta funció ja no redirigeix. La redirecció final la farà el callback.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return redirect(`/login?invite_token=${token}&message=Has d'iniciar sessió per acceptar.`);
+    }
+
+    try {
+        const { data: invitation } = await supabase
+            .from('invitations')
+            .select('*')
+            .eq('token', token)
+            .single()
+            .throwOnError();
+            
+        if (invitation.email !== user.email) {
+            throw new Error("Aquesta invitació està destinada a un altre usuari.");
+        }
+
+        await supabase
+            .from('team_members')
+            .insert({ team_id: invitation.team_id, user_id: user.id, role: invitation.role })
+            .throwOnError();
+        
+        // ✅ PAS CLAU 1: Busquem la subscripció de l'equip al qual s'acaba d'unir.
+        const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('plan_id, status')
+            .eq('team_id', invitation.team_id)
+            .single();
+
+        const teamPlan = (subscription?.status === 'active') ? subscription.plan_id : 'free';
+
+        // ✅ PAS CLAU 2: Actualitzem les metadades de l'usuari (el seu token) a l'instant.
+        await supabaseAdmin.auth.admin.updateUserById(
+            user.id,
+            { app_metadata: { 
+                ...user.app_metadata, 
+                active_team_id: invitation.team_id,
+                active_team_plan: teamPlan 
+            }}
+        );
+        
+        await supabase.from('invitations').delete().eq('id', invitation.id);
+
+    } catch (error) {
+        // Ignorem l'error de clau duplicada si l'usuari ja era membre
+        if (error instanceof Error && error.message.includes('duplicate key value')) {
+            console.log("L'usuari ja era membre, procedint a actualitzar el seu token...");
+            // Si ja era membre, igualment actualitzem el seu token per si ha canviat de pla
+            // (Aquesta lògica es podria afegir aquí si fos necessari)
+        } else {
+            const message = error instanceof Error ? error.message : "Error en processar la invitació.";
+            return redirect(`/dashboard?message=${encodeURIComponent(message)}`);
+        }
+    }
+
+    // El redirigim a la pàgina de l'equip perquè vegi que ja n'és membre.
+    redirect('/settings/team');
 }
 /**
  * Elimina una invitació pendent.
@@ -252,5 +274,57 @@ export async function revokeInvitationAction(invitationId: string) {
     }
     
     revalidatePath('/settings/team');
+    return { success: true };
+}
+
+/**
+ * Canvia l'equip actiu de l'usuari directament a les seves metadades d'autenticació (JWT).
+ */
+export async function switchActiveTeamAction(teamId: string) {
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
+
+    // Comprovació de seguretat
+    const { data: member } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .eq('team_id', teamId)
+        .maybeSingle();
+    
+    if (!member) return { success: false, message: "No tens accés a aquest equip." };
+
+    const supabaseAdmin = createAdminClient();
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+        user.id,
+        { app_metadata: { active_team_id: teamId } }
+    );
+    
+    if (error) {
+        return { success: false, message: error.message };
+    }
+
+    revalidatePath('/', 'layout');
+    return { success: true };
+}
+
+/**
+ * ✅ NOU: Neteja l'equip actiu, per a tornar al "vestíbul".
+ */
+export async function clearActiveTeamAction() {
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
+
+    const supabaseAdmin = createAdminClient();
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(
+        user.id,
+        { app_metadata: { active_team_id: null } }
+    );
+
+    if (error) return { success: false, message: error.message };
+    
+    revalidatePath('/settings/team', 'page');
     return { success: true };
 }

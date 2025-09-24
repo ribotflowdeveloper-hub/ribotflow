@@ -95,43 +95,52 @@ export async function draftContentAction(goal: string, strategy: Strategy): Prom
  * @param {string} goal - L'objectiu associat a la campanya.
  * @returns {Promise<{ data: any, error: any }>} El resultat de la inserció a Supabase.
  */
+
 export async function saveCampaignAction(campaignData: Partial<Campaign>, goal: string) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { data: null, error: { message: "Not authenticated" } };
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: { message: "Not authenticated" } };
 
-  // Inserim les dades a la taula 'campaigns'.
-  const { data, error } = await supabase.from('campaigns').insert({
-    user_id: user.id,
-    name: campaignData.name,
-    type: campaignData.type,
-    status: 'Planificat', // Totes les campanyes noves comencen com a planificades.
-    campaign_date: new Date().toISOString().split('T')[0],
-    goal: goal,
-    target_audience: campaignData.target_audience,
-    content: campaignData.content,
-  }).select().single();
+    // Obtenim l'equip actiu del token
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) {
+        return { data: null, error: { message: "No s'ha pogut determinar l'equip actiu." } };
+    }
 
-  revalidatePath('/comunicacio/marketing'); // Actualitzem la UI per mostrar la nova campanya.
-  return { data, error };
+    const dataToInsert = {
+        user_id: user.id,
+        team_id: activeTeamId, // ✅ Assignem l'equip actiu
+        name: campaignData.name,
+        type: campaignData.type,
+        status: 'Planificat',
+        campaign_date: new Date().toISOString().split('T')[0],
+        goal: goal,
+        target_audience: campaignData.target_audience,
+        content: campaignData.content,
+    };
+
+    const { data, error } = await supabase
+        .from('campaigns')
+        .insert(dataToInsert)
+        .select()
+        .single();
+
+    revalidatePath('/comunicacio/marketing');
+    return { data, error };
 }
 
 /**
- * @summary Actualitza el nom i el contingut d'una campanya existent.
- * @param {string} campaignId - L'ID de la campanya a actualitzar.
- * @param {string} name - El nou nom de la campanya.
- * @param {string} content - El nou contingut de la campanya.
- * @returns {Promise<{ error: any }>} El resultat de l'actualització a Supabase.
+ * Actualitza una campanya existent. La RLS s'encarregarà de la seguretat.
  */
 export async function updateCampaignAction(campaignId: string, name: string, content: string) {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
-  // No cal comprovar l'usuari aquí perquè les Row Level Security (RLS) de Supabase
-  // ja s'encarreguen de verificar que l'usuari només pot modificar les seves pròpies campanyes.
-  const { error } = await supabase.from('campaigns').update({ name, content }).eq('id', campaignId);
-  revalidatePath('/comunicacio/marketing');
-  return { error };
+    const supabase = createClient(cookies());
+    // La política RLS de la base de dades s'encarregarà de verificar que només
+    // podem editar una campanya del nostre equip actiu.
+    const { error } = await supabase
+        .from('campaigns')
+        .update({ name, content })
+        .eq('id', campaignId);
+        
+    revalidatePath('/comunicacio/marketing');
+    return { error };
 }

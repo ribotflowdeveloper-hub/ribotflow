@@ -1,32 +1,18 @@
-/**
- * @file BillingClient.tsx
- * @summary Component de client que gestiona la interfície interactiva de la pàgina de Facturació i Plans.
- */
 "use client";
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation'; // ✅ 1. Importem el router
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Check, Gift, Star, Gem, Settings } from 'lucide-react';
+import { Check, Gift, Star, Gem, Settings} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTranslations, useLocale } from 'next-intl';
-
-type Plan = {
-  id: string;
-  name: string;
-  iconName: string;
-  priceMonthly: number | null;
-  priceYearly: number | null;
-  description: string;
-  features: string[];
-  isPopular?: boolean;
-  isCurrent?: boolean;
-  colors: { border: string; text: string; bg: string; hoverBg: string; }
-};
+import { subscribeToPlanAction, cancelSubscriptionAction } from '../actions';
+import type { Subscription, Plan } from '@/types/settings';
 
 const PlanIcon = ({ name, className }: { name: string; className?: string }) => {
   switch (name) {
@@ -38,17 +24,49 @@ const PlanIcon = ({ name, className }: { name: string; className?: string }) => 
   }
 };
 
-export function BillingClient({ plans }: { plans: Plan[] }) {
+export function BillingClient({ plans, activeSubscription, currentUserRole }: {
+  plans: Plan[];
+  activeSubscription: Subscription | null;
+  currentUserRole: string | null;
+
+}) {
   const t = useTranslations('SettingsPage.billing');
   const locale = useLocale();
+  const router = useRouter(); // ✅ 2. Inicialitzem el router
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const currentPlan = plans.find(p => p.isCurrent);
-  const renewalDate = new Date();
-  renewalDate.setDate(new Date().getDate() + 21);
+  const [isPending, startTransition] = useTransition();
 
-  const handleSelectPlan = (planName: string) => { toast.info(t('notImplemented'), { description: t('notImplementedDesc', { planName }) }); };
+  // ✅ Variable de control per a la UI basada en permisos
+  const canManageBilling = currentUserRole === 'owner' || currentUserRole === 'admin';
+
+  const currentPlanDetails = plans.find(p => p.isCurrent);
+  const handleSelectPlan = (planId: string) => {
+    startTransition(async () => {
+      const result = await subscribeToPlanAction(planId);
+      if (result.success) {
+        toast.success(result.message);
+        router.refresh(); // ✅ 3. Refresquem les dades de la pàgina
+      } else {
+        toast.error(result.message);
+      }
+    });
+  };
+
+  const handleCancelSubscription = () => {
+    startTransition(async () => {
+      const result = await cancelSubscriptionAction();
+      if (result.success) {
+        toast.success(result.message);
+        router.refresh(); // ✅ 3. Refresquem les dades de la pàgina
+      } else {
+        toast.error(result.message);
+      }
+    });
+  };
+
   const handleManageBilling = () => { toast.info(t('redirecting'), { description: t('redirectingDesc') }); };
-  const handleCancelSubscription = () => { toast.error(t('cancellationPage'), { description: t('cancellationDesc') }); };
+
+
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
@@ -83,7 +101,7 @@ export function BillingClient({ plans }: { plans: Plan[] }) {
                 {t('mostPopular')}
               </div>
             )}
-            
+
             <div className="flex-grow flex flex-col">
               <div className="flex items-center gap-3 mb-4">
                 <PlanIcon name={plan.iconName} className={cn("w-6 h-6", plan.colors.text)} />
@@ -107,14 +125,12 @@ export function BillingClient({ plans }: { plans: Plan[] }) {
                 )}
               </div>
               <Button
-                onClick={() => handleSelectPlan(plan.name)}
-                disabled={plan.isCurrent}
-                className={cn(
-                  "w-full font-bold mt-2 mb-10",
-                  plan.isCurrent ? `${plan.colors.bg} text-white` : `bg-transparent border-2 ${plan.colors.border} ${plan.colors.text} ${plan.colors.hoverBg} hover:text-white`
-                )}
+                onClick={() => handleSelectPlan(plan.id)}
+                // ✅ LÒGICA DE PERMISOS: El botó es desactiva si no pot gestionar la facturació
+                disabled={plan.isCurrent || isPending || !canManageBilling}
+                className={cn("w-full font-bold mt-2 mb-10", /* ... */)}
               >
-                {plan.isCurrent ? t('yourCurrentPlan') : plan.priceMonthly !== null ? t('selectPlan') : t('contactSales')}
+                {plan.isCurrent ? t('yourCurrentPlan') : t('selectPlan')}
               </Button>
               <ul className="space-y-4 text-sm">
                 {plan.features.map((feature, index) => (
@@ -128,29 +144,29 @@ export function BillingClient({ plans }: { plans: Plan[] }) {
           </div>
         ))}
       </div>
-      
-      {currentPlan && (
+
+      {activeSubscription && activeSubscription.status === 'active' && currentPlanDetails && (
         <div className="max-w-2xl mx-auto">
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="item-1" className="glass-card rounded-2xl border px-4 sm:px-6">
               <AccordionTrigger className="hover:no-underline text-left">
                 <div className="flex items-center gap-3">
-                  <PlanIcon name={currentPlan.iconName} className={cn("w-6 h-6", currentPlan.colors.text)} />
+                  <PlanIcon name={currentPlanDetails.iconName} className={cn("w-6 h-6", currentPlanDetails.colors.text)} />
                   <div>
-                    <p className="font-bold text-lg">{t('currentPlan', { planName: currentPlan.name })}</p>
-                    <p className="text-sm text-muted-foreground">{t('renewsOn', { date: renewalDate.toLocaleDateString(locale, { day: 'numeric', month: 'long' }) })}. {t('clickForDetails')}</p>
+                    <p className="font-bold text-lg">{t('currentPlan', { planName: currentPlanDetails.name })}</p>
+                    <p className="text-sm text-muted-foreground">{t('renewsOn', { date: new Date(activeSubscription.current_period_end).toLocaleDateString(locale, { day: 'numeric', month: 'long' }) })}. {t('clickForDetails')}</p>
                   </div>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="space-y-3 text-sm pt-4">
-                  <div className="flex justify-between items-center"><span className="text-muted-foreground">{t('planLabel')}</span><span className="font-semibold">{currentPlan.name}</span></div>
-                  <div className="flex justify-between items-center"><span className="text-muted-foreground">{t('statusLabel')}</span><span className="font-semibold text-green-500">{t('statusValue')}</span></div>
-                  <div className="flex justify-between items-center"><span className="text-muted-foreground">{t('renewalDateLabel')}</span><span className="font-semibold">{renewalDate.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t('planLabel')}</span><span className="font-semibold">{currentPlanDetails.name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t('statusLabel')}</span><span className="font-semibold text-green-500">{t('statusValue')}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t('renewalDateLabel')}</span><span className="font-semibold">{new Date(activeSubscription.current_period_end).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
                 </div>
                 <div className="border-t mt-6 pt-6 flex flex-col sm:flex-row gap-3">
                   <Button className="w-full" onClick={handleManageBilling}>{t('manageButton')}</Button>
-                  <Button variant="destructive" className="w-full" onClick={handleCancelSubscription}>{t('cancelButton')}</Button>
+                  <Button variant="destructive" className="w-full" onClick={handleCancelSubscription} disabled={isPending}>{t('cancelButton')}</Button>
                 </div>
               </AccordionContent>
             </AccordionItem>

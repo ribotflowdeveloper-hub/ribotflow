@@ -1,81 +1,128 @@
 "use server";
+"use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
-
-import type { Quote, CompanyProfileObject } from '@/types/crm';
-// 'withUser' és una funció 'wrapper' personalitzada que probablement gestiona l'autenticació
-// i la creació del client de Supabase per evitar repetir codi a cada acció.
-import { withUser } from "@/lib/actions";
-
-// --- ACCIONS DE PRESSUPOSTOS ---
+import type { Quote} from '@/types/crm';
+import type { CompanyProfile } from '@/types/settings/team'; // Importa els nous tipus
 
 /**
  * Server Action per desar (crear o actualitzar) un pressupost i els seus conceptes.
- * @param quoteData L'objecte complet del pressupost enviat des del client.
  */
 export async function saveQuoteAction(quoteData: Quote) {
-  // Utilitzem el 'wrapper' withUser per gestionar l'autenticació i la revalidació de rutes.
-  return withUser(async (supabase, userId) => {
-    // Validació bàsica: assegurem que el pressupost tingui un client associat.
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuari no autenticat." };
+
+    // --- NOVA LÒGICA D'EQUIP ACTIU ---
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
+
     if (!quoteData.contact_id) return { success: false, message: "Si us plau, selecciona un client." };
 
-    // Separem els conceptes ('items') de la resta de dades del pressupost.
     const { items, id, ...quoteFields } = quoteData;
-    let finalQuoteId = id; // Guardem l'ID del pressupost per a ús posterior.
+    let finalQuoteId = id;
 
-    // Si l'ID és 'new', estem creant un nou pressupost.
-    if (id === 'new') {
-      const { data: newQuote, error } = await supabase.from('quotes').insert({ ...quoteFields, user_id: userId }).select('id').single();
-      if (error || !newQuote) throw error || new Error("No s'ha pogut crear el pressupost.");
-      finalQuoteId = newQuote.id; // Obtenim l'ID del nou pressupost creat.
-    } else { // Si ja té un ID, estem actualitzant un pressupost existent.
-      await supabase.from('quotes').update(quoteFields).eq('id', id);
-      // Per simplicitat, esborrem tots els conceptes antics abans d'inserir els nous.
-      await supabase.from('quote_items').delete().eq('quote_id', id);
+    try {
+        if (id === 'new') {
+            const { data: newQuote, error } = await supabase
+                .from('quotes')
+                .insert({ ...quoteFields, user_id: user.id, team_id: activeTeamId }) // ✅ Afegim team_id
+                .select('id')
+                .single();
+            if (error || !newQuote) throw error || new Error("No s'ha pogut crear el pressupost.");
+            finalQuoteId = newQuote.id;
+        } else {
+            // La RLS verificarà que tenim permís per actualitzar aquest pressupost
+            await supabase.from('quotes').update(quoteFields).eq('id', id);
+            await supabase.from('quote_items').delete().eq('quote_id', id);
+        }
+
+        if (items?.length) {
+            const itemsToInsert = items.map(item => ({
+                quote_id: finalQuoteId,
+                user_id: user.id, // <-- CORREGIT
+                team_id: activeTeamId, // ✅ Afegim team_id
+                product_id: item.product_id || null,
+                description: item.description,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                total: (item.quantity || 0) * (item.unit_price || 0),
+            }));
+            await supabase.from('quote_items').insert(itemsToInsert);
+        }
+
+        if (quoteFields.opportunity_id) {
+            await supabase.from('opportunities').update({ stage_name: 'Proposta Enviada' }).eq('id', quoteFields.opportunity_id);
+        }
+
+        revalidatePath('/crm/quotes');
+        revalidatePath(`/crm/quotes/${finalQuoteId}`);
+        return { success: true, message: "Pressupost desat correctament.", data: finalQuoteId };
+
+    } catch(error) {
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { success: false, message };
     }
-
-    // Si hi ha conceptes a la llista, els inserim a la taula 'quote_items'.
-    if (items?.length) {
-      const itemsToInsert = items.map(item => ({
-        quote_id: finalQuoteId, // Associem cada concepte amb l'ID del pressupost.
-        user_id: userId,
-        product_id: item.product_id || null,
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        total: (item.quantity || 0) * (item.unit_price || 0),
-      }));
-      await supabase.from('quote_items').insert(itemsToInsert);
-    }
-
-    // Si el pressupost està associat a una oportunitat, actualitzem l'estat d'aquesta.
-    if (quoteFields.opportunity_id) {
-      await supabase.from('opportunities').update({ stage_name: 'Proposta Enviada' }).eq('id', quoteFields.opportunity_id);
-    }
-
-    // Retornem un missatge d'èxit i el nou ID si s'ha creat un pressupost nou.
-    return { success: true, message: "Pressupost desat correctament.", data: finalQuoteId };
-  }, [`/crm/quotes`, `/crm/quotes/${quoteData.id}`]); // Rutes a revalidar en cas d'èxit.
 }
-
 
 /**
- * Server Action per eliminar un pressupost i tots els seus conceptes associats.
- * @param quoteId L'ID del pressupost a eliminar.
+ * Server Action per eliminar un pressupost.
  */
 export async function deleteQuoteAction(quoteId: string) {
-  if (!quoteId || quoteId === 'new') return { success: false, message: "ID de pressupost invàlid." };
+    if (!quoteId || quoteId === 'new') return { success: false, message: "ID invàlid." };
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
 
-  return withUser(async (supabase, userId) => {
-    // Important: primer eliminem els conceptes (taula filla) i després el pressupost (taula pare)
-    // per evitar errors de clau forana si no hi ha 'ON DELETE CASCADE' a la base de dades.
-    await supabase.from('quote_items').delete().eq('quote_id', quoteId).eq('user_id', userId);
-    await supabase.from('quotes').delete().eq('id', quoteId).eq('user_id', userId);
-    return { success: true, message: "Pressupost eliminat." };
-  }, ['/crm/quotes']);
+    // ✅ Eliminem .eq('user_id', userId). La RLS s'encarregarà de la seguretat.
+    try {
+        await supabase.from('quote_items').delete().eq('quote_id', quoteId);
+        await supabase.from('quotes').delete().eq('id', quoteId);
+
+        revalidatePath('/crm/quotes');
+        return { success: true, message: "Pressupost eliminat." };
+    } catch(error) {
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { success: false, message };
+    }
 }
+
+/**
+ * Acció per crear un nou producte desable.
+ */
+export async function createProductAction(newProduct: { name: string, price: number }) {
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
+
+    // --- NOVA LÒGICA D'EQUIP ACTIU ---
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
+
+    try {
+        const { data, error } = await supabase.from('products').insert({
+            user_id: user.id,
+            team_id: activeTeamId, // ✅ Afegim team_id
+            name: newProduct.name,
+            price: newProduct.price,
+        }).select().single();
+
+        if (error) throw error;
+
+        // Revalidem el layout per assegurar que les dades es refresquen a tot arreu
+        revalidatePath(`/crm`, 'layout');
+        return { success: true, message: 'Nou producte desat.', newProduct: data };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { success: false, message };
+    }
+}
+
+// --- ACCIONS DE PRESSUPOSTOS ---
+
+
 
 
 /**
@@ -111,59 +158,39 @@ export async function sendQuoteAction(quoteId: string) {
 /**
  * Acció per actualitzar el perfil de l'empresa de l'usuari.
  */
-export async function updateCompanyProfileAction(profileData: CompanyProfileObject) {
-  
-  const supabase = createClient(cookies())
-;
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  // ✅ Assegurem que profileData no sigui null
-  if (!user || !profileData) {
-      return { success: false, message: "Dades invàlides." };
-  }
-
-  try {
-      const { data, error } = await supabase
-          .from('profiles')
-          .upsert({ ...profileData, id: user.id })
-          .select()
-          .single();
-      
-      if (error) throw error;
-      
-      // ✅ CORRECCIÓ DEFINITIVA: Revalidem el layout del CRM.
-      // Això refrescarà les dades a totes les pàgines dins de /crm,
-      // incloent-hi la pàgina de l'editor de pressupostos, de manera segura.
-      revalidatePath('/crm', 'layout');
-      
-      return { success: true, message: 'Perfil d\'empresa actualitzat.', updatedProfile: data };
-  } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Error desconegut";
-      return { success: false, message };
-  }
-}
-/**
- * Acció per crear un nou producte desable des de l'editor de pressupostos.
- */
-export async function createProductAction(newProduct: { name: string, price: number }) {
-   
-    const supabase = createClient(cookies())
-;
+export async function updateTeamProfileAction(teamData: Partial<CompanyProfile>) {
+    const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
+    if (!user) return { success: false, message: "User not authenticated." };
+
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) return { success: false, message: "No active team found." };
+
+    // Prepare data for the 'teams' table
+    const dataToUpdate = {
+        name: teamData.company_name,
+        tax_id: teamData.company_tax_id,
+        address: teamData.company_address,
+        email: teamData.company_email,
+        phone: teamData.company_phone,
+        logo_url: teamData.logo_url,
+    };
 
     try {
-        const { data, error } = await supabase.from('products').insert({
-            user_id: user.id, name: newProduct.name, price: newProduct.price,
-        }).select().single();
-
+        const { data, error } = await supabase
+            .from('teams')
+            .update(dataToUpdate)
+            .eq('id', activeTeamId) // Securely update only the active team
+            .select()
+            .single();
+        
         if (error) throw error;
-
+        
         revalidatePath(`/crm/quotes/[id]`, 'page');
-        return { success: true, message: 'Nou producte desat.', newProduct: data };
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
+        
+        return { success: true, message: 'Team profile updated.', updatedProfile: data };
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error";
         return { success: false, message };
-      }
+    }
 }
-

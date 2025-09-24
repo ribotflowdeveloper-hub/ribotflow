@@ -1,44 +1,42 @@
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { ProductsClient } from "./ProductsClient";
+// ✅ Assegura't que aquest import apunta al teu fitxer de tipus centralitzat
+import type { Product } from '@/types/crm/products'; 
 
-
-/**
- * Carrega les dades dels productes de l'equip de l'usuari actual.
- */
 export async function ProductsData() {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-        return <ProductsClient initialProducts={[]} />;
+        return redirect('/login');
     }
 
-    // --- LÒGICA D'EQUIP ---
-    // 1. Busquem l'equip de l'usuari actual.
-    const { data: member, error: memberError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .single();
-
-    if (memberError || !member) {
-        console.error("L'usuari no pertany a cap equip.", memberError);
-        return <ProductsClient initialProducts={[]} />;
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) {
+        return redirect('/settings/team');
     }
-    const teamId = member.team_id;
-    // ----------------------
 
-    // 2. Obtenim els productes que pertanyen a l'equip.
+    // La política RLS de la taula 'products' s'encarregarà de filtrar automàticament.
     const { data: products, error } = await supabase
         .from("products")
         .select("*")
-        .eq("team_id", teamId) // ✅ Filtrem per team_id en lloc de user_id
         .order("name", { ascending: true });
         
     if (error) {
-        console.error("Error en carregar els productes:", error);
+        console.error("Error en carregar els productes (pot ser per RLS):", error);
         return <ProductsClient initialProducts={[]} />;
     }
 
-    return <ProductsClient initialProducts={products || []} />;
+    // Aquesta normalització és una bona pràctica per a assegurar la compatibilitat de tipus.
+    const normalizedProducts: Product[] = (products || []).map(p => ({
+        ...p,
+        description: p.description ?? null,
+        category: p.category ?? null,
+        unit: p.unit ?? null,
+        iva: p.iva ?? null,
+        discount: p.discount ?? null,
+    }));
+
+    return <ProductsClient initialProducts={normalizedProducts} />;
 }

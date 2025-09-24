@@ -8,29 +8,44 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { updateCompanyProfileAction } from '../actions';
-// ✅ Importem els tipus corregits des del fitxer central
-import type { CompanyProfile as CompanyProfileType, CompanyProfileObject } from '@/types/crm';
+import { updateTeamProfileAction } from '../actions';
+// ✅ Assegurem que importem el tipus correcte. TeamData és el que ve del servidor.
+import type { TeamData, CompanyProfile } from '@/types/settings/team';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
-// ✅ Canviem el tipus EditableProfile per ser més estricte
-type EditableProfile = Partial<CompanyProfileObject>;
+// L'estat local treballarà amb el format de CompanyProfile per als formularis.
+type EditableProfile = Partial<CompanyProfile>;
 
+// ✅ La prop 'profile' ara és de tipus 'TeamData', que coincideix amb el que envia el servidor.
 export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpdate }: {
     open: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    profile: CompanyProfileType;
-    onProfileUpdate: (newProfile: CompanyProfileType) => void;
+    profile: TeamData | null; // <-- Canvi de tipus
+    onProfileUpdate: (newProfile: TeamData) => void; // <-- Canvi de tipus
 }) {
     const t = useTranslations('QuoteEditor');
-    const [localProfile, setLocalProfile] = useState<EditableProfile>(profile || {});
+    const [localProfile, setLocalProfile] = useState<EditableProfile>({});
     const [isSaving, startSaveTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
-    const supabase = createClient()
-;
+    const supabase = createClient();
 
-    useEffect(() => { setLocalProfile(profile || {}); }, [profile]);
+    // ✅ AQUEST ÉS EL CANVI MÉS IMPORTANT
+    // Aquest useEffect s'executa quan el diàleg s'obre o quan les dades del perfil canvien.
+    // "Tradueix" les dades de la taula 'teams' al format que el nostre formulari espera.
+    useEffect(() => {
+        if (profile) {
+            setLocalProfile({
+                id: profile.id,
+                company_name: profile.name,
+                company_tax_id: profile.tax_id,
+                company_address: profile.address,
+                company_email: profile.email,
+                company_phone: profile.phone,
+                logo_url: profile.logo_url,
+            });
+        }
+    }, [profile]); // Aquesta dependència assegura que l'estat s'actualitza si le
 
     const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -53,18 +68,14 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
      * @summary Gestor per desar el perfil. Ara és més segur i net.
      */
     const handleSaveProfile = () => {
-        // La comprovació es fa sobre el 'profile' original per assegurar que tenim les dades base
-        if (!profile?.id || !profile.user_id) {
+        if (!profile?.id) {
             toast.error(t('toast.errorTitle'), { description: t('toast.missingProfileData') });
             return;
         }
 
         startSaveTransition(async () => {
-            // ✅ CORRECCIÓ: Construïm l'objecte a enviar de manera més segura.
-            // Agafem totes les propietats de l'estat local i les combinem amb les IDs originals.
-            const profileToSend: CompanyProfileObject = {
-                id: profile.id,
-                user_id: profile.user_id,
+            // ✅ Construïm l'objecte a enviar amb les dades de l'estat local.
+            const profileToSend: Partial<CompanyProfile> = {
                 company_name: localProfile.company_name || null,
                 company_tax_id: localProfile.company_tax_id || null,
                 company_address: localProfile.company_address || null,
@@ -73,18 +84,18 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                 logo_url: localProfile.logo_url || null,
             };
 
-            const result = await updateCompanyProfileAction(profileToSend);
+            const result = await updateTeamProfileAction(profileToSend);
 
             if (result.success && result.updatedProfile) {
                 toast.success(t('toast.successTitle'), { description: result.message });
-                onProfileUpdate(result.updatedProfile);
+                onProfileUpdate(result.updatedProfile); // Retornem el perfil actualitzat al pare
                 onOpenChange(false);
             } else {
                 toast.error(t('toast.errorTitle'), { description: result.message });
             }
         });
     };
-    
+
     // Funció per gestionar els canvis als inputs de manera genèrica
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -121,6 +132,7 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                             <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploading} />
                         </div>
                     </div>
+                    {/* ✅ Els inputs ara funcionen perquè 'localProfile' té el format correcte */}
                     <div><Label htmlFor="company_name">{t('companyProfileDialog.nameLabel')}</Label><Input id="company_name" name="company_name" value={localProfile.company_name || ''} onChange={handleInputChange} /></div>
                     <div><Label htmlFor="company_tax_id">{t('companyProfileDialog.taxIdLabel')}</Label><Input id="company_tax_id" name="company_tax_id" value={localProfile.company_tax_id || ''} onChange={handleInputChange} /></div>
                     <div><Label htmlFor="company_address">{t('companyProfileDialog.addressLabel')}</Label><Input id="company_address" name="company_address" value={localProfile.company_address || ''} onChange={handleInputChange} /></div>

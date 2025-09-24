@@ -1,7 +1,9 @@
+// /app/[locale]/crm/contactes/_components/ContactsData.tsx
+
 import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 import { ContactsClient } from './contacts-client';
 import type { Contact } from '@/types/crm';
-import { cookies } from 'next/headers';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -14,33 +16,28 @@ interface ContactsDataProps {
 }
 
 export async function ContactsData({ page, sortBy, status, searchTerm, viewMode }: ContactsDataProps) {
-    console.log("\n--- INICIANT ContactsData (Mode Depuració) ---");
-    
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-        console.log("PAS 1: No s'ha trobat usuari. Retornant client buit.");
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
     }
-    console.log(`PAS 1: Usuari autenticat trobat. ID: ${user.id}`);
 
-    // --- AQUESTA ÉS L'ADDICIÓ CLAU ---
-    // 1. Busquem l'equip de l'usuari actual.
-    const { data: member, error: memberError } = await supabase
-        .from('team_members')
-        .select('team_id')
-        .eq('user_id', user.id)
-        .single();
+    // --- AQUESTA ÉS LA NOVA LÒGICA CORRECTA ---
+    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
 
-    // Si l'usuari no pertany a cap equip, no tindrà contactes per veure.
-    if (memberError || !member) {
-        console.error("!!! ERROR PAS 2: L'usuari no pertany a cap equip o hi ha hagut un error.", memberError);
+    if (claimsError || !claimsString) {
+        console.error("Error crític: No s'ha pogut obtenir la informació del token de l'usuari des de la BD:", claimsError);
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
     }
-    const teamId = member.team_id;
-    console.log(`PAS 2: Equip de l'usuari trobat. team_id: ${teamId}`);
-    // ------------------------------------
+
+    const claims = JSON.parse(claimsString);
+    const activeTeamId = claims.app_metadata?.active_team_id;
+
+    if (!activeTeamId) {
+        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
+    }
+    // ------------------------------------------
 
     const currentPage = Number(page) || 1;
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -50,45 +47,22 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
         .from('contacts')
         .select('*, opportunities(id, value)', { count: 'exact' });
 
-    // ✅ NOU FILTRE OBLIGATORI: Filtrem sempre per l'ID de l'equip.
-    query = query.eq('team_id', teamId);
-    console.log(`PAS 3: Consulta preparada. Filtre principal aplicat: team_id = ${teamId}`);
+    // ✅ FILTRE OBLIGATORI: Ja no cal afegir .eq('team_id', teamId) manualment!
+    // La política RLS que crearàs per a la taula 'contacts' ho farà automàticament.
 
-    // 1. Filtre de cerca (si n'hi ha)
     if (searchTerm) {
         query = query.or(`nom.ilike.%${searchTerm}%,empresa.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
-        console.log(` -> Afegit filtre de cerca: ${searchTerm}`);
     }
-
-    // 2. Filtre d'estat (si no és 'tots')
     if (status && status !== 'all') {
         query = query.eq('estat', status);
-        console.log(` -> Afegit filtre d'estat: ${status}`);
     }
-    
-    // 3. Ordenació
     query = query.order('created_at', { ascending: sortBy === 'oldest' });
-    console.log(` -> Afegida ordenació: ${sortBy}`);
-    
-    // 4. Paginació
     query = query.range(from, to);
-    console.log(` -> Afegida paginació: de ${from} a ${to}`);
 
-    console.log("PAS 4: Executant la consulta final a la base de dades...");
     const { data: contacts, error, count } = await query;
     
-    console.log("\n--- RESULTAT DE LA CONSULTA DE CONTACTES ---");
     if (error) {
-        console.error("!!! ERROR en executar la consulta:", error);
-    } else {
-        console.log(`   Contactes trobats en aquesta pàgina: ${contacts?.length || 0}`);
-        console.log(`   Recompte total a la base de dades (count): ${count}`);
-        console.log("   Dades rebudes:", JSON.stringify(contacts, null, 2));
-    }
-    console.log("------------------------------------------\n");
-
-    if (error) {
-        console.error("Error fetching contacts:", error.message);
+        console.error("Error en obtenir contactes (pot ser per RLS):", error.message);
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
     }
 
@@ -105,4 +79,3 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
         />
     );
 }
-
