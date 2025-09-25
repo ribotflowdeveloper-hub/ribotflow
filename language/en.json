@@ -96,7 +96,10 @@
     "unreadFilter": "No llegits",
     "hideContactPanel": "Hide contact panel",
     "showContactPanel": "Show contact panel",
-    "fromLabel": "Label"
+    "fromLabel": "Label",
+    "toast": {
+      "contactSavedSuccess": "Contact saved successfully"
+    }
   },
   "AICampaignWizard": {
     "title": "AI Campaign Wizard",
@@ -384,7 +387,6 @@
       "markAsReadError": "Could not mark as read.",
       "replySubject": "Re: Your quote",
       "fetchError": "Failed to load CRM data."
-
     },
     "replyBody": "\n\n\n--- In response to your feedback from {date} ---\n>{content}"
   },
@@ -846,8 +848,6 @@
       "itemTotalLabel": "Total",
       "error": "An error has occurred",
       "success": "Success!"
-
-
     },
     "toast": {
       "notAllowed": "Action not allowed",
@@ -860,7 +860,6 @@
       "missingData": "Missing data",
       "missingDataDesc": "Please select a client and an issue date.",
       "error": "An error has occurred"
-
     }
   },
   "NetworkPage": {
@@ -886,7 +885,8 @@
       "team": "Team",
       "integrations": "Integrations",
       "blacklist": "Inbox Filter",
-      "customization": "Customization"
+      "customization": "Customization",
+      "permissions": "Permissions"
     },
     "billing": {
       "notImplemented": "Feature not implemented",

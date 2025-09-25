@@ -1,8 +1,21 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 
+const LINKEDIN_API_VERSION = '202509';
+
+type SocialPost = {
+  id: string;
+  user_id: string;
+  team_id: string;
+  provider: string;
+  content?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
+};
+
 serve(async (req) => {
+  console.log("--- [INFO] 'publish-scheduled-posts' function invoked. ---");
   try {
     const authHeader = req.headers.get('Authorization')!;
     if (authHeader !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
@@ -22,193 +35,175 @@ serve(async (req) => {
 
     if (postsError) throw postsError;
     if (!posts || posts.length === 0) {
-      return new Response(JSON.stringify({ message: "No hi ha publicacions per a enviar." }));
+      return new Response(JSON.stringify({ message: "No posts found to publish." }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
+    console.log(`[INFO] Found ${posts.length} posts to process.`);
+    
     for (const post of posts) {
-      let successCount = 0;
-      for (const provider of post.provider) {
-        try {
-          const { data: creds } = await supabaseAdmin
-            .from('user_credentials')
-            .select('access_token, provider_user_id, provider_page_id')
-            .eq('user_id', post.user_id)
-            .eq('provider', provider)
-            .single();
-
-          if (!creds?.access_token) throw new Error('No s\'han trobat credencials vàlides.');
-
-          if (provider === 'linkedin_oidc') {
-            await publishToLinkedIn(creds, post);
-          } else if (provider === 'facebook') {
-            await publishToFacebook(creds, post);
-          } else if (provider === 'instagram') {
-            await publishToInstagram(creds, post);
-          }
-
-          await createNotification(supabaseAdmin, post, provider, true);
-          successCount++;
-        } catch (e) {
-          await createNotification(supabaseAdmin, post, provider, false, e.message);
-        }
-      }
+      console.log(`\n[INFO] Processing Post ID: ${post.id} for Team ID: ${post.team_id}`);
       
-      const finalStatus = successCount === post.provider.length ? 'published' : (successCount > 0 ? 'partial_success' : 'failed');
-      await supabaseAdmin.from('social_posts').update({ status: finalStatus, published_at: new Date().toISOString() }).eq('id', post.id);
+      const { data: creds, error: credsError } = await supabaseAdmin
+        .from('team_credentials')
+        .select('access_token, provider_user_id')
+        .eq('team_id', post.team_id)
+        .eq('provider', post.provider)
+        .single();
+
+      if (credsError || !creds?.access_token || !creds.provider_user_id) {
+        const errorMsg = `Valid team credentials not found for the post.`;
+        console.error(`[ERROR] Post ID ${post.id}: ${errorMsg}`, credsError);
+        await handlePublishError(supabaseAdmin, post, errorMsg);
+        continue;
+      }
+      console.log(`[INFO] Post ID ${post.id}: Credentials found.`);
+
+      try {
+        let requestBody: object;
+
+        // ✅ THIS IS THE CORRECTED LOGIC
+        // Check if the post has an image and call the upload function.
+        if (post.media_url && post.media_type === 'image') {
+          console.log(`[INFO] Post ID ${post.id}: Image found. Starting upload process to LinkedIn...`);
+          const assetURN = await uploadImageToLinkedIn(post.media_url, creds.access_token, creds.provider_user_id);
+          console.log(`[INFO] Post ID ${post.id}: Image uploaded successfully. Asset URN: ${assetURN}`);
+          
+          requestBody = {
+            author: `urn:li:person:${creds.provider_user_id}`,
+            commentary: post.content!,
+            visibility: 'PUBLIC',
+            distribution: {
+              feedDistribution: 'MAIN_FEED',
+              targetEntities: [],
+              thirdPartyDistributionChannels: [],
+            },
+            content: {
+              media: {
+                id: assetURN
+              }
+            },
+            lifecycleState: 'PUBLISHED',
+          };
+        } else {
+          // Logic for text-only posts
+          console.log(`[INFO] Post ID ${post.id}: No image found. Processing as text-only post.`);
+          requestBody = {
+            author: `urn:li:person:${creds.provider_user_id}`,
+            commentary: post.content!,
+            visibility: 'PUBLIC',
+            distribution: {
+              feedDistribution: 'MAIN_FEED',
+              targetEntities: [],
+              thirdPartyDistributionChannels: [],
+            },
+            lifecycleState: 'PUBLISHED',
+          };
+        }
+        
+        console.log(`[INFO] Post ID ${post.id}: Sending request to LinkedIn API...`);
+        const response = await fetch('https://api.linkedin.com/rest/posts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${creds.access_token}`,
+            'Content-Type': 'application/json',
+            'LinkedIn-Version': LINKEDIN_API_VERSION,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+          const errorBody = await response.json();
+          throw new Error(JSON.stringify(errorBody));
+        }
+        
+        console.log(`[SUCCESS] Post ID ${post.id}: Published successfully to LinkedIn.`);
+        await handlePublishSuccess(supabaseAdmin, post);
+        
+      } catch (e) {
+        console.error(`[ERROR] Post ID ${post.id}: Failed to publish to LinkedIn.`, e.message);
+        await handlePublishError(supabaseAdmin, post, e.message);
+      }
     }
 
-    return new Response(JSON.stringify({ status: 'ok', processed: posts.length }));
+    console.log("--- [SUCCESS] Function finished correctly. ---");
+    return new Response(JSON.stringify({ status: 'ok', processed: posts.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error("--- [FATAL ERROR] Function failed unexpectedly. ---", error.message);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });
 
-// --- Funcions Auxiliars de Publicació Específiques ---
 
-async function publishToLinkedIn(creds: any, post: any) {
-  if (!creds.provider_user_id) throw new Error("Falta l'ID d'usuari de LinkedIn.");
-  
-  let mediaPayload = {};
-  if (post.media_url) {
-    const assetURN = await uploadMediaToLinkedIn(post.media_url, post.media_type, creds.access_token, creds.provider_user_id);
-    mediaPayload = {
-      shareMediaCategory: post.media_type.toUpperCase(),
-      media: [{ status: 'READY', media: assetURN }],
-    };
-  } else {
-    mediaPayload = { shareMediaCategory: 'NONE' };
-  }
 
-  const postContent = {
-    author: `urn:li:person:${creds.provider_user_id}`,
-    lifecycleState: 'PUBLISHED',
-    specificContent: { 'com.linkedin.ugc.ShareContent': { shareCommentary: { text: post.content! }, ...mediaPayload } },
-    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
-  };
-
-  const response = await fetch('https://api.linkedin.com/v2/ugcPosts', {
+// Helper function to upload an image to LinkedIn (multi-step process)
+async function uploadImageToLinkedIn(mediaUrl: string, accessToken: string, providerUserId: string): Promise<string> {
+  // ✅ API CALL UPDATE: Use the new v3 endpoint
+  const registerResponse = await fetch('https://api.linkedin.com/rest/images?action=initializeUpload', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${creds.access_token}`, 'Content-Type': 'application/json', 'X-Restli-Protocol-Version': '2.0.0' },
-    body: JSON.stringify(postContent),
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'LinkedIn-Version': LINKEDIN_API_VERSION, // ✅ Utilitzem la nova versió
+    },
+    body: JSON.stringify({
+      "initializeUploadRequest": {
+        "owner": `urn:li:person:${providerUserId}`
+      }
+    })
   });
-  if (!response.ok) throw new Error(`API Error: ${await response.text()}`);
-}
-
-async function publishToFacebook(creds: any, post: any) {
-  if (!creds.provider_page_id) throw new Error("Falta l'ID de la pàgina de Facebook.");
-  
-  let endpoint = 'feed';
-  let body: any;
-
-  if (post.media_url) {
-    if (post.media_type === 'image') {
-      endpoint = 'photos';
-      body = { caption: post.content, url: post.media_url };
-    } else if (post.media_type === 'video') {
-      endpoint = 'videos';
-      body = { description: post.content, file_url: post.media_url };
-    }
-  } else {
-    body = { message: post.content };
-  }
-
-  const publishUrl = `https://graph.facebook.com/v19.0/${creds.provider_page_id}/${endpoint}?access_token=${creds.access_token}`;
-  const response = await fetch(publishUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  
-  const responseData = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(responseData.error));
-}
-
-async function publishToInstagram(creds: any, post: any) {
-  if (!creds.provider_page_id) throw new Error("Falta l'ID del compte d'Instagram.");
-  if (!post.media_url) throw new Error("Instagram requereix una imatge o vídeo.");
-
-  const createContainerUrl = `https://graph.facebook.com/v19.0/${creds.provider_page_id}/media`;
-  
-  const containerParams = new URLSearchParams({
-    caption: post.content || '',
-    access_token: creds.access_token,
-  });
-  if (post.media_type === 'image') {
-    containerParams.append('image_url', post.media_url);
-  } else {
-    containerParams.append('video_url', post.media_url);
-    containerParams.append('media_type', 'VIDEO');
-  }
-
-  const containerResponse = await fetch(`${createContainerUrl}?${containerParams.toString()}`, { method: 'POST' });
-  const containerData = await containerResponse.json();
-  if (!containerResponse.ok) throw new Error(JSON.stringify(containerData.error));
-
-  const creationId = containerData.id;
-
-  let isContainerReady = false;
-  let attempts = 0;
-  while (!isContainerReady && attempts < 20) {
-    const statusUrl = `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${creds.access_token}`;
-    const statusResponse = await fetch(statusUrl);
-    const statusData = await statusResponse.json();
-    if (statusData.status_code === 'FINISHED') {
-      isContainerReady = true;
-    } else if (statusData.status_code === 'ERROR') {
-      throw new Error("Error en el processament del mèdia per part d'Instagram.");
-    } else {
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      attempts++;
-    }
-  }
-
-  if (!isContainerReady) throw new Error("El contenidor no s'ha processat a temps.");
-
-  const publishUrl = `https://graph.facebook.com/v19.0/${creds.provider_page_id}/media_publish`;
-  const publishParams = new URLSearchParams({ creation_id: creationId, access_token: creds.access_token });
-  const publishResponse = await fetch(`${publishUrl}?${publishParams.toString()}`, { method: 'POST' });
-  if (!publishResponse.ok) throw new Error(JSON.stringify((await publishResponse.json()).error));
-}
-
-// --- Funció Auxiliar per a Pujar Mèdia a LinkedIn ---
-async function uploadMediaToLinkedIn(mediaUrl: string, mediaType: string, accessToken: string, providerUserId: string): Promise<string> {
-  const recipe = mediaType === 'image' ? 'urn:li:digitalmediaRecipe:feedshare-image' : 'urn:li:digitalmediaRecipe:feedshare-video';
-  
-  const registerResponse = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ "registerUploadRequest": { "recipes": [recipe], "owner": `urn:li:person:${providerUserId}`, "serviceRelationships": [{ "relationshipType": "OWNER", "identifier": "urn:li:userGeneratedContent" }] } })
-  });
-  if (!registerResponse.ok) throw new Error(`Error en registrar la pujada: ${await registerResponse.text()}`);
+  if (!registerResponse.ok) throw new Error("Error registering image upload with LinkedIn.");
   const registerData = await registerResponse.json();
-  const uploadUrl = registerData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
-  const assetURN = registerData.value.asset;
+  const uploadUrl = registerData.value.uploadUrl;
+  const assetURN = registerData.value.image;
 
-  const mediaResponse = await fetch(mediaUrl);
-  if (!mediaResponse.ok) throw new Error("No s'ha pogut descarregar el mèdia de Supabase Storage.");
-  const mediaBlob = await mediaResponse.blob();
+  // Download image from Supabase and upload to LinkedIn's URL
+  const imageResponse = await fetch(mediaUrl);
+  if (!imageResponse.ok) throw new Error("Could not download image from Supabase Storage.");
+  const imageBlob = await imageResponse.blob();
 
-  const uploadResponse = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': mediaBlob.type }, body: mediaBlob });
-  if (!uploadResponse.ok) throw new Error(`Error en pujar el mèdia a LinkedIn: ${await uploadResponse.text()}`);
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': imageBlob.type, 'Authorization': `Bearer ${accessToken}` },
+    body: imageBlob,
+  });
+  if (!uploadResponse.ok) throw new Error("Error uploading image to LinkedIn.");
 
   return assetURN;
 }
 
-// --- Funció Auxiliar per a Crear Notificacions ---
-async function createNotification(supabase: any, post: any, provider: string, success: boolean, errorMessage?: string) {
-  const providerName = provider.replace('_oidc', '').replace(/^\w/, c => c.toUpperCase());
-  const now = new Date();
-  const time = now.toLocaleTimeString('ca-ES', { hour: '2-digit', minute: '2-digit' });
-  const date = now.toLocaleDateString('ca-ES');
-  
-  const message = success
-    ? `✅ Publicació a ${providerName} enviada amb èxit (${date} a les ${time}).`
-    : `❌ Error en publicar a ${providerName} (${date} a les ${time}): ${errorMessage?.substring(0, 100)}...`;
-  
+// ✅ PAS 1: Eliminem la definició duplicada del tipus 'SocialPost'.
+
+// ✅ PAS 2: Utilitzem els tipus específics en lloc de 'any'.
+async function handlePublishSuccess(supabase: SupabaseClient, post: SocialPost) {
+  await supabase
+      .from('social_posts')
+      .update({ status: 'published', published_at: new Date().toISOString() })
+      .eq('id', post.id);
+
+  // Use team_id for notifications
   await supabase.from('notifications').insert({
-    user_id: post.user_id,
-    message: message,
-    type: success ? 'post_published' : 'post_failed'
+      user_id: post.user_id, // The original author
+      team_id: post.team_id,
+      message: `Your LinkedIn post has been published successfully.`,
+      type: 'post_published'
   });
 }
 
+async function handlePublishError(supabase: SupabaseClient, post: SocialPost, errorMessage: string) {
+  await supabase
+      .from('social_posts')
+      .update({ status: 'failed', error_message: errorMessage })
+      .eq('id', post.id);
+  
+  await supabase.from('notifications').insert({
+      user_id: post.user_id, // The original author
+      team_id: post.team_id,
+      message: `Error publishing to LinkedIn: "${post.content?.substring(0, 20)}...".`,
+      type: 'post_failed'
+  });
+}

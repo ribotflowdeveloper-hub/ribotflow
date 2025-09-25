@@ -1,25 +1,50 @@
-/**
- * @file src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx
- */
+// /app/[locale]/comunicacio/inbox/_components/InboxData.tsx
+
 import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
+import { redirect } from 'next/navigation';
 import { InboxClient } from "./InboxClient";
 import type { Ticket, Template } from "@/types/comunicacio/inbox";
-// ✅ NOU: Importem la funció per obtenir el cos del tiquet
 import { getTicketBodyAction } from "../actions";
+import { headers } from "next/headers";
 
 export async function InboxData({ searchTerm }: { searchTerm: string }) {
-    const supabase = createClient(cookies())
-;
+    const supabase = createClient(cookies());
+    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) return redirect(`/${locale}/login`);
 
-    // Primer, obtenim la llista de tiquets com abans
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) return redirect(`/${locale}/settings/team`);
+
+    // PAS 1: Busquem a quins altres usuaris té permís per a veure.
+    const { data: permissions, error: permissionsError } = await supabase
+        .from('inbox_permissions')
+        .select('target_user_id')
+        .eq('team_id', activeTeamId)
+        .eq('grantee_user_id', user.id);
+    
+    if (permissionsError) {
+        console.error("Error en carregar els permisos de l'inbox:", permissionsError);
+    }
+
+    // PAS 2: Creem la llista final d'usuaris visibles (el seu propi ID + els permesos).
+    const visibleUserIds = [user.id];
+    if (permissions) {
+        permissions.forEach(p => {
+            if (p.target_user_id) {
+                visibleUserIds.push(p.target_user_id);
+            }
+        });
+    }
+
+    // PAS 3: Fem la consulta final a 'tickets' amb el doble filtre.
     let ticketsQuery = supabase
         .from('tickets')
         .select(`id, user_id, contact_id, sender_name, sender_email, subject, preview, sent_at, status, type, contacts(*)`)
-        .eq('user_id', user.id)
+        .eq('team_id', activeTeamId)       // Filtre 1: Ha de ser de l'equip actiu.
+        .in('user_id', visibleUserIds)    // Filtre 2: I ha de ser d'un usuari que tenim permís per a veure.
         .order('sent_at', { ascending: false })
         .limit(50);
         
@@ -27,12 +52,11 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
         ticketsQuery = ticketsQuery.or(`subject.ilike.%${searchTerm}%,sender_name.ilike.%${searchTerm}%,sender_email.ilike.%${searchTerm}%`);
     }
     
-    // Obtenim la resta de dades
-    const templatesQuery = supabase.from("email_templates").select("*").eq("user_id", user.id);
-    const receivedCountQuery = supabase.from("tickets").select("id", { count: "exact", head: true }).eq("user_id", user.id).or("type.eq.rebut,type.is.null");
-    const sentCountQuery = supabase.from("tickets").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("type", "enviat");
+    // La resta de consultes també han de respectar els filtres.
+    const templatesQuery = supabase.from("email_templates").select("*").eq('team_id', activeTeamId);
+    const receivedCountQuery = supabase.from("tickets").select("id", { count: "exact", head: true }).eq('team_id', activeTeamId).in('user_id', visibleUserIds).or("type.eq.rebut,type.is.null");
+    const sentCountQuery = supabase.from("tickets").select("id", { count: "exact", head: true }).eq('team_id', activeTeamId).in('user_id', visibleUserIds).eq("type", "enviat");
     
-    // Executem les consultes
     const [ticketsRes, templatesRes, receivedCountRes, sentCountRes] = await Promise.all([
         ticketsQuery,
         templatesQuery,
@@ -45,11 +69,9 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
     const receivedCount = receivedCountRes.count || 0;
     const sentCount = sentCountRes.count || 0;
 
-    // ✅ NOU: Si tenim tiquets, obtenim el cos del primer tiquet AQUÍ, AL SERVIDOR.
     let initialSelectedTicketBody: string | null = null;
     if (tickets.length > 0) {
-        const firstTicket = tickets[0];
-        const { body } = await getTicketBodyAction(firstTicket.id);
+        const { body } = await getTicketBodyAction(tickets[0].id);
         initialSelectedTicketBody = body;
     }
 
@@ -59,7 +81,6 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
             initialTemplates={templates}
             initialReceivedCount={receivedCount}
             initialSentCount={sentCount}
-            // ✅ NOU: Passem el primer tiquet i el seu cos com a propietats
             initialSelectedTicket={tickets.length > 0 ? tickets[0] : null}
             initialSelectedTicketBody={initialSelectedTicketBody}
         />

@@ -89,8 +89,8 @@ export function OnboardingClient({ initialFullName }: { initialFullName: string 
                 postal_code: formData.address.postcode,
                 region: formData.address.region,
                 country: formData.address.country,
-                latitude: formData.address.latitude,
-                longitude: formData.address.longitude,
+                latitude: formData.address.latitude ?? undefined,
+                longitude: formData.address.longitude ?? undefined,
             };
             
             const result = await submitOnboardingAction(finalDataForAction);

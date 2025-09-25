@@ -1,36 +1,48 @@
-// ✅ 1. Importem 'getTranslations' des de 'next-intl/server'
-import { getTranslations } from 'next-intl/server';
 import { createClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { IntegrationsClient } from "./IntegrationsClient";
-import { cookies } from 'next/headers';
+import { getTranslations } from "next-intl/server";
 
 export async function IntegrationsData() {
-    // ✅ 2. Utilitzem 'await getTranslations' en lloc de 'useTranslations'
     const t = await getTranslations('SettingsIntegrationsPage');
-    const supabase = createClient(cookies())
-;
+    const supabase = createClient(cookies());
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) {
+        return redirect('/login');
+    }
 
-    const { data: credentials } = await supabase
-        .from('user_credentials')
-        .select('provider')
-        .eq('user_id', user.id);
+    // Obtenim l'ID de l'equip actiu des del token de l'usuari
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) {
+        // Si no hi ha equip actiu, no es poden gestionar les integracions d'equip
+        return redirect('/settings/team');
+    }
 
-    const connectedProviders = credentials?.map(c => c.provider) || [];
+    // Busquem les credencials personals (lligades a user_id)
+    // I les credencials de l'equip actiu (lligades a team_id)
+    const [userCredsRes, teamCredsRes] = await Promise.all([
+        supabase.from('user_credentials').select('provider').eq('user_id', user.id),
+        supabase.from('team_credentials').select('provider').eq('team_id', activeTeamId)
+    ]);
+
+    const userProviders = userCredsRes.data?.map(c => c.provider) || [];
+    const teamProviders = teamCredsRes.data?.map(c => c.provider) || [];
+    
+    // Unim totes les connexions actives
+    const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
 
     const connectionStatuses = {
-        google: connectedProviders.includes('google'),
-        microsoft: connectedProviders.includes('microsoft'),
-        linkedin: connectedProviders.includes('linkedin_oidc'),
-        facebook: connectedProviders.includes('facebook'),
-        instagram: connectedProviders.includes('instagram'),
+        google: allConnectedProviders.has('google'),       // Personal
+        microsoft: allConnectedProviders.has('microsoft'), // Personal
+        linkedin: allConnectedProviders.has('linkedin'),   // D'equip
+        facebook: allConnectedProviders.has('facebook'),   // D'equip
+        instagram: allConnectedProviders.has('instagram'), // D'equip
     };
 
     return (
         <div>
-            {/* Ara 't' és una funció obtinguda de forma segura al servidor */}
             <h1 className="text-3xl font-bold mb-8">{t('pageTitle')}</h1>
             <IntegrationsClient initialConnectionStatuses={connectionStatuses} />
         </div>

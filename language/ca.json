@@ -97,7 +97,10 @@
     "hideContactPanel": "Amaga el panell de contactes",
     "showContactPanel": "Mostra el panell de contactes",
     "closeButton": "Tancar vista detallada",
-    "fromLabel": "Label"
+    "fromLabel": "Label",
+    "toast": {
+      "contactSavedSuccess": "Contacte desat correctament"
+    }
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -385,7 +388,6 @@
       "markAsReadError": "No s'ha pogut marcar com a llegida.",
       "replySubject": "Re: El teu pressupost",
       "fetchError": "No s'han pogut carregar les dades del CRM."
-
     },
     "replyBody": "\n\n\n--- En resposta al teu feedback del {date} ---\n>{content}"
   },
@@ -847,8 +849,6 @@
       "itemTotalLabel": "Total",
       "error": "An error has occurred",
       "success": "Èxit!"
-
-
     },
     "toast": {
       "notAllowed": "Acció no permesa",
@@ -861,7 +861,6 @@
       "missingData": "Falten dades",
       "missingDataDesc": "Si us plau, selecciona un client i una data d'emissió.",
       "error": "An error has occurred"
-
     }
   },
   "NetworkPage": {
@@ -887,7 +886,8 @@
       "team": "Equip",
       "integrations": "Integracions",
       "blacklist": "Filtre Inbox",
-      "customization": "Personalització"
+      "customization": "Personalització",
+      "permissions": "Permisos"
     },
     "billing": {
       "notImplemented": "Funcionalitat no implementada",

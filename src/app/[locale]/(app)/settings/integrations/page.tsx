@@ -12,7 +12,6 @@ export async function generateMetadata() {
 
 // Aquest és el component de servidor que s'executa primer.
 export default async function IntegrationsPage() {
-  const cookieStore = cookies();
   const supabase = createClient(cookies())
 ;
 

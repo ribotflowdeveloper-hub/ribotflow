@@ -7,50 +7,55 @@ export function useUser() {
     const [teamRole, setTeamRole] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
-    // Utilitzem useMemo per a crear el client de Supabase només una vegada
     const supabase = useMemo(() => createClient(), []);
 
     useEffect(() => {
-        // Aquesta funció s'executarà immediatament i cada vegada que l'estat d'autenticació canviï
         const { data: authListener } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            (event, session) => {
                 const currentUser = session?.user || null;
+                // Actualitzem l'usuari immediatament. Això causa una primera re-renderització.
                 setUser(currentUser);
 
-                console.log("\n--- onAuthStateChange EVENT ---");
+                // Imprimim els logs per depurar
+                console.log("\n--- onAuthStateChange EVENT (Non-blocking) ---");
                 console.log("Event:", event);
-                console.log("User:", currentUser);
-                console.log("Pla actiu (del token):", currentUser?.app_metadata?.active_team_plan);
 
                 if (currentUser) {
                     const activeTeamId = currentUser.app_metadata?.active_team_id;
                     if (activeTeamId) {
-                        // Si hi ha un equip actiu, busquem el rol
-                        const { data: member } = await supabase
+                        // Llança la consulta a la BD, però no l'esperis amb 'await'.
+                        // Utilitza .then() per processar el resultat quan arribi.
+                        supabase
                             .from('team_members')
                             .select('role')
                             .eq('user_id', currentUser.id)
                             .eq('team_id', activeTeamId)
-                            .single();
-                        
-                        setTeamRole(member?.role || null);
-                        console.log("Rol a l'equip actiu:", member?.role || null);
+                            .single()
+                            .then(({ data: member }) => {
+                                // Quan la consulta acabi, actualitza l'estat del rol.
+                                // Això causarà una segona re-renderització, però ja de forma segura.
+                                setTeamRole(member?.role || null);
+                                setIsLoading(false); // Marquem com a carregat quan tenim tota la info.
+                                console.log("Rol obtingut:", member?.role || null);
+                                console.log("-----------------------------\n");
+                            });
                     } else {
-                        // Si no hi ha equip actiu, netegem el rol
+                        // Si no hi ha equip actiu, netegem el rol i finalitzem la càrrega.
                         setTeamRole(null);
-                        console.log("No hi ha equip actiu seleccionat.");
+                        setIsLoading(false);
+                        console.log("No hi ha equip actiu.");
+                        console.log("-----------------------------\n");
                     }
                 } else {
-                    // Si l'usuari tanca la sessió, netegem tot
+                    // Si no hi ha usuari, netegem tot i finalitzem la càrrega.
                     setTeamRole(null);
+                    setIsLoading(false);
+                    console.log("Usuari desconnectat.");
+                    console.log("-----------------------------\n");
                 }
-                
-                setIsLoading(false);
-                console.log("-----------------------------\n");
             }
         );
 
-        // Aquesta funció es crida quan el component es desmunta, per a netejar la subscripció
         return () => {
             authListener?.subscription.unsubscribe();
         };

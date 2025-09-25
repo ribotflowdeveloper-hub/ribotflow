@@ -16,35 +16,41 @@ export default async function SocialPlannerPage() {
         return redirect(`/${locale}/login`);
     }
 
-    // ✅ TRAMPA DE DEPURACIÓ AL SERVIDOR
-    console.log("\n--- DEPURACIÓ DE PERMISOS (SocialPlannerPage - SERVIDOR) ---");
-    console.log("ID de l'usuari:", user.id);
-    console.log("Email de l'usuari:", user.email);
-    console.log("Metadata del token (app_metadata):", JSON.stringify(user.app_metadata, null, 2));
-    console.log("-----------------------------------------------------------\n");
-
+    // Comprovació de pla i de seguretat
     const activeTeamPlan = user.app_metadata?.active_team_plan;
     const allowedPlans = ['plus', 'premium'];
-
     if (!activeTeamPlan || !allowedPlans.includes(activeTeamPlan)) {
-        return (
-            <UpgradePlanNotice 
-                featureName="Planificador Social"
-                requiredPlan="Plus"
-                locale={locale}
-            />
-        );
+        return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
+    }
+    
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) {
+        return redirect('/settings/team');
     }
 
-    // --- Si l'usuari té permís, la càrrega de dades continua ---
-    const { data: posts, error } = await supabase.from('social_posts').select('*').order('created_at', { ascending: false });
-    if (error) { console.error("Error carregant les publicacions:", error); }
+    // ✅ CONSULTA SIMPLIFICADA: RLS filtrarà automàticament per l'equip actiu.
+    const { data: posts, error } = await supabase
+        .from('social_posts')
+        .select('*') // Ja no cal filtrar per user_id ni team_id
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error("Error carregant les publicacions (pot ser per RLS):", error);
+    }
     
-    const { data: credentials } = await supabase.from('user_credentials').select('provider').eq('user_id', user.id);
+    // La càrrega de les connexions ara ha de ser híbrida
+    const [userCredsRes, teamCredsRes] = await Promise.all([
+        supabase.from('user_credentials').select('provider').eq('user_id', user.id),
+        supabase.from('team_credentials').select('provider').eq('team_id', activeTeamId)
+    ]);
+    const userProviders = userCredsRes.data?.map(c => c.provider) || [];
+    const teamProviders = teamCredsRes.data?.map(c => c.provider) || [];
+    const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
+
     const connectionStatuses = {
-        linkedin_oidc: credentials?.some(c => c.provider === 'linkedin_oidc') || false,
-        facebook: credentials?.some(c => c.provider === 'facebook') || false,
-        instagram: credentials?.some(c => c.provider === 'instagram') || false,
+        linkedin_oidc: allConnectedProviders.has('linkedin_oidc'),
+        facebook: allConnectedProviders.has('facebook'),
+        instagram: allConnectedProviders.has('instagram'),
     };
 
     return (

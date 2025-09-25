@@ -26,41 +26,41 @@ export async function middleware(request: NextRequest) {
 
     const { data: { user } } = await supabase.auth.getUser();
 
-    // ✅ AFEGEIX LA TEVA NOVA RUTA A LA LLISTA
-    const publicPaths = [
-        '/',
-        '/login',
-        '/signup',
-        '/auth',
-        '/accept-invite',
-        '/quote',
-        '/onboarding', // <--- AFEGEIX AQUESTA LÍNIA
-
-        '/invitation/accept' // <--- AFEGEIX AQUESTA LÍNIA
-    ];
+    const publicPaths = ['/', '/login', '/signup', '/auth', '/accept-invite', '/quote', '/onboarding', '/invitation/accept'];
     const isPublicPath = publicPaths.some(p => pathname.startsWith(p));
 
-    // CAS 1: Usuari NO està autenticat
+    // CASO 1: Usuario NO autenticado
     if (!user) {
-        // Si intenta accedir a una pàgina protegida, el redirigim al login.
         if (!isPublicPath) {
             return NextResponse.redirect(new URL(`/${localePrefix}/login`, request.url));
         }
-        // Si està en una pàgina pública, el deixem passar.
         return response;
     }
 
-    // CAS 2: Usuari SÍ està autenticat
-    if (user) {
-        // Si un usuari ja connectat intenta anar a la pàgina d'inici, login o signup,
-        // el redirigim directament al seu dashboard.
-        if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup')) {
+    // CASO 2: Usuario SÍ está autenticado
+    const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
+    const hasCompletedOnboarding = profile?.onboarding_completed || false;
+    const activeTeamId = user.app_metadata?.active_team_id;
+
+    // 2a. Si no ha completado el onboarding, se le fuerza a ir allí
+    if (!hasCompletedOnboarding && !pathname.startsWith('/onboarding')) {
+        return NextResponse.redirect(new URL(`/${localePrefix}/onboarding`, request.url));
+    }
+
+    // 2b. Si ha completado el onboarding pero no tiene equipo activo, a la selección de equipo
+    if (hasCompletedOnboarding && !activeTeamId && !pathname.startsWith('/settings/team')) {
+        return NextResponse.redirect(new URL(`/${localePrefix}/settings/team`, request.url));
+    }
+
+    // 2c. Si ya está todo configurado (onboarding + equipo activo)
+    if (hasCompletedOnboarding && activeTeamId) {
+        // Si intenta ir a páginas iniciales, lo llevamos al dashboard
+        if (pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/signup') || pathname.startsWith('/onboarding')) {
             return NextResponse.redirect(new URL(`/${localePrefix}/dashboard`, request.url));
         }
     }
-
-    // Per a la resta de casos (onboarding, etc.), deixem que la pròpia pàgina
-    // o el component de dades gestioni la lògica, evitant així bucles.
+    
+    // Si ninguna de las condiciones anteriores se cumple, se le deja pasar
     return response;
 }
 

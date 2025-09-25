@@ -280,10 +280,20 @@ export async function revokeInvitationAction(invitationId: string) {
 /**
  * Canvia l'equip actiu de l'usuari directament a les seves metadades d'autenticació (JWT).
  */
+// ...
+/**
+ * Canvia l'equip actiu de l'usuari...
+ */
 export async function switchActiveTeamAction(teamId: string) {
+    // AFEGEIX AIXÒ
+    console.log("🚀 [SERVER ACTION] Iniciada switchActiveTeamAction amb teamId:", teamId);
+
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autenticat." };
+    if (!user) {
+        console.error("❌ [SERVER ACTION] Error: Usuari no autenticat.");
+        return { success: false, message: "No autenticat." };
+    }
 
     // Comprovació de seguretat
     const { data: member } = await supabase
@@ -293,22 +303,87 @@ export async function switchActiveTeamAction(teamId: string) {
         .eq('team_id', teamId)
         .maybeSingle();
     
-    if (!member) return { success: false, message: "No tens accés a aquest equip." };
-
-    const supabaseAdmin = createAdminClient();
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(
-        user.id,
-        { app_metadata: { active_team_id: teamId } }
-    );
+    // AFEGEIX AIXÒ
+    console.log("🔐 [SERVER ACTION] Resultat de la comprovació de membre:", member);
     
-    if (error) {
-        return { success: false, message: error.message };
+    if (!member) {
+        console.error("❌ [SERVER ACTION] Error: L'usuari no té accés a l'equip", teamId);
+        return { success: false, message: "No tens accés a aquest equip." };
     }
 
-    revalidatePath('/', 'layout');
-    return { success: true };
-}
+    try {
+        const supabaseAdmin = createAdminClient();
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(
+            user.id,
+            { app_metadata: { active_team_id: teamId } }
+        );
+        
+        if (error) {
+            // AFEGEIX AIXÒ
+            console.error("❌ [SERVER ACTION] Error de Supabase en actualitzar metadades:", error.message);
+            return { success: false, message: error.message };
+        }
 
+        revalidatePath('/', 'layout');
+        
+        // AFEGEIX AIXÒ
+        console.log("✅ [SERVER ACTION] Èxit! Metadades actualitzades. Retornant success: true.");
+        return { success: true };
+
+    } catch (e: unknown) {
+        if (e instanceof Error) {
+            console.error("💥 [SERVER ACTION] Error inesperat en el bloc try-catch:", e.message);
+        } else {
+            console.error("💥 [SERVER ACTION] Error inesperat en el bloc try-catch:", e);
+        }
+        return { success: false, message: "Error inesperat del servidor." };
+    }
+}
+/**
+ * Activa o desactiva el permís d'un usuari per a veure la bústia d'un altre.
+ */
+export async function toggleInboxPermissionAction(targetUserId: string, granteeUserId: string) {
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
+
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) return { success: false, message: "No hi ha equip actiu." };
+
+    // Comprovació de rol: només owners/admins poden canviar permisos
+    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
+    if (!['owner', 'admin'].includes(member?.role || '')) {
+        return { success: false, message: "No tens permisos per a aquesta acció." };
+    }
+
+    try {
+        // Mirem si el permís ja existeix
+        const { data: existingPermission } = await supabase
+            .from('inbox_permissions')
+            .select('id')
+            .match({ team_id: activeTeamId, grantee_user_id: granteeUserId, target_user_id: targetUserId })
+            .maybeSingle();
+
+        if (existingPermission) {
+            // Si existeix, l'esborrem
+            await supabase.from('inbox_permissions').delete().eq('id', existingPermission.id);
+            revalidatePath('/settings/team');
+            return { success: true, message: "Permís revocat." };
+        } else {
+            // Si no existeix, el creem
+            await supabase.from('inbox_permissions').insert({
+                team_id: activeTeamId,
+                grantee_user_id: granteeUserId,
+                target_user_id: targetUserId
+            }).throwOnError();
+            revalidatePath('/settings/team');
+            return { success: true, message: "Permís concedit." };
+        }
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Error desconegut.";
+        return { success: false, message };
+    }
+}
 /**
  * ✅ NOU: Neteja l'equip actiu, per a tornar al "vestíbul".
  */

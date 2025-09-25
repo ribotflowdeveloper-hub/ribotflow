@@ -123,41 +123,50 @@ export async function connectFacebookAction() {
 }
 // --- FUNCIONS DE DESCONNEXIÓ ---
 
-async function handleDisconnect(provider: 'google' | 'azure' | 'linkedin_oidc' | 'facebook') {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
+// --- ACCIONS DE DESCONNEXIÓ (ACTUALITZADES) ---
+
+async function handleDisconnect(provider: string) {
+  const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, message: "Usuari no trobat." };
 
   try {
-    const providerName = provider.replace('_oidc', '');
-    // Assegura't que tens una Edge Function anomenada 'facebook-revoke-token'
-    await supabase.functions.invoke(`${providerName}-revoke-token`);
-    await supabase.from('user_credentials').delete().match({ user_id: user.id, provider: provider });
+      // Definim quines integracions són d'equip i quines són personals
+      const isTeamIntegration = ['linkedin', 'facebook', 'instagram'].includes(provider);
+      
+      let query;
 
-    revalidatePath('/settings/integrations');
-    return { success: true, message: `Integració amb ${provider} desconnectada correctament.` };
+      if (isTeamIntegration) {
+          const activeTeamId = user.app_metadata?.active_team_id;
+          if (!activeTeamId) return { success: false, message: "No hi ha cap equip actiu seleccionat." };
+          
+          // Si és d'equip, esborrem de 'team_credentials'
+          query = supabase.from('team_credentials').delete().match({ team_id: activeTeamId, provider: provider });
+      } else {
+          // Si és personal, esborrem de 'user_credentials'
+          query = supabase.from('user_credentials').delete().match({ user_id: user.id, provider: provider });
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      // Opcional: Crida a una Edge Function per a revocar el token a la plataforma externa
+      // try {
+      //     await supabase.functions.invoke(`${provider}-revoke-token`);
+      // } catch (e) {
+      //     console.warn(`No s'ha pogut revocar el token per a ${provider}.`);
+      // }
+
+      revalidatePath('/settings/integrations');
+      return { success: true, message: `Integració desconnectada correctament.` };
+
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Error desconegut";
-    console.error(`--- ERROR DURANT LA DESCONNEXIÓ DE ${provider.toUpperCase()} ---`, errorMessage);
-    return { success: false, message: `No s'ha pogut desconnectar la integració de ${provider}.` };
+      const errorMessage = error instanceof Error ? error.message : "Error desconegut";
+      return { success: false, message: `No s'ha pogut desconnectar: ${errorMessage}` };
   }
 }
 
-export async function disconnectGoogleAction() {
-  return await handleDisconnect('google');
-}
-
-export async function disconnectMicrosoftAction() {
-  return await handleDisconnect('azure');
-}
-
-export async function disconnectLinkedInAction() {
-  return await handleDisconnect('linkedin_oidc');
-}
-
-// ✅ NOU: Funció de desconnexió per a Facebook
-export async function disconnectFacebookAction() {
-  return await handleDisconnect('facebook');
-}
+export async function disconnectGoogleAction() { return await handleDisconnect('google'); }
+export async function disconnectMicrosoftAction() { return await handleDisconnect('microsoft'); }
+export async function disconnectLinkedInAction() { return await handleDisconnect('linkedin'); }
+export async function disconnectFacebookAction() { return await handleDisconnect('facebook'); }

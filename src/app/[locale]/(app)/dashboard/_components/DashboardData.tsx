@@ -19,22 +19,10 @@ export async function DashboardData({ children }: { children: React.ReactNode })
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+        // Esta redirección es correcta, por si un usuario no autenticado intenta acceder
         return redirect(`/${locale}/login`);
     }
     
-    // --- LÒGICA D'EQUIP ACTIU DEFINITIVA ---
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        // En cas d'error, redirigim a la selecció d'equip per seguretat.
-        return redirect(`/${locale}/settings/team`);
-    }
-    const claims = JSON.parse(claimsString);
-    const activeTeamId = claims.app_metadata?.active_team_id;
-
-    if (!activeTeamId) {
-        return redirect(`/${locale}/settings/team`);
-    }
-    // ------------------------------------
     
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 

@@ -96,7 +96,10 @@
     "unreadFilter": "No llegits",
     "hideContactPanel": "Ocultar el panel de contactos",
     "showContactPanel": "Mostrar el panel de contactos",
-    "fromLabel": "Label"
+    "fromLabel": "Label",
+    "toast": {
+      "contactSavedSuccess": "Contacto guardado correctamente"
+    }
   },
   "AICampaignWizard": {
     "title": "Asistente de Campañas de IA",
@@ -379,7 +382,6 @@
       "markAsReadError": "No se ha podido marcar como leída.",
       "replySubject": "Re: Tu presupuesto",
       "fetchError": "No se han podido cargar los datos del CRM."
-
     },
     "replyBody": "\n\n\n--- En respuesta a tu feedback del {date} ---\n>{content}"
   },
@@ -840,7 +842,6 @@
       "itemPriceLabel": "Precio",
       "itemTotalLabel": "Total",
       "error": "Se ha producido un error"
-
     },
     "toast": {
       "notAllowed": "Acción no permitida",
@@ -854,8 +855,6 @@
       "missingDataDesc": "Por favor, selecciona un cliente y una fecha de emisión.",
       "error": "Se ha producido un error",
       "success": "¡Éxito!"
-
-
     }
   },
   "NetworkPage": {
@@ -878,7 +877,8 @@
       "team": "Equipo",
       "integrations": "Integraciones",
       "blacklist": "Filtro Inbox",
-      "customization": "Personalización"
+      "customization": "Personalización",
+      "permissions": "Permisos"
     },
     "billing": {
       "notImplemented": "Funcionalidad no implementada",
