@@ -1,15 +1,14 @@
-// /app/[locale]/quote/[secureId]/page.tsx
-
 import { cookies } from 'next/headers';
 import { createClient } from '@/lib/supabase/server'; 
 import { notFound } from "next/navigation";
 import { PublicQuoteClient } from "./_components/PublicQuoteClient";
-import type { Quote, Contact, CompanyProfile, QuoteItem } from "@/types/crm";
+import type { Quote, Contact, QuoteItem } from "@/types/crm";
+import type { Team as CompanyProfile} from "@/types/settings/team"; // ✅ Importem el tipus correcte
 
-// ✅ Definim el tipus de dades aquí, que és on es generen.
+// Definim el tipus de dades que la nostra pàgina generarà
 export type QuoteDataFromServer = Quote & {
-    contacts: Contact;
-    profiles: CompanyProfile;
+    contacts: Contact | null;
+    team: CompanyProfile | null; // ✅ Canviat de 'profiles' a 'team'
     quote_items: QuoteItem[];
     secure_id: string;
 };
@@ -22,9 +21,15 @@ export default async function PublicQuotePage({ params }: PublicQuotePageProps) 
     const supabase = createClient(cookies());
     const { secureId } = params;
 
+    // ✅ CONSULTA ACTUALITZADA: Fem JOIN amb 'contacts' i 'teams'
     const { data: quoteData, error } = await supabase
         .from("quotes")
-        .select(`*, contacts (*), profiles (*), quote_items (*)`)
+        .select(`
+            *, 
+            contacts (*), 
+            team:teams (*), 
+            quote_items (*)
+        `)
         .eq("secure_id", secureId)
         .single();
 
@@ -33,6 +38,5 @@ export default async function PublicQuotePage({ params }: PublicQuotePageProps) 
         notFound();
     }
     
-    // Passem les dades al component de client. El 'cast' és segur gràcies a la consulta.
     return <PublicQuoteClient initialQuoteData={quoteData as QuoteDataFromServer} />;
 }

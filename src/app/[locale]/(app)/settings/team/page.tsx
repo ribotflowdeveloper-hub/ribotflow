@@ -1,15 +1,15 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+// /app/[locale]/settings/team/page.tsx
+
+import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { redirect } from 'next/navigation';
 import { TeamClient } from "./_components/TeamClient";
-
-// Tipus de dades (sense canvis)
+// Es mejor tener los tipos en un fichero separado, ej: ./types.ts
 export type Team = { id: string; name: string; };
 export type TeamMember = { role: string; profiles: { id: string; full_name: string | null; email: string | null; avatar_url: string | null; } | null; };
 export type Invitation = { id: string; email: string; role: string; };
 export type UserTeam = { role: string; teams: Team | null; };
 export type Permission = { grantee_user_id: string; target_user_id: string; };
-
 export type ActiveTeamData = {
     team: Team;
     teamMembers: TeamMember[];
@@ -18,6 +18,7 @@ export type ActiveTeamData = {
     inboxPermissions: Permission[];
 };
 
+
 export default async function TeamSettingsPage() {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
@@ -25,22 +26,37 @@ export default async function TeamSettingsPage() {
 
     const activeTeamId = user.app_metadata?.active_team_id;
 
-    // --- CAS 1: VISTA DE VESTÍBUL ---
+    // CASO 1: El usuario no tiene equipo activo (Vista de Lobby)
     if (!activeTeamId) {
-        // ... (Aquesta part ja era correcta, no la toquem)
+        const { data: userTeamsData } = await supabase
+            .from('team_members')
+            .select('role, teams!inner(id, name)')
+            .eq('user_id', user.id);
+        
+        const userTeams: UserTeam[] = (userTeamsData || []).map(m => ({
+            role: m.role,
+            teams: Array.isArray(m.teams) ? m.teams[0] : m.teams,
+        }));
+        
+        return <TeamClient user={user} userTeams={userTeams} activeTeamData={null} />;
     }
 
-    // --- CAS 2: VISTA DE PANELL DE CONTROL ---
-    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
+    // CASO 2: El usuario tiene un equipo activo. Validamos que sigue siendo miembro.
+    const { data: member } = await supabase
+        .from('team_members')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('team_id', activeTeamId)
+        .single();
+
+    // ✅ ESTE ES EL CAMBIO CLAVE QUE ROMPE EL BUCLE
     if (!member) {
-        const supabaseAdmin = createAdminClient();
-        await supabaseAdmin.auth.admin.updateUserById(user.id, { app_metadata: { active_team_id: null } });
-        return redirect('/settings/team');
+        // El estado es inválido. En lugar de redirigir, renderizamos el cliente con un aviso.
+        console.warn(`[SERVER] Estado inválido detectado para ${user.id}. Notificando al cliente para que lo corrija.`);
+        return <TeamClient user={user} userTeams={[]} activeTeamData={null} invalidTeamState={true} />;
     }
 
-    // ✅ CORRECCIÓ: Hem unificat tota la càrrega de dades aquí.
-
-    // Primer, obtenim la llista de membres amb el mètode manual segur.
+    // Si el estado es válido, cargamos todos los datos del equipo.
     const { data: members, error: membersError } = await supabase
         .from('team_members')
         .select('user_id, role')
@@ -56,13 +72,12 @@ export default async function TeamSettingsPage() {
             .in('id', memberUserIds);
         if (profilesError) throw profilesError;
         
-        finalTeamMembers = members.map(member => ({
-            role: member.role,
-            profiles: profiles?.find(p => p.id === member.user_id) || null,
+        finalTeamMembers = members.map(m => ({
+            role: m.role,
+            profiles: profiles?.find(p => p.id === m.user_id) || null,
         }));
     }
-
-    // Després, obtenim la resta de dades que necessitem en paral·lel.
+    
     const [teamRes, invitesRes, permissionsRes] = await Promise.all([
         supabase.from('teams').select('id, name').eq('id', activeTeamId).single(),
         supabase.from('invitations').select('id, email, role').eq('team_id', activeTeamId),
@@ -71,7 +86,7 @@ export default async function TeamSettingsPage() {
     
     const activeTeamData: ActiveTeamData = {
         team: teamRes.data as Team,
-        teamMembers: finalTeamMembers, // Utilitzem la variable correcta
+        teamMembers: finalTeamMembers,
         pendingInvitations: (invitesRes.data as Invitation[]) || [],
         currentUserRole: member.role,
         inboxPermissions: (permissionsRes.data as Permission[]) || []

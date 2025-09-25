@@ -43,7 +43,8 @@ export type QuoteItem = {
   quantity: number;
   unit_price: number;
   user_id: string; // Added user_id property
-
+  tax_rate: number;
+  total: number;
 };
 
 export type Quote = {

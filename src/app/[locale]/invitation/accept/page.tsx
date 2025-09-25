@@ -17,7 +17,8 @@ type InvitedSignupPageProps = {
 };
 
 export default async function InvitedSignupPage({ searchParams }: InvitedSignupPageProps) {
-  const { invite_token, email } = searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { invite_token, email } = resolvedSearchParams;
   let teamName = null;
 
   if (invite_token) {

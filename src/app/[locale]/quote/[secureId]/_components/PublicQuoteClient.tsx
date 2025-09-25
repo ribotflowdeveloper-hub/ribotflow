@@ -1,5 +1,3 @@
-// /app/[locale]/quote/[secureId]/_components/PublicQuoteClient.tsx
-
 "use client";
 
 import React, { useState, useTransition } from "react";
@@ -19,8 +17,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Quote } from "@/types/crm";
-import { acceptQuoteAction, rejectQuoteAction } from '../actions'; // ✅ 1. Importem les noves Server Actions
-import type { QuoteDataFromServer } from '../page'; // ✅ Importem el tipus des de la pàgina
+import { acceptQuoteAction, rejectQuoteAction } from '../actions';
+import type { QuoteDataFromServer } from '../page';
 
 export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: QuoteDataFromServer; }) {
     const [quoteData] = useState(initialQuoteData);
@@ -33,7 +31,6 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
 
     const handleAccept = () => {
         startTransition(async () => {
-            // ✅ 2. Cridem a la nova Server Action
             const result = await acceptQuoteAction(quoteData.secure_id);
             if (result.success) {
                 setFinalStatus("accepted");
@@ -49,7 +46,6 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
             return;
         }
         startTransition(async () => {
-            // ✅ 3. Cridem a la nova Server Action
             const result = await rejectQuoteAction(quoteData.secure_id, rejectionReason);
             if (result.success) {
                 setFinalStatus("declined");
@@ -68,7 +64,8 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
                 <CheckCircle className="w-24 h-24 text-green-500 mb-4" />
                 <h1 className="text-3xl text-black font-bold mb-2">Pressupost Acceptat!</h1>
                 <p className="text-lg text-black">Gràcies per la teva confiança, {quoteData.contacts?.nom}.</p>
-                <p className="text-lg text-black">Hem notificat a {quoteData.profiles?.company_name || 'l\'empresa'} i es posaran en contacte amb tu aviat.</p>
+                {/* ✅ CORRECCIÓ: Canviem 'profiles' per 'team' i 'company_name' per 'name' */}
+                <p className="text-lg text-black">Hem notificat a {quoteData.team?.name || 'l\'empresa'} i es posaran en contacte amb tu aviat.</p>
             </div>
         );
     }
@@ -94,8 +91,9 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
                     <div className="bg-white rounded-lg shadow-lg">
                         <QuotePreview
                             quote={quoteForPreview}
-                            contacts={[quoteData.contacts]}
-                            companyProfile={quoteData.profiles}
+                            contacts={quoteData.contacts ? [quoteData.contacts] : []}
+                            // ✅ CORRECCIÓ: Passem 'team' en lloc de 'profiles'
+                            companyProfile={quoteData.team}
                             subtotal={quoteData.subtotal}
                             discountAmount={(quoteData.subtotal || 0) * (quoteData.discount || 0) / 100}
                             tax={quoteData.tax}

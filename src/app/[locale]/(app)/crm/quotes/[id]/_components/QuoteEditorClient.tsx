@@ -37,7 +37,6 @@ interface QuoteEditorClientProps {
   contacts: Contact[];
   products: Product[];
   companyProfile: TeamData | null;
-
   initialOpportunities: Opportunity[];
   userId: string;
 }

@@ -1,11 +1,10 @@
-// /app/crm/quotes/[id]/_components/QuoteEditorData.tsx
-
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-// ✅ CORRECTED IMPORT PATH
-import { QuoteEditorClient } from './QuoteEditorClient'; 
-import type { Quote, Contact, Product, CompanyProfile, Opportunity } from '@/types/crm';
+import { QuoteEditorClient } from './QuoteEditorClient';
+// ✅ Canviem la importació de tipus per a utilitzar els nous centralitzats i correctes
+import type { Quote, Contact, Product , Opportunity} from '@/types/crm';
+import type { Team as TeamData, } from '@/types/settings/team';
 
 interface QuoteEditorDataProps {
     quoteId: string;
@@ -14,33 +13,23 @@ interface QuoteEditorDataProps {
 export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        redirect('/login');
-    }
+    if (!user) redirect('/login');
 
-    // --- NEW, ROBUST TEAM LOGIC ---
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        throw new Error("Could not get user claims from the database.");
-    }
-    const claims = JSON.parse(claimsString);
-    const activeTeamId = claims.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        redirect('/settings/team');
-    }
-    // ------------------------------------
-
-    // Auxiliary data is now securely fetched via RLS
-    const [contactsRes, productsRes, profileRes] = await Promise.all([
+    const activeTeamId = user.app_metadata?.active_team_id;
+    if (!activeTeamId) redirect('/settings/team');
+    
+    // Les consultes auxiliars confien en RLS
+    const [contactsRes, productsRes, teamRes] = await Promise.all([
         supabase.from('contacts').select('id, nom, empresa'),
         supabase.from('products').select('*').eq('is_active', true),
+        // Busquem les dades de l'equip actiu a la taula 'teams'
         supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-
     ]);
 
     const contacts = (contactsRes.data as Contact[]) || [];
     const products = (productsRes.data as Product[]) || [];
-    const companyProfile = profileRes.data as CompanyProfile;
+    // ✅ CORRECCIÓ DE TIPUS: Ara 'teamData' coincideix amb el que espera el client
+    const teamData = teamRes.data as TeamData | null;
 
     let initialQuote: Quote;
     let contactOpportunities: Opportunity[] = [];
@@ -79,14 +68,10 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
                 user_id: user.id
             }]
         };
-    } else { // Logic for an EXISTING quote
-        // This query is now SECURE. RLS on 'quotes' will prevent loading
-        // a quote if it doesn't belong to the active team.
+    } else {
+        // La RLS a 'quotes' s'assegurarà que només puguem carregar un pressupost de l'equip actiu
         const { data: quoteData } = await supabase.from('quotes').select('*, items:quote_items(*)').eq('id', quoteId).single();
-        
-        if (!quoteData) {
-            redirect('/crm/quotes');
-        }
+        if (!quoteData) redirect('/crm/quotes');
 
         initialQuote = quoteData as unknown as Quote;
         
@@ -101,9 +86,9 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
             initialQuote={initialQuote}
             contacts={contacts}
             products={products}
-            companyProfile={companyProfile}
+            companyProfile={teamData} // ✅ Passem les dades de l'equip correctament
             initialOpportunities={contactOpportunities}
-            userId={user.id} // ✅ Pass the userId to the client component
+            userId={user.id}
         />
     );
 }

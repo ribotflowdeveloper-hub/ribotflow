@@ -1,92 +1,148 @@
-// /app/auth/actions.ts
-
 "use server";
 
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { headers } from 'next/headers';
-import { acceptInviteAction } from '@/app/[locale]/(app)/settings/team/actions'; // Asegúrate de que la ruta sea correcta
 
-// --- Acció per iniciar sessió amb email i contraseña (CORREGIDA I FINAL) ---
-export async function loginAction(formData: FormData) {
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const inviteToken = formData.get('invite_token') as string;
+/**
+ * Aquesta acció és cridada DESPRÉS que un usuari ha iniciat sessió o ha verificat el seu email.
+ * És el pas final per a unir-se a un equip.
+ */
+// ✅ CORRECTION: The function now only accepts the token.
+export async function acceptInviteAction(token: string, id: string) {
     const supabase = createClient(cookies());
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca'; // Obtenim el locale
-
-    // 1. Intentem iniciar sessió
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (signInError) {
-        // Redirigim amb el locale per evitar URLs trencades
-        return redirect(`/${locale}/login?message=${encodeURIComponent("Credenciales incorrectas.")}`);
+    const supabaseAdmin = createAdminClient();
+    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+    
+    // 1. Get the currently logged-in user.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        // If there's no user, redirect them to log in, passing the token so they can try again.
+        return redirect(`/${locale}/login?invite_token=${token}&message=You must be logged in to accept an invitation.`);
     }
 
-    // 2. Si hi ha un token d'invitació, processem la invitació
-    if (inviteToken && signInData.user) {
-        // Cridem l'acció passant el token I l'ID de l'usuari que acaba d'iniciar sessió
-        await acceptInviteAction(inviteToken, signInData.user.id);
+    try {
+        // 2. Find the invitation using the admin client to ensure it can be found.
+        const { data: invitation } = await supabaseAdmin
+            .from('invitations')
+            .select('*')
+            .eq('token', token)
+            .single()
+            .throwOnError();
+            
+        // 3. CRUCIAL SECURITY CHECK: Ensure the logged-in user's email matches the invitation email.
+        if (invitation.email !== user.email) {
+            throw new Error("This invitation is intended for another user.");
+        }
+
+        // 4. Add the user to the team.
+        await supabaseAdmin
+            .from('team_members')
+            .insert({ team_id: invitation.team_id, user_id: user.id, role: invitation.role })
+            .throwOnError();
         
-        // Redirigim al dashboard amb el locale correcte.
-        // La lògica de DashboardData s'encarregarà de la resta.
-        return redirect(`/${locale}/dashboard`);
+        // 5. Instantly update the user's token to make the new team active.
+        await supabaseAdmin.auth.admin.updateUserById(
+            user.id,
+            { app_metadata: { 
+                ...user.app_metadata, 
+                active_team_id: invitation.team_id,
+            }}
+        );
+        
+        // 6. Delete the invitation so it can't be used again.
+        await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
+
+    } catch (error) {
+        // Gracefully handle if the user is already a member, but still update their token.
+        if (error instanceof Error && error.message.includes('duplicate key value')) {
+            console.log("User was already a member, proceeding to the dashboard...");
+        } else {
+            const message = error instanceof Error ? error.message : "Error processing the invitation.";
+            return redirect(`/${locale}/dashboard?message=${encodeURIComponent(message)}`);
+        }
     }
 
-    // Si no hi ha token, és un login normal. Redirigim amb locale.
+    // On success, redirect to the dashboard. The middleware will let them pass.
     return redirect(`/${locale}/dashboard`);
 }
 
-// --- Acció per registrar un nou usuari (VERSIÓ FINAL) ---
+// --- Acció per iniciar sessió ---
+// --- Login Action ---
+export async function loginAction(formData: FormData) {
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const inviteToken = formData.get('invite_token') as string | null;
+    const supabase = createClient(cookies());
+    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+
+    // Anti-conflict logic: if there's an invite token, first sign out any existing session.
+    if (inviteToken) {
+        await supabase.auth.signOut();
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        return redirect(`/${locale}/login?message=${encodeURIComponent("Incorrect credentials.")}`);
+    }
+
+    // If login is successful and it's part of an invite flow, go accept it.
+    if (inviteToken) {
+        return redirect(`/accept-invite?token=${inviteToken}`);
+    }
+    
+    // If it's a normal login, go to the dashboard.
+    return redirect(`/${locale}/dashboard`);
+}
+
+
+// --- Acció per registrar un nou usuari ---
 export async function signupAction(formData: FormData) {
+    const origin = (await headers()).get('origin');
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const fullName = formData.get('fullName') as string;
-    const inviteToken = formData.get('invite_token') as string;
-    const supabase = createClient(cookies());
+    const inviteToken = formData.get('invite_token') as string | null;
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
 
-    // Construeix la URL de retorn per al correu de verificació
-    let emailRedirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
-    if (inviteToken) {
-        const nextUrl = new URL(emailRedirectTo);
-        // Després de verificar, el callback redirigirà a /dashboard.
-        // L'acceptació de la invitació ja s'haurà fet.
-        nextUrl.searchParams.append('next', `/dashboard`);
-        emailRedirectTo = nextUrl.toString();
-    }
+    // ✅ AQUESTA ÉS LA LÒGICA CORRECTA I FINAL
+    // El 'next' li diu a la ruta /auth/callback on ha d'anar l'usuari DESPRÉS de verificar l'email.
+    const nextUrl = inviteToken
+        ? `/accept-invite?token=${inviteToken}`
+        : `/onboarding`;
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName }, emailRedirectTo },
+        options: {
+            data: {
+                full_name: fullName,
+            },
+            emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
+        },
     });
 
-    if (signUpError) {
-        const redirectUrl = inviteToken 
-            ? `/invitation/accept?invite_token=${inviteToken}&email=${encodeURIComponent(email)}&message=${encodeURIComponent(signUpError.message)}`
-            : `/signup?message=${encodeURIComponent(signUpError.message)}`;
-        return redirect(redirectUrl);
+    if (error) {
+        return redirect(`/signup?message=${encodeURIComponent("No s'ha pogut completar el registre.")}`);
     }
 
-    // Si el registre ha creat un usuari (abans de la verificació),
-    // podem vincular-lo a l'equip immediatament.
-    if (inviteToken && signUpData.user) {
-        await acceptInviteAction(inviteToken, signUpData.user.id);
-    }
-    
-    // Finalment, el portem a la pàgina d'espera de verificació.
+    // Després del registre, sempre enviem a la pàgina de "Verifica el teu email".
     return redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }
-// --- Acción para iniciar sesión o registrarse con Google ---
+
+// --- Acció per a OAuth (Google, etc.) ---
 export async function googleAuthAction(inviteToken?: string | null) {
     const supabase = createClient(cookies());
     const origin = (await headers()).get('origin');
 
-    let redirectTo = `${origin}/auth/callback`;
+    // ✅ LÒGICA ANTI-CONFLICTE: Si hi ha un token d'invitació, primer tanquem qualsevol sessió existent.
+    if (inviteToken) {
+        await supabase.auth.signOut();
+    }
 
-    // Si estem en un flux d'invitació, ens assegurem que després del login
-    // es completi el procés d'acceptació.
+    let redirectTo = `${origin}/auth/callback`;
     if (inviteToken) {
         redirectTo += `?next=/accept-invite?token=${inviteToken}`;
     }
@@ -96,9 +152,8 @@ export async function googleAuthAction(inviteToken?: string | null) {
         options: { redirectTo },
     });
 
-
     if (error) {
-        return redirect(`/login?message=${encodeURIComponent("No se ha podido iniciar sesión con Google.")}`);
+        return redirect(`/login?message=${encodeURIComponent("No s'ha pogut iniciar sessió amb Google.")}`);
     }
 
     return redirect(data.url);

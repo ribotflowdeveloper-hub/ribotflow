@@ -126,32 +126,31 @@ export async function createProductAction(newProduct: { name: string, price: num
 
 
 /**
- * Server Action per iniciar el procés d'enviament d'un pressupost en PDF.
- * Aquesta acció fa de pont segur cap a una Edge Function que s'encarrega de la feina pesada.
- * @param quoteId L'ID del pressupost a enviar.
+ * Inicia el procés d'enviament d'un pressupost cridant a una Edge Function.
+ */
+/**
+ * Acció segura que invoca l'Edge Function 'send-quote-pdf'.
  */
 export async function sendQuoteAction(quoteId: string) {
-  if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
-  
-
-  const supabase = createClient(cookies())
-;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuari no autenticat." };
-
-  try {
-    // La pujada del PDF es fa al client. Aquesta acció només crida la funció
-    // 'send-quote-pdf' que s'encarregarà d'enviar el correu des del servidor.
-    const { error: functionError } = await supabase.functions.invoke('send-quote-pdf', { body: { quoteId } });
-    if (functionError) throw functionError;
+    if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
     
-    revalidatePath(`/crm/quotes/${quoteId}`);
-    return { success: true, message: "S'ha iniciat l'enviament del pressupost." };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Error desconegut";
-    return { success: false, message };
-  }
+    const supabase = createClient(cookies());
+    
+    try {
+        const { error } = await supabase.functions.invoke('send-quote-pdf', { 
+            body: { quoteId } 
+        });
+        if (error) throw error; // Si la funció retorna un error, el capturem
+        
+        revalidatePath(`/crm/quotes/${quoteId}`);
+        return { success: true, message: "S'ha iniciat l'enviament del pressupost." };
+
+    } catch (error: unknown) {
+        // Fem que el missatge d'error sigui més explícit
+        const message = error instanceof Error ? error.message : "Error desconegut en invocar l'Edge Function.";
+        console.error("[sendQuoteAction] Error:", message);
+        return { success: false, message };
+    }
 }
 
 // --- ACCIONS DE SUB-COMPONENTS ---

@@ -7,11 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter} from 'next/navigation';
 import { Loader2, UserPlus, Trash2, Plus, ArrowRight, LogOut, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { useTransition, useRef } from 'react';
+import { useTransition, useRef, useEffect } from 'react';
 
 // ✅ PAS 1: IMPORTA EL CLIENT CORRECTE I LES ACCIONS
 import { createClient } from '@/lib/supabase/client';
@@ -26,21 +26,45 @@ import {
 import type { User } from '@supabase/supabase-js';
 import type { UserTeam, ActiveTeamData } from '../page';
 
+type ActionResult = { success: boolean; message?: string; } | void;
+
+// ✅ Añadimos la nueva prop opcional 'invalidTeamState'.
+interface TeamClientProps {
+    user: User;
+    userTeams: UserTeam[];
+    activeTeamData: ActiveTeamData | null;
+    invalidTeamState?: boolean;
+}
 /**
  * Component de client intel·ligent que renderitza o el HUB o el DASHBOARD de l'equip.
  */
-export function TeamClient({ user, userTeams, activeTeamData }: {
-    user: User,
-    userTeams: UserTeam[],
-    activeTeamData: ActiveTeamData | null
-}) {
+export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState }: TeamClientProps) {
     const router = useRouter();
-    const pathname = usePathname();
     const [isPending, startTransition] = useTransition();
-    const formRef = useRef<HTMLFormElement>(null);
-
-    // ✅ PAS 2: CREA LA INSTÀNCIA DEL CLIENT CORRECTE
     const supabase = createClient();
+    const formRef = useRef<HTMLFormElement>(null);
+    
+    
+    // ✅ Este efecto corrige automáticamente un estado de equipo inválido.
+    useEffect(() => {
+        if (invalidTeamState) {
+            console.log("[CLIENT] Estado inválido detectado. Ejecutando limpieza de equipo activo...");
+            handleClearTeam();
+        }
+    }, [invalidTeamState]);
+
+
+
+    const executeActionAndReload = async (action: () => Promise<ActionResult>) => {
+        const result = await action();
+        if (result && result.success === false) {
+            toast.error("Error", { description: result.message });
+            return;
+        }
+        await supabase.auth.refreshSession();
+        // Forzamos una recarga completa para garantizar la sincronización.
+        window.location.reload(); 
+    };
     // ✅ NOVA FUNCIÓ per a gestionar el canvi de permisos
     const handleTogglePermission = (targetUserId: string, granteeUserId: string) => {
         startTransition(async () => {
@@ -54,44 +78,6 @@ export function TeamClient({ user, userTeams, activeTeamData }: {
         });
     };
 
-    const handleSwitchTeam = (teamId: string) => {
-        startTransition(async () => {
-            try {
-                console.log("🔵 [CLIENT] Iniciant transició per canviar a l'equip:", teamId);
-                const result = await switchActiveTeamAction(teamId);
-                console.log("🟢 [CLIENT] Resposta rebuda de la Server Action:", result);
-
-                if (result.success) {
-                    console.log("🟡 [CLIENT] A punt de refrescar la sessió de Supabase...");
-                    supabase.auth.refreshSession();
-                    console.log("🟢 [CLIENT] Sessió de Supabase refrescada!");
-
-                    console.log("🟡 [CLIENT] A punt de cridar router.refresh()...");
-                    router.refresh();
-
-                    // Aquesta línia potser no la vegis si router.refresh() funciona bé i recarrega
-                    console.log("🟢 [CLIENT] router.refresh() cridat.");
-                    toast.success("Has canviat d'equip correctament.");
-                } else {
-                    console.error("🔴 [CLIENT] La Server Action ha retornat un error:", result.message);
-                    toast.error("No s'ha pogut canviar d'equip", { description: result.message });
-                }
-            } catch (error: unknown) {
-                console.error("💥 [CLIENT] Error inesperat en el bloc try-catch del client:", error);
-                toast.error("Hi ha hagut un error inesperat en el client.");
-            }
-        });
-    };
-
-    const handleClearTeam = () => {
-        startTransition(async () => {
-            const result = await clearActiveTeamAction();
-            if (result.success) {
-                await supabase.auth.refreshSession();
-                router.push(pathname, { scroll: false });
-            }
-        });
-    };
 
     const handleCreateTeam = (formData: FormData) => {
         startTransition(async () => {
@@ -127,7 +113,19 @@ export function TeamClient({ user, userTeams, activeTeamData }: {
         if (!name) return '??';
         return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
     };
+    
+    const handleSwitchTeam = (teamId: string) => {
+        startTransition(() => executeActionAndReload(() => switchActiveTeamAction(teamId)));
+    };
 
+    const handleClearTeam = () => {
+        startTransition(() => executeActionAndReload(() => clearActiveTeamAction()));
+    };
+
+     // Si el estado es inválido, mostramos un mensaje de carga mientras se corrige.
+     if (invalidTeamState) {
+        return <div className="flex justify-center items-center h-64">Corrigiendo estado del equipo...</div>;
+    }
     // --- VISTA 1: El "vestíbul" o HUB d'equips ---
     if (!activeTeamData) {
         return (
@@ -168,7 +166,7 @@ export function TeamClient({ user, userTeams, activeTeamData }: {
     }
 
     // --- VISTA 2: El panell de control de l'equip actiu ---
-    const { team, teamMembers, pendingInvitations, currentUserRole } = activeTeamData;
+    const { team, teamMembers, pendingInvitations, currentUserRole, inboxPermissions } = activeTeamData;
     const canManage = currentUserRole === 'owner' || currentUserRole === 'admin';
 
     return (
@@ -227,7 +225,7 @@ export function TeamClient({ user, userTeams, activeTeamData }: {
                         if (!member.profiles) return null;
 
                         // Comprovem si l'usuari actual té permís per a veure la bústia d'aquest membre
-                        const hasPermission = Array.isArray(Permissions) && Permissions.some(
+                        const hasPermission = Array.isArray(inboxPermissions) && inboxPermissions.some(
                             p => p.grantee_user_id === user.id && p.target_user_id === member.profiles!.id
                         );
                         return (
