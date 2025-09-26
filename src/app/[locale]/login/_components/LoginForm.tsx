@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Lock, Loader2, Check } from 'lucide-react';
+import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react'; // ✅ Importem AlertTriangle
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation'; // Import the hook
@@ -45,6 +45,25 @@ export default function LoginForm() {
             googleAuthAction();
         });
     };
+        // ✅ NOVA LÒGICA PER ALS MISSATGES D'ERROR
+    // Aquesta funció genera el missatge correcte basat en el codi d'error de la URL.
+    const getErrorMessage = () => {
+        if (error === 'invalid_credentials') {
+            return t('errors.invalidCredentials');
+        }
+        if (error === 'auth_failed') {
+            return t('errors.authFailed');
+        }
+        if (error === 'invite_failed') {
+            return message || t('errors.inviteFailed');
+        }
+        // També mantenim la compatibilitat amb el 'message' antic per si de cas.
+        if (message) {
+            return message;
+        }
+        return null;
+    };
+    const errorMessage = getErrorMessage();
 
     return (
         <div className="w-full min-h-screen lg:grid lg:grid-cols-2 relative">
@@ -111,12 +130,13 @@ export default function LoginForm() {
                         </div>
 
                         <form action={handleEmailLogin} className="space-y-6">
-                            {(message || error) && (
-                                <p className="text-sm text-center p-2 bg-muted rounded-md">
-                                    {message || (error === 'auth_failed' ? "L'autenticació ha fallat. Intenta-ho de nou." : "Hi ha hagut un error.")}
-                                </p>
+                           {/* ✅ NOU COMPONENT D'ERROR AMB ESTIL */}
+                           {errorMessage && (
+                                <div className="bg-destructive/10 text-destructive border border-destructive/30 p-3 rounded-md flex items-center gap-3 text-sm">
+                                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                                    <p>{errorMessage}</p>
+                                </div>
                             )}
-
                             <div className="space-y-2">
                                 <Label htmlFor="email">{t('emailLabel')}</Label>
                                 <div className="relative">

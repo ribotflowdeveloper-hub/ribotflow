@@ -64,7 +64,7 @@ export async function loginAction(formData: FormData) {
 
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     if (signInError) {
-        return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
+        return redirect(`/${locale}/login?error=invalid_credentials`);
     }
 
     if (inviteToken && signInData.user) {

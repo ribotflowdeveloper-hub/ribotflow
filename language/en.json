@@ -1187,7 +1187,12 @@
     "forgotPasswordLink": "Forgot your password?",
     "submitButton": "Log In",
     "toastErrorTitle": "Login Error",
-    "toastErrorDescription": "The credentials are incorrect. Please try again."
+    "toastErrorDescription": "The credentials are incorrect. Please try again.",
+    "errors": {
+      "invalidCredentials": "Invalid credentials.",
+      "authFailed": "Authentication failed.",
+      "inviteFailed": "Failed to send invitation."
+    }
   },
   "OnboardingPage": {
     "step": "Step {current} of {total}",

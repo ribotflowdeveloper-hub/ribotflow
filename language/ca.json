@@ -1233,7 +1233,12 @@
     "forgotPasswordLink": "Has oblidat la contrasenya?",
     "submitButton": "Inicia Sessió",
     "toastErrorTitle": "Error d'inici de sessió",
-    "toastErrorDescription": "Les credencials són incorrectes. Si us plau, torna-ho a provar."
+    "toastErrorDescription": "Les credencials són incorrectes. Si us plau, torna-ho a provar.",
+    "errors": {
+      "invalidCredentials": "Credencials invàlides.",
+      "authFailed": "L'autenticació ha fallat.",
+      "inviteFailed": "No s'ha pogut enviar la invitació."
+    }
   },
   "OnboardingPage": {
     "step": "Pas {current} de {total}",

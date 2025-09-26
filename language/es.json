@@ -1179,7 +1179,12 @@
     "forgotPasswordLink": "¿Olvidaste tu contraseña?",
     "submitButton": "Inicia Sesión",
     "toastErrorTitle": "Error de inicio de sesión",
-    "toastErrorDescription": "Las credenciales son incorrectas. Por favor, inténtalo de nuevo."
+    "toastErrorDescription": "Las credenciales son incorrectas. Por favor, inténtalo de nuevo.",
+    "errors": {
+      "invalidCredentials": "Credenciales inválidas.",
+      "authFailed": "La autenticación ha fallado.",
+      "inviteFailed": "No se pudo enviar la invitación."
+    }
   },
   "OnboardingPage": {
     "step": "Paso {current} de {total}",
