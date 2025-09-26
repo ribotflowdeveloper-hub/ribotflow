@@ -24,5 +24,7 @@ export async function OnboardingData() {
     // La teva lògica original per a obtenir el nom es queda igual
     const initialFullName = user.user_metadata?.full_name || '';
 
+    
+
     return <OnboardingClient initialFullName={initialFullName} />;
 }

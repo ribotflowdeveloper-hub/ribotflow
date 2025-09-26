@@ -76,10 +76,21 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
         // Això estableix el nou equip com a l'actiu.
         await supabaseAdmin.auth.admin.updateUserById(
             user.id,
-            { app_metadata: { 
-                ...user.app_metadata, 
-                active_team_id: newTeam.id
-            }}
+            {
+                 // ✅ AFEGIM EL TELÈFON AL CAMP DEDICAT
+                phone: formData.phone,
+                
+                // Actualitzem les metadades de l'aplicació (invisibles per l'usuari)
+                app_metadata: { 
+                    ...user.app_metadata, 
+                    active_team_id: newTeam.id
+                },
+                // ✅ LÍNIA AFEGIDA: Actualitzem també les metadades de l'usuari (visibles per ell)
+                user_metadata: {
+                    ...user.user_metadata,
+                    full_name: formData.full_name // <-- Aquí passem el nom del formulari!
+                }
+            }
         );
 
     } catch (error) {
