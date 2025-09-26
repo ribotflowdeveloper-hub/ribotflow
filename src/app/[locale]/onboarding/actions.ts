@@ -72,17 +72,6 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
         // Afegim l'usuari com a propietari a la taula de membres
         await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: user.id, role: 'owner' }).throwOnError();
 
-        // Creem les etapes del pipeline per defecte per a aquest nou equip, per consistència
-        const defaultStages = [
-            { name: 'Prospecte', position: 1, team_id: newTeam.id, user_id: user.id },
-            { name: 'Contactat', position: 2, team_id: newTeam.id, user_id: user.id },
-            { name: 'Proposta Enviada', position: 3, team_id: newTeam.id, user_id: user.id },
-            { name: 'Negociació', position: 4, team_id: newTeam.id, user_id: user.id },
-            { name: 'Guanyat', position: 5, team_id: newTeam.id, user_id: user.id },
-            { name: 'Perdut', position: 6, team_id: newTeam.id, user_id: user.id },
-        ];
-        await supabase.from('pipeline_stages').insert(defaultStages).throwOnError();
-        
         // ✅ EL PAS MÉS IMPORTANT: Actualitzem el token de l'usuari (app_metadata) a l'instant.
         // Això estableix el nou equip com a l'actiu.
         await supabaseAdmin.auth.admin.updateUserById(

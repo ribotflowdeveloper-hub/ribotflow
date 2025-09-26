@@ -5,71 +5,51 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { headers } from 'next/headers';
 
-/**
- * Aquesta acció és cridada DESPRÉS que un usuari ha iniciat sessió o ha verificat el seu email.
- * És el pas final per a unir-se a un equip.
- */
-// ✅ CORRECTION: The function now only accepts the token.
-export async function acceptInviteAction(token: string, id: string) {
-    const supabase = createClient(cookies());
+// ✅ PAS 1: MOVEM L'ACCIÓ 'acceptInviteAction' AQUÍ
+// Té més sentit que estigui juntament amb la resta de la lògica d'autenticació.
+async function acceptInviteAction(token: string, userId: string) {
     const supabaseAdmin = createAdminClient();
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
-    
-    // 1. Get the currently logged-in user.
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        // If there's no user, redirect them to log in, passing the token so they can try again.
-        return redirect(`/${locale}/login?invite_token=${token}&message=You must be logged in to accept an invitation.`);
+
+    // 1. Busquem la invitació per obtenir el team_id i el rol
+    const { data: invitation, error: invitationError } = await supabaseAdmin
+        .from('invitations')
+        .select('team_id, role, email')
+        .eq('token', token)
+        .single();
+
+    if (invitationError || !invitation) {
+        console.error("Error: Invitació invàlida o no trobada", invitationError);
+        // Retornem un error en lloc de redirigir per a que la funció principal ho gestioni
+        throw new Error("Invitació invàlida o caducada.");
     }
 
-    try {
-        // 2. Find the invitation using the admin client to ensure it can be found.
-        const { data: invitation } = await supabaseAdmin
-            .from('invitations')
-            .select('*')
-            .eq('token', token)
-            .single()
-            .throwOnError();
-            
-        // 3. CRUCIAL SECURITY CHECK: Ensure the logged-in user's email matches the invitation email.
-        if (invitation.email !== user.email) {
-            throw new Error("This invitation is intended for another user.");
-        }
+    // 2. Afegim l'usuari a la taula de membres
+    const { error: insertError } = await supabaseAdmin
+        .from('team_members')
+        .insert({ team_id: invitation.team_id, user_id: userId, role: invitation.role });
 
-        // 4. Add the user to the team.
-        await supabaseAdmin
-            .from('team_members')
-            .insert({ team_id: invitation.team_id, user_id: user.id, role: invitation.role })
-            .throwOnError();
-        
-        // 5. Instantly update the user's token to make the new team active.
-        await supabaseAdmin.auth.admin.updateUserById(
-            user.id,
-            { app_metadata: { 
-                ...user.app_metadata, 
+    if (insertError && !insertError.message.includes('duplicate key value')) {
+        console.error("Error en inserir el nou membre:", insertError);
+        throw insertError;
+    }
+
+    // 3. ✅ PAS CLAU: Actualitzem el token de l'usuari a l'instant
+    // Establim l'equip de la invitació com el seu equip actiu.
+    await supabaseAdmin.auth.admin.updateUserById(
+        userId,
+        {
+            app_metadata: {
                 active_team_id: invitation.team_id,
-            }}
-        );
-        
-        // 6. Delete the invitation so it can't be used again.
-        await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
-
-    } catch (error) {
-        // Gracefully handle if the user is already a member, but still update their token.
-        if (error instanceof Error && error.message.includes('duplicate key value')) {
-            console.log("User was already a member, proceeding to the dashboard...");
-        } else {
-            const message = error instanceof Error ? error.message : "Error processing the invitation.";
-            return redirect(`/${locale}/dashboard?message=${encodeURIComponent(message)}`);
+            }
         }
-    }
+    );
 
-    // On success, redirect to the dashboard. The middleware will let them pass.
-    return redirect(`/${locale}/dashboard`);
+    // 4. Esborrem la invitació
+    await supabaseAdmin.from('invitations').delete().eq('token', token);
+    console.log(`Usuari ${userId} afegit correctament a l'equip ${invitation.team_id} i token actualitzat.`);
 }
 
 // --- Acció per iniciar sessió ---
-// --- Login Action ---
 export async function loginAction(formData: FormData) {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
@@ -77,22 +57,25 @@ export async function loginAction(formData: FormData) {
     const supabase = createClient(cookies());
     const locale = (await headers()).get('x-next-intl-locale') || 'ca';
 
-    // Anti-conflict logic: if there's an invite token, first sign out any existing session.
+    // ✅ LÒGICA ANTI-CONFLICTE: Si hi ha un token d'invitació, primer tanquem qualsevol sessió existent.
     if (inviteToken) {
         await supabase.auth.signOut();
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-        return redirect(`/${locale}/login?message=${encodeURIComponent("Incorrect credentials.")}`);
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) {
+        return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
     }
 
-    // If login is successful and it's part of an invite flow, go accept it.
-    if (inviteToken) {
-        return redirect(`/accept-invite?token=${inviteToken}`);
+    if (inviteToken && signInData.user) {
+        try {
+            await acceptInviteAction(inviteToken, signInData.user.id);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : "Error en acceptar la invitació.";
+            return redirect(`/${locale}/login?message=${encodeURIComponent(message)}`);
+        }
     }
-    
-    // If it's a normal login, go to the dashboard.
+
     return redirect(`/${locale}/dashboard`);
 }
 
