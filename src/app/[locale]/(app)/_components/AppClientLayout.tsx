@@ -58,17 +58,27 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
             return;
         }
 
-        if (item.isSingle || item.children) { // Si és un mòdul amb fills, també navega a la seva pàgina per defecte
-            if (pathname !== `/${locale}${item.path}`) {
-                setIsNavigating(true);
-            }
+          // Només naveguem si la ruta és diferent
+          if (pathname !== `/${locale}${item.path}`) {
+            setIsNavigating(true);
             router.push(`/${locale}${item.path}`);
         }
         
-        if (!item.isSingle) {
-            handleModuleSelect(item);
+        // Tanquem el submenú si naveguem a un lloc nou
+        setIsModuleSidebarOpen(false);
+    };
+
+    /**
+     * Aquesta funció ara gestiona els clics a la barra principal.
+     * Decideix si ha de navegar o només obrir un submenú.
+     */
+    const handleMainMenuClick = (item: NavItem) => {
+        if (item.isSingle) {
+            // Si és un enllaç directe (Dashboard, Network), navega
+            handleNavigation(item);
         } else {
-             setIsModuleSidebarOpen(false);
+            // Si és un mòdul amb fills (CRM, Finances), només gestiona el submenú
+            handleModuleSelect(item);
         }
     };
 
@@ -99,7 +109,7 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
     return (
         <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
             <MainSidebar 
-                onModuleSelect={handleNavigation}
+                onModuleSelect={handleMainMenuClick} // ✅ Utilitzem la nova funció
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                 onNotImplemented={handleNotImplementedClick} 
             />

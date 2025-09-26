@@ -24,7 +24,21 @@ export async function OnboardingData() {
     // La teva lògica original per a obtenir el nom es queda igual
     const initialFullName = user.user_metadata?.full_name || '';
 
-    
+    // ✅ Cargamos la lista de servicios desde la tabla 'services'
+    const { data: services, error } = await supabase
+        .from('services')
+        .select('id, name') // Pedimos también el ID para el 'key' en React
+        .order('name');
 
-    return <OnboardingClient initialFullName={initialFullName} />;
+    if (error) {
+        console.error("Error al cargar los servicios:", error);
+    }
+
+    // Pasamos la lista de servicios al componente cliente
+    return (
+        <OnboardingClient 
+            initialFullName={initialFullName} 
+            availableServices={services || []}
+        />
+    );
 }

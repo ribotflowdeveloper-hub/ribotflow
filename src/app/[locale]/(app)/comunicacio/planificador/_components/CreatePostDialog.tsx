@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label";
 import { toast } from 'sonner';
 import { getPresignedUploadUrlAction, createSocialPostAction } from './actions';
 import Image from 'next/image';
-import type { SocialPost } from '@/types/comunicacio/SocialPost'; 
+import type { SocialPost } from '@/types/comunicacio/SocialPost';
 
 interface ConnectionStatuses {
-  linkedin_oidc: boolean;
+  linkedin: boolean; // ✅ CORREGIT
   facebook: boolean;
   instagram: boolean;
 }
@@ -36,7 +36,7 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, isPending, st
   useEffect(() => {
     if (isOpen) {
       const defaultProviders = [];
-      if (connectionStatuses.linkedin_oidc) defaultProviders.push('linkedin_oidc');
+      if (connectionStatuses.linkedin) defaultProviders.push('linkedin');
       if (connectionStatuses.facebook) defaultProviders.push('facebook');
       if (connectionStatuses.instagram) defaultProviders.push('instagram');
       setSelectedProviders(defaultProviders);
@@ -116,12 +116,14 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, isPending, st
             <div className="space-y-2 pt-4 border-t">
               <h4 className="font-semibold text-sm">{t('publishTo')}:</h4>
               <div className="flex items-center gap-6 flex-wrap">
-                {connectionStatuses.linkedin_oidc && (
+                {/* ✅ CORRECCIÓ: Comprovem 'connectionStatuses.linkedin' */}
+                {connectionStatuses.linkedin && (
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="linkedin"
-                      checked={selectedProviders.includes('linkedin_oidc')}
-                      onCheckedChange={(checked) => handleProviderChange('linkedin_oidc', !!checked)}
+                      // ✅ CORRECCIÓ: El valor és 'linkedin'
+                      checked={selectedProviders.includes('linkedin')}
+                      onCheckedChange={(checked) => handleProviderChange('linkedin', !!checked)}
                     />
                     <Label htmlFor="linkedin">LinkedIn</Label>
                   </div>

@@ -48,7 +48,7 @@ export default async function SocialPlannerPage() {
     const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
 
     const connectionStatuses = {
-        linkedin_oidc: allConnectedProviders.has('linkedin_oidc'),
+        linkedin_oidc: allConnectedProviders.has('linkedin'),
         facebook: allConnectedProviders.has('facebook'),
         instagram: allConnectedProviders.has('instagram'),
     };

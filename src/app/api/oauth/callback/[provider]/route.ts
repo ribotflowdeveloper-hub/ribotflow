@@ -93,6 +93,14 @@ export async function GET(
                 body.append('redirect_uri', redirectUri);
                 body.append('grant_type', 'authorization_code');
                 break;
+                   // ✅ NOU: AFEGIM EL CAS PER A FACEBOOK
+            case 'facebook':
+                tokenUrl = 'https://graph.facebook.com/v19.0/oauth/access_token';
+                body.append('client_id', process.env.FACEBOOK_CLIENT_ID!);
+                body.append('client_secret', process.env.FACEBOOK_CLIENT_SECRET!);
+                body.append('redirect_uri', redirectUri);
+                body.append('code', code);
+                break;
         }
 
         const tokenResponse = await fetch(tokenUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
