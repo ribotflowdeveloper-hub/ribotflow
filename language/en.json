@@ -1266,6 +1266,18 @@
     "deleteDraftAria": "Eliminar borrador",
     "publishTo": "Post to::",
     "partialSuccess": "Èxit Parcial",
+    "errorNotAuthenticated": "Usuario no autenticado. Por favor, vuelve a iniciar sesión.",
+    "errorMediaUpload": "No se pudo iniciar la subida del archivo.",
+    "errorPostCreation": "No se pudo guardar la publicación.",
+    "successDraftCreated": "Borrador creado correctamente.",
+    "errorScheduling": "No se pudo programar la publicación.",
+    "successScheduled": "¡Publicación programada correctamente!",
+    "errorUnscheduling": "No se pudo mover a borradores.",
+    "successUnscheduled": "Publicación movida a borradores.",
+    "errorDeleting": "No se pudo eliminar la publicación.",
+    "successPostDeleted": "Publicación eliminada correctamente.",
+    "imagePreviewAlt": "Image preview",
+
     "toasts": {
       "errorNotAuthenticated": "Usuario no autenticado. Por favor, vuelve a iniciar sesión.",
       "errorMediaUpload": "No se pudo iniciar la subida del archivo.",

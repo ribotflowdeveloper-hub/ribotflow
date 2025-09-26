@@ -19,7 +19,7 @@ import { ViewPostDialog } from './ViewPostDialog';
 
 // Definim el tipus per a l'estat de les connexions
 interface ConnectionStatuses {
-  linkedin_oidc: boolean;
+  linkedin: boolean;
   facebook: boolean;
   instagram: boolean;
 }

@@ -1312,6 +1312,18 @@
     "deleteDraftAria": "Eliminar esborrany",
     "publishTo": "Publicar a:",
     "partialSuccess": "Èxit Parcial",
+    "errorNotAuthenticated": "Usuari no autenticat. Si us plau, torna a iniciar sessió.",
+    "errorMediaUpload": "No s'ha pogut iniciar la pujada de l'arxiu.",
+    "errorPostCreation": "No s'ha pogut guardar la publicació.",
+    "successDraftCreated": "Esborrany creat correctament.",
+    "errorScheduling": "No s'ha pogut planificar la publicació.",
+    "successScheduled": "Publicació planificada correctament!",
+    "errorUnscheduling": "No s'ha pogut moure a esborranys.",
+    "successUnscheduled": "Publicació moguda a esborranys.",
+    "errorDeleting": "No s'ha pogut eliminar la publicació.",
+    "successPostDeleted": "Publicació eliminada correctament.",
+    "imagePreviewAlt": "Previsualització de la imatge",
+
     "toasts": {
       "errorNotAuthenticated": "Usuari no autenticat. Si us plau, torna a iniciar sessió.",
       "errorMediaUpload": "No s'ha pogut iniciar la pujada de l'arxiu.",
@@ -1323,6 +1335,7 @@
       "successUnscheduled": "Publicació moguda a esborranys.",
       "errorDeleting": "No s'ha pogut eliminar la publicació.",
       "successPostDeleted": "Publicació eliminada correctament."
+      
     }
   }
 }

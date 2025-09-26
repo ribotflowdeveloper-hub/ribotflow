@@ -15,26 +15,26 @@ type ActionResult<T = unknown> = {
 /**
  * Crea una URL de pujada signada (presigned URL) a Supabase Storage.
  */
-export async function getPresignedUploadUrlAction(fileName: string): Promise<ActionResult<{ signedUrl: string; token: string; path: string; filePath: string }>> {
-  const t = await getTranslations('SocialPlanner.toasts');
-  const supabase = createClient(cookies())
-;
+// ✅ Aquesta acció ara gestiona múltiples fitxers
+export async function getPresignedUploadUrlAction(fileNames: string[]): Promise<ActionResult<{ signedUrls: { signedUrl: string; path: string; }[] }>> {
+  const supabase = createClient(cookies());
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: t('errorNotAuthenticated') };
+  if (!user) return { success: false, message: "No autenticat." };
 
-  const fileExt = fileName.split('.').pop();
-  const filePath = `${user.id}/${Date.now()}.${fileExt}`;
-  
-  const { data, error } = await supabase.storage
-    .from('social_media')
-    .createSignedUploadUrl(filePath);
+  const signedUrls = await Promise.all(
+      fileNames.map(async (fileName) => {
+          const fileExt = fileName.split('.').pop();
+          const filePath = `${user.id}/${Date.now()}-${Math.random()}.${fileExt}`;
+          const { data, error } = await supabase.storage
+              .from('social_media')
+              .createSignedUploadUrl(filePath);
+          
+          if (error) throw new Error(`Error creant URL per a ${fileName}`);
+          return { signedUrl: data.signedUrl, path: data.path };
+      })
+  );
 
-  if (error) {
-    console.error("Error creant la URL signada:", error);
-    return { success: false, message: t('errorMediaUpload') };
-  }
-
-  return { success: true, message: "URL creada.", data: { ...data, filePath } };
+  return { success: true, message: "URLs creades.", data: { signedUrls } };
 }
 
 /**
@@ -43,7 +43,7 @@ export async function getPresignedUploadUrlAction(fileName: string): Promise<Act
 export async function createSocialPostAction(
   content: string,
   providers: string[],
-  mediaPath: string | null,
+  mediaPaths: string[] | null, // <-- Ara és un array
   mediaType: string | null
 ): Promise<ActionResult<SocialPost>> {
   const t = await getTranslations('SocialPlanner.toasts');
@@ -55,11 +55,12 @@ export async function createSocialPostAction(
   const activeTeamId = user.app_metadata?.active_team_id;
   if (!activeTeamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
 
-  let media_url = null;
-  if (mediaPath) {
-      const { data: publicUrlData } = supabase.storage.from('social_media').getPublicUrl(mediaPath);
-      media_url = publicUrlData.publicUrl;
-  }
+  let media_urls: string[] | null = null;
+  if (mediaPaths && mediaPaths.length > 0) {
+    media_urls = mediaPaths.map(path => 
+        supabase.storage.from('social_media').getPublicUrl(path).data.publicUrl
+    );
+}
 
   const { data: postData, error: postError } = await supabase
       .from('social_posts')
@@ -68,7 +69,7 @@ export async function createSocialPostAction(
           team_id: activeTeamId, // ✅ Assignem l'equip actiu
           provider: providers,
           content: content,
-          media_url: media_url,
+          media_url: media_urls, // <-- Guardem l'array
           media_type: mediaType,
           status: 'draft',
       })

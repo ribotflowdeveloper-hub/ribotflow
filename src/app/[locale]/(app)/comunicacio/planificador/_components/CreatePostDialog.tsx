@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+"use client";
+
+import { useState, useEffect, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -8,9 +10,10 @@ import { toast } from 'sonner';
 import { getPresignedUploadUrlAction, createSocialPostAction } from './actions';
 import Image from 'next/image';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
+import { Loader2, Trash2 } from 'lucide-react'; // Importem icones necessàries
 
 interface ConnectionStatuses {
-  linkedin: boolean; // ✅ CORREGIT
+  linkedin: boolean;
   facebook: boolean;
   instagram: boolean;
 }
@@ -18,21 +21,21 @@ interface ConnectionStatuses {
 interface CreatePostDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCreate: (newPost: SocialPost) => void; // ✅ Canviat de 'any' a 'SocialPost'
+  onCreate: (newPost: SocialPost) => void;
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
   connectionStatuses: ConnectionStatuses;
   t: (key: string) => string;
 }
 
-export function CreatePostDialog({ isOpen, onOpenChange, onCreate, isPending, startTransition, connectionStatuses, t }: CreatePostDialogProps) {
+export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionStatuses, t }: CreatePostDialogProps) {
   const [content, setContent] = useState('');
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // ✅ Ara l'estat desa un array de fitxers i de URLs de previsualització
+  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [isPending, startTransition] = useTransition();
 
-  // ✅ CORRECCIÓ: Aquest 'useEffect' s'executa quan s'obre el diàleg.
-  // Comprova quines plataformes estan connectades i les marca per defecte.
   useEffect(() => {
     if (isOpen) {
       const defaultProviders = [];
@@ -44,61 +47,82 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, isPending, st
   }, [isOpen, connectionStatuses]);
 
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setMediaFile(file);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(file));
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      // Limitem a 10 imatges per a Instagram, per exemple
+      const newFiles = [...mediaFiles, ...files].slice(0, 10);
+      setMediaFiles(newFiles);
+
+      // Netegem les URLs antigues per a evitar problemes de memòria
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+
+      // Creem noves URLs de previsualització
+      const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
+      setPreviewUrls(newPreviewUrls);
     }
+  };
+
+  const removeMedia = (indexToRemove: number) => {
+    setMediaFiles(prev => prev.filter((_, index) => index !== indexToRemove));
+    setPreviewUrls(prev => {
+      const urlToRemove = prev[indexToRemove];
+      URL.revokeObjectURL(urlToRemove);
+      return prev.filter((_, index) => index !== indexToRemove);
+    });
   };
 
   const handleProviderChange = (provider: string, isChecked: boolean) => {
     setSelectedProviders(prev => isChecked ? [...prev, provider] : prev.filter(p => p !== provider));
   };
 
-  const handleSubmit = async () => {
-    let mediaPath: string | null = null;
-    let mediaType: string | null = null;
 
-    if (mediaFile) {
-      const urlResult = await getPresignedUploadUrlAction(mediaFile.name);
-      if (!urlResult.success || !urlResult.data) {
-        toast.error(urlResult.message);
-        return;
+  const handleSubmit = () => {
+    // ✅ 2. Embolcalla TOTA la lògica asíncrona dins de 'startTransition'
+    startTransition(async () => {
+      let mediaPaths: string[] | null = null;
+      let mediaType: string | null = null;
+
+      if (mediaFiles.length > 0) {
+        try {
+          const fileNames = mediaFiles.map(f => f.name);
+          const urlResult = await getPresignedUploadUrlAction(fileNames);
+          if (!urlResult.success || !urlResult.data) throw new Error(urlResult.message);
+
+          await Promise.all(
+            urlResult.data.signedUrls.map((urlInfo, index) =>
+              fetch(urlInfo.signedUrl, { method: 'PUT', body: mediaFiles[index] })
+            )
+          );
+
+          mediaPaths = urlResult.data.signedUrls.map(info => info.path);
+          mediaType = mediaFiles[0].type.startsWith('image') ? 'image' : 'video';
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : "Error en pujar els fitxers.");
+          return; // Aturem l'execució si la pujada falla
+        }
       }
 
-      const uploadResponse = await fetch(urlResult.data.signedUrl, {
-        method: 'PUT',
-        body: mediaFile,
-        headers: { 'Content-Type': mediaFile.type },
-      });
-
-      if (!uploadResponse.ok) {
-        toast.error("Error en pujar el fitxer al servidor.");
-        return;
+      const createResult = await createSocialPostAction(content, selectedProviders, mediaPaths, mediaType);
+      if (createResult.success && createResult.data) {
+        toast.success(t('successDraftCreated'));
+        onCreate(createResult.data);
+      } else {
+        toast.error(createResult.message);
       }
-
-      mediaPath = urlResult.data.filePath;
-      mediaType = mediaFile.type.startsWith('image') ? 'image' : 'video';
-    }
-
-    const createResult = await createSocialPostAction(content, selectedProviders, mediaPath, mediaType);
-
-    if (createResult.success && createResult.data) {
-      onCreate(createResult.data);
-    } else {
-      toast.error(createResult.message);
-    }
+    });
   };
 
   const handleClose = (open: boolean) => {
     if (!open) {
-      setContent(''); setMediaFile(null); setSelectedProviders([]);
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
+      setContent('');
+      setMediaFiles([]);
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+      setPreviewUrls([]);
+      setSelectedProviders([]);
     }
     onOpenChange(open);
   };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -155,25 +179,27 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, isPending, st
             <h3 className="font-semibold mb-2 text-sm flex-shrink-0">{t('preview')}</h3>
             <div className="border rounded-md p-3 bg-card space-y-3 flex-grow overflow-y-auto">
               <p className="text-sm whitespace-pre-wrap">{content || t('textWillAppearHere')}</p>
-              {previewUrl && mediaFile?.type.startsWith('image') && (
-                <div className="relative w-full aspect-video">
-                  <Image
-                    src={previewUrl}
-                    alt={t('previewAlt')}
-                    className="rounded-md object-cover"
-                    fill
-                    unoptimized
-                  />
-                </div>)}
-              {previewUrl && mediaFile?.type.startsWith('video') && (
-                <video src={previewUrl} controls className="rounded-md w-full" />
+
+              {previewUrls.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
+                  {previewUrls.map((url, index) => (
+                    <div key={index} className="relative group aspect-square">
+                      <Image src={url} alt={`Preview ${index + 1}`} className="rounded-md object-cover" fill unoptimized />
+                      <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeMedia(index)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
         </div>
         <DialogFooter className="flex-shrink-0 mt-4">
           <Button variant="ghost" onClick={() => handleClose(false)}>{t('cancel')}</Button>
-          <Button onClick={() => startTransition(handleSubmit)} disabled={isPending || !content || selectedProviders.length === 0}>
+          {/* ✅ 3. Utilitza 'isPending' per a donar feedback a l'usuari */}
+          <Button onClick={handleSubmit} disabled={isPending || !content || selectedProviders.length === 0}>
+            {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {isPending ? t('saving') : t('saveDraft')}
           </Button>
         </DialogFooter>
