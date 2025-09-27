@@ -23,7 +23,7 @@ const ParticleBackground = dynamic(
  * Component de client que renderitza el formulari de registre.
  * Ara rep el token i l'email com a props.
  */
-export default function SignupForm({ inviteToken, message, invitedEmail }: { 
+export function SignupForm({ inviteToken, message, invitedEmail }: { 
     inviteToken?: string; 
     message?: string;
     invitedEmail?: string;

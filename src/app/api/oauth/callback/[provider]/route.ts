@@ -1,21 +1,24 @@
-// ✅ Aquesta ruta gestiona el callback OAuth i desa els tokens a Supabase.
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
-// ✅ AFEGEIX AQUESTA INTERFACE QUE FALTAVA
-// Això li diu a TypeScript com és un objecte de credencials.
+
+// Interfície per a les dades que desarem a la base de dades
 interface CredentialData {
+    user_id: string;
     provider: string;
     access_token: string;
     refresh_token?: string | null;
     expires_at: string | null;
     provider_user_id: string | null;
+    // Propietats opcionals per a les pàgines de Meta
+    provider_page_id?: string | null;
+    provider_page_name?: string | null;
 }
-// ✅ NOU: Funció auxiliar per a decodificar el payload d'un JWT.
-// No verifica la signatura, només llegeix la informació pública del "DNI digital".
-// Funció auxiliar per a decodificar el payload d'un JWT.
+
+// Funció auxiliar per a decodificar el payload d'un JWT (id_token)
 function decodeJwtPayload(token: string) {
     try {
         const payloadBase64 = token.split('.')[1];
@@ -27,44 +30,34 @@ function decodeJwtPayload(token: string) {
         return null;
     }
 }
-type RouteParams = Promise<{ provider: string }>;
 
 export async function GET(
-    request: Request,
-    { params }: { params: RouteParams }
+    request: NextRequest,
+    { params }: { params: Promise<{ provider: string }> }
 ) {
-
-
-    // ✅ PAS 1: Resolem la promesa dels paràmetres amb 'await'
     const { provider } = await params;
-
     const url = new URL(request.url);
     const code = url.searchParams.get("code");
     const state = url.searchParams.get("state");
 
-    // PAS 2: Resolem la promesa de les cookies amb 'await'
-    const cookieStore = await cookies();
-    const savedState = cookieStore.get("oauth_state")?.value;
-    cookieStore.delete("oauth_state");
+    const cookieStore = cookies();
+    const savedState = (await cookieStore).get("oauth_state")?.value;
+    (await cookieStore).delete("oauth_state");
 
     if (!code || !state || state !== savedState) {
         return NextResponse.redirect(new URL("/settings/integrations?error=auth_failed", request.url));
     }
 
-    // PAS 3: Creem el client passant les cookies ja resoltes
-    const supabase = createClient(cookies())
-        ;
-
+    const supabase = createClient(cookieStore);
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return NextResponse.redirect(new URL('/login', request.url));
-    }
+    if (!user) return NextResponse.redirect(new URL('/login', request.url));
 
     try {
         let tokenUrl = '';
         const body = new URLSearchParams();
         const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/${provider}`;
 
+        // La teva lògica 'switch' per a construir el body és correcta
         switch (provider) {
             case 'google':
                 tokenUrl = 'https://oauth2.googleapis.com/token';
@@ -93,7 +86,7 @@ export async function GET(
                 body.append('redirect_uri', redirectUri);
                 body.append('grant_type', 'authorization_code');
                 break;
-                   // ✅ NOU: AFEGIM EL CAS PER A FACEBOOK
+            // ✅ NOU: AFEGIM EL CAS PER A FACEBOOK
             case 'facebook':
                 tokenUrl = 'https://graph.facebook.com/v19.0/oauth/access_token';
                 body.append('client_id', process.env.FACEBOOK_CLIENT_ID!);
@@ -107,63 +100,74 @@ export async function GET(
         if (!tokenResponse.ok) throw new Error(`Error en obtenir el token de ${provider}: ${await tokenResponse.text()}`);
         const tokens = await tokenResponse.json();
 
-        // --- ✅ AQUESTA ÉS LA LÒGICA D'EQUIPS QUE FALTAVA ---
-
-        const supabaseAdmin = createAdminClient();
-
-        // 1. Determinem si la integració és per a l'equip o personal.
+        // --- ARQUITECTURA HÍBRIDA FINAL ---
         const isTeamIntegration = ['linkedin', 'facebook', 'instagram'].includes(provider);
-
-        // 2. Obtenim l'ID de l'equip actiu del token de l'usuari.
+        const isPersonalIntegration = ['google', 'microsoft'].includes(provider);
+        const supabaseAdmin = createAdminClient();
         const activeTeamId = user.app_metadata?.active_team_id;
 
-        // 3. Si és una integració d'equip, exigim que hi hagi un equip actiu.
-        if (isTeamIntegration && !activeTeamId) {
-            throw new Error("S'ha de seleccionar un equip actiu abans de connectar una integració d'equip.");
+        if (!activeTeamId) {
+            throw new Error("S'ha de seleccionar un equip actiu abans de connectar una integració.");
         }
 
-        // 4. Preparem les dades comunes per a desar.
-        const dataToUpsert: CredentialData = {
+        const baseDataToUpsert: CredentialData = {
+            user_id: user.id,
             provider: provider,
             access_token: tokens.access_token,
             refresh_token: tokens.refresh_token || null,
-            expires_at: tokens.expires_in ? new Date(Date.now() + (tokens.expires_in - 300) * 1000).toISOString() : null,
+            expires_at: tokens.expires_in ? new Date(Date.now() + (tokens.expires_in * 1000)).toISOString() : null,
             provider_user_id: tokens.id_token ? decodeJwtPayload(tokens.id_token)?.sub : null,
         };
 
-        // 5. Decidim a quina taula desar les credencials.
         if (isTeamIntegration) {
-            // Si és LinkedIn, desarem a 'team_credentials'.
-            await supabaseAdmin
-                .from('team_credentials')
-                .upsert({
-                    ...dataToUpsert,
-                    team_id: activeTeamId,
-                    user_id: user.id // Guardem qui va fer l'autorització
-                }, {
-                    onConflict: 'team_id, provider'
-                })
-                .throwOnError();
-            console.log(`Credencials d'EQUIP (${provider}) desades per a l'equip ${activeTeamId}`);
-        } else {
-            // Si és una integració personal (Google, etc.), desarem a 'user_credentials'.
-            await supabaseAdmin
-                .from('user_credentials')
-                .upsert({
-                    ...dataToUpsert,
-                    team_id: activeTeamId,
+            // ✅ LÒGICA MILLORADA PER A META (FACEBOOK + INSTAGRAM)
+            if (provider === 'facebook') {
+                // 1. Busquem la primera pàgina de Facebook que gestiona l'usuari
+                const pagesRes = await fetch(`https://graph.facebook.com/v19.0/me/accounts?access_token=${tokens.access_token}`);
+                const pagesData = await pagesRes.json();
+                const page = pagesData.data?.[0];
+                if (!page) throw new Error("No s'ha trobat cap pàgina de Facebook per a gestionar.");
 
-                    user_id: user.id
-                }, {
-                    onConflict: 'user_id, provider'
-                })
-                .throwOnError();
-            console.log(`Credencials PERSONALS (${provider}) desades per a l'usuari ${user.id}`);
+                // Preparem les dades específiques de la pàgina de Facebook
+                const facebookData = { ...baseDataToUpsert, provider_page_id: page.id, provider_page_name: page.name, access_token: page.access_token };
+                await supabaseAdmin.from('team_credentials').upsert({ ...facebookData, team_id: activeTeamId }, { onConflict: 'team_id, provider' });
+                console.log(`Credencial de FACEBOOK desada per a la pàgina ${page.name}`);
+
+                // 2. Busquem si aquesta pàgina té un compte d'Instagram de negoci associat
+                const igRes = await fetch(`https://graph.facebook.com/v19.0/${page.id}?fields=instagram_business_account{name}&access_token=${page.access_token}`);
+                const igData = await igRes.json();
+                const instagramAccount = igData.instagram_business_account;
+
+                // ✅ VERIFICACIÓ EXPLÍCITA
+                // Creem les dues credencials i les desem en paral·lel
+                const facebookCredential = { ...baseDataToUpsert, provider: 'facebook', team_id: activeTeamId, provider_page_id: page.id, provider_page_name: page.name, access_token: page.access_token };
+
+                const queries = [
+                    supabaseAdmin.from('team_credentials').upsert(facebookCredential, { onConflict: 'team_id, provider' })
+                ];
+
+                if (instagramAccount) {
+                    const instagramCredential = { ...baseDataToUpsert, provider: 'instagram', team_id: activeTeamId, provider_page_id: instagramAccount.id, provider_page_name: instagramAccount.name, access_token: page.access_token };
+                    queries.push(supabaseAdmin.from('team_credentials').upsert(instagramCredential, { onConflict: 'team_id, provider' }));
+                }
+                
+                const results = await Promise.all(queries);
+                // Comprovem si alguna de les operacions ha donat error
+                const dbError = results.find(res => res.error);
+                if (dbError) throw dbError.error;
+            
+            } else { // Per a LinkedIn
+                await supabaseAdmin.from('team_credentials').upsert({ ...baseDataToUpsert, team_id: activeTeamId }, { onConflict: 'team_id, provider' });
+            }
+        } else if (isPersonalIntegration) {
+            // Per a Google/Outlook, guardem a 'user_credentials' amb el team_id associat
+            await supabaseAdmin.from('user_credentials').upsert({ ...baseDataToUpsert, team_id: activeTeamId }, { onConflict: 'user_id, provider, team_id' });
+            console.log(`Credencials PERSONALS (${provider}) desades per a l'usuari ${user.id} a l'equip ${activeTeamId}`);
         }
 
     } catch (error) {
         console.error(`Error en el callback de ${provider}:`, error);
-        const errorMessage = error instanceof Error ? error.message : 'Error desconegut';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.redirect(new URL(`/settings/integrations?error=callback_failed&message=${encodeURIComponent(errorMessage)}`, request.url));
     }
 

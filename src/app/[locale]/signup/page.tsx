@@ -1,28 +1,24 @@
-// /app/[locale]/signup/page.tsx
-
-import SignupForm from './_components/SignupForm';
 import { Suspense } from 'react';
+import { SignupForm } from './_components/SignupForm';
 
-/**
- * Aquest és el Server Component per a la pàgina de registre.
- * Llegeix els paràmetres de la URL i els passa al formulari del client.
- */
-export default function SignupPage({
-  searchParams,
-}: {
-  searchParams: { 
-    invite_token?: string; 
-    message?: string;
-    email?: string;
-  };
-}) {
+interface SignupPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function SignupPage(props: SignupPageProps) {
+  // ✅ CORRECCIÓ: Fem 'await' per a obtenir els paràmetres de la URL
+  const searchParams = await props.searchParams;
+
+  const inviteToken = typeof searchParams.invite_token === 'string' ? searchParams.invite_token : undefined;
+  const message = typeof searchParams.message === 'string' ? searchParams.message : undefined;
+  const invitedEmail = typeof searchParams.email === 'string' ? searchParams.email : undefined;
+
   return (
-    // Suspense és una bona pràctica quan un component fill utilitza props que depenen de la URL.
     <Suspense>
-      <SignupForm 
-        inviteToken={searchParams.invite_token} 
-        message={searchParams.message} 
-        invitedEmail={searchParams.email}
+      <SignupForm
+        inviteToken={inviteToken}
+        message={message}
+        invitedEmail={invitedEmail}
       />
     </Suspense>
   );

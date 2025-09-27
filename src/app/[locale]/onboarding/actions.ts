@@ -1,9 +1,10 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
-import { revalidatePath } from 'next/cache';
+
+import { redirect } from "next/navigation";
 
 // Aquesta és la forma de les dades que el client enviarà
 type OnboardingFormData = {
@@ -61,7 +62,7 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
             longitude: formData.longitude,
         };
 
-        // --- 2. EXECUTEM LES OPERACIONS A LA BASE DE DADES ---
+       // --- 2. EXECUTEM LES OPERACIONS A LA BASE DE DADES ---
         
         // Actualitzem el perfil personal de l'usuari
         await supabase.from('profiles').update(profileUpdateData).eq('id', user.id).throwOnError();
@@ -71,27 +72,26 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
         
         // Afegim l'usuari com a propietari a la taula de membres
         await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: user.id, role: 'owner' }).throwOnError();
+        
+        // ✅ NOU PAS: Creem una subscripció 'free' per defecte per al nou equip
+        await supabaseAdmin.from('subscriptions').insert({ 
+            team_id: newTeam.id, 
+            plan_id: 'free', 
+            status: 'active' 
+        }).throwOnError();
 
-        // ✅ EL PAS MÉS IMPORTANT: Actualitzem el token de l'usuari (app_metadata) a l'instant.
-        // Això estableix el nou equip com a l'actiu.
+        // ✅ PAS CLAU: Actualitzem el token de l'usuari (app_metadata) a l'instant.
         await supabaseAdmin.auth.admin.updateUserById(
             user.id,
             {
-                 // ✅ AFEGIM EL TELÈFON AL CAMP DEDICAT
-                phone: formData.phone,
-                
-                // Actualitzem les metadades de l'aplicació (invisibles per l'usuari)
                 app_metadata: { 
                     ...user.app_metadata, 
-                    active_team_id: newTeam.id
-                },
-                // ✅ LÍNIA AFEGIDA: Actualitzem també les metadades de l'usuari (visibles per ell)
-                user_metadata: {
-                    ...user.user_metadata,
-                    full_name: formData.full_name // <-- Aquí passem el nom del formulari!
+                    active_team_id: newTeam.id,
+                    active_team_plan: 'free' // Establim el pla per defecte
                 }
             }
         );
+        await supabase.auth.refreshSession();
 
     } catch (error) {
         const message = error instanceof Error ? error.message : "Hi ha hagut un error desconegut.";
@@ -99,7 +99,7 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
         return { success: false, message };
     }
     
-    // Ja no fem 'redirect' des d'aquí. Deixem que el client controli la navegació.
-    revalidatePath('/', 'layout');
-    return { success: true };
+    // ✅ PAS FINAL: Ara que l'acció ha acabat, redirigim l'usuari al dashboard.
+    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+    redirect(`/${locale}/dashboard`);
 }
