@@ -11,16 +11,26 @@ export async function loginAction(formData: FormData) {
     const password = formData.get('password') as string;
     const supabase = createClient(cookies());
     const locale = (await headers()).get('x-next-intl-locale') || 'ca';
-    
+
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
         return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
     }
-
-    // El callback s'encarregarà de la resta
+    // Això proporciona la millor experiència d'usuari i evita conflictes amb el middleware.
     return redirect(`/${locale}/dashboard`);
-}
 
+}
+export async function logoutAction() {
+    const supabase = createClient(cookies());
+    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+
+    // signOut() s'executa al servidor, esborrant les cookies de manera segura
+    await supabase.auth.signOut();
+
+    // Redirigim a la pàgina de login
+    // ✅ CORRECCIÓ DEFINITIVA: Redirigim directament al dashboard.
+    redirect(`/${locale}/`);
+}
 export async function signupAction(formData: FormData) {
     const origin = (await headers()).get('origin');
     const email = formData.get('email') as string;

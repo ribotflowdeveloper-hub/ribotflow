@@ -4,7 +4,6 @@ import React, { useState, useEffect, ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
 import { useTranslations } from 'next-intl';
 import { useUser } from '@/hooks/useUser';
 import { MainSidebar } from './main-sidebar';
@@ -16,13 +15,13 @@ import type { NavItem } from '@/types/navigation';
 import { useNavigationStore } from '@/stores/navigationStore';
 import logoRibot from '@/../public/icon1.png';
 import Image from 'next/image';
+import { logoutAction } from '@/app/[locale]/auth/actions'; // ✅ 1. Importem la nova acció
 
 export function AppClientLayout({ children, locale }: { children: ReactNode, locale: string }) {
     const pathname = usePathname();
     const router = useRouter();
     const t = useTranslations('Navigation');
     const { setIsNavigating } = useNavigationStore();
-    const supabase = createClient();
     const { user, teamRole } = useUser();
 
     const [activeModule, setActiveModule] = useState<NavItem | null>(null);
@@ -39,7 +38,7 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
             setIsModuleSidebarOpen(false);
         }
     }, [pathname, locale, setIsNavigating]);
-    
+
     const handleNavigation = (item: NavItem) => {
         const plan = user?.app_metadata?.active_team_plan;
         if (item.requiredPlan && !item.requiredPlan.includes(plan)) {
@@ -58,12 +57,12 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
             return;
         }
 
-          // Només naveguem si la ruta és diferent
-          if (pathname !== `/${locale}${item.path}`) {
+        // Només naveguem si la ruta és diferent
+        if (pathname !== `/${locale}${item.path}`) {
             setIsNavigating(true);
             router.push(`/${locale}${item.path}`);
         }
-        
+
         // Tanquem el submenú si naveguem a un lloc nou
         setIsModuleSidebarOpen(false);
     };
@@ -96,9 +95,9 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
         }
     };
 
-    const handleSignOut = async () => {
-        await supabase.auth.signOut();
-        window.location.href = `/${locale}/login`;
+    // ✅ 2. La funció 'handleSignOut' ara simplement crida a l'acció
+    const handleSignOut = () => {
+        logoutAction();
     };
 
     const handleNotImplementedClick = (e: React.MouseEvent) => {
@@ -108,10 +107,10 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
 
     return (
         <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
-            <MainSidebar 
+            <MainSidebar
                 onModuleSelect={handleMainMenuClick} // ✅ Utilitzem la nova funció
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
-                onNotImplemented={handleNotImplementedClick} 
+                onNotImplemented={handleNotImplementedClick}
             />
             <motion.div
                 className="hidden lg:block overflow-hidden flex-shrink-0"
@@ -124,15 +123,15 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                         module={activeModule}
                         onClose={() => setIsModuleSidebarOpen(false)}
                         // ✅ CORRECCIÓ: Passem la funció de navegació completa
-                        handleNavigation={handleNavigation} 
+                        handleNavigation={handleNavigation}
                     />
                 )}
             </motion.div>
 
             <div className="flex-1 flex flex-col overflow-hidden">
                 <header className="lg:hidden flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-                    <MobileMenu 
-                        onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)} 
+                    <MobileMenu
+                        onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                         onNotImplementedClick={handleNotImplementedClick}
                         handleNavigation={handleNavigation}
                     />
@@ -143,7 +142,7 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                     <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>
                 </main>
             </div>
-            
+
             <AlertDialog open={isSignOutDialogOpen} onOpenChange={setIsSignOutDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

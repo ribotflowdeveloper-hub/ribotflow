@@ -1,4 +1,4 @@
-import { createServerClient } from '@supabase/ssr';
+import { createServerClient} from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { locales, defaultLocale } from './i18n';
@@ -10,15 +10,17 @@ export async function middleware(request: NextRequest) {
     const pathname = request.nextUrl.pathname.replace(new RegExp(`^/(${locales.join('|')})`), '') || '/';
     const localePrefix = request.nextUrl.pathname.split('/')[1] || defaultLocale;
     
+    // ✅ AQUEST BLOC HA ESTAT ACTUALITZAT
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                // 👇 AQUEST ÉS EL BLOC ACTUALITZAT
+                // La nova funció 'getAll' retorna totes les cookies
                 getAll() {
                     return request.cookies.getAll();
                 },
+                // La nova funció 'setAll' rep un array de cookies per a desar
                 setAll(cookiesToSet) {
                     cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
                 },

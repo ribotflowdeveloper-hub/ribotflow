@@ -5,10 +5,10 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { ticketSchema, type Ticket } from "@/types/comunicacio/inbox";
-import type { TicketFilter } from "@/types/comunicacio/inbox";
+import { transformRpcToTicket, type Ticket } from "@/types/comunicacio/inbox";
+import type { TicketFilter, TicketFromRpc } from "@/types/comunicacio/inbox";
 import { cookies } from "next/headers";
-import z from "zod";
+
 
 interface ActionResult {
   success: boolean;
@@ -93,7 +93,7 @@ export async function saveSenderAsContactAction(ticket: Ticket): Promise<ActionR
       await supabase
           .from("tickets")
           .update({ contact_id: newContact.id })
-          .eq("team_id", activeTeamId)
+          .eq("user_id", user.id) // ✅ CANVI CLAU
           .eq("sender_email", ticket.sender_email);
 
       revalidatePath("/comunicacio/inbox");
@@ -166,50 +166,6 @@ export async function sendEmailAction({
   }
 }
 
-/**
- * Carga tiques de forma paginada para el equipo activo, validando los datos con Zod.
- */
-
-export async function loadMoreTicketsAction(page: number, filter: TicketFilter): Promise<Ticket[]> {
-  const supabase = createClient(cookies());
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const activeTeamId = user.app_metadata?.active_team_id;
-  if (!activeTeamId) return [];
-
-  const { data: permissions } = await supabase.from('inbox_permissions').select('target_user_id').eq('team_id', activeTeamId).eq('grantee_user_id', user.id);
-  const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id) || [])];
-  
-  const ITEMS_PER_PAGE = 50;
-  const from = (page - 1) * ITEMS_PER_PAGE;
-  const to = from + ITEMS_PER_PAGE - 1;
-
-  let query = supabase
-      .from("tickets")
-      .select(`*, contacts(*)`)
-      .eq('team_id', activeTeamId)
-      .in('user_id', visibleUserIds)
-      .order("sent_at", { ascending: false })
-      .range(from, to);
-
-  if (filter === "rebuts" || filter === "noLlegits") query = query.or("type.eq.rebut,type.is.null");
-  else if (filter === "enviats") query = query.eq("type", "enviat");
-
-  const { data, error } = await query;
-  if (error) {
-      console.error("Error loading more tickets:", error);
-      return [];
-  }
-  
-  const validation = z.array(ticketSchema).safeParse(data);
-  if (!validation.success) {
-      console.error("Error de validació (Zod) a loadMoreTicketsAction:", validation.error);
-      return [];
-  }
-  
-  return validation.data;
-}
 
 /**
  * loadAllTicketsAction - retorna TOTS els tiquets (sense límit) segons el filtre.
@@ -240,4 +196,79 @@ export async function loadAllTicketsAction(filter: TicketFilter): Promise<Ticket
   }
 
   return (data as unknown) as Ticket[];
+}
+
+export async function assignTicketAction(ticketId: number, dealId: string): Promise<ActionResult> {
+  const supabase = createClient(cookies());
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: "No autenticat." };
+
+  const activeTeamId = user.app_metadata?.active_team_id;
+  if (!activeTeamId) return { success: false, message: "No hi ha equip actiu." };
+
+  const { error } = await supabase.from('ticket_assignments').insert({
+      ticket_id: ticketId,
+      team_id: activeTeamId,
+      deal_id: dealId
+  });
+
+  if (error) {
+      console.error("Error en assignar el tiquet:", error);
+      return { success: false, message: "No s'ha pogut assignar el tiquet." };
+  }
+  
+  revalidatePath("/comunicacio/inbox");
+  return { success: true, message: "Tiquet assignat." };
+}
+
+/**
+ * Carga tiquets de forma paginada utilitzant la funció RPC i la nova arquitectura.
+ */
+export async function loadMoreTicketsAction(page: number, filter: TicketFilter): Promise<Ticket[]> {
+  const supabase = createClient(cookies());
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const activeTeamId = user.app_metadata?.active_team_id;
+  if (!activeTeamId) return [];
+
+  // La lògica per obtenir els usuaris visibles és la mateixa que a InboxData
+  const { data: permissions } = await supabase
+      .from('inbox_permissions')
+      .select('target_user_id')
+      .eq('team_id', activeTeamId)
+      .eq('grantee_user_id', user.id);
+      
+  const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id).filter(Boolean) || [])];
+  
+  const ITEMS_PER_PAGE = 50;
+  const offset = (page - 1) * ITEMS_PER_PAGE;
+
+  // ✅ CRIDEM A LA MATEIXA FUNCIÓ RPC QUE LA CÀRREGA INICIAL
+  const { data: ticketsData, error } = await supabase.rpc('get_inbox_tickets', {
+      p_user_id: user.id,
+      p_team_id: activeTeamId,
+      p_visible_user_ids: visibleUserIds,
+      p_limit: ITEMS_PER_PAGE,
+      p_offset: offset,
+      p_search_term: '' // Deixem la cerca buida per a "carregar més"
+  });
+
+  if (error) {
+      console.error("Error loading more tickets via RPC:", error);
+      return [];
+  }
+  
+  // Transformem les dades rebudes per a encaixar amb el tipus 'Ticket'
+  const tickets: Ticket[] = (ticketsData as TicketFromRpc[] || []).map(transformRpcToTicket);
+
+  // El filtratge de 'rebuts'/'enviats' ara el fem al client, ja que la RPC retorna tot
+  if (filter === 'rebuts' || filter === 'noLlegits') {
+      return tickets.filter(t => t.type === 'rebut' || !t.type);
+  }
+  if (filter === 'enviats') {
+      return tickets.filter(t => t.type === 'enviat');
+  }
+  
+  return tickets;
 }

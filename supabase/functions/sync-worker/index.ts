@@ -351,100 +351,87 @@ function getMailProvider(provider: string): MailProvider {
 /**
  * Versió final del worker que gestiona correctament la sincronització multi-equip.
  */
+// supabase/functions/sync-worker/index.t
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  try {
-      const body = await req.json();
-      const { userId, provider } = body;
+    try {
+        const body = await req.json();
+        const { userId, provider } = body;
 
-      if (!userId || !provider) throw new Error("Falten paràmetres 'userId' o 'provider'.");
+        if (!userId || !provider) throw new Error("Falten paràmetres 'userId' o 'provider'.");
 
-      // Obtenim TOTES les credencials d'aquest usuari per a aquest proveïdor.
-      // Un usuari pot haver connectat el seu Gmail a múltiples equips.
-      const { data: credentials, error: credsError } = await supabaseAdmin
-          .from("user_credentials")
-          .select("refresh_token, team_id")
-          .eq("user_id", userId)
-          .eq("provider", provider);
+        const { data: credential, error: credsError } = await supabaseAdmin
+            .from("user_credentials")
+            .select("refresh_token")
+            .eq("user_id", userId)
+            .eq("provider", provider)
+            .maybeSingle();
 
-      if (credsError) throw credsError;
-      if (!credentials || credentials.length === 0) {
-          return new Response(JSON.stringify({ message: `No s'han trobat credencials per a ${userId} i ${provider}.` }), { status: 200, headers: corsHeaders });
-      }
+        if (credsError) throw credsError;
+        if (!credential || !credential.refresh_token) {
+            return new Response(JSON.stringify({ message: `No s'han trobat credencials per a ${userId} i ${provider}.` }), { status: 200, headers: corsHeaders });
+        }
 
-      // Iterem per cada connexió (cada equip on l'usuari ha connectat la seva bústia)
-      for (const cred of credentials) {
-          if (!cred.team_id || !cred.refresh_token) {
-              console.warn(`Saltant credencial invàlida per a l'usuari ${userId}`);
-              continue;
-          }
+        console.log(`[WORKER] Iniciant sincronització per a usuari: ${userId}`);
 
-          const { refresh_token, team_id } = cred;
-          console.log(`[WORKER] Iniciant sincronització per a usuari: ${userId}, equip: ${team_id}`);
+        const mailProvider = getMailProvider(provider);
+        const { refresh_token } = credential;
+        
+        const { data: lastTicket } = await supabaseAdmin
+            .from("tickets")
+            .select("sent_at")
+            .eq("user_id", userId)
+            .eq("provider", provider)
+            .order("sent_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+            
+        const lastSyncDate = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
+        
+        const accessToken = await mailProvider.refreshAccessToken(refresh_token);
+        const newEmails = await mailProvider.getNewMessages(accessToken, lastSyncDate);
 
-          const mailProvider = getMailProvider(provider);
+        if (newEmails.length === 0) {
+            console.log(`[SYNC ${provider.toUpperCase()}] No hi ha missatges nous per a l'usuari ${userId}`);
+            return new Response(JSON.stringify({ message: "Sincronització completada, sense missatges nous." }), { status: 200, headers: corsHeaders });
+        }
+        
+        console.log(`[SYNC ${provider.toUpperCase()}] S'han trobat ${newEmails.length} missatges nous per a ${userId}. Processant...`);
 
-          // Busquem l'últim tiquet per a AQUESTA BÚSTIA i AQUEST EQUIP
-          const { data: lastTicket } = await supabaseAdmin
-              .from("tickets")
-              .select("sent_at")
-              .eq("team_id", team_id)
-              .eq("user_id", userId)
-              .eq("provider", provider)
-              .order("sent_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-          const lastSyncDate = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
+        const ticketsToInsert = newEmails.map(email => ({
+            user_id: userId,
+            provider: provider,
+            provider_message_id: email.provider_message_id,
+            subject: email.subject,
+            body: email.body,
+            preview: email.preview,
+            status: email.status,
+            type: email.type,
+            sent_at: email.sent_at,
+            sender_name: email.sender_name,
+            sender_email: email.sender_email,
+        }));
+        
+        // ✅ CANVI CLAU: Utilitzem .upsert() en lloc de .insert()
+        // Això insereix les files noves i ignora les que ja existeixen (duplicats).
+        const { error: upsertError } = await supabaseAdmin
+            .from("tickets")
+            .upsert(ticketsToInsert, {
+                onConflict: 'user_id,provider_message_id', // Li diem quina és la restricció UNIQUE a comprovar
+                ignoreDuplicates: true, // Li diem que ignori els duplicats en lloc de donar error
+            });
 
-          const accessToken = await mailProvider.refreshAccessToken(refresh_token);
-          const newEmails = await mailProvider.getNewMessages(accessToken, lastSyncDate);
+        if (upsertError) {
+            // Aquest error només saltarà si és un problema diferent a un duplicat.
+            throw upsertError;
+        }
+        
+        console.log(`[Worker] S'han processat ${newEmails.length} tiquets per a ${userId}. Els nous s'han inserit.`);
+        return new Response(JSON.stringify({ message: "Sincronització completada." }), { status: 200, headers: corsHeaders });
 
-          if (newEmails.length === 0) {
-              console.log(`[SYNC ${provider.toUpperCase()}] No hi ha missatges nous per a l'equip ${team_id}`);
-              continue; // Passem a la següent credencial
-          }
-
-          for (const email of newEmails) {
-              try {
-                  // ✅ COMPROVACIÓ DE DUPLICATS CORRECTA
-                  // Ara mirem si el missatge ja existeix dins d'aquest equip específic.
-                  const { data: exists } = await supabaseAdmin
-                      .from("tickets")
-                      .select("id")
-                      .eq("team_id", team_id)
-                      .eq("provider_message_id", email.provider_message_id)
-                      .maybeSingle();
-
-                  if (exists) continue;
-
-                  const { data: contact } = await supabaseAdmin.from('contacts').select('id').eq('team_id', team_id).eq('email', email.sender_email).maybeSingle();
-                  
-                  await supabaseAdmin.from("tickets").insert({
-                      user_id: userId,
-                      team_id: team_id,
-                      contact_id: contact?.id,
-                      provider: provider,
-                      provider_message_id: email.provider_message_id,
-                      subject: email.subject,
-                      body: email.body,
-                      preview: email.preview,
-                      status: email.status,
-                      type: email.type,
-                      sent_at: email.sent_at,
-                      sender_name: email.sender_name,
-                      sender_email: email.sender_email,
-                  }).throwOnError();
-              } catch (err) {
-                  console.error(`[Worker] Error processant el missatge ${email.provider_message_id}:`, err.message);
-              }
-          }
-      }
-      
-      return new Response(JSON.stringify({ message: "Sincronització completada." }), { status: 200, headers: corsHeaders });
-
-  } catch (err) {
-      console.error(`[Worker Error General]:`, err.message);
-      return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
-  }
+    } catch (err) {
+        console.error(`[Worker Error General]:`, err.message);
+        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    }
 });

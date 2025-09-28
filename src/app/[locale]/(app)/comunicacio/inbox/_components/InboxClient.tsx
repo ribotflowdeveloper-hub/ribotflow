@@ -28,6 +28,15 @@ import { ContactPanel } from './ContactPanel';
 import { ComposeDialog, type InitialData as ComposeInitialData } from './ComposeDialog';
 import { MobileDetailView } from './MobileDetailView';
 
+// ✅ PAS 1: Definim el tipus per als membres de l'equip que rebrem.
+type TeamMember = {
+  profiles: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
+};
+
 export function InboxClient({
   initialTickets,
   initialTemplates,
@@ -35,6 +44,9 @@ export function InboxClient({
   initialSentCount,
   initialSelectedTicket,
   initialSelectedTicketBody,
+  teamMembers, // ✅ PAS 2: Acceptem la nova prop amb la llista de membres.
+
+
 }: {
   initialTickets: Ticket[];
   initialTemplates: Template[];
@@ -42,6 +54,8 @@ export function InboxClient({
   initialSentCount: number;
   initialSelectedTicket: Ticket | null;
   initialSelectedTicketBody: string | null;
+  teamMembers: TeamMember[]; // ✅ Prop tipada.
+
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,6 +90,31 @@ export function InboxClient({
     if (activeFilter === 'noLlegits') return tickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'Obert');
     return tickets;
   }, [tickets, activeFilter]);
+
+
+
+
+  const userColorMap = useMemo(() => {
+    const map = new Map<string, string>();
+    const colors = ['border-blue-500', 'border-green-500', 'border-yellow-500', 'border-purple-500', 'border-pink-500', 'border-indigo-500'];
+    teamMembers.forEach((member, index) => {
+      if (member.profiles?.id) {
+        map.set(member.profiles.id, colors[index % colors.length]);
+      }
+    });
+    return map;
+  }, [teamMembers]);
+  // Enrichim els tiquets amb la informació del seu propietari.
+  const enrichedTickets = useMemo(() => {
+    return filteredTickets.map(ticket => {
+      const owner = teamMembers.find(m => m.profiles?.id === ticket.user_id)?.profiles;
+      return {
+        ...ticket,
+        owner,
+        ownerColorClass: owner ? userColorMap.get(owner.id) : 'border-transparent',
+      };
+    });
+  }, [filteredTickets, teamMembers, userColorMap]);
 
   const handleSelectTicket = async (ticket: Ticket) => {
     if (selectedTicket?.id === ticket.id) return;
@@ -114,8 +153,8 @@ export function InboxClient({
         toast.success(t('toast.success'), { description: result.message });
         setTickets(prev => prev.filter(t => t.id !== ticketToDelete.id));
         if (selectedTicket?.id === ticketToDelete.id) {
-            setSelectedTicket(null);
-            setSelectedTicketBody(null);
+          setSelectedTicket(null);
+          setSelectedTicketBody(null);
         }
         setTicketToDelete(null);
       } else {
@@ -150,7 +189,7 @@ export function InboxClient({
   }, [router, t]);
 
   const handleComposeNew = useCallback(() => setComposeState({ open: true, initialData: null }), []);
-  
+
   const handleReply = useCallback((ticket: Ticket) => {
     const date = new Date(ticket.sent_at).toLocaleString("ca-ES");
     const name = ticket.contacts?.nom || ticket.sender_name || "";
@@ -188,17 +227,29 @@ export function InboxClient({
         className="h-[calc(100vh-var(--header-height,64px))] w-full grid transition-all duration-300 ease-in-out"
         style={{ gridTemplateColumns: isDesktop ? `384px 1fr ${isContactPanelOpen ? '320px' : '0px'}` : '1fr' }}
       >
-        {(!isDesktop && selectedTicket) ? null : (
-          <div className="min-h-0">
-            <TicketList
-              tickets={filteredTickets} selectedTicketId={selectedTicket?.id ?? null} activeFilter={activeFilter}
-              unreadCount={counts.unread} sentCount={counts.sent} totalCount={counts.received}
-              onSetFilter={setActiveFilter} onDeleteTicket={setTicketToDelete} onSelectTicket={handleSelectTicket}
-              onComposeNew={handleComposeNew} onRefresh={handleRefresh} hasMore={hasMore}
-              onLoadMore={handleLoadMore} isPendingRefresh={isPending} searchTerm={searchTerm} onSearchChange={setSearchTerm}
-            />
-          </div>
-        )}
+         {(!isDesktop && selectedTicket) ? null : (
+                    <div className="min-h-0">
+                        {/* ✅ PAS 4: Passem els tiquets enriquits al component TicketList */}
+                        <TicketList
+                            tickets={enrichedTickets} // Hem canviat 'filteredTickets' per 'enrichedTickets'
+                            selectedTicketId={selectedTicket?.id ?? null}
+                            activeFilter={activeFilter}
+                            unreadCount={counts.unread}
+                            sentCount={counts.sent}
+                            totalCount={counts.received}
+                            onSetFilter={setActiveFilter}
+                            onDeleteTicket={setTicketToDelete}
+                            onSelectTicket={handleSelectTicket}
+                            onComposeNew={handleComposeNew}
+                            onRefresh={handleRefresh}
+                            hasMore={hasMore}
+                            onLoadMore={handleLoadMore}
+                            isPendingRefresh={isPending}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                        />
+                    </div>
+                )}
 
         {isDesktop && (
           <div className="min-h-0">

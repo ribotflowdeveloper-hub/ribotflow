@@ -25,6 +25,12 @@ export default async function TeamSettingsPage() {
     if (!user) redirect('/login');
 
     const activeTeamId = user.app_metadata?.active_team_id;
+    // ✅ NOVA CONSULTA: Busca invitacions dirigides a l'usuari actual
+    const { data: personalInvitations } = await supabase
+        .from('invitations')
+        .select('id, team_name, inviter_name')
+        .eq('user_id', user.id)
+        .eq('status', 'pending'); // Assegura't que tens una columna 'status'
 
     // CASO 1: El usuario no tiene equipo activo (Vista de Lobby)
     if (!activeTeamId) {
@@ -32,13 +38,14 @@ export default async function TeamSettingsPage() {
             .from('team_members')
             .select('role, teams!inner(id, name)')
             .eq('user_id', user.id);
-        
+
         const userTeams: UserTeam[] = (userTeamsData || []).map(m => ({
             role: m.role,
             teams: Array.isArray(m.teams) ? m.teams[0] : m.teams,
         }));
-        
-        return <TeamClient user={user} userTeams={userTeams} activeTeamData={null} />;
+
+        return <TeamClient user={user} userTeams={userTeams} activeTeamData={null} personalInvitations={personalInvitations || []} // ✅ Passa la nova prop />;
+        />;
     }
 
     // CASO 2: El usuario tiene un equipo activo. Validamos que sigue siendo miembro.
@@ -53,7 +60,8 @@ export default async function TeamSettingsPage() {
     if (!member) {
         // El estado es inválido. En lugar de redirigir, renderizamos el cliente con un aviso.
         console.warn(`[SERVER] Estado inválido detectado para ${user.id}. Notificando al cliente para que lo corrija.`);
-        return <TeamClient user={user} userTeams={[]} activeTeamData={null} invalidTeamState={true} />;
+        return <TeamClient user={user} userTeams={[]} activeTeamData={null} invalidTeamState={true} personalInvitations={personalInvitations || []} // ✅ Passa la nova prop
+        />;
     }
 
     // Si el estado es válido, cargamos todos los datos del equipo.
@@ -71,19 +79,19 @@ export default async function TeamSettingsPage() {
             .select('id, full_name, email, avatar_url')
             .in('id', memberUserIds);
         if (profilesError) throw profilesError;
-        
+
         finalTeamMembers = members.map(m => ({
             role: m.role,
             profiles: profiles?.find(p => p.id === m.user_id) || null,
         }));
     }
-    
+
     const [teamRes, invitesRes, permissionsRes] = await Promise.all([
         supabase.from('teams').select('id, name').eq('id', activeTeamId).single(),
         supabase.from('invitations').select('id, email, role').eq('team_id', activeTeamId),
         supabase.from('inbox_permissions').select('grantee_user_id, target_user_id').eq('team_id', activeTeamId)
     ]);
-    
+
     const activeTeamData: ActiveTeamData = {
         team: teamRes.data as Team,
         teamMembers: finalTeamMembers,
@@ -92,5 +100,11 @@ export default async function TeamSettingsPage() {
         inboxPermissions: (permissionsRes.data as Permission[]) || []
     };
 
-    return <TeamClient user={user} userTeams={[]} activeTeamData={activeTeamData} />;
+
+    return <TeamClient
+        user={user}
+        userTeams={[]}
+        activeTeamData={activeTeamData}
+        personalInvitations={personalInvitations || []} // ✅ Passa la nova prop
+    />;
 }

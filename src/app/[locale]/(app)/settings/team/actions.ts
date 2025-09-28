@@ -55,10 +55,10 @@ export async function createTeamAction(formData: FormData) {
 }
 
 /**
- * Convida un nou usuari a l'equip actual.
- */
-/**
- * Convida un nou usuari a l'equip ACTIU.
+ * Convida un usuari a l'equip ACTIU.
+ * Implementa una lògica híbrida:
+ * - Si l'usuari ja existeix, crea una invitació interna i envia un email de cortesia.
+ * - Si l'usuari no existeix, crea una invitació amb token i envia un email de registre.
  */
 export async function inviteUserAction(formData: FormData) {
     const email = formData.get('email') as string;
@@ -71,91 +71,127 @@ export async function inviteUserAction(formData: FormData) {
     }
 
     const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const supabaseAdmin = createAdminClient(); // Necessitem l'admin per buscar usuaris
+    const { data: { user: inviter } } = await supabase.auth.getUser();
+
+    if (!inviter) {
         console.error("[ACTION ERROR] Usuari no autenticat.");
         return { success: false, message: "No autenticat." };
     }
-    console.log(`[ACTION] Usuari autenticat: ${user.id}`);
+    console.log(`[ACTION] Usuari autenticat (qui convida): ${inviter.id}`);
 
-    const activeTeamId = user.app_metadata?.active_team_id;
+    const activeTeamId = inviter.app_metadata?.active_team_id;
     if (!activeTeamId) {
-        console.error("[ACTION ERROR] L'usuari no té un equip actiu seleccionat al seu token.");
+        console.error("[ACTION ERROR] L'usuari que convida no té un equip actiu seleccionat al seu token.");
         return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
     }
     console.log(`[ACTION] Equip actiu obtingut del token: ${activeTeamId}`);
 
     try {
-        console.log(`[ACTION] Obtenint dades de l'equip ${activeTeamId}...`);
-        const { data: teamData, error: teamError } = await supabase
-            .from('teams')
-            .select('name')
-            .eq('id', activeTeamId)
-            .single();
+        // --- Inici de la Lògica Híbrida ---
 
-        if (teamError) {
-            console.error("[ACTION DB ERROR] Error en obtenir el nom de l'equip:", teamError);
-            throw teamError;
+        console.log(`[ACTION] Comprovant si l'usuari amb email ${email} ja existeix...`);
+        // NOTA: listUsers és una opció, però pot ser lent. Si tens molts usuaris, considera altres estratègies.
+        // Per ara, és una solució funcional.
+        const { data: allUsers, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+        const existingUserData = allUsers?.users.filter(user => user.email === email);
+        if (userError) {
+             console.error("[ACTION ADMIN ERROR] Error en buscar l'usuari:", userError);
+             throw userError;
         }
-        if (!teamData) {
-            throw new Error("L'equip actiu no s'ha trobat a la base de dades.");
-        }
+        
+        const invitedUser = existingUserData?.[0] || null;
+
+        // --- Preparació de dades comunes (per a ambdós casos) ---
+
+        console.log(`[ACTION] Obtenint dades de l'equip ${activeTeamId}...`);
+        const { data: teamData } = await supabase.from('teams').select('name').eq('id', activeTeamId).single();
+        if (!teamData) throw new Error("L'equip actiu no s'ha trobat a la base de dades.");
         const teamName = teamData.name;
         console.log(`[ACTION] Nom de l'equip obtingut: ${teamName}`);
 
-        console.log(`[ACTION] Obtenint el perfil de qui convida: ${user.id}...`);
-        const { data: inviterProfile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
-        const inviterName = inviterProfile?.full_name || user.email;
+        console.log(`[ACTION] Obtenint el perfil de qui convida: ${inviter.id}...`);
+        const { data: inviterProfile } = await supabase.from('profiles').select('full_name').eq('id', inviter.id).single();
+        const inviterName = inviterProfile?.full_name || inviter.email;
         console.log(`[ACTION] Nom de qui convida: ${inviterName}`);
-
-        console.log("[ACTION] Inserint la invitació a la base de dades...");
-        const { data: invitation, error: inviteError } = await supabase
-            .from('invitations')
-            .insert({ team_id: activeTeamId, email, role, inviter_name: inviterName, team_name: teamName })
-            .select('token')
-            .single();
-
-        if (inviteError) {
-            console.error("[ACTION DB ERROR] Error en inserir la invitació:", inviteError);
-            throw inviteError;
-        }
-        console.log("[ACTION] Invitació inserida correctament.");
         
-        // La teva lògica de Resend per enviar l'email...
-        console.log("[ACTION] Enviant email a través de Resend...");
-
         const resend = new Resend(process.env.RESEND_API_KEY);
 
-        await resend.emails.send({
-            from: `Invitació de "${teamName}" <invitacions@ribotflow.com>`, // Canvia el teu domini
-            to: email,
-            subject: `Has estat convidat a unir-te a l'equip ${teamName}`,
-            html: `
-            <!DOCTYPE html>
-            <html>
-            <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
-                <table align="center" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-                    <tr>
-                        <td style="padding: 40px 30px;">
-                            <h1 style="font-size: 24px;">Has estat convidat!</h1>
-                            <p style="font-size: 16px; line-height: 1.6;">Hola,</p>
-                            <p style="font-size: 16px; line-height: 1.6;">
-                                <strong>${inviterName}</strong> t'ha convidat a unir-te al seu equip <strong>${teamName}</strong>.
-                            </p>
-                            <div style="text-align: center; margin: 25px 0;">
-                                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/accept-invite?token=${invitation.token}" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                                    Uneix-te a l'equip
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </body>
-            </html>`
-        });
+        // --- Cas A: L'usuari SÍ existeix ---
+        if (invitedUser) {
+            console.log(`[ACTION] L'usuari ${email} ja existeix (ID: ${invitedUser.id}). Creant invitació interna.`);
+            
+            await supabase.from('invitations').insert({
+                team_id: activeTeamId,
+                email: email,
+                role: role,
+                inviter_name: inviterName,
+                team_name: teamName,
+                user_id: invitedUser.id // ✅ El pas clau: vinculem la invitació a l'ID de l'usuari existent
+            }).throwOnError();
 
-        console.log("[ACTION] Email enviat (simulació/execució).");
+            console.log("[ACTION] Enviant email de cortesia (notificació) a l'usuari existent...");
+            await resend.emails.send({
+                from: `Notificació de "${teamName}" <notificacions@ribotflow.com>`,
+                to: email,
+                subject: `Has estat convidat a unir-te a l'equip ${teamName}`,
+                html: `<p>Hola de nou,</p><p><strong>${inviterName}</strong> t'ha convidat a unir-te al seu equip <strong>${teamName}</strong>.</p><p>Com que ja tens un compte, pots acceptar o rebutjar la invitació directament des del teu panell d'equips dins de la plataforma.</p><div style="text-align: center; margin: 25px 0;"><a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings/team" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Anar al meu panell</a></div>`
+            });
+
+        // --- Cas B: L'usuari NO existeix ---
+        } else {
+            console.log(`[ACTION] L'usuari ${email} és nou. Creant invitació amb token.`);
+            
+            const { data: invitation, error: inviteError } = await supabase
+                .from('invitations')
+                .insert({
+                    team_id: activeTeamId,
+                    email,
+                    role,
+                    inviter_name: inviterName,
+                    team_name: teamName
+                })
+                .select('token')
+                .single();
+
+            if (inviteError) {
+                console.error("[ACTION DB ERROR] Error en inserir la invitació:", inviteError);
+                throw inviteError;
+            }
+            console.log("[ACTION] Invitació inserida correctament.");
+            
+            console.log("[ACTION] Enviant email d'invitació i registre a l'usuari nou...");
+            await resend.emails.send({
+                from: `Invitació de "${teamName}" <invitacions@ribotflow.com>`,
+                to: email,
+                subject: `Has estat convidat a unir-te a l'equip ${teamName}`,
+                // He copiat el teu HTML exacte
+                html: `
+                <!DOCTYPE html>
+                <html>
+                <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+                    <table align="center" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                        <tr>
+                            <td style="padding: 40px 30px;">
+                                <h1 style="font-size: 24px;">Has estat convidat!</h1>
+                                <p style="font-size: 16px; line-height: 1.6;">Hola,</p>
+                                <p style="font-size: 16px; line-height: 1.6;">
+                                    <strong>${inviterName}</strong> t'ha convidat a unir-te al seu equip <strong>${teamName}</strong>.
+                                </p>
+                                <div style="text-align: center; margin: 25px 0;">
+                                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/accept-invite?token=${invitation.token}" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                        Uneix-te a l'equip
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                </body>
+                </html>`
+            });
+        }
         
+        console.log("[ACTION] Procés d'invitació finalitzat. Revalidant path...");
         revalidatePath('/settings/team');
         return { success: true, message: `Invitació enviada a ${email}.` };
 
@@ -165,7 +201,6 @@ export async function inviteUserAction(formData: FormData) {
         return { success: false, message };
     }
 }
-
 /**
  * Aquesta acció és el primer punt d'entrada quan un usuari fa clic a un enllaç d'invitació.
  * Ha de ser PÚBLICA i decidir si l'usuari ha de crear un compte nou o iniciar sessió.
@@ -268,6 +303,7 @@ export async function acceptInviteAction(token: string) {
                 }
             }
         );
+        await supabase.auth.refreshSession();
 
         await supabase.from('invitations').delete().eq('id', invitation.id);
 
@@ -396,9 +432,9 @@ export async function switchActiveTeamAction(teamId: string) {
     }
 }
 /**
- * Activa o desactiva el permís d'un usuari per a veure la bústia d'un altre.
+ * Activa o desactiva el permís de l'usuari actual per a veure la bústia d'un altre membre.
  */
-export async function toggleInboxPermissionAction(targetUserId: string, granteeUserId: string) {
+export async function toggleInboxPermissionAction(targetUserId: string) { // ✅ NOMÉS UN PARÀMETRE
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "No autenticat." };
@@ -406,14 +442,16 @@ export async function toggleInboxPermissionAction(targetUserId: string, granteeU
     const activeTeamId = user.app_metadata?.active_team_id;
     if (!activeTeamId) return { success: false, message: "No hi ha equip actiu." };
 
+    // L'usuari que fa l'acció (grantee) és sempre l'usuari autenticat.
+    const granteeUserId = user.id;
+
     // Comprovació de rol: només owners/admins poden canviar permisos
-    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
+    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', granteeUserId).eq('team_id', activeTeamId).single();
     if (!['owner', 'admin'].includes(member?.role || '')) {
         return { success: false, message: "No tens permisos per a aquesta acció." };
     }
 
     try {
-        // Mirem si el permís ja existeix
         const { data: existingPermission } = await supabase
             .from('inbox_permissions')
             .select('id')
@@ -421,16 +459,14 @@ export async function toggleInboxPermissionAction(targetUserId: string, granteeU
             .maybeSingle();
 
         if (existingPermission) {
-            // Si existeix, l'esborrem
             await supabase.from('inbox_permissions').delete().eq('id', existingPermission.id);
             revalidatePath('/settings/team');
             return { success: true, message: "Permís revocat." };
         } else {
-            // Si no existeix, el creem
             await supabase.from('inbox_permissions').insert({
                 team_id: activeTeamId,
-                grantee_user_id: granteeUserId,
-                target_user_id: targetUserId
+                grantee_user_id: granteeUserId, // Sempre l'usuari actual
+                target_user_id: targetUserId   // L'usuari de la llista
             }).throwOnError();
             revalidatePath('/settings/team');
             return { success: true, message: "Permís concedit." };
@@ -466,4 +502,146 @@ export async function clearActiveTeamAction() {
     console.log("[ACTION] Equip actiu netejat correctament.");
     revalidatePath('/settings/team', 'page');
     return { success: true };
+}
+
+
+// A /app/[locale]/(app)/settings/team/actions.ts
+
+export async function acceptPersonalInviteAction(invitationId: string) {
+    const supabase = createClient(cookies());
+    const supabaseAdmin = createAdminClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
+
+    const { data: invitation } = await supabaseAdmin.from('invitations').select('*').eq('id', invitationId).single();
+    if (!invitation || invitation.user_id !== user.id) {
+        return { success: false, message: "Invitació invàlida." };
+    }
+
+    try {
+        // Afegeix a l'equip
+        await supabaseAdmin.from('team_members').insert({ 
+            team_id: invitation.team_id, 
+            user_id: user.id, 
+            role: invitation.role 
+        });
+
+        // Canvi de context i actualització del token
+        await supabaseAdmin.auth.admin.updateUserById(user.id, {
+            app_metadata: { ...user.app_metadata, active_team_id: invitation.team_id }
+        });
+        
+        // Forcem la renovació del token!
+        await supabase.auth.refreshSession();
+
+        // ✅ LÍNIA AFEGIDA: Esborrem la invitació un cop processada.
+        await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
+    
+    } catch (error) {
+        // Ignorem l'error si l'usuari ja era membre, però continuem el procés
+        if (error instanceof Error && error.message.includes('duplicate key value')) {
+            console.log("L'usuari ja era membre, procedint igualment...");
+        } else {
+            // Si és un altre tipus d'error, el llancem
+            const message = error instanceof Error ? error.message : "Error en acceptar la invitació.";
+            return { success: false, message: message };
+        }
+    }
+    
+    return { success: true };
+}
+
+export async function declinePersonalInviteAction(invitationId: string) {
+    const supabase = createClient(cookies());
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "No autenticat." };
+
+    const { error } = await supabase
+        .from('invitations')
+        .update({ status: 'declined' })
+        .match({ id: invitationId, user_id: user.id }); // Seguretat: només pot rebutjar les seves
+
+    if (error) return { success: false, message: "No s'ha pogut rebutjar la invitació." };
+    revalidatePath('/settings/team');
+    return { success: true };
+}
+
+
+
+export async function removeMemberAction(userIdToRemove: string) {
+    console.log(`[ACTION] Iniciant removeMemberAction per a l'usuari: ${userIdToRemove}`);
+    const supabase = createClient(cookies());
+    const supabaseAdmin = createAdminClient();
+
+    // --- Validacions de Seguretat ---
+
+    // 1. Qui està realitzant aquesta acció?
+    const { data: { user: actionUser } } = await supabase.auth.getUser();
+    if (!actionUser) {
+        return { success: false, message: "No autenticat." };
+    }
+
+    // 2. A quin equip pertany l'usuari que fa l'acció?
+    const activeTeamId = actionUser.app_metadata?.active_team_id;
+    if (!activeTeamId) {
+        return { success: false, message: "No tens cap equip actiu seleccionat." };
+    }
+
+    // 3. L'usuari que fa l'acció té permisos per eliminar membres en aquest equip?
+    const { data: actionUserMember } = await supabase
+        .from('team_members')
+        .select('role')
+        .match({ user_id: actionUser.id, team_id: activeTeamId })
+        .single();
+
+    if (!['owner', 'admin'].includes(actionUserMember?.role || '')) {
+        return { success: false, message: "No tens permisos per eliminar membres." };
+    }
+
+    // 4. No es pot eliminar a un mateix amb aquesta acció.
+    if (actionUser.id === userIdToRemove) {
+        return { success: false, message: "No et pots eliminar a tu mateix." };
+    }
+
+    // 5. No es pot eliminar al propietari de l'equip.
+    const { data: targetMember } = await supabase
+        .from('team_members')
+        .select('role')
+        .match({ user_id: userIdToRemove, team_id: activeTeamId })
+        .single();
+        
+    if (targetMember?.role === 'owner') {
+        return { success: false, message: "No es pot eliminar el propietari de l'equip." };
+    }
+
+    // --- Execució de l'Acció ---
+
+    try {
+        // 6. Eliminem el membre de la taula team_members
+        const { error: deleteError } = await supabaseAdmin
+            .from('team_members')
+            .delete()
+            .match({ user_id: userIdToRemove, team_id: activeTeamId });
+
+        if (deleteError) throw deleteError;
+        console.log(`[ACTION] Usuari ${userIdToRemove} eliminat de l'equip ${activeTeamId}.`);
+
+        // 7. [PAS CLAU DE UX] Netegem l'estat del token de l'usuari eliminat.
+        // Això evita que l'usuari eliminat es quedi "atrapat" en un equip al qual ja no pertany.
+        const { data: { user: removedUser } } = await supabaseAdmin.auth.admin.getUserById(userIdToRemove);
+        if (removedUser?.app_metadata?.active_team_id === activeTeamId) {
+            console.log(`[ACTION] Netejant active_team_id per a l'usuari eliminat...`);
+            await supabaseAdmin.auth.admin.updateUserById(userIdToRemove, {
+                app_metadata: { ...removedUser?.app_metadata, active_team_id: null, active_team_plan: null }
+            });
+        }
+        
+    } catch (error) {
+        const message = error instanceof Error ? error.message : "Error en eliminar el membre.";
+        console.error("💥 [ACTION CATCH] S'ha produït un error a removeMemberAction:", message);
+        return { success: false, message };
+    }
+
+    revalidatePath('/settings/team');
+    return { success: true, message: "Membre eliminat correctament." };
 }
