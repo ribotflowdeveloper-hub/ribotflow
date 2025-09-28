@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useTranslations } from 'next-intl';
 import { useDebounce } from 'use-debounce';
+import { type Contact } from '@/types/crm'; // Assegura't d'importar el tipus Contact
 
 import {
   deleteTicketAction,
@@ -27,6 +28,7 @@ import { TicketDetail } from './TicketDetail';
 import { ContactPanel } from './ContactPanel';
 import { ComposeDialog, type InitialData as ComposeInitialData } from './ComposeDialog';
 import { MobileDetailView } from './MobileDetailView';
+import type { User } from '@supabase/supabase-js'; // Importem el tipus User
 
 // ✅ PAS 1: Definim el tipus per als membres de l'equip que rebrem.
 type TeamMember = {
@@ -36,8 +38,10 @@ type TeamMember = {
     avatar_url: string | null;
   } | null;
 };
+type Permission = { target_user_id: string };
 
 export function InboxClient({
+  user, // ✅ NOU: Rebem l'objecte de l'usuari actual
   initialTickets,
   initialTemplates,
   initialReceivedCount,
@@ -45,9 +49,12 @@ export function InboxClient({
   initialSelectedTicket,
   initialSelectedTicketBody,
   teamMembers, // ✅ PAS 2: Acceptem la nova prop amb la llista de membres.
+  permissions,
+  allTeamContacts, // ✅ Acceptem la nova prop
 
 
 }: {
+  user: User; // ✅ Prop tipada
   initialTickets: Ticket[];
   initialTemplates: Template[];
   initialReceivedCount: number;
@@ -55,6 +62,8 @@ export function InboxClient({
   initialSelectedTicket: Ticket | null;
   initialSelectedTicketBody: string | null;
   teamMembers: TeamMember[]; // ✅ Prop tipada.
+  permissions: Permission[]; // ✅ Prop tipada
+  allTeamContacts: Contact[]; // ✅ Prop tipada
 
 }) {
   const router = useRouter();
@@ -75,8 +84,10 @@ export function InboxClient({
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
   const [isPending, startTransition] = useTransition();
-  const [isContactPanelOpen, setIsContactPanelOpen] = useState(true);
-  const isDesktop = useMediaQuery('(min-width: 1024px)');
+  // ✅ CANVI: El panell de contacte comença tancat
+  const [isContactPanelOpen, setIsContactPanelOpen] = useState(false); const isDesktop = useMediaQuery('(min-width: 1024px)');
+  // ✅ NOU: Estat per al filtre de la bústia. 'all' mostra tot, un ID mostra només els d'aquell usuari.
+  const [inboxFilter, setInboxFilter] = useState<string>('all');
 
   const counts = useMemo(() => ({
     unread: tickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'Obert').length,
@@ -84,13 +95,21 @@ export function InboxClient({
     sent: initialSentCount,
   }), [tickets, initialReceivedCount, initialSentCount]);
 
+  // ✅ CANVI: El filtratge principal ara també té en compte el filtre de la bústia
   const filteredTickets = useMemo(() => {
-    if (activeFilter === 'rebuts') return tickets.filter(t => t.type === 'rebut' || !t.type);
-    if (activeFilter === 'enviats') return tickets.filter(t => t.type === 'enviat');
-    if (activeFilter === 'noLlegits') return tickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'Obert');
-    return tickets;
-  }, [tickets, activeFilter]);
+    let displayTickets = tickets;
 
+    // 1. Filtrem per bústia (qui és el propietari del tiquet)
+    if (inboxFilter !== 'all') {
+      displayTickets = displayTickets.filter(t => t.user_id === inboxFilter);
+    }
+
+    // 2. Després filtrem per tipus (rebuts, enviats, etc.)
+    if (activeFilter === 'rebuts') return displayTickets.filter(t => t.type === 'rebut' || !t.type);
+    if (activeFilter === 'enviats') return displayTickets.filter(t => t.type === 'enviat');
+    if (activeFilter === 'noLlegits') return displayTickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'Obert');
+    return displayTickets;
+  }, [tickets, activeFilter, inboxFilter]);
 
 
 
@@ -212,7 +231,11 @@ export function InboxClient({
       toast.info(t("inboxUpdatedToast"));
     });
   }, [router, t]);
-
+  // ✅ AFEGEIX AQUEST CONSOLE.LOG JUST ABANS DEL RETURN
+  console.log(
+    `[InboxClient] Estat actual -> Panell Obert: ${isContactPanelOpen}, Tiquet Seleccionat:`,
+    selectedTicket ? selectedTicket.subject : null
+  );
   return (
     <>
       <ComposeDialog open={composeState.open} onOpenChange={(isOpen) => setComposeState({ ...composeState, open: isOpen })} onEmailSent={() => router.refresh()} initialData={composeState.initialData} templates={initialTemplates} />
@@ -225,32 +248,38 @@ export function InboxClient({
 
       <div
         className="h-[calc(100vh-var(--header-height,64px))] w-full grid transition-all duration-300 ease-in-out"
-        style={{ gridTemplateColumns: isDesktop ? `384px 1fr ${isContactPanelOpen ? '320px' : '0px'}` : '1fr' }}
+        // ✅ CANVI: El panell de contacte ara s'adapta a l'espai
+        style={{ gridTemplateColumns: isDesktop ? `384px 1fr minmax(0, ${isContactPanelOpen ? '320px' : '0px'})` : '1fr' }}
       >
-         {(!isDesktop && selectedTicket) ? null : (
-                    <div className="min-h-0">
-                        {/* ✅ PAS 4: Passem els tiquets enriquits al component TicketList */}
-                        <TicketList
-                            tickets={enrichedTickets} // Hem canviat 'filteredTickets' per 'enrichedTickets'
-                            selectedTicketId={selectedTicket?.id ?? null}
-                            activeFilter={activeFilter}
-                            unreadCount={counts.unread}
-                            sentCount={counts.sent}
-                            totalCount={counts.received}
-                            onSetFilter={setActiveFilter}
-                            onDeleteTicket={setTicketToDelete}
-                            onSelectTicket={handleSelectTicket}
-                            onComposeNew={handleComposeNew}
-                            onRefresh={handleRefresh}
-                            hasMore={hasMore}
-                            onLoadMore={handleLoadMore}
-                            isPendingRefresh={isPending}
-                            searchTerm={searchTerm}
-                            onSearchChange={setSearchTerm}
-                        />
-                    </div>
-                )}
+        {(!isDesktop && selectedTicket) ? null : (
+          <div className="min-h-0">
+            <TicketList
+              user={user} // Passem l'usuari actual
+              teamMembers={teamMembers} // Passem els membres de l'equip
+              permissions={permissions} // ✅ Passem els permisos a TicketList
+              tickets={enrichedTickets}
+              selectedTicketId={selectedTicket?.id ?? null}
+              activeFilter={activeFilter}
+              inboxFilter={inboxFilter} // Passem el filtre de bústia actual
+              onSetInboxFilter={setInboxFilter} // Passem la funció per a canviar-lo
+              unreadCount={counts.unread}
+              sentCount={counts.sent}
+              totalCount={counts.received}
+              onSetFilter={setActiveFilter}
+              onDeleteTicket={setTicketToDelete}
+              onSelectTicket={handleSelectTicket}
+              onComposeNew={handleComposeNew}
+              onRefresh={handleRefresh}
+              hasMore={hasMore}
+              onLoadMore={handleLoadMore}
+              isPendingRefresh={isPending}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
+          </div>
+        )}
 
+        {/* La resta del teu JSX es manté igual */}
         {isDesktop && (
           <div className="min-h-0">
             <TicketDetail
@@ -260,13 +289,17 @@ export function InboxClient({
             />
           </div>
         )}
-
-        {isDesktop && (
+        {/* ✅ CORRECCIÓ CLAU: Ens assegurem de passar 'allTeamContacts' al ContactPanel */}
+        {isDesktop && isContactPanelOpen && (
           <div className="overflow-hidden min-h-0">
-            <ContactPanel ticket={selectedTicket} onSaveContact={handleSaveContact} isPendingSave={isPending} />
+            <ContactPanel
+              ticket={selectedTicket}
+              onSaveContact={handleSaveContact}
+              isPendingSave={isPending}
+              allTeamContacts={allTeamContacts}
+            />
           </div>
         )}
-
         <AnimatePresence>
           {!isDesktop && selectedTicket && (
             <MobileDetailView
@@ -279,4 +312,3 @@ export function InboxClient({
     </>
   );
 }
-

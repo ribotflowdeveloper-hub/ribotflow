@@ -3,20 +3,18 @@
 import React, { useState, useMemo, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from "sonner"; // ✅ Canviem la importació
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Plus, Search, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List } from 'lucide-react';
 import { type Contact } from '@/types/crm'; // ✅ CORRECT
 import { CONTACT_STATUS_MAP } from '@/types/crm'; // ✅ Importa el nou mapa
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { ContactDialog } from './ContactDialog';
 
 import ContactCard from '@/app/[locale]/(app)/crm/contactes/_components/ContactCard';
 import ContactTable from '@/app/[locale]/(app)/crm/contactes/_components/ContactTable';
-import { createContactAction } from './actions';
 
 import { ExportContactsButton } from './ExportContactsButton'; // ✅ 1. IMPORTA EL NOU COMPONENT
 
@@ -45,7 +43,6 @@ export function ContactsClient({
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [contacts, setContacts] = useState<Contact[]>(initialContacts);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
     const searchParams = useSearchParams();
     const pathname = usePathname();
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
@@ -67,18 +64,7 @@ export function ContactsClient({
    * Gestiona l'enviament del formulari de nou contacte.
    * Crida la Server Action 'createContactAction' i gestiona la resposta.
    */
-    const handleSaveContact = (formData: FormData) => {
-        startTransition(async () => {
-            const result = await createContactAction(formData);
-            if (result.error) {
-                toast.error(t('toastErrorTitle'), { description: result.error.message });
-            } else if (result.data) {
-                toast.success(t('toastSuccessTitle'), { description: t('toastSuccessDescription') });
-                setContacts(prev => [result.data as Contact, ...prev]);
-                setIsDialogOpen(false);
-            }
-        });
-    };
+
     // ✅ NOU: Inicialitzem l'estat amb el valor de la URL
 
 
@@ -158,51 +144,18 @@ export function ContactsClient({
                     </div>
                     <ExportContactsButton /> {/* ✅ 2. COL·LOCA EL BOTÓ AQUÍ */}
 
-                    {/* Botó de "Nou Contacte" més compacte en mòbil */}
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogTrigger asChild>
+                    {/* ✅ El botó "Nou Contacte" ara utilitza el nostre component reutilitzable */}
+                    <ContactDialog
+                        trigger={
                             <Button className="flex-shrink-0">
                                 <Plus className="w-4 h-4 md:mr-2" />
                                 <span className="hidden md:inline">{t('newContactButton')}</span>
                             </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                            <DialogHeader>
-                                <DialogTitle>{t('dialogTitle')}</DialogTitle>
-                                <DialogDescription>{t('dialogDescription')}</DialogDescription>
-                            </DialogHeader>
-                            <form action={handleSaveContact} className="space-y-4 pt-4">
-                                <Input name="nom" placeholder={t('namePlaceholder')} required />
-                                <Input name="empresa" placeholder={t('companyPlaceholder')} />
-                                <Input name="email" type="email" placeholder={t('emailPlaceholder')} required />
-                                <Input name="telefon" placeholder={t('phonePlaceholder')} />
-                                <Input name="valor" type="number" placeholder={t('valuePlaceholder')} defaultValue={0} />
-                                {/* 👇 AQUÍ VE EL CANVI 👇 */}
-                                <Select name="estat" defaultValue="Lead">
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        {/* ✅ 2. Fem un map sobre la constant per generar les opcions */}
-                                        {/* ✅ Mapejem sobre el nou mapa de dades */}
-                                        {CONTACT_STATUS_MAP.map(status => (
-                                            <SelectItem
-                                                key={status.code}
-                                                value={status.code} // <-- El valor que s'envia al servidor és el CODI
-                                            >
-                                                {t(`contactStatuses.${status.key}`)} {/* <-- El text que veu l'usuari és la TRADUCCIÓ */}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <DialogFooter>
-                                    <DialogClose asChild><Button type="button" variant="ghost">{t('cancelButton')}</Button></DialogClose>
-                                    <Button type="submit" disabled={isPending}>
-                                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        {t('saveButton')}
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </DialogContent>
-                    </Dialog>
+                        }
+                        onContactSaved={(newContact) => {
+                            setContacts(prev => [newContact as Contact, ...prev]);
+                        }}
+                    />
                 </div>
             </div>
 

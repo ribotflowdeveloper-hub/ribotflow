@@ -26,11 +26,10 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
 
     const activeTeamId = user.app_metadata?.active_team_id;
     if (!activeTeamId) return redirect(`/${locale}/settings/team`);
-    // --- INICI DE LA DEPURACIÓ ---
 
-    // --- INICI DE LA NOVA LÒGICA ("JOIN MANUAL") ---
+    // --- LÒGICA PER OBTENIR DADES ---
 
-    // 1. Obtenim només els IDs dels membres de l'equip.
+    // 1. Obtenim els membres de l'equip (amb el mètode manual que ja funciona)
     const { data: teamMembersIds, error: memberIdsError } = await supabase
         .from('team_members')
         .select('user_id')
@@ -40,10 +39,19 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
         console.error("Error en carregar els IDs dels membres:", memberIdsError);
     }
     const memberUserIds = teamMembersIds?.map(m => m.user_id) || [];
+    
+    // ✅ NOU: Obtenim la llista COMPLETA de contactes de l'equip actiu.
+    const { data: allTeamContacts, error: contactsError } = await supabase
+        .from('contacts')
+        .select('*') // Seleccionem totes les dades per a mostrar-les al panell
+        .eq('team_id', activeTeamId);
 
+    if (contactsError) {
+        console.error("Error en carregar els contactes de l'equip:", contactsError);
+    }
+    
     let teamMembers: TeamMemberForInbox[] = [];
     if (memberUserIds.length > 0) {
-        // 2. Obtenim els perfils de tots aquests membres en una segona consulta.
         const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
             .select('id, full_name, avatar_url')
@@ -53,32 +61,21 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
             console.error("Error en carregar els perfils dels membres:", profilesError);
         }
 
-        // 3. Unim les dues respostes manualment.
         teamMembers = (profilesData || []).map(profile => ({
             profiles: profile
         }));
     }
-    console.log(`[DEBUG] Usuari actual: ${user.id}`);
-    console.log(`[DEBUG] Equip actiu: ${activeTeamId}`);
-    // --- FI DE LA NOVA LÒGICA ---
 
-    const { data: permissions, error: permissionsError } = await supabase
+    // 2. Obtenim els permisos per a construir la llista d'usuaris visibles
+    const { data: permissions } = await supabase
         .from('inbox_permissions')
         .select('target_user_id')
         .eq('team_id', activeTeamId)
         .eq('grantee_user_id', user.id);
 
-    
-        if (permissionsError) {
-        console.error("[DEBUG] Error en obtenir permisos:", permissionsError);
-    }
-
-    console.log("[DEBUG] Permisos trobats per a l'usuari:", permissions);
-
     const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id).filter(Boolean) || [])];
-    console.log("[DEBUG] Llista final de IDs visibles (visibleUserIds):", visibleUserIds);
 
-    // ✅ CORRECCIÓ: Crida a RPC SENSE l'argument de tipus genèric <...>.
+    // 3. Cridem a les funcions RPC per obtenir tiquets i comptadors
     const ticketsRpcQuery = supabase.rpc('get_inbox_tickets', {
         p_user_id: user.id,
         p_team_id: activeTeamId,
@@ -87,13 +84,11 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
         p_offset: 0,
         p_search_term: searchTerm
     });
-
     const receivedCountRpc = supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds });
     const sentCountRpc = supabase.rpc('get_inbox_sent_count', { p_visible_user_ids: visibleUserIds });
     const templatesQuery = supabase.from("email_templates").select("*").eq('team_id', activeTeamId);
 
-
-
+    // 4. Executem totes les consultes en paral·lel
     const [ticketsRes, templatesRes, receivedCountRes, sentCountRes] = await Promise.all([
         ticketsRpcQuery,
         templatesQuery,
@@ -103,9 +98,8 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
 
     if (ticketsRes.error) console.error("Error RPC (get_inbox_tickets):", ticketsRes.error);
 
-    // Apliquem el cast al resultat i després el map.
+    // 5. Processem els resultats
     const tickets: Ticket[] = ((ticketsRes.data as TicketFromRpc[]) || []).map(transformRpcToTicket);
-
     const templates = (templatesRes.data as Template[]) || [];
     const receivedCount = receivedCountRes.data || 0;
     const sentCount = sentCountRes.data || 0;
@@ -116,15 +110,19 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
         initialSelectedTicketBody = body;
     }
 
+    // 6. Passem totes les dades al component client
     return (
         <InboxClient
+            user={user} // ✅ NOU: Passem l'objecte 'user' per al filtre de bústies
             initialTickets={tickets}
             initialTemplates={templates}
             initialReceivedCount={receivedCount}
             initialSentCount={sentCount}
             initialSelectedTicket={tickets.length > 0 ? tickets[0] : null}
             initialSelectedTicketBody={initialSelectedTicketBody}
-            teamMembers={teamMembers} // ✅ Passem els membres com a prop
+            teamMembers={teamMembers}
+            permissions={permissions || []}
+            allTeamContacts={allTeamContacts || []} // ✅ Passem la llista de contactes com a prop
 
         />
     );
