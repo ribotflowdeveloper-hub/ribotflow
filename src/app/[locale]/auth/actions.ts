@@ -115,23 +115,26 @@ export async function googleAuthAction(inviteToken?: string | null) {
 
 /**
  * Inicia el flux de restabliment de contrasenya.
- * Envia un correu a l'usuari amb un enllaç per a crear una nova contrasenya.
+ * Ara retorna un objecte de resultat en lloc de fer una redirecció.
  */
-export async function forgotPasswordAction(formData: FormData) {
+export async function forgotPasswordAction(formData: FormData): Promise<{ success: boolean; message: string }> {
     const email = formData.get('email') as string;
     const supabase = createClient(cookies());
     const origin = (await headers()).get('origin');
     const locale = (await headers()).get('x-next-intl-locale') || 'ca';
     
-    // Aquesta funció de Supabase envia el correu de restabliment
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return { success: false, message: "Si us plau, introdueix una adreça d'email vàlida." };
+    }
+    
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${origin}/${locale}/auth/reset-password`,
     });
 
     if (error) {
-        return redirect(`/${locale}/login?message=${encodeURIComponent("No s'ha pogut iniciar el procés de restabliment.")}`);
+        console.error("Error en restablir la contrasenya:", error);
+        return { success: false, message: "No s'ha pogut iniciar el procés de restabliment." };
     }
 
-    // Per seguretat, sempre mostrem un missatge d'èxit, fins i tot si l'email no existeix.
-    return redirect(`/${locale}/login?message=${encodeURIComponent("Si l'email existeix, rebràs un enllaç per a restablir la teva contrasenya.")}`);
+    return { success: true, message: "Si l'email existeix, rebràs un enllaç per a restablir la teva contrasenya." };
 }

@@ -1196,7 +1196,11 @@
     "forgotPassword": {
       "title": "Reset Password",
       "description": "Enter your email and we'll send you a link to reset your password.",
-      "submitButton": "Send Reset Link"
+      "submitButton": "Send Reset Link",
+      "successTitle": "Link Sent!",
+      "successDescription": "We've sent password reset instructions to:",
+      "spamWarning": "If you don't see it, check your spam folder.",
+      "closeButton": "Got it"
     },
     "errors": {
       "invalidCredentials": "Invalid credentials.",

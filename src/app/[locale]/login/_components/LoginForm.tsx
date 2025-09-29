@@ -2,19 +2,20 @@
 
 "use client";
 
-import { useTransition } from 'react';
-import { loginAction, googleAuthAction,forgotPasswordAction } from '@/app/[locale]/auth/actions'; // Assegura't que la ruta a les teves accions és correcta
+import { useTransition, useState } from 'react';
+import { loginAction, googleAuthAction, forgotPasswordAction } from '@/app/[locale]/auth/actions'; // Assegura't que la ruta a les teves accions és correcta
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react'; // ✅ Importem AlertTriangle
+import { Mail, Lock, Loader2, Check, AlertTriangle, MailCheck } from 'lucide-react'; // ✅ Importem AlertTriangle
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation'; // Import the hook
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog'; // Importem components de diàleg
+import { toast } from 'sonner';
 
 const ParticleBackground = dynamic(
     () => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground),
@@ -32,13 +33,33 @@ export default function LoginForm() {
     const t = useTranslations('LoginPage');
     const [isPending, startTransition] = useTransition();
     const [isGoogleLoading, startGoogleTransition] = useTransition();
+
     const [isForgotPending, startForgotTransition] = useTransition();
+    const [isForgotDialogOpen, setForgotDialogOpen] = useState(false);
+    const [resetEmailSent, setResetEmailSent] = useState(false);
+    const [userEmail, setUserEmail] = useState(""); // Per a mostrar l'email de l'usuari
 
     const handleForgotPassword = (formData: FormData) => {
-        startForgotTransition(() => {
-            forgotPasswordAction(formData);
+        const email = formData.get('email') as string;
+        setUserEmail(email); // Guardem l'email per al missatge d'èxit
+
+        startForgotTransition(async () => {
+            const result = await forgotPasswordAction(formData);
+            if (result.success) {
+                setResetEmailSent(true); // Canviem a la vista d'èxit
+            } else {
+                toast.error(t('forgotPassword.errorTitle'), { description: result.message });
+            }
         });
     };
+
+    const handleDialogChange = (isOpen: boolean) => {
+        setForgotDialogOpen(isOpen);
+        if (!isOpen) {
+            // Resetejem l'estat quan es tanca el diàleg
+            setTimeout(() => setResetEmailSent(false), 300);
+        }
+    }
 
     const handleEmailLogin = (formData: FormData) => {
         startTransition(() => {
@@ -156,29 +177,45 @@ export default function LoginForm() {
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="password">{t('passwordLabel')}</Label>
                                     {/* ✅ AFEGIM EL DIÀLEG DE "HE OBLIDAT LA CONTRASENYA" */}
-                                    <Dialog>
+                                    <Dialog open={isForgotDialogOpen} onOpenChange={handleDialogChange}>
                                         <DialogTrigger asChild>
                                             <button type="button" className="text-sm font-medium text-primary hover:underline">
                                                 {t('forgotPasswordLink')}
                                             </button>
                                         </DialogTrigger>
                                         <DialogContent className="sm:max-w-md">
-                                            <DialogHeader>
-                                                <DialogTitle>{t('forgotPassword.title')}</DialogTitle>
-                                                <DialogDescription>{t('forgotPassword.description')}</DialogDescription>
-                                            </DialogHeader>
-                                            <form action={handleForgotPassword}>
-                                                <div className="grid gap-4 py-4">
-                                                    <Label htmlFor="email-forgot">{t('emailLabel')}</Label>
-                                                    <Input id="email-forgot" name="email" type="email" placeholder="nom@exemple.com" required />
+                                            {/* ✅ RENDERITZACIÓ CONDICIONAL DINS DEL DIÀLEG */}
+                                            {resetEmailSent ? (
+                                                <div className="text-center p-8">
+                                                    <MailCheck className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                                                    <h3 className="text-xl font-bold">{t('forgotPassword.successTitle')}</h3>
+                                                    <p className="text-muted-foreground mt-2">
+                                                        {t('forgotPassword.successDescription')} <br />
+                                                        <strong className="text-foreground">{userEmail}</strong>
+                                                    </p>
+                                                    <p className="text-xs text-muted-foreground mt-4">{t('forgotPassword.spamWarning')}</p>
+                                                    <Button onClick={() => setForgotDialogOpen(false)} className="mt-6 w-full">{t('forgotPassword.closeButton')}</Button>
                                                 </div>
-                                                <DialogFooter>
-                                                    <Button type="submit" disabled={isForgotPending}>
-                                                        {isForgotPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                        {t('forgotPassword.submitButton')}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </form>
+                                            ) : (
+                                                <>
+                                                    <DialogHeader>
+                                                        <DialogTitle>{t('forgotPassword.title')}</DialogTitle>
+                                                        <DialogDescription>{t('forgotPassword.description')}</DialogDescription>
+                                                    </DialogHeader>
+                                                    <form action={handleForgotPassword}>
+                                                        <div className="grid gap-4 py-4">
+                                                            <Label htmlFor="email-forgot">{t('emailLabel')}</Label>
+                                                            <Input id="email-forgot" name="email" type="email" placeholder="nom@exemple.com" required />
+                                                        </div>
+                                                        <DialogFooter>
+                                                            <Button type="submit" disabled={isForgotPending} className="w-full">
+                                                                {isForgotPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                                {t('forgotPassword.submitButton')}
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </form>
+                                                </>
+                                            )}
                                         </DialogContent>
                                     </Dialog>
                                 </div>
@@ -198,3 +235,4 @@ export default function LoginForm() {
         </div>
     );
 }
+

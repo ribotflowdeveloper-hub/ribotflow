@@ -1242,7 +1242,11 @@
     "forgotPassword": {
       "title": "Restablir Contrasenya",
       "description": "Introdueix el teu correu electrònic i t'enviarem un enllaç per a restablir la teva contrasenya.",
-      "submitButton": "Enviar Enllaç de Restabliment"
+      "submitButton": "Enviar Enllaç de Restabliment",
+      "successTitle": "Enllaç enviat!",
+      "successDescription": "Hem enviat les instruccions per a restablir la teva contrasenya a:",
+      "spamWarning": "Si no el veus, revisa la teva carpeta de correu brossa (spam).",
+      "closeButton": "Entès"
     },
     "errors": {
       "invalidCredentials": "Credencials invàlides.",

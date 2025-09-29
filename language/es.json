@@ -1188,7 +1188,11 @@
     "forgotPassword": {
       "title": "Restablecer Contraseña",
       "description": "Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
-      "submitButton": "Enviar Enlace de Restablecimiento"
+      "submitButton": "Enviar Enlace de Restablecimiento",
+      "successTitle": "¡Enlace enviado!",
+      "successDescription": "Hemos enviado las instrucciones para restablecer tu contraseña a:",
+      "spamWarning": "Si no lo ves, revisa tu carpeta de correo no deseado (spam).",
+      "closeButton": "Entendido"
     },
     
     "errors": {
