@@ -23,15 +23,16 @@ const ParticleBackground = dynamic(
  * Component de client que renderitza el formulari de registre.
  * Ara rep el token i l'email com a props.
  */
-export function SignupForm({ inviteToken, message, invitedEmail }: { 
-    inviteToken?: string; 
+export function SignupForm({ inviteToken, message, invitedEmail, errorKey }: {
+    errorKey?: string;
+    inviteToken?: string;
     message?: string;
     invitedEmail?: string;
 }) {
     const t = useTranslations('SignupPage');
     const [isPending, startTransition] = useTransition();
     const [isGoogleLoading, startGoogleTransition] = useTransition();
-    
+
     const handleEmailSignup = (formData: FormData) => {
         // Passem el token d'invitació a la Server Action si existeix
         if (inviteToken) {
@@ -102,18 +103,25 @@ export function SignupForm({ inviteToken, message, invitedEmail }: {
                         </div>
 
                         <form action={handleEmailSignup} className="space-y-6">
+                            {/* ✅ NOVA LÒGICA PER A MOSTRAR L'ERROR */}
+                            {errorKey && (
+                                <p className="text-sm text-center text-destructive">
+                                    {/* Utilitzem la clau per a obtenir la traducció correcta */}
+                                    {t(`errors.${errorKey}`)}
+                                </p>
+                            )}
                             {message && <p className="text-sm text-center text-destructive">{message}</p>}
 
                             <div className="space-y-2">
                                 <Label htmlFor="email">{t('emailLabel')}</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input 
-                                        id="email" 
-                                        name="email" 
-                                        type="email" 
-                                        placeholder={t('emailPlaceholder')} 
-                                        required 
+                                    <Input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        placeholder={t('emailPlaceholder')}
+                                        required
                                         className="pl-10"
                                         // ✅ LÒGICA CLAU: Omplim i bloquegem l'email si ve d'una invitació
                                         defaultValue={invitedEmail}

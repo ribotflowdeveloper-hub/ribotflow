@@ -17,7 +17,7 @@ export async function withUser<T>(
     pathsToRevalidate?: string[]
 ): Promise<ServerActionResult<T>> {
     // Obtenim les cookies resolent la promesa
-    const cookieStore = await cookies();
+   
     // Creem el client passant les cookies ja resoltes
     const supabase = createClient(cookies())
 ;

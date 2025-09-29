@@ -1214,7 +1214,12 @@
     "welcomeSubtitle": "Uneix-te a centenars de professionals que ja estan optimitzant el seu temps i maximitzant els seus resultats.",
     "feature1": "Centralitza tots els teus clients i comunicacions.",
     "feature2": "Automatitza tasques i estalvia desenes d'hores cada mes.",
-    "feature3": "Pren decisions més intel·ligents amb analítiques clares."
+    "feature3": "Pren decisions més intel·ligents amb analítiques clares.",
+    "errors": {
+      "password_length": "La contrasenya ha de tenir com a mínim 6 caràcters.",
+      "email_invalid": "Si us plau, introdueix una adreça de correu electrònic vàlida.",
+      "unknown_error": "No s'ha pogut completar el registre. Si us plau, intenta-ho de nou."
+    }
   },
   "LoginPage": {
     "welcomeTitle": "Benvingut de nou",
@@ -1230,16 +1235,36 @@
     "emailLabel": "Correu Electrònic",
     "emailPlaceholder": "el.teu@correu.com",
     "passwordLabel": "Contrasenya",
-    "forgotPasswordLink": "Has oblidat la contrasenya?",
     "submitButton": "Inicia Sessió",
     "toastErrorTitle": "Error d'inici de sessió",
     "toastErrorDescription": "Les credencials són incorrectes. Si us plau, torna-ho a provar.",
+    "forgotPasswordLink": "Has oblidat la contrasenya?",
+    "forgotPassword": {
+      "title": "Restablir Contrasenya",
+      "description": "Introdueix el teu correu electrònic i t'enviarem un enllaç per a restablir la teva contrasenya.",
+      "submitButton": "Enviar Enllaç de Restabliment"
+    },
     "errors": {
       "invalidCredentials": "Credencials invàlides.",
       "authFailed": "L'autenticació ha fallat.",
       "inviteFailed": "No s'ha pogut enviar la invitació."
     }
   },
+  "AuthMessages": {
+    "passwordResetSuccess": "Si l'email existeix, rebràs un enllaç per a restablir la teva contrasenya.",
+    "passwordResetError": "No s'ha pogut iniciar el procés de restabliment."
+  },
+  "ResetPasswordPage": {
+    "title": "Crea una nova contrasenya",
+    "passwordLabel": "Nova Contrasenya",
+    "submitButton": "Actualitzar Contrasenya",
+    "messages": {
+      "invalidLink": "L'enllaç de restabliment és invàlid o ha caducat.",
+      "updateError": "No s'ha pogut actualitzar la contrasenya.",
+      "updateSuccess": "La teva contrasenya s'ha actualitzat correctament."
+    }
+  },
+  
   "OnboardingPage": {
     "step": "Pas {current} de {total}",
     "step1": {

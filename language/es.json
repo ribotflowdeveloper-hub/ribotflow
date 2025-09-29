@@ -1160,7 +1160,12 @@
     "welcomeSubtitle": "Únete a cientos de profesionales que ya optimizan su tiempo y maximizan sus resultados.",
     "feature1": "Centraliza todos tus clientes y comunicaciones.",
     "feature2": "Automatiza tareas y ahorra decenas de horas cada mes.",
-    "feature3": "Toma decisiones más inteligentes con análisis claros."
+    "feature3": "Toma decisiones más inteligentes con análisis claros.",
+    "errors": {
+      "password_length": "La contraseña debe tener al menos 6 caracteres.",
+      "email_invalid": "Por favor, introduce una dirección de correo electrónico válida.",
+      "unknown_error": "No se pudo completar el registro. Por favor, inténtalo de nuevo."
+    }
   },
   "LoginPage": {
     "welcomeTitle": "Bienvenido de nuevo",
@@ -1180,10 +1185,31 @@
     "submitButton": "Inicia Sesión",
     "toastErrorTitle": "Error de inicio de sesión",
     "toastErrorDescription": "Las credenciales son incorrectas. Por favor, inténtalo de nuevo.",
+    "forgotPassword": {
+      "title": "Restablecer Contraseña",
+      "description": "Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",
+      "submitButton": "Enviar Enlace de Restablecimiento"
+    },
+    
     "errors": {
       "invalidCredentials": "Credenciales inválidas.",
       "authFailed": "La autenticación ha fallado.",
       "inviteFailed": "No se pudo enviar la invitación."
+    }
+    
+  },
+  "AuthMessages": {
+    "passwordResetSuccess": "Si el email existe, recibirás un enlace para restablecer tu contraseña.",
+    "passwordResetError": "No se ha podido iniciar el proceso de restablecimiento."
+  },
+  "ResetPasswordPage": {
+    "title": "Crea una nueva contraseña",
+    "passwordLabel": "Nueva Contraseña",
+    "submitButton": "Actualizar Contraseña",
+    "messages": {
+      "invalidLink": "El enlace de restablecimiento no es válido o ha caducado.",
+      "updateError": "No se pudo actualizar la contraseña.",
+      "updateSuccess": "Tu contraseña se ha actualizado correctamente."
     }
   },
   "OnboardingPage": {

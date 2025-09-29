@@ -2,7 +2,12 @@ import { Suspense } from 'react';
 import { SignupForm } from './_components/SignupForm';
 
 interface SignupPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  searchParams: {
+    errorKey?: string; // ✅ Rebem la clau de l'error
+    message?: string;
+    email?: string;
+    invite_token?: string;
+  };
 }
 
 export default async function SignupPage(props: SignupPageProps) {
@@ -16,6 +21,7 @@ export default async function SignupPage(props: SignupPageProps) {
   return (
     <Suspense>
       <SignupForm
+        errorKey={searchParams.errorKey}
         inviteToken={inviteToken}
         message={message}
         invitedEmail={invitedEmail}

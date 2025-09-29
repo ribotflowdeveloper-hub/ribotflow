@@ -25,10 +25,10 @@ export async function middleware(request: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
 
     // ✅ CORRECCIÓ DEFINITIVA:
-    // Separem els prefixos de la pàgina principal
+    // Separem els prefixos de la pàgina principal per a una comprovació més precisa.
     const publicPrefixes = ['/login', '/signup', '/auth', '/accept-invite', '/quote', '/invitation/accept'];
     
-    // Una ruta és pública si és EXACTAMENT la pàgina principal ('/') o si comença amb un dels prefixos.
+    // Una ruta és pública si és EXACTAMENT la pàgina principal ('/') o si comença amb un dels altres prefixos.
     const isPublicPath = pathname === '/' || publicPrefixes.some(p => pathname.startsWith(p));
     const isAppPath = !isPublicPath;
 

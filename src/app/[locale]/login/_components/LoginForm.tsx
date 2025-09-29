@@ -3,7 +3,7 @@
 "use client";
 
 import { useTransition } from 'react';
-import { loginAction, googleAuthAction } from '@/app/[locale]/auth/actions'; // Assegura't que la ruta a les teves accions és correcta
+import { loginAction, googleAuthAction,forgotPasswordAction } from '@/app/[locale]/auth/actions'; // Assegura't que la ruta a les teves accions és correcta
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,11 @@ import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react'; // ✅
 import { useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation'; // Import the hook
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog'; // Importem components de diàleg
 
 const ParticleBackground = dynamic(
-    () => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground),
-    { ssr: false }
+    () => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground),
+    { ssr: false }
 );
 
 /**
@@ -27,10 +28,17 @@ export default function LoginForm() {
     const searchParams = useSearchParams(); // ✅ Read params here
     const message = searchParams.get('message');
     const error = searchParams.get('error');
-    
+
     const t = useTranslations('LoginPage');
     const [isPending, startTransition] = useTransition();
     const [isGoogleLoading, startGoogleTransition] = useTransition();
+    const [isForgotPending, startForgotTransition] = useTransition();
+
+    const handleForgotPassword = (formData: FormData) => {
+        startForgotTransition(() => {
+            forgotPasswordAction(formData);
+        });
+    };
 
     const handleEmailLogin = (formData: FormData) => {
         startTransition(() => {
@@ -45,7 +53,7 @@ export default function LoginForm() {
             googleAuthAction();
         });
     };
-        // ✅ NOVA LÒGICA PER ALS MISSATGES D'ERROR
+    // ✅ NOVA LÒGICA PER ALS MISSATGES D'ERROR
     // Aquesta funció genera el missatge correcte basat en el codi d'error de la URL.
     const getErrorMessage = () => {
         if (error === 'invalid_credentials') {
@@ -130,8 +138,8 @@ export default function LoginForm() {
                         </div>
 
                         <form action={handleEmailLogin} className="space-y-6">
-                           {/* ✅ NOU COMPONENT D'ERROR AMB ESTIL */}
-                           {errorMessage && (
+                            {/* ✅ NOU COMPONENT D'ERROR AMB ESTIL */}
+                            {errorMessage && (
                                 <div className="bg-destructive/10 text-destructive border border-destructive/30 p-3 rounded-md flex items-center gap-3 text-sm">
                                     <AlertTriangle className="w-5 h-5 flex-shrink-0" />
                                     <p>{errorMessage}</p>
@@ -147,9 +155,32 @@ export default function LoginForm() {
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between">
                                     <Label htmlFor="password">{t('passwordLabel')}</Label>
-                                    <Link href="#" className="text-sm font-medium text-primary hover:underline">
-                                        {t('forgotPasswordLink')}
-                                    </Link>
+                                    {/* ✅ AFEGIM EL DIÀLEG DE "HE OBLIDAT LA CONTRASENYA" */}
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <button type="button" className="text-sm font-medium text-primary hover:underline">
+                                                {t('forgotPasswordLink')}
+                                            </button>
+                                        </DialogTrigger>
+                                        <DialogContent className="sm:max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>{t('forgotPassword.title')}</DialogTitle>
+                                                <DialogDescription>{t('forgotPassword.description')}</DialogDescription>
+                                            </DialogHeader>
+                                            <form action={handleForgotPassword}>
+                                                <div className="grid gap-4 py-4">
+                                                    <Label htmlFor="email-forgot">{t('emailLabel')}</Label>
+                                                    <Input id="email-forgot" name="email" type="email" placeholder="nom@exemple.com" required />
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button type="submit" disabled={isForgotPending}>
+                                                        {isForgotPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                        {t('forgotPassword.submitButton')}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </form>
+                                        </DialogContent>
+                                    </Dialog>
                                 </div>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />

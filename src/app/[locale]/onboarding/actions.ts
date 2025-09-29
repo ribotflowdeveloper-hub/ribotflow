@@ -62,32 +62,38 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
             longitude: formData.longitude,
         };
 
-       // --- 2. EXECUTEM LES OPERACIONS A LA BASE DE DADES ---
-        
+        // --- 2. EXECUTEM LES OPERACIONS A LA BASE DE DADES ---
+
         // Actualitzem el perfil personal de l'usuari
         await supabase.from('profiles').update(profileUpdateData).eq('id', user.id).throwOnError();
-        
+
         // Creem el nou equip
         const { data: newTeam } = await supabase.from('teams').insert(teamInsertData).select('id').single().throwOnError();
-        
+
         // Afegim l'usuari com a propietari a la taula de membres
         await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: user.id, role: 'owner' }).throwOnError();
-        
+
         // ✅ NOU PAS: Creem una subscripció 'free' per defecte per al nou equip
-        await supabaseAdmin.from('subscriptions').insert({ 
-            team_id: newTeam.id, 
-            plan_id: 'free', 
-            status: 'active' 
+        await supabaseAdmin.from('subscriptions').insert({
+            team_id: newTeam.id,
+            plan_id: 'free',
+            status: 'active'
         }).throwOnError();
 
-        // ✅ PAS CLAU: Actualitzem el token de l'usuari (app_metadata) a l'instant.
+        // ✅ CORRECCIÓ CLAU: Actualitzem TOTES les dades de l'usuari a 'auth.users'
         await supabaseAdmin.auth.admin.updateUserById(
             user.id,
             {
-                app_metadata: { 
-                    ...user.app_metadata, 
+                // Dades de la sessió de l'aplicació
+                app_metadata: {
+                    ...user.app_metadata,
                     active_team_id: newTeam.id,
-                    active_team_plan: 'free' // Establim el pla per defecte
+                    active_team_plan: 'free'
+                },
+                // Dades públiques de l'usuari
+                user_metadata: {
+                    ...user.user_metadata,
+                    full_name: formData.full_name // Assegurem que el nom es desa aquí també
                 }
             }
         );
@@ -98,7 +104,7 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
         console.error("Error a l'Onboarding:", message);
         return { success: false, message };
     }
-    
+
     // ✅ PAS FINAL: Ara que l'acció ha acabat, redirigim l'usuari al dashboard.
     const locale = (await headers()).get('x-next-intl-locale') || 'ca';
     redirect(`/${locale}/dashboard`);

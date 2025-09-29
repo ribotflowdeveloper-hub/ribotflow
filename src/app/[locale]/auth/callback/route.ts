@@ -20,15 +20,17 @@ export async function GET(request: NextRequest) {
             if (inviteToken) {
                 const supabaseAdmin = createAdminClient();
                 const { data: invitation } = await supabaseAdmin.from('invitations').select('*').eq('token', inviteToken).single();
-                
+
                 if (invitation) {
                     await supabaseAdmin.from('team_members').insert({ team_id: invitation.team_id, user_id: user.id, role: invitation.role });
                     const { data: subscription } = await supabaseAdmin.from('subscriptions').select('plan_id, status').eq('team_id', invitation.team_id).single();
                     const teamPlan = (subscription?.status === 'active') ? subscription.plan_id : 'free';
-                    
+
                     await supabaseAdmin.auth.admin.updateUserById(user.id, { app_metadata: { active_team_id: invitation.team_id, active_team_plan: teamPlan } });
                     await supabaseAdmin.from('profiles').update({ onboarding_completed: true }).eq('id', user.id);
                     await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
+                    // ✅ PAS CRUCIAL: Forcem el refresc de la sessió per a actualitzar la cookie
+
                     await supabase.auth.refreshSession();
                     // Després de gestionar la invitació, el portem directament al dashboard
                     return NextResponse.redirect(`${origin}/${locale}/dashboard`);
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
             if (profile && !profile.onboarding_completed) {
                 return NextResponse.redirect(`${origin}/${locale}/onboarding`);
             }
-            
+
             // Per a la resta de casos, el portem a la seva destinació (normalment, el dashboard)
             return NextResponse.redirect(`${origin}/${locale}${next.split('?')[0]}`);
         }

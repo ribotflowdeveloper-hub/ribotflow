@@ -1168,7 +1168,12 @@
     "welcomeSubtitle": "Join hundreds of professionals already optimizing their time and maximizing their results.",
     "feature1": "Centralize all your clients and communications.",
     "feature2": "Automate tasks and save dozens of hours each month.",
-    "feature3": "Make smarter decisions with clear analytics."
+    "feature3": "Make smarter decisions with clear analytics.",
+    "errors": {
+      "password_length": "Password should be at least 6 characters.",
+      "email_invalid": "Please enter a valid email address.",
+      "unknown_error": "Could not complete registration. Please try again."
+    }
   },
   "LoginPage": {
     "welcomeTitle": "Welcome Back",
@@ -1188,10 +1193,29 @@
     "submitButton": "Log In",
     "toastErrorTitle": "Login Error",
     "toastErrorDescription": "The credentials are incorrect. Please try again.",
+    "forgotPassword": {
+      "title": "Reset Password",
+      "description": "Enter your email and we'll send you a link to reset your password.",
+      "submitButton": "Send Reset Link"
+    },
     "errors": {
       "invalidCredentials": "Invalid credentials.",
       "authFailed": "Authentication failed.",
       "inviteFailed": "Failed to send invitation."
+    }
+  },
+  "AuthMessages": {
+    "passwordResetSuccess": "If the email exists, you will receive a link to reset your password.",
+    "passwordResetError": "Could not start the reset process."
+  },
+  "ResetPasswordPage": {
+    "title": "Create a new password",
+    "passwordLabel": "New Password",
+    "submitButton": "Update Password",
+    "messages": {
+      "invalidLink": "The reset link is invalid or has expired.",
+      "updateError": "The password could not be updated.",
+      "updateSuccess": "Your password has been successfully updated."
     }
   },
   "OnboardingPage": {
@@ -1277,7 +1301,6 @@
     "errorDeleting": "No se pudo eliminar la publicación.",
     "successPostDeleted": "Publicación eliminada correctamente.",
     "imagePreviewAlt": "Image preview",
-
     "toasts": {
       "errorNotAuthenticated": "Usuario no autenticado. Por favor, vuelve a iniciar sesión.",
       "errorMediaUpload": "No se pudo iniciar la subida del archivo.",

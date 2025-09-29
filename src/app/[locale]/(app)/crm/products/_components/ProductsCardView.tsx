@@ -62,7 +62,7 @@ export function ProductsCardView({ products, onEdit, onDelete }: ProductsCardVie
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>{t('deleteDialog.cancelButton')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => onDelete(product.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction onClick={() => onDelete(product.id.toString())} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                           {t('deleteDialog.confirmButton')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
