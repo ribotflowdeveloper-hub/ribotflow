@@ -1,13 +1,15 @@
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { startTransition, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { User, Building, UserPlus, Mail, Phone, MapPin, ExternalLink, Euro } from 'lucide-react';
+import { User, Building, UserPlus, Mail, Phone, MapPin, ExternalLink, Euro, Ban } from 'lucide-react';
 import type { Ticket } from '../page';
 import Link from 'next/link';
 // Importem el nostre diàleg reutilitzable
 import { ContactDialog } from '@/app/[locale]/(app)/crm/contactes/_components/ContactDialog';
 import type { Contact } from '@/types/crm'; // Importem el tipus Contact
+import { addToBlacklistAction } from '../actions';
+import { toast } from 'sonner';
 
 interface ContactPanelProps {
     ticket: Ticket | null;
@@ -35,6 +37,20 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
         };
         return translations[key] || key;
     };
+
+    const handleBlacklist = () => {
+        if (!ticket || !ticket.sender_email) return;
+        if (confirm(`Estàs segur que vols bloquejar ${ticket.sender_email}? Tots els seus correus no es descarregaran de nous.`)) {
+            startTransition(async () => {
+                const result = await addToBlacklistAction(ticket.sender_email);
+                if (result.success) {
+                    toast.success(result.message);
+                } else {
+                    toast.error("Error", { description: result.message });
+                }
+            });
+        }
+    };
     // ✅ LÒGICA CLAU: Utilitzem 'useMemo' per a determinar si el contacte existeix.
     // Aquesta comprovació només es re-executa si el 'ticket' o la llista de contactes canvien.
     const contactToShow = useMemo(() => {
@@ -47,32 +63,32 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
             return ticket.contacts;
         }
 
-                // --- INICI DE LA ZONA DE DEPURACIÓ ---
-                console.group(`[DEBUG] Buscant contacte per a: "${ticket.sender_email}"`);
-                console.log("Llista de contactes de l'equip:", allTeamContacts);
-        
-                const existingContact = allTeamContacts.find(contact => {
-                    // Comprovem que ambdós emails existeixen abans de comparar
-                    if (!contact.email || !ticket.sender_email) return false;
-        
-                    const contactEmail = contact.email.trim().toLowerCase();
-                    const ticketEmail = ticket.sender_email.trim().toLowerCase();
-        
-                    // Log de cada comparació per veure exactament què passa
-                    console.log(`Comparant: "${ticketEmail}" === "${contactEmail}" -> ${contactEmail === ticketEmail}`);
-                    
-                    return contactEmail === ticketEmail;
-                });
-        
-                if (existingContact) {
-                    console.log("%c[DEBUG] Cas 2: S'ha trobat un contacte existent per email.", "color: blue", existingContact);
-                } else {
-                    console.log("%c[DEBUG] Cas 3: No s'ha trobat cap contacte. S'hauria de mostrar el botó de desar.", "color: orange");
-                }
-                console.groupEnd();
-                // --- FI DE LA ZONA DE DEPURACIÓ ---
+        // --- INICI DE LA ZONA DE DEPURACIÓ ---
+        console.group(`[DEBUG] Buscant contacte per a: "${ticket.sender_email}"`);
+        console.log("Llista de contactes de l'equip:", allTeamContacts);
 
-     
+        const existingContact = allTeamContacts.find(contact => {
+            // Comprovem que ambdós emails existeixen abans de comparar
+            if (!contact.email || !ticket.sender_email) return false;
+
+            const contactEmail = contact.email.trim().toLowerCase();
+            const ticketEmail = ticket.sender_email.trim().toLowerCase();
+
+            // Log de cada comparació per veure exactament què passa
+            console.log(`Comparant: "${ticketEmail}" === "${contactEmail}" -> ${contactEmail === ticketEmail}`);
+
+            return contactEmail === ticketEmail;
+        });
+
+        if (existingContact) {
+            console.log("%c[DEBUG] Cas 2: S'ha trobat un contacte existent per email.", "color: blue", existingContact);
+        } else {
+            console.log("%c[DEBUG] Cas 3: No s'ha trobat cap contacte. S'hauria de mostrar el botó de desar.", "color: orange");
+        }
+        console.groupEnd();
+        // --- FI DE LA ZONA DE DEPURACIÓ ---
+
+
 
         return existingContact || null;
     }, [ticket, allTeamContacts]);
@@ -91,7 +107,7 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                         <h2 className="text-xl font-bold">Detalls del Contacte</h2>
                         <Button asChild variant="secondary" size="sm">
                             <Link href={`/crm/contactes/${contactToShow.id}`}>
-                                Veure fitxa completa <ExternalLink className="w-4 h-4 ml-2"/>
+                                Veure fitxa completa <ExternalLink className="w-4 h-4 ml-2" />
                             </Link>
                         </Button>
                     </div>
@@ -126,7 +142,7 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                                 <Euro className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                 <span>Valor: {contactToShow.valor ?? 0} €</span>
                             </div>
-                             <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3">
                                 <UserPlus className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                 <span>Estat: <span className="font-medium">{contactToShow.estat}</span></span>
                             </div>
@@ -139,11 +155,11 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                     <User className="w-16 h-16 text-muted-foreground mb-4" />
                     <p className="font-semibold">{ticket.sender_name}</p>
                     <p className="text-sm text-muted-foreground mb-4">{ticket.sender_email}</p>
-                    
+
                     <ContactDialog
                         trigger={
                             <Button disabled={isPendingSave}>
-                                <UserPlus className="w-4 h-4 mr-2"/>
+                                <UserPlus className="w-4 h-4 mr-2" />
                                 Desa com a contacte
                             </Button>
                         }
@@ -154,7 +170,15 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                         onContactSaved={() => onSaveContact(ticket)}
                     />
                 </div>
+
             )}
+            {/* ✅ NOU: Peu de pàgina amb accions addicionals */}
+            <div className="p-4 border-t mt-auto flex-shrink-0">
+                <Button variant="destructive" size="sm" className="w-full" onClick={handleBlacklist} disabled={isPendingSave}>
+                    <Ban className="w-4 h-4 mr-2" />
+                    Afegeix remitent a la llista negra
+                </Button>
+            </div>
         </div>
     );
 };

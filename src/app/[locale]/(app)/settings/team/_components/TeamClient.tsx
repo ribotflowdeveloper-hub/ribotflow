@@ -23,7 +23,9 @@ import {
     inviteUserAction,
     revokeInvitationAction,
     toggleInboxPermissionAction,
-    acceptPersonalInviteAction, declinePersonalInviteAction
+    acceptPersonalInviteAction,
+    declinePersonalInviteAction,
+    updateMemberRoleAction
 } from '../actions';
 import type { User } from '@supabase/supabase-js';
 import type { UserTeam, ActiveTeamData } from '../page';
@@ -117,6 +119,18 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
             if (result.success) {
                 toast.success(result.message);
                 formRef.current?.reset();
+                router.refresh();
+            } else {
+                toast.error(result.message);
+            }
+        });
+    };
+    // ✅ NOU HANDLER: Crida l'acció per a canviar el rol
+    const handleRoleChange = (memberUserId: string, newRole: 'admin' | 'member') => {
+        startTransition(async () => {
+            const result = await updateMemberRoleAction(memberUserId, newRole);
+            if (result.success) {
+                toast.success(result.message);
                 router.refresh();
             } else {
                 toast.error(result.message);
@@ -276,6 +290,9 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
                 <CardHeader><CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle></CardHeader>
                 <CardContent className="divide-y">
                     {teamMembers.map(member => {
+                         if (!member.profiles) return null;
+                         const isOwner = member.role === 'owner';
+                         const isSelf = user.id === member.profiles.id;
                         if (!member.profiles) return null;
 
                         // Comprovem si l'usuari actual té permís per a veure la bústia d'aquest membre
@@ -295,7 +312,26 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 sm:gap-4">
-                                    <Badge variant={member.role === 'owner' ? 'default' : 'secondary'} className="capitalize">{member.role}</Badge>
+                                     {/* ✅ LÒGICA DELS ROLS */}
+                                     {isOwner ? (
+                                        <Badge variant="default" className="capitalize">{member.role}</Badge>
+                                        ) : (
+                                        <Select
+                                            value={member.role}
+                                            onValueChange={(newRole) => handleRoleChange(member.profiles!.id, newRole as 'admin' | 'member')}
+                                            // El propietari pot canviar rols, l'admin també (excepte altres admins si no vols),
+                                            // i ningú pot canviar el seu propi rol.
+                                            disabled={!canManage || isSelf || isPending}
+                                        >
+                                            <SelectTrigger className="w-[120px]">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="admin">Admin</SelectItem>
+                                                <SelectItem value="member">Membre</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
                                     {/* ✅ NOVA ICONA DE PERMISOS */}
                                     {/* Només el propietari la veu, i no per a si mateix */}
                                     {currentUserRole === 'owner' && user.id !== member.profiles.id && (

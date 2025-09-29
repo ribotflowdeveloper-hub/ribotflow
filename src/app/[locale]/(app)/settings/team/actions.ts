@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Resend } from 'resend';
+import { hasPermission, PERMISSIONS } from '@/lib/permissions'; // ✅ Importem el nostre sistema
 
 /**
  * Crea un nou equip i, crucialment, les seves etapes de pipeline per defecte.
@@ -86,7 +87,17 @@ export async function inviteUserAction(formData: FormData) {
         return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
     }
     console.log(`[ACTION] Equip actiu obtingut del token: ${activeTeamId}`);
+    // ✅ NOVA COMPROVACIÓ DE PERMISOS
+    const { data: inviterMember } = await supabase
+        .from('team_members')
+        .select('role')
+        .match({ user_id: inviter.id, team_id: activeTeamId })
+        .single();
 
+    // ✅ Comprovació centralitzada i llegible
+    if (!hasPermission(inviterMember?.role, PERMISSIONS.MANAGE_TEAM)) {
+        return { success: false, message: "No tens permisos per a convidar usuaris." };
+    }
     try {
         // --- Inici de la Lògica Híbrida ---
 
@@ -96,10 +107,10 @@ export async function inviteUserAction(formData: FormData) {
         const { data: allUsers, error: userError } = await supabaseAdmin.auth.admin.listUsers();
         const existingUserData = allUsers?.users.filter(user => user.email === email);
         if (userError) {
-             console.error("[ACTION ADMIN ERROR] Error en buscar l'usuari:", userError);
-             throw userError;
+            console.error("[ACTION ADMIN ERROR] Error en buscar l'usuari:", userError);
+            throw userError;
         }
-        
+
         const invitedUser = existingUserData?.[0] || null;
 
         // --- Preparació de dades comunes (per a ambdós casos) ---
@@ -114,13 +125,13 @@ export async function inviteUserAction(formData: FormData) {
         const { data: inviterProfile } = await supabase.from('profiles').select('full_name').eq('id', inviter.id).single();
         const inviterName = inviterProfile?.full_name || inviter.email;
         console.log(`[ACTION] Nom de qui convida: ${inviterName}`);
-        
+
         const resend = new Resend(process.env.RESEND_API_KEY);
 
         // --- Cas A: L'usuari SÍ existeix ---
         if (invitedUser) {
             console.log(`[ACTION] L'usuari ${email} ja existeix (ID: ${invitedUser.id}). Creant invitació interna.`);
-            
+
             await supabase.from('invitations').insert({
                 team_id: activeTeamId,
                 email: email,
@@ -138,10 +149,10 @@ export async function inviteUserAction(formData: FormData) {
                 html: `<p>Hola de nou,</p><p><strong>${inviterName}</strong> t'ha convidat a unir-te al seu equip <strong>${teamName}</strong>.</p><p>Com que ja tens un compte, pots acceptar o rebutjar la invitació directament des del teu panell d'equips dins de la plataforma.</p><div style="text-align: center; margin: 25px 0;"><a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings/team" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Anar al meu panell</a></div>`
             });
 
-        // --- Cas B: L'usuari NO existeix ---
+            // --- Cas B: L'usuari NO existeix ---
         } else {
             console.log(`[ACTION] L'usuari ${email} és nou. Creant invitació amb token.`);
-            
+
             const { data: invitation, error: inviteError } = await supabase
                 .from('invitations')
                 .insert({
@@ -159,7 +170,7 @@ export async function inviteUserAction(formData: FormData) {
                 throw inviteError;
             }
             console.log("[ACTION] Invitació inserida correctament.");
-            
+
             console.log("[ACTION] Enviant email d'invitació i registre a l'usuari nou...");
             await resend.emails.send({
                 from: `Invitació de "${teamName}" <invitacions@ribotflow.com>`,
@@ -190,7 +201,7 @@ export async function inviteUserAction(formData: FormData) {
                 </html>`
             });
         }
-        
+
         console.log("[ACTION] Procés d'invitació finalitzat. Revalidant path...");
         revalidatePath('/settings/team');
         return { success: true, message: `Invitació enviada a ${email}.` };
@@ -235,7 +246,7 @@ export async function resolveInvitationAction(token: string) {
 
     // 2. Busquem si un usuari amb aquest email ja existeix a la llista
     const existingUser = users.find(u => u.email === invitedEmail);
-    
+
     if (existingUser) {
         // L'usuari JA EXISTEIX. L'enviem a iniciar sessió.
         console.log(`[resolveInvitation] L'usuari ${invitedEmail} ja existeix. Redirigint a login.`);
@@ -329,7 +340,7 @@ export async function revokeInvitationAction(invitationId: string) {
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "No autenticat." };
-    
+
     // ✅ LÒGICA CORRECTA: Obtenim l'equip actiu del token.
     const activeTeamId = user.app_metadata?.active_team_id;
     if (!activeTeamId) {
@@ -343,7 +354,7 @@ export async function revokeInvitationAction(invitationId: string) {
         .eq('user_id', user.id)
         .eq('team_id', activeTeamId)
         .single();
-    
+
     if (!currentUserMember) {
         return { success: false, message: "No pertanys a l'equip actiu." };
     }
@@ -352,7 +363,7 @@ export async function revokeInvitationAction(invitationId: string) {
     if (!allowedRoles.includes(currentUserMember.role)) {
         return { success: false, message: "No tens permisos per a aquesta acció." };
     }
-    
+
     // Assegurem que només s'esborren invitacions de l'equip actiu.
     const { error: deleteError } = await supabase
         .from('invitations')
@@ -363,7 +374,7 @@ export async function revokeInvitationAction(invitationId: string) {
     if (deleteError) {
         return { success: false, message: "Error en revocar la invitació." };
     }
-    
+
     revalidatePath('/settings/team');
     return { success: true, message: "Invitació revocada." };
 }
@@ -498,7 +509,7 @@ export async function clearActiveTeamAction() {
         console.error("[ACTION] Error de Supabase en netejar l'equip actiu:", error.message);
         return { success: false, message: error.message };
     }
-    
+
     console.log("[ACTION] Equip actiu netejat correctament.");
     revalidatePath('/settings/team', 'page');
     return { success: true };
@@ -520,23 +531,23 @@ export async function acceptPersonalInviteAction(invitationId: string) {
 
     try {
         // Afegeix a l'equip
-        await supabaseAdmin.from('team_members').insert({ 
-            team_id: invitation.team_id, 
-            user_id: user.id, 
-            role: invitation.role 
+        await supabaseAdmin.from('team_members').insert({
+            team_id: invitation.team_id,
+            user_id: user.id,
+            role: invitation.role
         });
 
         // Canvi de context i actualització del token
         await supabaseAdmin.auth.admin.updateUserById(user.id, {
             app_metadata: { ...user.app_metadata, active_team_id: invitation.team_id }
         });
-        
+
         // Forcem la renovació del token!
         await supabase.auth.refreshSession();
 
         // ✅ LÍNIA AFEGIDA: Esborrem la invitació un cop processada.
         await supabaseAdmin.from('invitations').delete().eq('id', invitation.id);
-    
+
     } catch (error) {
         // Ignorem l'error si l'usuari ja era membre, però continuem el procés
         if (error instanceof Error && error.message.includes('duplicate key value')) {
@@ -547,7 +558,7 @@ export async function acceptPersonalInviteAction(invitationId: string) {
             return { success: false, message: message };
         }
     }
-    
+
     return { success: true };
 }
 
@@ -609,7 +620,7 @@ export async function removeMemberAction(userIdToRemove: string) {
         .select('role')
         .match({ user_id: userIdToRemove, team_id: activeTeamId })
         .single();
-        
+
     if (targetMember?.role === 'owner') {
         return { success: false, message: "No es pot eliminar el propietari de l'equip." };
     }
@@ -635,7 +646,7 @@ export async function removeMemberAction(userIdToRemove: string) {
                 app_metadata: { ...removedUser?.app_metadata, active_team_id: null, active_team_plan: null }
             });
         }
-        
+
     } catch (error) {
         const message = error instanceof Error ? error.message : "Error en eliminar el membre.";
         console.error("💥 [ACTION CATCH] S'ha produït un error a removeMemberAction:", message);
@@ -644,4 +655,50 @@ export async function removeMemberAction(userIdToRemove: string) {
 
     revalidatePath('/settings/team');
     return { success: true, message: "Membre eliminat correctament." };
+}
+
+// Afegeix aquesta nova acció al teu fitxer actions.ts
+
+export async function updateMemberRoleAction(memberUserId: string, newRole: 'admin' | 'member' | 'owner') {
+    const supabase = createClient(cookies());
+    const { data: { user: actionUser } } = await supabase.auth.getUser();
+    if (!actionUser) return { success: false, message: "No autenticat." };
+
+    const activeTeamId = actionUser.app_metadata?.active_team_id;
+    if (!activeTeamId) return { success: false, message: "No tens equip actiu." };
+
+    // Comprovació 1: Qui realitza l'acció és Owner o Admin?
+    const { data: actionUserMember } = await supabase
+        .from('team_members')
+        .select('role')
+        .match({ user_id: actionUser.id, team_id: activeTeamId })
+        .single();
+
+    if (!['owner', 'admin'].includes(actionUserMember?.role || '')) {
+        return { success: false, message: "No tens permisos per a canviar rols." };
+    }
+
+    // Comprovació 2: No es pot canviar el rol del propietari de l'equip.
+    const { data: team } = await supabase.from('teams').select('owner_id').eq('id', activeTeamId).single();
+    if (team?.owner_id === memberUserId) {
+        return { success: false, message: "No es pot canviar el rol del propietari de l'equip." };
+    }
+
+    // Comprovació 3: Un admin no pot fer un altre usuari owner (això seria una altra acció de "transferir propietat").
+    if (newRole === 'owner') {
+        return { success: false, message: "No es pot assignar el rol de propietari." };
+    }
+
+    // Executem l'actualització
+    const { error } = await supabase
+        .from('team_members')
+        .update({ role: newRole })
+        .match({ user_id: memberUserId, team_id: activeTeamId });
+
+    if (error) {
+        return { success: false, message: "Error en actualitzar el rol." };
+    }
+
+    revalidatePath('/settings/team');
+    return { success: true, message: "Rol actualitzat correctament." };
 }

@@ -1,7 +1,7 @@
 // supabase/functions/sync-worker/index.ts
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { createClient} from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // --- TIPUS I INTERFÍCIES COMUNES ---
 // Aquestes interfícies defineixen un "contracte" per a la nostra lògica,
@@ -20,7 +20,7 @@ interface NormalizedEmail {
   sent_at: string; // ISO String
   sender_name: string;
   sender_email: string;
-  status: 'Obert' | 'Llegit';
+  status: 'NoLlegit' | 'Llegit';
   type: 'rebut' | 'enviat';
 }
 
@@ -55,8 +55,8 @@ const supabaseAdmin = createClient(
  * Conté tota la lògica específica per comunicar-se amb l'API de Microsoft Graph.
  */
 class MicrosoftMailProvider implements MailProvider {
-  private clientId = Deno.env.get("MICROSOFT_CLIENT_ID")!;
-  private clientSecret = Deno.env.get("MICROSOFT_CLIENT_SECRET")!;
+  private clientId = Deno.env.get("AZURE_CLIENT_ID")!;
+  private clientSecret = Deno.env.get("AZURE_CLIENT_SECRET")!;
   private tenantId = Deno.env.get("MICROSOFT_TENANT_ID") || "common";
   // Obté un nou 'access token' de curta durada utilitzant el 'refresh token'.
 
@@ -149,7 +149,7 @@ class MicrosoftMailProvider implements MailProvider {
       sent_at: new Date(msg.sentDateTime).toISOString(),
       sender_name: sender?.emailAddress?.name || 'Desconegut',
       sender_email: (sender?.emailAddress?.address || '').toLowerCase(),
-      status: msg.isRead ? 'Llegit' : 'Obert',
+      status: msg.isRead ? 'Llegit' : 'NoLlegit',
       type: type,
     };
   }
@@ -202,7 +202,7 @@ class GoogleMailProvider implements MailProvider {
       gmailQuery += ` after:${lastSyncSeconds}`;
     }
 
-    let messageIds: { id: string, threadId: string }[] = [];
+    const messageIds: { id: string, threadId: string }[] = [];
     let nextPageToken: string | undefined = undefined;
     const MAX_PAGES = 5; // Limitem pàgines per evitar timeouts
     let currentPage = 0;
@@ -321,7 +321,7 @@ class GoogleMailProvider implements MailProvider {
         sent_at: new Date(getHeader("Date") || Date.now()).toISOString(),
         sender_name: fromHeader.includes("<") ? fromHeader.split("<")[0].trim().replace(/"/g, "") : fromEmail,
         sender_email: fromEmail,
-        status: emailData.labelIds?.includes("UNREAD") ? 'Obert' : 'Llegit',
+        status: emailData.labelIds?.includes("UNREAD") ? 'NoLlegit' : 'Llegit', // ✅ CANVI
         type: isSent ? 'enviat' : 'rebut',
       };
     } catch (err) {
@@ -353,85 +353,111 @@ function getMailProvider(provider: string): MailProvider {
  */
 // supabase/functions/sync-worker/index.t
 serve(async (req) => {
-    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-    try {
-        const body = await req.json();
-        const { userId, provider } = body;
+  try {
+    const body = await req.json();
+    const { userId, provider } = body;
 
-        if (!userId || !provider) throw new Error("Falten paràmetres 'userId' o 'provider'.");
+    if (!userId || !provider) throw new Error("Falten paràmetres 'userId' o 'provider'.");
 
-        const { data: credential, error: credsError } = await supabaseAdmin
-            .from("user_credentials")
-            .select("refresh_token")
-            .eq("user_id", userId)
-            .eq("provider", provider)
-            .maybeSingle();
+    const { data: credential, error: credsError } = await supabaseAdmin
+      .from("user_credentials")
+      .select("refresh_token")
+      .eq("user_id", userId)
+      .eq("provider", provider)
+      .maybeSingle();
 
-        if (credsError) throw credsError;
-        if (!credential || !credential.refresh_token) {
-            return new Response(JSON.stringify({ message: `No s'han trobat credencials per a ${userId} i ${provider}.` }), { status: 200, headers: corsHeaders });
-        }
-
-        console.log(`[WORKER] Iniciant sincronització per a usuari: ${userId}`);
-
-        const mailProvider = getMailProvider(provider);
-        const { refresh_token } = credential;
-        
-        const { data: lastTicket } = await supabaseAdmin
-            .from("tickets")
-            .select("sent_at")
-            .eq("user_id", userId)
-            .eq("provider", provider)
-            .order("sent_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-            
-        const lastSyncDate = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
-        
-        const accessToken = await mailProvider.refreshAccessToken(refresh_token);
-        const newEmails = await mailProvider.getNewMessages(accessToken, lastSyncDate);
-
-        if (newEmails.length === 0) {
-            console.log(`[SYNC ${provider.toUpperCase()}] No hi ha missatges nous per a l'usuari ${userId}`);
-            return new Response(JSON.stringify({ message: "Sincronització completada, sense missatges nous." }), { status: 200, headers: corsHeaders });
-        }
-        
-        console.log(`[SYNC ${provider.toUpperCase()}] S'han trobat ${newEmails.length} missatges nous per a ${userId}. Processant...`);
-
-        const ticketsToInsert = newEmails.map(email => ({
-            user_id: userId,
-            provider: provider,
-            provider_message_id: email.provider_message_id,
-            subject: email.subject,
-            body: email.body,
-            preview: email.preview,
-            status: email.status,
-            type: email.type,
-            sent_at: email.sent_at,
-            sender_name: email.sender_name,
-            sender_email: email.sender_email,
-        }));
-        
-        // ✅ CANVI CLAU: Utilitzem .upsert() en lloc de .insert()
-        // Això insereix les files noves i ignora les que ja existeixen (duplicats).
-        const { error: upsertError } = await supabaseAdmin
-            .from("tickets")
-            .upsert(ticketsToInsert, {
-                onConflict: 'user_id,provider_message_id', // Li diem quina és la restricció UNIQUE a comprovar
-                ignoreDuplicates: true, // Li diem que ignori els duplicats en lloc de donar error
-            });
-
-        if (upsertError) {
-            // Aquest error només saltarà si és un problema diferent a un duplicat.
-            throw upsertError;
-        }
-        
-        console.log(`[Worker] S'han processat ${newEmails.length} tiquets per a ${userId}. Els nous s'han inserit.`);
-        return new Response(JSON.stringify({ message: "Sincronització completada." }), { status: 200, headers: corsHeaders });
-
-    } catch (err) {
-        console.error(`[Worker Error General]:`, err.message);
-        return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+    if (credsError) throw credsError;
+    if (!credential || !credential.refresh_token) {
+      return new Response(JSON.stringify({ message: `No s'han trobat credencials per a ${userId} i ${provider}.` }), { status: 200, headers: corsHeaders });
     }
+
+    console.log(`[WORKER] Iniciant sincronització per a usuari: ${userId}`);
+
+    const mailProvider = getMailProvider(provider);
+    const { refresh_token } = credential;
+
+    const { data: lastTicket } = await supabaseAdmin
+      .from("tickets")
+      .select("sent_at")
+      .eq("user_id", userId)
+      .eq("provider", provider)
+      .order("sent_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const lastSyncDate = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
+
+    const accessToken = await mailProvider.refreshAccessToken(refresh_token);
+    const newEmails = await mailProvider.getNewMessages(accessToken, lastSyncDate);
+
+    if (newEmails.length === 0) {
+      console.log(`[SYNC ${provider.toUpperCase()}] No hi ha missatges nous per a l'usuari ${userId}`);
+      return new Response(JSON.stringify({ message: "Sincronització completada, sense missatges nous." }), { status: 200, headers: corsHeaders });
+    }
+
+    console.log(`[SYNC ${provider.toUpperCase()}] S'han trobat ${newEmails.length} missatges nous per a ${userId}. Processant...`);
+    // ✅ INICI DE LA LÒGICA DE LA BLACKLIST
+
+    // 1. Obtenim tots els equips als quals pertany l'usuari
+    const { data: userTeams } = await supabaseAdmin.from('team_members').select('team_id').eq('user_id', userId);
+    const userTeamIds = userTeams?.map(t => t.team_id) || [];
+
+    let userBlacklistSet = new Set<string>();
+    if (userTeamIds.length > 0) {
+      // 2. Obtenim totes les regles de la blacklist per a aquests equips
+      const { data: blacklistRules } = await supabaseAdmin
+        .from('blacklist_rules')
+        .select('value')
+        .in('team_id', userTeamIds);
+
+      userBlacklistSet = new Set(blacklistRules?.map(rule => rule.value));
+    }
+
+    // 3. Filtrem els emails nous, descartant els que estan a la llista negra
+    const validEmails = newEmails.filter(email => !userBlacklistSet.has(email.sender_email));
+
+    if (validEmails.length === 0) {
+      console.log(`[Worker] Tots els ${newEmails.length} missatges nous per a l'usuari ${userId} estaven a la llista negra.`);
+      return new Response(JSON.stringify({ message: "Sincronització completada, tots els missatges han estat filtrats." }), { status: 200, headers: corsHeaders });
+    }
+    console.log(`[Worker] Dels ${newEmails.length} missatges, ${validEmails.length} són vàlids i seran inserits.`);
+
+    // ✅ FI DE LA LÒGICA DE LA BLACKLIST
+    const ticketsToInsert = newEmails.map(email => ({
+      user_id: userId,
+      provider: provider,
+      provider_message_id: email.provider_message_id,
+      subject: email.subject,
+      body: email.body,
+      preview: email.preview,
+      status: email.status,
+      type: email.type,
+      sent_at: email.sent_at,
+      sender_name: email.sender_name,
+      sender_email: email.sender_email,
+    }));
+
+    // ✅ CANVI CLAU: Utilitzem .upsert() en lloc de .insert()
+    // Això insereix les files noves i ignora les que ja existeixen (duplicats).
+    const { error: upsertError } = await supabaseAdmin
+      .from("tickets")
+      .upsert(ticketsToInsert, {
+        onConflict: 'user_id,provider_message_id', // Li diem quina és la restricció UNIQUE a comprovar
+        ignoreDuplicates: true, // Li diem que ignori els duplicats en lloc de donar error
+      });
+
+    if (upsertError) {
+      // Aquest error només saltarà si és un problema diferent a un duplicat.
+      throw upsertError;
+    }
+
+    console.log(`[Worker] S'han processat ${newEmails.length} tiquets per a ${userId}. Els nous s'han inserit.`);
+    return new Response(JSON.stringify({ message: "Sincronització completada." }), { status: 200, headers: corsHeaders });
+
+  } catch (err) {
+    console.error(`[Worker Error General]:`, err.message);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+  }
 });

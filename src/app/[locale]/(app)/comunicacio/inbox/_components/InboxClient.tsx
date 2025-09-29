@@ -90,7 +90,7 @@ export function InboxClient({
   const [inboxFilter, setInboxFilter] = useState<string>('all');
 
   const counts = useMemo(() => ({
-    unread: tickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'Obert').length,
+    unread: tickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'NoLlegit').length,
     received: initialReceivedCount,
     sent: initialSentCount,
   }), [tickets, initialReceivedCount, initialSentCount]);
@@ -107,7 +107,7 @@ export function InboxClient({
     // 2. Després filtrem per tipus (rebuts, enviats, etc.)
     if (activeFilter === 'rebuts') return displayTickets.filter(t => t.type === 'rebut' || !t.type);
     if (activeFilter === 'enviats') return displayTickets.filter(t => t.type === 'enviat');
-    if (activeFilter === 'noLlegits') return displayTickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'Obert');
+    if (activeFilter === 'noLlegits') return displayTickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'NoLlegit');
     return displayTickets;
   }, [tickets, activeFilter, inboxFilter]);
 
@@ -151,7 +151,7 @@ export function InboxClient({
       setIsBodyLoading(false);
     }
 
-    if (ticket.status === 'Obert') {
+    if (ticket.status === 'NoLlegit') {
       markTicketAsReadAction(ticket.id);
       setTickets(current => current.map(t => t.id === ticket.id ? { ...t, status: 'Llegit' } : t));
     }

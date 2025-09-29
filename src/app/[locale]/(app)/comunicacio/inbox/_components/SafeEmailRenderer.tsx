@@ -4,7 +4,7 @@
 import React, { useMemo, useRef, useState, useEffect } from 'react';
 
 interface SafeEmailRendererProps {
-  htmlBody: string;
+    htmlBody: string;
 }
 
 // ====================================================================================
@@ -70,12 +70,12 @@ const compatibilityStyles = `
 `;
 
 export const SafeEmailRenderer: React.FC<SafeEmailRendererProps> = ({ htmlBody }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  // ✅ MILLORAT: Comencem amb '100%' per evitar salts visuals mentre es calcula l'alçada real
-  const [iframeHeight, setIframeHeight] = useState<string | number>('100%');
+    const iframeRef = useRef<HTMLIFrameElement>(null);
+    // ✅ MILLORAT: Comencem amb '100%' per evitar salts visuals mentre es calcula l'alçada real
+    const [iframeHeight, setIframeHeight] = useState<string | number>('100%');
 
-  const documentSource = useMemo(() => {
-    return `
+    const documentSource = useMemo(() => {
+        return `
             <!DOCTYPE html>
             <html>
                 <head>
@@ -97,9 +97,14 @@ export const SafeEmailRenderer: React.FC<SafeEmailRendererProps> = ({ htmlBody }
                                 window.parent.postMessage({ type: 'iframeResize', height: height }, '*');
                             };
                             
-                            // Enviem l'alçada inicialment i quan la finestra canvia de mida
-                            sendHeight();
-                            window.addEventListener('resize', sendHeight);
+                         // ✅ LÒGICA DEBOUNCE:
+                            // Aquesta funció embolcalla 'sendHeight' i s'assegura que no es cridi
+                            // massa ràpidament, esperant 150ms d'inactivitat.
+                            const debouncedSendHeight = () => {
+                                clearTimeout(debounceTimeout);
+                                debounceTimeout = setTimeout(sendHeight, 150);
+                            };
+
 
                             // Observem canvis en el cos (imatges que es carreguen, contingut dinàmic)
                             const resizeObserver = new ResizeObserver(sendHeight);
@@ -112,42 +117,42 @@ export const SafeEmailRenderer: React.FC<SafeEmailRendererProps> = ({ htmlBody }
                 </body>
             </html>
         `;
-  }, [htmlBody]);
+    }, [htmlBody]);
 
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-        if (
-            iframeRef.current &&
-            event.source === iframeRef.current.contentWindow &&
-            event.data.type === 'iframeResize' &&
-            event.data.height > 0
-        ) {
-            // Li donem un píxel extra per evitar problemes d'arrodoniment
-            setIframeHeight(event.data.height + 1); 
-        }
-    };
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (
+                iframeRef.current &&
+                event.source === iframeRef.current.contentWindow &&
+                event.data.type === 'iframeResize' &&
+                event.data.height > 0
+            ) {
+                // Li donem un píxel extra per evitar problemes d'arrodoniment
+                setIframeHeight(event.data.height + 1);
+            }
+        };
 
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-}, []);
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
-// ✅ SOLUCIÓ: Retornem directament l'iframe, sense la 'div' que el limitava.
-return (
-    <iframe
-        ref={iframeRef}
-        srcDoc={documentSource}
-        title="Contingut del correu"
-        sandbox="allow-scripts"
-        width="100%"
-        height={iframeHeight}
-        style={{ 
-            border: 'none', 
-            display: 'block', 
-            background: 'transparent',
-            // ✅ Afegim un alçada mínima per evitar que es col·lapsi a 0px mentre carrega
-            minHeight: '200px' 
-        }}
-        scrolling="no"
-    />
-);
+    // ✅ SOLUCIÓ: Retornem directament l'iframe, sense la 'div' que el limitava.
+    return (
+        <iframe
+            ref={iframeRef}
+            srcDoc={documentSource}
+            title="Contingut del correu"
+            sandbox="allow-scripts"
+            width="100%"
+            height={iframeHeight}
+            style={{
+                border: 'none',
+                display: 'block',
+                background: 'transparent',
+                // ✅ Afegim un alçada mínima per evitar que es col·lapsi a 0px mentre carrega
+                minHeight: '200px'
+            }}
+            scrolling="no"
+        />
+    );
 };

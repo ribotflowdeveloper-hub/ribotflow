@@ -272,3 +272,42 @@ export async function loadMoreTicketsAction(page: number, filter: TicketFilter):
   
   return tickets;
 }
+
+export async function addToBlacklistAction(emailToBlock: string): Promise<ActionResult> {
+  const supabase = createClient(cookies());
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: "No autenticat." };
+
+  const activeTeamId = user.app_metadata?.active_team_id;
+  if (!activeTeamId) return { success: false, message: "No hi ha equip actiu." };
+
+  const cleanedEmail = emailToBlock.trim().toLowerCase();
+  if (!cleanedEmail) return { success: false, message: "L'email no pot estar buit." };
+
+  try {
+      // L'acció ara només fa una única cosa: inserir la regla.
+      await supabase.from('blacklist_rules').insert({
+          team_id: activeTeamId,
+          user_id: user.id,
+          value: cleanedEmail,
+          rule_type: 'email',
+      }).throwOnError();
+
+      // ✅ ELIMINAT: Ja no cridem a la funció per esborrar tiquets.
+      // const { error: deleteError } = await supabase.rpc(...)
+
+      // Com que l'acció ja no afecta els tiquets existents, la revalidació pot ser
+      // només per a la pàgina de configuració de la blacklist, si en tens una.
+      // De moment, la podem deixar per si de cas.
+      revalidatePath("/comunicacio/inbox");
+      return { success: true, message: `${cleanedEmail} ha estat afegit a la llista negra.` };
+
+  } catch (error) {
+      if (error instanceof Error && error.message.includes('duplicate key value')) {
+           return { success: false, message: "Aquest correu ja és a la llista negra." };
+      }
+      console.error("Error afegint a la blacklist:", error);
+      const message = error instanceof Error ? error.message : "Error desconegut.";
+      return { success: false, message };
+  }
+}

@@ -8,10 +8,12 @@ import type { Contact } from '../crm/index';
 
 // --- MAPA I TIPUS D'ESTAT DE TIQUET ---
 
+
 export const TICKET_STATUS_MAP = [
-    { dbValue: 'Obert', key: 'open' },
-    { dbValue: 'Llegit', key: 'read' },
-    { dbValue: 'Respost', key: 'replied' },
+  // ✅ CANVI: D'"Obert" a "NoLlegit"
+  { dbValue: 'NoLlegit', key: 'unread' }, 
+  { dbValue: 'Llegit', key: 'read' },
+  { dbValue: 'Respost', key: 'replied' },
 ] as const;
 export type TicketStatus = typeof TICKET_STATUS_MAP[number]['dbValue'];
 

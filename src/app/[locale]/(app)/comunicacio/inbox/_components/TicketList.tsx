@@ -208,9 +208,9 @@ export const TicketList: React.FC<TicketListProps> = ({
 
                             <div className="flex-1 min-w-0">
                                 <div className="flex justify-between items-center mb-1">
-                                    <p className={`truncate font-semibold ${ticket.status !== 'Obert' ? 'font-normal text-muted-foreground' : ''}`}>{ticket.contacts?.nom || ticket.sender_name || t('unknownSender')}</p>
+                                    <p className={`truncate font-semibold ${ticket.status !== 'NoLlegit' ? 'font-normal text-muted-foreground' : ''}`}>{ticket.contacts?.nom || ticket.sender_name || t('unknownSender')}</p>
                                     <div className="flex items-center gap-3 text-xs flex-shrink-0 ml-2">
-                                        {ticket.status === 'Obert' && <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>}
+                                        {ticket.status === 'NoLlegit' && <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>}
                                         <span className="text-muted-foreground">{formatTicketDate(ticket.sent_at)}</span>
                                     </div>
                                 </div>

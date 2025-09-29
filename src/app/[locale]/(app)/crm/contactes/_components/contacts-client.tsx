@@ -41,7 +41,7 @@ export function ContactsClient({
 }) {
     const t = useTranslations('ContactsClient');
     const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
     const [contacts, setContacts] = useState<Contact[]>(initialContacts);
     const searchParams = useSearchParams();
     const pathname = usePathname();

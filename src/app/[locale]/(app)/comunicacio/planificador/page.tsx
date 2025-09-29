@@ -6,6 +6,8 @@ import { SocialPlannerClient } from './_components/SocialPlannerClient';
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
 import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
 import { headers } from 'next/headers';
+import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { AccessDenied } from '@/components/shared/AccessDenied'; // Un component que mostra un missatge d'error
 
 export default async function SocialPlannerPage() {
     const supabase = createClient(cookies());
@@ -22,7 +24,7 @@ export default async function SocialPlannerPage() {
     if (!activeTeamPlan || !allowedPlans.includes(activeTeamPlan)) {
         return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
     }
-    
+
     const activeTeamId = user.app_metadata?.active_team_id;
     if (!activeTeamId) {
         return redirect('/settings/team');
@@ -37,7 +39,7 @@ export default async function SocialPlannerPage() {
     if (error) {
         console.error("Error carregant les publicacions (pot ser per RLS):", error);
     }
-    
+
     // La càrrega de les connexions ara ha de ser híbrida
     const [userCredsRes, teamCredsRes] = await Promise.all([
         supabase.from('user_credentials').select('provider').eq('user_id', user.id),
@@ -53,10 +55,21 @@ export default async function SocialPlannerPage() {
         instagram: allConnectedProviders.has('instagram'),
     };
 
+    const { data: member } = await supabase
+        .from('team_members')
+        .select('role')
+        .match({ user_id: user.id, team_id: activeTeamId })
+        .single();
+
+    // ✅ Comprovem el permís per a veure aquesta pàgina
+    if (!hasPermission(member?.role, PERMISSIONS.VIEW_BILLING)) {
+        // Si no té permís, mostrem un missatge d'accés denegat o redirigim
+        return <AccessDenied />;
+    }
     return (
         <Suspense fallback={<div>Carregant planificador...</div>}>
-            <SocialPlannerClient 
-                initialPosts={(posts as SocialPost[]) || []} 
+            <SocialPlannerClient
+                initialPosts={(posts as SocialPost[]) || []}
                 connectionStatuses={connectionStatuses}
             />
         </Suspense>
