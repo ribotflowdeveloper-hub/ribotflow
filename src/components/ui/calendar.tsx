@@ -7,7 +7,7 @@ import {
 // ✅ 1. IMPORTEM 'CalendarDay' I CANVIEM 'DayModifiers' PER 'Modifiers'
 import { DayPicker, getDefaultClassNames, Modifiers, CalendarDay } from "react-day-picker";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 import { Button, buttonVariants, type VariantProps } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker> & {

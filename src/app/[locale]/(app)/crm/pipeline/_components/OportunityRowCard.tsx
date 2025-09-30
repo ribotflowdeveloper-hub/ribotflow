@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { User, Euro, Calendar } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import type { Opportunity } from '../page';

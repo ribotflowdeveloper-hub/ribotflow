@@ -6,21 +6,16 @@ import { createClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { type Contact } from '@/types/crm';
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nostra funció
 
 export async function updateContactAction(
     contactId: string,
     formData: FormData
 ): Promise<{ data: Contact | null; error: { message: string } | null }> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { data: null, error: { message: "User not authenticated." } };
-    }
-
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No active team found." } };
-    }
+    // ✅ 2. Tota la validació de sessió es redueix a aquestes 3 línies.
+    const session = await validateUserSession();
+    if ('error' in session) return { data: null, error: session.error };
+    const { supabase, activeTeamId } = session;
 
     // ✅ CORRECCIÓ: Processem el formData per obtenir les dades a actualitzar.
     const hobbiesValue = formData.get('hobbies') as string;

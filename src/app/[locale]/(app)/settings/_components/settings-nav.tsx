@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { User, CreditCard, Users, Puzzle, Wrench, ShieldOff ,KeyRound} from 'lucide-react';
-import { cn, getCleanPathname } from '@/lib/utils';
+import { cn, getCleanPathname } from '@/lib/utils/utils';
 
 const settingsNavItems = [
   { id: 'profile', labelKey: 'profile', icon: User, path: '/settings/profile' },

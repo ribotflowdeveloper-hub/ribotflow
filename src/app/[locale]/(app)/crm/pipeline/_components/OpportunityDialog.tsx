@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Check, ChevronsUpDown, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
 import { saveOpportunityAction } from '../actions';

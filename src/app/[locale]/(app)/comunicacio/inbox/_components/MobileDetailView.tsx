@@ -81,13 +81,16 @@ export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, 
             className="absolute inset-0 flex flex-col bg-background z-20"
         >
             <div className="p-2 border-b border-border flex justify-between items-center flex-shrink-0">
-                <div className="flex items-center min-w-0">
+            <div className="flex items-center min-w-0">
                     <Button variant="ghost" size="icon" onClick={onClose} className="flex-shrink-0" aria-label={t('closeButton')}>
                         <X className="w-5 h-5" />
                     </Button>
                     <div className="ml-2 truncate">
-                        <p className="font-semibold truncate" title={ticket.subject}>{ticket.subject}</p>
-                        <p className="text-sm text-muted-foreground truncate" title={ticket.contacts?.nom || ticket.sender_name}>
+                        {/* ✅ CORRECCIÓ 1: Assegurem que el title no sigui null */}
+                        <p className="font-semibold truncate" title={ticket.subject ?? undefined}>{ticket.subject}</p>
+                        
+                        {/* ✅ CORRECCIÓ 2: La més important. Convertim el possible 'null' a 'undefined'. */}
+                        <p className="text-sm text-muted-foreground truncate" title={(ticket.contacts?.nom || ticket.sender_name) ?? undefined}>
                             {t('fromLabel')}: {ticket.contacts?.nom || ticket.sender_name}
                         </p>
                     </div>

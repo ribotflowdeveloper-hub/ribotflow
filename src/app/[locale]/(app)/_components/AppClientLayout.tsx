@@ -1,101 +1,45 @@
+// Ubicació: /app/(app)/components/AppClientLayout.tsx
+
 "use client";
 
-import React, { useState, useEffect, ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import React, { useState, ReactNode } from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { useUser } from '@/hooks/useUser';
+import { toast } from 'sonner';
+
+// Hooks i Stores
+import { useAppNavigation } from '@/hooks/useAppNavigation';
+import { useNavigationStore } from '@/stores/navigationStore';
+
+// Components
 import { MainSidebar } from './main-sidebar';
 import { ModuleSidebar } from './module-sidebar';
 import { MobileMenu } from './MobileMenu';
+import { Chatbot } from '@/components/chatbot/Chatbot';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { navModules } from '@/config/navigation';
-import type { NavItem } from '@/types/navigation';
-import { useNavigationStore } from '@/stores/navigationStore';
+
+// Accions
+import { logoutAction } from '@/app/[locale]/auth/actions';
+
+// Imatges i tipus
 import logoRibot from '@/../public/icon1.png';
-import Image from 'next/image';
-import { logoutAction } from '@/app/[locale]/auth/actions'; // ✅ 1. Importem la nova acció
 
-export function AppClientLayout({ children, locale }: { children: ReactNode, locale: string }) {
-    const pathname = usePathname();
-    const router = useRouter();
+
+export function AppClientLayout({ children }: { children: ReactNode, locale: string }) {
     const t = useTranslations('Navigation');
-    const { setIsNavigating } = useNavigationStore();
-    const { user, teamRole } = useUser();
-
-    const [activeModule, setActiveModule] = useState<NavItem | null>(null);
-    const [isModuleSidebarOpen, setIsModuleSidebarOpen] = useState(false);
+    const { isChatbotOpen } = useNavigationStore();
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
 
-    useEffect(() => {
-        setIsNavigating(false);
-        const prefix = `/${locale}`;
-        const pathnameWithoutLocale = pathname.startsWith(prefix) ? pathname.slice(prefix.length) || '/' : pathname;
-        const currentModule = navModules.find(module => !module.isSingle && module.basePath && pathnameWithoutLocale.startsWith(module.basePath));
-        setActiveModule(currentModule || null);
-        if (!currentModule) {
-            setIsModuleSidebarOpen(false);
-        }
-    }, [pathname, locale, setIsNavigating]);
+    // ✅ Tota la lògica complexa ve del nostre hook personalitzat!
+    const {
+        activeModule,
+        isModuleSidebarOpen,
+        setIsModuleSidebarOpen,
+        handleNavigation,
+        handleMainMenuClick,
+    } = useAppNavigation();
 
-    const handleNavigation = (item: NavItem) => {
-        const plan = user?.app_metadata?.active_team_plan;
-        if (item.requiredPlan && !item.requiredPlan.includes(plan)) {
-            toast.info("Funcionalitat Premium", {
-                description: `El mòdul '${t(item.labelKey)}' només està disponible als plans ${item.requiredPlan.join(' o ')}.`,
-                action: {
-                    label: "Veure Plans",
-                    onClick: () => router.push(`/${locale}/settings/billing`),
-                },
-            });
-            return;
-        }
-
-        if (item.allowedRoles && (!teamRole || !item.allowedRoles.includes(teamRole))) {
-            toast.error("Accés restringit", { description: "No tens els permisos necessaris per a accedir a aquesta secció." });
-            return;
-        }
-
-        // Només naveguem si la ruta és diferent
-        if (pathname !== `/${locale}${item.path}`) {
-            setIsNavigating(true);
-            router.push(`/${locale}${item.path}`);
-        }
-
-        // Tanquem el submenú si naveguem a un lloc nou
-        setIsModuleSidebarOpen(false);
-    };
-
-    /**
-     * Aquesta funció ara gestiona els clics a la barra principal.
-     * Decideix si ha de navegar o només obrir un submenú.
-     */
-    const handleMainMenuClick = (item: NavItem) => {
-        if (item.isSingle) {
-            // Si és un enllaç directe (Dashboard, Network), navega
-            handleNavigation(item);
-        } else {
-            // Si és un mòdul amb fills (CRM, Finances), només gestiona el submenú
-            handleModuleSelect(item);
-        }
-    };
-
-    const handleModuleSelect = (module: NavItem) => {
-        if (!module.isSingle) {
-            if (activeModule?.id === module.id) {
-                setIsModuleSidebarOpen(!isModuleSidebarOpen);
-            } else {
-                setActiveModule(module);
-                setIsModuleSidebarOpen(true);
-            }
-        } else {
-            setActiveModule(null);
-            setIsModuleSidebarOpen(false);
-        }
-    };
-
-    // ✅ 2. La funció 'handleSignOut' ara simplement crida a l'acció
     const handleSignOut = () => {
         logoutAction();
     };
@@ -108,10 +52,11 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
     return (
         <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
             <MainSidebar
-                onModuleSelect={handleMainMenuClick} // ✅ Utilitzem la nova funció
+                onModuleSelect={handleMainMenuClick}
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                 onNotImplemented={handleNotImplementedClick}
             />
+
             <motion.div
                 className="hidden lg:block overflow-hidden flex-shrink-0"
                 initial={false}
@@ -122,7 +67,6 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                     <ModuleSidebar
                         module={activeModule}
                         onClose={() => setIsModuleSidebarOpen(false)}
-                        // ✅ CORRECCIÓ: Passem la funció de navegació completa
                         handleNavigation={handleNavigation}
                     />
                 )}
@@ -141,6 +85,7 @@ export function AppClientLayout({ children, locale }: { children: ReactNode, loc
                 <main className="flex-1 overflow-y-auto">
                     <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>
                 </main>
+                {isChatbotOpen && <Chatbot />}
             </div>
 
             <AlertDialog open={isSignOutDialogOpen} onOpenChange={setIsSignOutDialogOpen}>

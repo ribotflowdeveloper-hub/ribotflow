@@ -1,5 +1,5 @@
 // Ruta: src/components/ui/skeleton.tsx
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 function Skeleton({
   className,

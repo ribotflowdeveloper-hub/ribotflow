@@ -9,7 +9,7 @@ import { Droppable } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { useTranslations, useLocale } from 'next-intl';
 import type { Stage, Opportunity } from '../page';
 import { PIPELINE_STAGES_MAP } from '@/types/crm';

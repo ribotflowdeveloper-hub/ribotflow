@@ -12,7 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Calendar as CalendarIcon, Check, ChevronsUpDown, Trash2, UploadCloud, Paperclip, BrainCircuit } from 'lucide-react';
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
 import { useLocale, useTranslations } from 'next-intl';

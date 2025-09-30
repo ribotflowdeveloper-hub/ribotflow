@@ -1,25 +1,16 @@
-// a l'arxiu d'accions del pipeline
-
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nostra funció d'ajuda
 
 /**
- * Desa una oportunitat (crea o actualitza) assignant-la a l'equip actiu de l'usuari.
+ * Desa una oportunitat (crea o actualitza).
  */
 export async function saveOpportunityAction(formData: FormData) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: { message: "No autenticat." } };
-
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { error: { message: "No s'ha pogut determinar l'equip actiu." } };
-    }
-    // ---------------------------------
+    // ✅ 2. Tota la validació de sessió es redueix a aquestes 3 línies.
+    const session = await validateUserSession();
+    if ('error' in session) return { error: session.error };
+    const { supabase, user, activeTeamId } = session;
 
     const rawData = Object.fromEntries(formData.entries());
     const dataToSave = {
@@ -30,11 +21,10 @@ export async function saveOpportunityAction(formData: FormData) {
         value: rawData.value ? parseFloat(rawData.value as string) : null,
         close_date: rawData.close_date ? new Date(rawData.close_date as string).toISOString() : null,
         user_id: user.id,
-        team_id: activeTeamId, // ✅ Assignem l'oportunitat a l'equip actiu
+        team_id: activeTeamId,
     };
 
     try {
-        // La política RLS 'WITH CHECK' verificarà que l'usuari té permís per escriure en aquest team_id.
         const { error } = await (rawData.id
             ? supabase.from("opportunities").update(dataToSave).eq("id", rawData.id)
             : supabase.from("opportunities").insert(dataToSave));
@@ -47,25 +37,25 @@ export async function saveOpportunityAction(formData: FormData) {
         return { error: { message } };
     }
 }
- 
+ 
 /**
  * Actualitza l'etapa d'una oportunitat (per al drag-and-drop).
  */
 export async function updateOpportunityStageAction(opportunityId: string, newStage: string) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: { message: "No autenticat." } };
- 
+    // ✅ Fem el mateix aquí.
+    const session = await validateUserSession();
+    if ('error' in session) return { error: session.error };
+    const { supabase } = session;
+ 
     try {
-        // Aquesta consulta ara és segura. La política RLS de la taula 'opportunities'
-        // impedirà que un usuari modifiqui una oportunitat que no pertany al seu equip actiu.
+        // La RLS s'encarregarà de la seguretat a nivell de fila.
         const { error } = await supabase
             .from("opportunities")
             .update({ stage_name: newStage })
             .eq("id", opportunityId);
- 
+ 
         if (error) throw error;
- 
+ 
         revalidatePath("/crm/pipeline");
         return { success: true };
     } catch (error: unknown) {

@@ -12,7 +12,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Loader2, Plus, Trash2, Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from "date-fns";
-import { ca, es, enUS } from "date-fns/locale"; import { cn } from "@/lib/utils";
+import { ca, es, enUS } from "date-fns/locale"; import { cn } from "@/lib/utils/utils";
 import { type Invoice, type Contact, type InvoiceItem } from '../types';
 import { createOrUpdateInvoiceAction, type InvoiceFormData } from '../actions';
 import { useTranslations, useLocale } from 'next-intl';

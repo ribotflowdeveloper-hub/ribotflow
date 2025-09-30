@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 
-import { cn } from '@/lib/utils'; // Importem 'cn' per combinar classes
+import { cn } from '@/lib/utils/utils'; // Importem 'cn' per combinar classes
 
 export function LanguageSwitcher() {
   const t = useTranslations('LanguageSwitcher');

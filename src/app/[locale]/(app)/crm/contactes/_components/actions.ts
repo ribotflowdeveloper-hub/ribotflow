@@ -2,30 +2,21 @@
 
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { Contact } from '@/types/crm';
-import { cookies } from "next/headers";
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nova funció
 
 export async function createContactAction(
-  formData: FormData
+    formData: FormData
 ): Promise<{ data: Contact | null; error: { message: string } | null }> {
 
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { data: null, error: { message: "Usuari no autenticat." } };
+    // ✅ 2. Cridem la funció de validació. Tot en una línia.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { data: null, error: session.error };
     }
-
-    // --- AQUESTA ÉS LA NOVA LÒGICA CORRECTA ---
-    // A les accions, és més segur llegir l'ID directament de l'objecte user,
-    // ja que aquest ve validat per les cookies de la pròpia acció.
-    const activeTeamId = user.app_metadata?.active_team_id;
-
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No s'ha pogut determinar l'equip actiu." } };
-    }
-    // ---------------------------------------------------
+    // A partir d'aquí, sabem que tenim tot el que necessitem.
+    const { supabase, user, activeTeamId } = session;
 
     const nom = formData.get('nom') as string;
     const email = formData.get('email') as string;

@@ -1,37 +1,19 @@
-// /app/[locale]/crm/_components/CrmData.tsx
-
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { CrmClient } from './crm-client';
 import { CrmData as CrmDataType } from '../page';
+import { validatePageSession } from '@/lib/supabase/session'; // ✅ 1. Importem la nostra funció
 
 export async function CrmData() {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
+    // ✅ 2. TOTA la lògica de validació anterior es substitueix per aquesta crida.
+    // Aquesta funció ja gestiona les redireccions si l'usuari no està logat o no té equip actiu.
+    const { supabase } = await validatePageSession();
 
-    if (!user) {
-        return <CrmClient initialData={null} />;
-    }
-
-    // --- LÒGICA D'EQUIP ---
-    // La nostra lògica estàndard per assegurar-nos que l'usuari té un equip actiu.
-    // No cal passar cap paràmetre; la funció RPC ho llegirà del token.
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        redirect('/settings/team'); // Redirigim si hi ha error
-    }
-    const claims = JSON.parse(claimsString);
-    if (!claims.app_metadata?.active_team_id) {
-        redirect('/settings/team'); // Redirigim si no hi ha equip actiu
-    }
-    // -----------------------
-
-    // ✅ CRIDEM A LA NOVA FUNCIÓ RPC SENSE PARÀMETRES
+    // ✅ 3. Ara podem cridar directament a la nostra funció RPC per obtenir les dades del dashboard.
+    // La funció RPC utilitzarà internament l'active_team_id del token de l'usuari.
     const { data, error } = await supabase.rpc('get_crm_dashboard_data');
     
     if (error) {
         console.error('Error fetching CRM dashboard data:', error);
+        // Si la funció RPC falla, mostrem el client amb dades nul·les, que mostrarà un error.
         return <CrmClient initialData={null} />;
     }
 

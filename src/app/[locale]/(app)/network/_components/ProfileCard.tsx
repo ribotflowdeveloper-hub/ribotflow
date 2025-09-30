@@ -4,7 +4,7 @@ import { Building2 } from 'lucide-react';
 import type { PublicProfileListItem } from '../types';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 
 interface ProfileCardProps {
     profile: PublicProfileListItem;

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils/utils"
 
 // 1. Canviem la interfície buida per un 'type'.
 // 2. Renombrem a 'TextareaProps' i heretem de les propietats correctes: React.TextareaHTMLAttributes.

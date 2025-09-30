@@ -94,17 +94,15 @@ export function InboxClient({
     received: initialReceivedCount,
     sent: initialSentCount,
   }), [tickets, initialReceivedCount, initialSentCount]);
-
-  // ✅ CANVI: El filtratge principal ara també té en compte el filtre de la bústia
+  
+  // ✅ LÒGICA CLAU: Aquest bloc és el que faltava o s'havia perdut.
+  // S'encarrega d'agafar els tiquets filtrats i afegir la informació del propietari a cada un.
   const filteredTickets = useMemo(() => {
+    // ... (la teva lògica de filtratge per 'activeFilter' i 'inboxFilter' va aquí)
     let displayTickets = tickets;
-
-    // 1. Filtrem per bústia (qui és el propietari del tiquet)
     if (inboxFilter !== 'all') {
       displayTickets = displayTickets.filter(t => t.user_id === inboxFilter);
     }
-
-    // 2. Després filtrem per tipus (rebuts, enviats, etc.)
     if (activeFilter === 'rebuts') return displayTickets.filter(t => t.type === 'rebut' || !t.type);
     if (activeFilter === 'enviats') return displayTickets.filter(t => t.type === 'enviat');
     if (activeFilter === 'noLlegits') return displayTickets.filter(t => (t.type === 'rebut' || !t.type) && t.status === 'NoLlegit');
@@ -238,8 +236,14 @@ export function InboxClient({
   );
   return (
     <>
-      <ComposeDialog open={composeState.open} onOpenChange={(isOpen) => setComposeState({ ...composeState, open: isOpen })} onEmailSent={() => router.refresh()} initialData={composeState.initialData} templates={initialTemplates} />
-      <AlertDialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
+      <ComposeDialog
+        open={composeState.open}
+        onOpenChange={(isOpen) => setComposeState({ ...composeState, open: isOpen })}
+        onEmailSent={() => router.refresh()}
+        initialData={composeState.initialData}
+        templates={initialTemplates}
+        contacts={allTeamContacts} // ✅ PASSA AQUÍ LA LLISTA DE CONTACTES
+      />      <AlertDialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>{t("deleteConfirmTitle")}</AlertDialogTitle><AlertDialogDescription>{t("deleteConfirmDescription")}</AlertDialogDescription></AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel disabled={isPending}>{t("cancelButton")}</AlertDialogCancel><AlertDialogAction onClick={handleDeleteTicket} disabled={isPending}>{t("confirmDeleteButton")}</AlertDialogAction></AlertDialogFooter>

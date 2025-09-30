@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn, getCleanPathname } from '@/lib/utils';
+import { cn, getCleanPathname } from '@/lib/utils/utils';
 import type { NavItem } from '@/types/navigation';
 
 /**

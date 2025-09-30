@@ -8,7 +8,7 @@ import ProfileList from './ProfileList';
 import type { PublicProfileListItem, PublicProfileDetail } from '../types';
 import { useTranslations } from 'next-intl';
 import { List, Map as MapIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
 import { getTeamDetailsAction } from '../actions';
 import { toast } from 'sonner';

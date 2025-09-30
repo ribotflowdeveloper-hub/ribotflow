@@ -1,3 +1,5 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 // Aquest objecte defineix totes les accions possibles a la teva plataforma.
 export const PERMISSIONS = {
     MANAGE_TEAM: 'manage_team',       // Canviar nom de l'equip, convidar, eliminar membres, canviar rols.
@@ -32,14 +34,40 @@ export const ROLES: Record<string, Permission[]> = {
 };
 
 /**
- * Funció auxiliar reutilitzable per a comprovar si un rol té un permís.
- * Aquesta serà la funció que farem servir a tot arreu.
- * @param role El rol de l'usuari (ex: 'admin', 'member').
- * @param permission El permís que volem comprovar (ex: 'view_billing').
- * @returns true si el rol té el permís, false si no.
+ * Comprova si un rol té un permís específic.
  */
 export const hasPermission = (role: string | undefined | null, permission: Permission): boolean => {
     if (!role) return false;
-    // Comprovem si el rol existeix i si la seva llista de permisos inclou el que busquem.
     return ROLES[role]?.includes(permission) || false;
 };
+
+/**
+ * Funció d'ajuda que obté el rol d'un usuari en un equip concret.
+ */
+export async function getUserRoleInTeam(
+    supabase: SupabaseClient,
+    userId: string,
+    teamId: string
+): Promise<string | null> {
+    const { data: member, error } = await supabase
+        .from('team_members')
+        .select('role')
+        .match({ user_id: userId, team_id: teamId })
+        .single();
+    
+    if (error) return null;
+    return member.role;
+}
+
+/**
+ * Funció d'alt nivell que comprova directament si un usuari té un permís.
+ */
+export async function checkUserPermission(
+    supabase: SupabaseClient,
+    userId: string,
+    teamId: string,
+    permission: Permission
+): Promise<boolean> {
+    const role = await getUserRoleInTeam(supabase, userId, teamId);
+    return hasPermission(role, permission);
+}

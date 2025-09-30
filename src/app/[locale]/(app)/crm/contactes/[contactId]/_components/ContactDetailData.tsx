@@ -1,27 +1,13 @@
 // /app/[locale]/crm/contactes/[contactId]/_components/ContactDetailData.tsx
 
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { notFound, redirect } from 'next/navigation';
+import { notFound} from 'next/navigation';
 import { ContactDetailClient } from './contact-detail-client';
 import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm';
+import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció de pàgina
 
 export async function ContactDetailData({ contactId }: { contactId: string }) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
+    const { supabase, activeTeamId } = await validatePageSession();
 
-    // --- ROBUST ACTIVE TEAM LOGIC ---
-    // This is our standard, secure way to get the active team ID.
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        throw new Error("Could not get user claims from the database.");
-    }
-    const claims = JSON.parse(claimsString);
-    const activeTeamId = claims.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        redirect('/settings/team');
-    }
     // ------------------------------------
 
     // ✅ SECURE QUERY: We now fetch the contact by its ID AND the active team ID.

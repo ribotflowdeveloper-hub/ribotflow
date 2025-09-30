@@ -12,7 +12,7 @@ import type { QuoteWithContact } from '../page';
 import { deleteQuoteAction } from '../actions';
 import { useTranslations, useLocale } from 'next-intl';
 import { QUOTE_STATUS_MAP } from '@/types/crm';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'; // <-- Importa els hooks correctes
 
 // ATENCIÓ: Ja no necessites 'sortQuotesAction' ni 'useTransition' per a això.

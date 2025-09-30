@@ -1,9 +1,7 @@
 // /app/[locale]/crm/contactes/_components/ContactsData.tsx
-
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { ContactsClient } from './contacts-client';
 import type { Contact } from '@/types/crm';
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nova funció
 
 const ITEMS_PER_PAGE = 50;
 
@@ -16,28 +14,18 @@ interface ContactsDataProps {
 }
 
 export async function ContactsData({ page, sortBy, status, searchTerm, viewMode }: ContactsDataProps) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
+    // ✅ 2. Cridem a la nostra funció centralitzada.
+    const session = await validateUserSession();
 
-    if (!user) {
+    // Si la sessió no és vàlida (usuari no logat o sense equip actiu),
+    // mostrem el component client amb dades buides.
+    if ('error' in session) {
+        console.error("ContactsData: Sessió invàlida.", session.error.message);
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
     }
 
-    // --- AQUESTA ÉS LA NOVA LÒGICA CORRECTA ---
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-
-    if (claimsError || !claimsString) {
-        console.error("Error crític: No s'ha pogut obtenir la informació del token de l'usuari des de la BD:", claimsError);
-        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
-    }
-
-    const claims = JSON.parse(claimsString);
-    const activeTeamId = claims.app_metadata?.active_team_id;
-
-    if (!activeTeamId) {
-        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
-    }
-    // ------------------------------------------
+    // A partir d'aquí, sabem que tenim una sessió vàlida.
+    const { supabase } = session;
 
     const currentPage = Number(page) || 1;
     const from = (currentPage - 1) * ITEMS_PER_PAGE;

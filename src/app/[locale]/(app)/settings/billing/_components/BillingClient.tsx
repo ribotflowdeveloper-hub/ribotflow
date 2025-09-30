@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Check, Gift, Star, Gem, Settings} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { useTranslations, useLocale } from 'next-intl';
 import { subscribeToPlanAction, cancelSubscriptionAction } from '../actions';
 import type { Subscription, Plan } from '@/types/settings';

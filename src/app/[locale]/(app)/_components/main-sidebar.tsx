@@ -1,144 +1,100 @@
+// Ubicació: /app/(app)/components/main-sidebar.tsx
+
 "use client";
 
 import React from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useLocale, useTranslations } from 'next-intl';
-
-import { LogOut } from 'lucide-react';
-import { navModules, bottomItems } from '@/config/navigation';
-import { cn, getCleanPathname } from '@/lib/utils';
-
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-
-import type { NavItem } from '@/types/navigation';
-import logoRibot from '@/../public/icon1.png';
 import Image from 'next/image';
-import { useNavigationStore } from '@/stores/navigationStore'; // ✅ NOU: Importem el nostre magatzem
-// ✅ 1. Definimos una interfaz clara para las propiedades del componente.
+import { useTranslations } from 'next-intl';
+import { LogOut } from 'lucide-react';
+
+import { useNavigationStore } from '@/stores/navigationStore';
+import { navModules, bottomItems } from '@/config/navigation';
+import type { NavItem as NavItemType } from '@/types/navigation';
+
+import { NavItem } from './NavItem';
+import logoRibot from '@/../public/icon1.png';
+
 interface MainSidebarProps {
-    onModuleSelect: (module: NavItem) => void;
+    onModuleSelect: (module: NavItemType) => void;
     onOpenSignOutDialog: () => void;
     onNotImplemented: (e: React.MouseEvent) => void;
 }
 
 export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemented }: MainSidebarProps) {
-    const fullPathname = usePathname();
-    const locale = useLocale();
     const t = useTranslations('Navigation');
-    const { isNavigating, setIsNavigating } = useNavigationStore();
+    const { isNavigating } = useNavigationStore();
+    const { toggleChatbot } = useNavigationStore();
 
-    const NavItemComponent = ({ item }: { item: NavItem }) => {
-        const activeCheckPath = item.basePath || item.path;
-        const isActive = getCleanPathname(fullPathname, locale).startsWith(activeCheckPath);
+    const handleItemClick = (e: React.MouseEvent<HTMLAnchorElement>, item: NavItemType) => {
+        // ✅ CORRECCIÓ: Comprovem primer si l'ítem no està implementat.
+        if (item.notImplemented) {
+            e.preventDefault(); // Prevenim la navegació del Link
+            onNotImplemented(e); // Cridem a la funció corresponent del pare
+            return; // Aturem l'execució aquí
+        }
 
-        /**
-         * @summary Gestiona el clic en qualsevol icona de la barra principal.
-         */
-        const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-            // Notifiquem sempre al component pare per gestionar l'obertura/tancament del submenú
-            onModuleSelect(item);
+        // Lògica especial per a certs botons (com el chatbot)
+        if (item.id === 'ia') {
+            e.preventDefault();
+            toggleChatbot();
+            return;
+        }
 
-            const newFullPath = `/${locale}${item.path}`;
+        // Prevenim la navegació si no és un enllaç directe (és un mòdul que obre un submenú)
+        if (!item.isSingle) {
+            e.preventDefault();
+        }
 
-            // ✅ CORRECCIÓ CLAU: Mirem si l'element és un enllaç directe
-            if (item.isSingle) {
-                // Si és un enllaç directe (com el Dashboard), activem l'animació si naveguem a una nova pàgina
-                if (fullPathname !== newFullPath) {
-                    setIsNavigating(true);
-                }
-            } else {
-                // Si NO és un enllaç directe (és un mòdul com CRM), només obrim el submenú.
-                // Prevenim la navegació per defecte del Link.
-                e.preventDefault();
-            }
-        };
-        return (
-            // ✅ 2. Embolcallem tot amb el TooltipProvider.
-            <TooltipProvider delayDuration={100}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Link
-                            href={`/${locale}${item.path}`}
-                            onClick={handleClick}
-                            className={cn(
-                                'flex items-center justify-center h-12 w-12 rounded-lg transition-colors relative',
-                                isActive ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-                            )}
-                        >
-                            <item.icon className="w-6 h-6" />
-                        </Link>
-                    </TooltipTrigger>
-                    {/* ✅ 3. El contingut del Tooltip (el text) es renderitza en un portal,
-                        la qual cosa fa que sempre es mostri per sobre de la resta. */}
-                    <TooltipContent side="right" className="ml-2">
-                        {/* ✅ CORRECCIÓ: Eliminem el 'as string' innecessari */}
-                        <p>{t(item.labelKey)}</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        );
+        // Finalment, notifiquem al component pare que s'ha fet un clic.
+        onModuleSelect(item);
     };
-
-
+    
     return (
-        <>
-            {/* ✅ Contenidor principal de la barra lateral */}
-            {/* ✅ CORRECCIÓN: 'hidden lg:flex' oculta la barra en móvil/tablet y la muestra en escritorio */}
-            <aside className="hidden lg:flex w-24 h-full glass-effect border-r border-border p-4 flex-col items-center z-20">
-                {/* ✅ Logo a la part superior */}
-                <div className="flex items-center justify-center gap-3 mb-8">
-                    <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
-                        {isNavigating ? (
-                            <video
-                                src="/videoLoading.webm"
-                                autoPlay
-                                muted
-                                loop
-                                playsInline // Important per a dispositius mòbils
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <Image
-                                src={logoRibot} // Assegura't que 'logo' estigui importat
-                                alt={t('logoAlt')}
-                                className="object-cover"
-                                priority
-                            />
-                        )}
-                    </div>
-                </div>
-
-                {/* ✅ Navegació principal */}
-                <nav className="flex-1 flex flex-col items-center gap-4 z-20">
-                    {navModules.map(item =>
-                        // ✅ CORREGIT: Hem eliminat la propietat 'currentPath'
-                        <NavItemComponent key={item.id} item={item} />
+        <aside className="hidden lg:flex w-24 h-full glass-effect border-r border-border p-4 flex-col items-center z-20">
+            {/* Logo a la part superior */}
+            <div className="flex items-center justify-center gap-3 mb-8">
+                <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
+                    {isNavigating ? (
+                        <video
+                            src="/videoLoading.webm"
+                            autoPlay muted loop playsInline
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <Image
+                            src={logoRibot}
+                            alt={t('logoAlt')}
+                            className="object-cover"
+                            priority
+                        />
                     )}
-                </nav>
-
-                {/* ✅ Elements de la part inferior: funcions addicionals i logout */}
-                <div className="flex flex-col items-center gap-4 border-t border-border pt-4 mt-4">
-                    {bottomItems.map(item => (
-                        item.notImplemented
-                            ? <a key={item.id} href="#" onClick={onNotImplemented}
-                                className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted group relative">
-                                <item.icon className="w-6 h-6" />
-                                <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                    {t(item.labelKey as string)}
-                                </span></a>
-                            : <NavItemComponent key={item.id} item={item} />
-
-                    ))}
-                    {/* ✅ Botó de tancar sessió */}
-                    <div onClick={onOpenSignOutDialog} className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer group relative">
-                        <LogOut className="w-6 h-6" />
-                        <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{t('signOut')}</span>
-                    </div>
                 </div>
-            </aside>
+            </div>
 
+            {/* Navegació principal */}
+            <nav className="flex-1 flex flex-col items-center gap-4 z-20">
+                {navModules.map(item => (
+                    <NavItem key={item.id} item={item} onClick={handleItemClick} t={t} />
+                ))}
+            </nav>
 
-        </>
+            {/* Elements de la part inferior */}
+            <div className="flex flex-col items-center gap-4 border-t border-border pt-4 mt-4">
+                {bottomItems.map(item => (
+                    <NavItem key={item.id} item={item} onClick={handleItemClick} t={t} />
+                ))}
+
+                {/* Botó de tancar sessió */}
+                <div 
+                    onClick={onOpenSignOutDialog} 
+                    className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer group relative"
+                    role="button"
+                    aria-label={t('signOut')}
+                >
+                    <LogOut className="w-6 h-6" />
+                    <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{t('signOut')}</span>
+                </div>
+            </div>
+        </aside>
     );
 }

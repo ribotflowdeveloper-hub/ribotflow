@@ -24,7 +24,7 @@ import 'prismjs/components/prism-tsx';
 
 import { fetchProjectStructureAction, fetchFileContentAction, fetchBranchesAction, type FileTreeNode } from '../actions';
 import { Loader2, File, Folder, Database, Server, Component, Settings, FileCode, X, Search, Expand, Shrink, GitBranch } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
