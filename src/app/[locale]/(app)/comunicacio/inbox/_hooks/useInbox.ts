@@ -5,11 +5,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { toast } from "sonner";
 import { useDebounce } from 'use-debounce';
 import type { User } from '@supabase/supabase-js';
+import type { Contact } from '@/types/crm'; // Importa el tipus Contact
 
 import {
     deleteTicketAction,
     markTicketAsReadAction,
-    saveSenderAsContactAction,
+    linkTicketsToContactAction, // ✅ Importem la nova acció
     getTicketBodyAction,
     loadMoreTicketsAction,
 } from '../actions';
@@ -73,7 +74,7 @@ export function useInbox({
     const [isPending, startTransition] = useTransition();
     const [isContactPanelOpen, setIsContactPanelOpen] = useState(false);
     const [inboxFilter, setInboxFilter] = useState<string>(user.id); // Per defecte, la bústia de l'usuari
-    
+
 
     // --- DADES MEMORITZADES ---
     const counts = useMemo(() => ({
@@ -116,34 +117,47 @@ export function useInbox({
         });
     }, [filteredTickets, teamMembers, userColorMap]);
 
-    // --- HANDLERS (FUNCIONS D'ACCIÓ) ---
-    const handleSelectTicket = useCallback(async (ticket: Ticket | null) => { // ✅ Aceptamos null
-        // Si el tiquet és null (p.ex. al tancar la vista mòbil), netegem l'estat
+    const handleSelectTicket = useCallback(async (ticket: Ticket | null) => {
+        // Cas 1: Si es passa 'null', netegem la selecció (útil per a vistes mòbils).
         if (!ticket) {
             setSelectedTicket(null);
             setSelectedTicketBody(null);
             return;
         }
 
-        if (selectedTicket?.id === ticket.id) return;
+        // Cas 2: Si es fa clic al mateix tiquet que ja està seleccionat, no fem res.
+        if (selectedTicket?.id === ticket.id) {
+            return;
+        }
 
+        // Cas 3: Seleccionem un nou tiquet.
         setSelectedTicket(ticket);
-        // ... la resta de la funció es manté igual
         setIsBodyLoading(true);
         setSelectedTicketBody(null);
+
+        // Carreguem el cos del correu de manera asíncrona.
         try {
             const { body } = await getTicketBodyAction(ticket.id);
             setSelectedTicketBody(body);
-        } catch {
+        } catch (error) {
+            console.error("Error en carregar el cos del tiquet:", error);
             setSelectedTicketBody(`<p>${t('errorLoadingBody')}</p>`);
         } finally {
             setIsBodyLoading(false);
         }
+
+        // Si el tiquet estava com a 'NoLlegit', l'actualitzem.
         if (ticket.status === 'NoLlegit') {
+            // Acció optimista: actualitzem la UI a l'instant.
+            setTickets(currentTickets =>
+                currentTickets.map(t =>
+                    t.id === ticket.id ? { ...t, status: 'Llegit' } : t
+                )
+            );
+            // Acció del servidor: enviem el canvi a la base de dades.
             markTicketAsReadAction(ticket.id);
-            setTickets(current => current.map(t => t.id === ticket.id ? { ...t, status: 'Llegit' } : t));
         }
-    }, [selectedTicket?.id, t]);
+    }, [selectedTicket?.id, t]); // Les dependències són correctes.
 
     const handleDeleteTicket = useCallback(() => {
         if (!ticketToDelete) return;
@@ -176,11 +190,19 @@ export function useInbox({
         });
     }, [page, activeFilter, inboxFilter]);
 
-    const handleSaveContact = useCallback((ticket: Ticket) => {
+    // ✅ LÒGICA CORREGIDA
+    const handleSaveContact = useCallback((newlyCreatedContact: Contact, originalTicket: Ticket) => {
+        // Aquesta funció ara rep el contacte que s'acaba de crear
+        // i el tiquet original per a saber quin email ha de vincular.
         startTransition(async () => {
-            const result = await saveSenderAsContactAction(ticket);
+            const result = await linkTicketsToContactAction(newlyCreatedContact.id, originalTicket.sender_email);
+
             toast[result.success ? 'success' : 'error'](result.message);
-            if (result.success) router.refresh();
+
+            // Important: refresquem les dades des del servidor per a actualitzar tota la UI
+            if (result.success) {
+                router.refresh();
+            }
         });
     }, [router]);
 

@@ -1,26 +1,27 @@
 "use client";
 
-import React, { startTransition, useMemo } from 'react';
+import React, { useMemo, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
-import { User, Building, UserPlus, Mail, Phone, MapPin, ExternalLink, Euro, Ban } from 'lucide-react';
+import { User, Building, UserPlus, Mail, Phone, MapPin, ExternalLink, Euro, Ban, Loader2 } from 'lucide-react';
 import type { Ticket } from '../page';
 import Link from 'next/link';
-// Importem el nostre diàleg reutilitzable
 import { ContactDialog } from '@/app/[locale]/(app)/crm/contactes/_components/ContactDialog';
-import type { Contact } from '@/types/crm'; // Importem el tipus Contact
+import type { Contact } from '@/types/crm';
 import { addToBlacklistAction } from '../actions';
 import { toast } from 'sonner';
 
 interface ContactPanelProps {
     ticket: Ticket | null;
     isPendingSave: boolean;
-    // La funció onSaveContact és crucial per a vincular el nou contacte creat amb els tiquets.
-    onSaveContact: (ticket: Ticket) => void;
-    allTeamContacts: Contact[]; // ✅ Rebem la llista de tots els contactes
-
+    // ✅ CORRECCIÓ 1: Actualitzem la signatura de la funció que esperem rebre.
+    // Ara accepta el contacte nou i el tiquet original.
+    onSaveContact: (newlyCreatedContact: Contact, originalTicket: Ticket) => void;
+    allTeamContacts: Contact[];
 }
 
 export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSave, onSaveContact, allTeamContacts }) => {
+
+    const [isPending, startTransition] = useTransition();
     // La teva funció de traduccions (la deixo aquí per si la vols ampliar)
     const t = (key: string) => {
         const translations: { [key: string]: string } = {
@@ -155,7 +156,6 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                     <User className="w-16 h-16 text-muted-foreground mb-4" />
                     <p className="font-semibold">{ticket.sender_name}</p>
                     <p className="text-sm text-muted-foreground mb-4">{ticket.sender_email}</p>
-
                     <ContactDialog
                         trigger={
                             <Button disabled={isPendingSave}>
@@ -167,18 +167,31 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                             nom: ticket.sender_name,
                             email: ticket.sender_email
                         }}
-                        onContactSaved={() => onSaveContact(ticket)}
+                        // ✅ CORRECCIÓ 2: La lògica aquí ara és correcta, ja que 'onSaveContact' espera dos paràmetres.
+                        onContactSaved={(newContact) => onSaveContact(newContact as Contact, ticket)}
                     />
                 </div>
 
             )}
-            {/* ✅ NOU: Peu de pàgina amb accions addicionals */}
-            <div className="p-4 border-t mt-auto flex-shrink-0">
-                <Button variant="destructive" size="sm" className="w-full" onClick={handleBlacklist} disabled={isPendingSave}>
-                    <Ban className="w-4 h-4 mr-2" />
-                    Afegeix remitent a la llista negra
-                </Button>
-            </div>
+            {ticket && (
+                <div className="p-4 border-t mt-auto flex-shrink-0">
+                    <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="w-full" 
+                        onClick={handleBlacklist} 
+                        // ✅ CORRECCIÓ 2: Utilitzem 'isPending' per a desactivar el botó
+                        disabled={isPendingSave || isPending}
+                    >
+                        {isPending ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <Ban className="w-4 h-4 mr-2" />
+                        )}
+                        {isPending ? 'Bloquejant...' : 'Afegeix remitent a la llista negra'}
+                    </Button>
+                </div>
+            )}
         </div>
     );
 };

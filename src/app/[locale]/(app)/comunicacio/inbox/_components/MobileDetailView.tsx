@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { X, Reply, Info, UserPlus, Loader2 } from 'lucide-react'; 
 import type { Ticket } from '@/types/comunicacio/inbox';
 import React from 'react';
+import type { Contact } from '@/types/crm';
+import { ContactDialog } from '../../../crm/contactes/_components/ContactDialog';
 
 // ✅ SOLUCIÓ: S'ha redissenyat aquest component per a ser més simple.
 // Ara no calcula l'alçada, sinó que omple el seu contenidor i gestiona el seu propi scroll intern.
@@ -58,7 +60,7 @@ interface MobileDetailViewProps {
     isPending: boolean;
     onClose: () => void;
     onReply: (ticket: Ticket) => void;
-    onSaveContact: (ticket: Ticket) => void;
+    onSaveContact: (newlyCreatedContact: Contact, originalTicket: Ticket) => void;
 }
 
 export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, onReply, onSaveContact }: MobileDetailViewProps) {
@@ -113,10 +115,21 @@ export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, 
                             <p><strong>{t('nameLabel')}:</strong> {ticket.contacts?.nom || ticket.sender_name}</p>
                             <p><strong>{t('emailLabel')}:</strong> {ticket.contacts?.email || ticket.sender_email}</p>
                             {!ticket.contacts && (
-                                <Button size="sm" className="w-full mt-2" onClick={() => onSaveContact(ticket)} disabled={isPending}>
-                                    <UserPlus className="w-4 h-4 mr-2"/>
-                                    {t('saveContactButton')}
-                                </Button>
+                                // ✅ 2. Substituïm el botó simple pel nostre diàleg reutilitzable.
+                                <ContactDialog
+                                    trigger={
+                                        <Button size="sm" className="w-full mt-2" disabled={isPending}>
+                                            <UserPlus className="w-4 h-4 mr-2"/>
+                                            {t('saveContactButton')}
+                                        </Button>
+                                    }
+                                    initialData={{
+                                        nom: ticket.sender_name,
+                                        email: ticket.sender_email
+                                    }}
+                                    // Passem la funció 'onSaveContact' de la mateixa manera que al panell d'escriptori.
+                                    onContactSaved={(newContact) => onSaveContact(newContact as Contact, ticket)}
+                                />
                             )}
                         </div>
                     </details>

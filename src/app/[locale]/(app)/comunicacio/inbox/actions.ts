@@ -72,41 +72,7 @@ export async function markTicketAsReadAction(ticketId: number): Promise<ActionRe
   return { success: true };
 }
 
-/**
- * Guarda un remitent com a nou contacte a l'equip actiu.
- */
-export async function saveSenderAsContactAction(ticket: Ticket): Promise<ActionResult> {
-  const session = await validateUserSession();
-  if ('error' in session) return { success: false, message: session.error.message };
-  const { supabase, user, activeTeamId } = session;
 
-  if (!ticket.sender_email) return { success: false, message: "Dades invàlides." };
-
-  try {
-    const { data: newContact } = await supabase
-      .from("contacts")
-      .insert({
-        user_id: user.id,
-        team_id: activeTeamId,
-        nom: ticket.sender_name || ticket.sender_email,
-        email: ticket.sender_email,
-        estat: "Lead",
-      })
-      .select('id').single().throwOnError();
-
-    await supabase
-      .from("tickets")
-      .update({ contact_id: newContact.id })
-      .eq("user_id", user.id)
-      .eq("sender_email", ticket.sender_email);
-
-    revalidatePath("/comunicacio/inbox");
-    return { success: true, message: "Contacte desat i vinculat." };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Error desconegut";
-    return { success: false, message };
-  }
-}
 
 /**
  * sendEmailAction
@@ -299,5 +265,28 @@ export async function addToBlacklistAction(emailToBlock: string): Promise<Action
     console.error("Error afegint a la blacklist:", error);
     const message = error instanceof Error ? error.message : "Error desconegut.";
     return { success: false, message };
+  }
+}
+
+/**
+ * Nova acció que vincula tots els tiquets d'un remitent a un contacte existent.
+ */
+export async function linkTicketsToContactAction(contactId: string, senderEmail: string): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ('error' in session) return { success: false, message: session.error.message };
+  const { supabase, user } = session;
+
+  try {
+      await supabase
+          .from("tickets")
+          .update({ contact_id: contactId })
+          .eq("user_id", user.id)
+          .eq("sender_email", senderEmail.toLowerCase());
+
+      revalidatePath("/comunicacio/inbox");
+      return { success: true, message: "Contacte vinculat correctament." };
+  } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Error desconegut al vincular tiquets.";
+      return { success: false, message };
   }
 }
