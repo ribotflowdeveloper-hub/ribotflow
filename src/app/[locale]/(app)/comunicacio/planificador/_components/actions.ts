@@ -77,7 +77,10 @@ export async function createSocialPostAction(
     mediaType: string | null
 ): Promise<ActionResult<SocialPost>> {
     const validation = await validateSocialPlannerPermissions();
-    if ('error' in validation) return { success: false, message: validation.error };
+    if ('error' in validation) {
+        // ✅ CORRECCIÓ: Retornem el missatge d'error de la validació
+        return { success: false, message: validation.error };
+    }
     const { supabase, user, activeTeamId } = validation;
     
     const t = await getTranslations('SocialPlanner.toasts');
@@ -111,7 +114,6 @@ export async function createSocialPostAction(
     revalidatePath('/comunicacio/planificador');
     return { success: true, message: t('successDraftCreated'), data: postData };
 }
-
 /**
  * Planifica una publicació.
  */

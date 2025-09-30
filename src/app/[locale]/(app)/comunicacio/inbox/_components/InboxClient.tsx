@@ -16,7 +16,7 @@ import type { Ticket, Template } from '@/types/comunicacio/inbox';
 
 // Components
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { TicketList } from './TicketList';
+import { TicketList } from './TicketList/index';
 import { TicketDetail } from './TicketDetail';
 import { ContactPanel } from './ContactPanel';
 import { ComposeDialog } from './ComposeDialog';

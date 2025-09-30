@@ -24,11 +24,13 @@ interface SocialPlannerClientProps {
 
 export function SocialPlannerClient({ initialPosts, connectionStatuses }: SocialPlannerClientProps) {
     const t = useTranslations('SocialPlanner');
+    // ✅ CORRECCIÓ 1: El hook només rep les dades que necessita per a la seva lògica.
     const {
         currentMonth, isPending, unscheduledDrafts, calendarPosts, dialogState, postToView,
         onDragEnd, handleScheduleConfirm, handleCreatePost, handleUnschedule, handleDeletePost,
         openViewDialog, openCreateDialog, setDialogState, nextMonth, prevMonth
     } = useSocialPlanner({ initialPosts });
+
 
     const firstDayOfMonth = startOfMonth(currentMonth);
     const daysInMonth = eachDayOfInterval({ start: firstDayOfMonth, end: endOfMonth(currentMonth) });
@@ -37,7 +39,7 @@ export function SocialPlannerClient({ initialPosts, connectionStatuses }: Social
     return (
         <DragDropContext onDragEnd={onDragEnd}>
             <div className="flex h-[calc(100vh-theme(spacing.24))] flex-col lg:flex-row gap-8 p-4 md:p-6">
-                
+
                 <div className="lg:w-1/3 xl:w-1/4 flex flex-col gap-4">
                     <Button onClick={openCreateDialog} className="w-full flex-shrink-0">
                         <PlusCircle className="mr-2 h-4 w-4" /> {t('createPost')}
@@ -102,9 +104,30 @@ export function SocialPlannerClient({ initialPosts, connectionStatuses }: Social
                 </div>
             </div>
 
-            <CreatePostDialog isOpen={dialogState.create} onOpenChange={(isOpen) => setDialogState(p => ({...p, create: isOpen}))} onCreate={handleCreatePost} connectionStatuses={connectionStatuses} t={t} />
-            <SchedulePostDialog isOpen={dialogState.schedule} onOpenChange={(isOpen) => setDialogState(p => ({...p, schedule: isOpen}))} onConfirm={handleScheduleConfirm} isPending={isPending} />
-            <ViewPostDialog isOpen={dialogState.view} onOpenChange={(isOpen) => setDialogState(p => ({...p, view: isOpen}))} post={postToView} onUnschedule={handleUnschedule} onDelete={handleDeletePost} isPending={isPending} t={t} />
+            {/* Diàlegs */}
+            {/* ✅ CORRECCIÓ 2: Passem 'connectionStatuses' directament des de les props del component. */}
+            <CreatePostDialog
+                isOpen={dialogState.create}
+                onOpenChange={(isOpen) => setDialogState(p => ({...p, create: isOpen}))}
+                onCreate={handleCreatePost}
+                connectionStatuses={connectionStatuses}
+                t={t}
+            />
+            <SchedulePostDialog
+                isOpen={dialogState.schedule}
+                onOpenChange={(isOpen) => setDialogState(p => ({...p, schedule: isOpen}))}
+                onConfirm={handleScheduleConfirm}
+                isPending={isPending}
+            />
+            <ViewPostDialog
+                isOpen={dialogState.view}
+                onOpenChange={(isOpen) => setDialogState(p => ({...p, view: isOpen}))}
+                post={postToView}
+                onUnschedule={handleUnschedule}
+                onDelete={handleDeletePost}
+                isPending={isPending}
+                t={t}
+            />
         </DragDropContext>
     );
 }

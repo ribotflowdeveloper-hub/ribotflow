@@ -19,6 +19,7 @@ export type EnrichedTicket = Ticket & {
 export type TeamMember = { profiles: { id: string; full_name: string | null; avatar_url: string | null; } | null; };
 export type Permission = { target_user_id: string };
 
+
 interface TicketListProps {
     user: User;
     teamMembers: TeamMember[];
@@ -39,6 +40,9 @@ interface TicketListProps {
     onRefresh: () => void;
     hasMore: boolean;
     onLoadMore: () => void;
+    // ✅ CORRECCIÓ: Afegim les props que faltaven per a la cerca
+    searchTerm: string;
+    onSearchChange: (value: string) => void;
 }
 
 export const TicketList: React.FC<TicketListProps> = (props) => {
@@ -46,6 +50,7 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
 
     return (
         <div className="w-full h-full flex flex-col flex-shrink-0 border-r border-border glass-card">
+            {/* ✅ Passem totes les props necessàries a la capçalera */}
             <TicketListHeader {...props} />
             <TicketListFilters {...props} />
             

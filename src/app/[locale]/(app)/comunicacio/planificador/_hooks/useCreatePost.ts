@@ -1,12 +1,12 @@
 // Ubicació: /app/(app)/comunicacio/planificador/_hooks/useCreatePost.ts
+
 "use client";
 
 import { useState, useTransition, useEffect } from 'react';
 import { toast } from 'sonner';
 import { getPresignedUploadUrlAction, createSocialPostAction } from '../_components/actions';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
-import { type ConnectionStatuses } from '../types'; // ✅ Importem el tipus centralitzat
-
+import { type ConnectionStatuses } from '../types';
 
 interface UseCreatePostProps {
     isOpen: boolean;
@@ -25,13 +25,11 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
 
     useEffect(() => {
         if (isOpen) {
-            // Aquesta línia ara funciona perquè el tipus és compatible
             const defaultProviders = Object.keys(connectionStatuses).filter(key => connectionStatuses[key]);
             setSelectedProviders(defaultProviders);
         }
     }, [isOpen, connectionStatuses]);
     
-    // ... La resta del teu hook es manté igual
     const resetState = () => {
         setContent('');
         setMediaFiles([]);
@@ -72,7 +70,10 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
                 try {
                     const fileNames = mediaFiles.map(f => f.name);
                     const urlResult = await getPresignedUploadUrlAction(fileNames);
-                    if (!urlResult.success || !urlResult.data) throw new Error(urlResult.message);
+                    // ✅ CORRECCIÓ: Proporcionem un missatge per defecte si 'urlResult.message' és undefined
+                    if (!urlResult.success || !urlResult.data) {
+                        throw new Error(urlResult.message || "Error desconegut en obtenir les URLs de pujada.");
+                    }
 
                     await Promise.all(
                         urlResult.data.signedUrls.map((urlInfo, index) =>
@@ -93,7 +94,8 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
                 toast.success(t('successDraftCreated'));
                 onCreate(createResult.data);
             } else {
-                toast.error(createResult.message);
+                // ✅ CORRECCIÓ: Proporcionem un missatge per defecte aquí també
+                toast.error(createResult.message || "Hi ha hagut un error en crear la publicació.");
             }
             onClose();
         });

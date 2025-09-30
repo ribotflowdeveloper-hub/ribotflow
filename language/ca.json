@@ -180,7 +180,7 @@
     "toastCopiedTitle": "Copiat!",
     "toastCopiedDescription": "Variable {{variable}} copiada.",
     "newTemplateName": "Nova Plantilla",
-    "newTemplateBody": "<h1>Hola {{nom_contacte}},</h1>\n<p>Contingut del teu correu...</p>",
+    "newTemplateBody": "<h1>Hola {{nom_contacte}},</h1><p>Contingut del teu correu...</p>",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
     "toastSaveSuccessDescription": "Plantilla desada correctament.",

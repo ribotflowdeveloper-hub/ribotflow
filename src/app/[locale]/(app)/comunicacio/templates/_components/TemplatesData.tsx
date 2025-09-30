@@ -1,23 +1,12 @@
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { TemplatesClient } from './templates-client';
 import type { EmailTemplate } from '../page';
+import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 export async function TemplatesData() {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return redirect('/login');
-    }
+    // ✅ 2. Validació de sessió que gestiona les redireccions.
+    const { supabase } = await validatePageSession();
 
-    // Comprovació de seguretat: si l'usuari no té un equip actiu, no pot veure plantilles.
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return redirect('/settings/team');
-    }
-
-    // ✅ CONSULTA SIMPLIFICADA: RLS filtrarà automàticament per l'equip actiu.
+    // La RLS filtrarà automàticament per l'equip actiu.
     const { data: templates, error } = await supabase
         .from('email_templates')
         .select('*')
@@ -25,6 +14,8 @@ export async function TemplatesData() {
 
     if (error) {
         console.error('Error en carregar les plantilles (pot ser per RLS):', error);
+        // Si hi ha un error, retornem el component client amb dades buides per a mostrar un estat d'error.
+        return <TemplatesClient initialTemplates={[]} />;
     }
 
     return <TemplatesClient initialTemplates={(templates as EmailTemplate[]) || []} />;

@@ -1,47 +1,41 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { type EmailTemplate } from '../page';
 import type { PostgrestError } from "@supabase/supabase-js";
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 /**
- * Desa (crea o actualitza) una plantilla d'email per a l'equip actiu.
+ * Desa (crea o actualitza) una plantilla d'email.
  */
 export async function saveTemplateAction(
     templateData: Omit<EmailTemplate, "id" | "created_at" | "user_id" | "team_id">,
     templateId: string | null
 ): Promise<{ data: EmailTemplate | null; error: PostgrestError | null }> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { message: "Not authenticated" } as PostgrestError };
-
-    // Obtenim l'equip actiu des del token.
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No s'ha pogut determinar l'equip actiu." } as PostgrestError };
+    // ✅ 2. Validació centralitzada de la sessió.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { data: null, error: { message: session.error.message } as PostgrestError };
     }
+    const { supabase, user, activeTeamId } = session;
 
     if (!templateData.name) {
         return { data: null, error: { message: "El nom de la plantilla és obligatori." } as PostgrestError };
     }
     
-    let data: EmailTemplate | null = null;
-    let error: PostgrestError | null = null;
+    let query;
 
     if (templateId && templateId !== 'new') {
-        // En actualitzar, la política RLS verificarà automàticament que l'usuari
-        // té accés a aquesta plantilla a través del seu equip actiu.
-        ({ data, error } = await supabase
+        // En actualitzar, la RLS verificarà l'accés.
+        query = supabase
             .from('email_templates')
             .update(templateData)
             .eq('id', templateId)
             .select()
-            .single());
+            .single();
     } else {
         // En crear, afegim l'ID de l'usuari i l'ID de l'equip actiu.
-        ({ data, error } = await supabase
+        query = supabase
             .from('email_templates')
             .insert({ 
                 ...templateData, 
@@ -49,8 +43,10 @@ export async function saveTemplateAction(
                 team_id: activeTeamId 
             })
             .select()
-            .single());
+            .single();
     }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error("Error en desar la plantilla:", error);
@@ -67,12 +63,14 @@ export async function saveTemplateAction(
 export async function deleteTemplateAction(
     templateId: string
 ): Promise<{ error: PostgrestError | null }> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { error: { message: "Not authenticated" } as PostgrestError };
+    // ✅ Fem el mateix aquí.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { error: { message: session.error.message } as PostgrestError };
+    }
+    const { supabase } = session;
 
-    // La política RLS s'encarregarà de verificar que l'usuari només pot
-    // eliminar plantilles del seu equip actiu.
+    // La política RLS s'encarregarà de la seguretat.
     const { error } = await supabase
         .from('email_templates')
         .delete()
