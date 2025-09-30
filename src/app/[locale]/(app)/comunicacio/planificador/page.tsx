@@ -1,44 +1,37 @@
 import { Suspense } from 'react';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { SocialPlannerClient } from './_components/SocialPlannerClient';
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
 import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
-import { headers } from 'next/headers';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
-import { AccessDenied } from '@/components/shared/AccessDenied'; // Un component que mostra un missatge d'error
+import { AccessDenied } from '@/components/shared/AccessDenied';
+import { validatePageSession } from '@/lib/supabase/session'; // ✅ Importem la nostra funció
+import { getUserRoleInTeam } from '@/lib/permissions'; // ✅ Importem una altra funció d'ajuda
 
 export default async function SocialPlannerPage() {
-    const supabase = createClient(cookies());
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+    const { supabase, user, activeTeamId } = await validatePageSession();
+    const locale = user.user_metadata?.locale || 'ca'; // Obtenim el locale de l'usuari
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return redirect(`/${locale}/login`);
-    }
-
-    // Comprovació de pla i de seguretat
+    // Comprovació de pla de subscripció (es manté igual)
     const activeTeamPlan = user.app_metadata?.active_team_plan;
     const allowedPlans = ['plus', 'premium'];
     if (!activeTeamPlan || !allowedPlans.includes(activeTeamPlan)) {
         return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
     }
 
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return redirect('/settings/team');
+    // ✅ Comprovació de permisos centralitzada
+    const userRole = await getUserRoleInTeam(supabase, user.id, activeTeamId);
+    if (!hasPermission(userRole, PERMISSIONS.MANAGE_INTEGRATIONS)) {
+        return <AccessDenied />;
     }
 
-    // ✅ CONSULTA SIMPLIFICADA: RLS filtrarà automàticament per l'equip actiu.
+    // La resta de la càrrega de dades es manté igual...
     const { data: posts, error } = await supabase
         .from('social_posts')
-        .select('*') // Ja no cal filtrar per user_id ni team_id
+        .select('*')
         .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error("Error carregant les publicacions (pot ser per RLS):", error);
-    }
+    if (error) console.error("Error carregant les publicacions (pot ser per RLS):", error);
+
 
     // La càrrega de les connexions ara ha de ser híbrida
     const [userCredsRes, teamCredsRes] = await Promise.all([

@@ -45,14 +45,16 @@ export async function updateOpportunityStageAction(opportunityId: string, newSta
     // ✅ Fem el mateix aquí.
     const session = await validateUserSession();
     if ('error' in session) return { error: session.error };
-    const { supabase } = session;
+    const { supabase, activeTeamId } = session;
  
     try {
         // La RLS s'encarregarà de la seguretat a nivell de fila.
         const { error } = await supabase
             .from("opportunities")
             .update({ stage_name: newStage })
-            .eq("id", opportunityId);
+            .eq("id", opportunityId)
+            .eq("team_id", activeTeamId);
+
  
         if (error) throw error;
  
