@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Image from 'next/image';
-import { Loader2, Trash2 } from 'lucide-react';
+import { Link, Loader2, Trash2 } from 'lucide-react';
 
 import { useCreatePost } from '../_hooks/useCreatePost';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
@@ -27,7 +27,7 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
       handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState
   } = useCreatePost({ 
       isOpen, 
-      connectionStatuses, // Ara els tipus coincideixen perfectament
+      connectionStatuses,
       onCreate, 
       onClose: () => onOpenChange(false),
       t
@@ -39,6 +39,8 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
       }
       onOpenChange(open);
   };
+  const hasAnyConnection = Object.values(connectionStatuses).some(status => status === true);
+
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="max-w-4xl h-[90vh] md:h-[80vh] flex flex-col">
@@ -54,18 +56,24 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
                         <input type="file" multiple accept="image/*,video/*" onChange={handleMediaChange} className="text-sm" />
                         <div className="space-y-2 pt-4 border-t">
                             <h4 className="font-semibold text-sm">{t('publishTo')}:</h4>
-                            <div className="flex items-center gap-6 flex-wrap">
-                                {Object.entries(connectionStatuses).map(([key, isConnected]) => isConnected && (
-                                    <div key={key} className="flex items-center space-x-2">
-                                        <Checkbox
-                                            id={key}
-                                            checked={selectedProviders.includes(key)}
-                                            onCheckedChange={(checked) => setSelectedProviders(prev => checked ? [...prev, key] : prev.filter(p => p !== key))}
-                                        />
-                                        <Label htmlFor={key} className="capitalize">{key}</Label>
-                                    </div>
-                                ))}
-                            </div>
+                             {!hasAnyConnection ? (
+                                <p className="text-sm text-muted-foreground italic">
+                                    {t('noConnectionsMessage')} <Link href="/settings/integrations" className="underline text-primary hover:text-primary/80"> {t('connectHere')}</Link>.
+                                </p>
+                            ) : (
+                                <div className="flex items-center gap-6 flex-wrap">
+                                    {Object.entries(connectionStatuses).map(([key, isConnected]) => isConnected && (
+                                        <div key={key} className="flex items-center space-x-2">
+                                            <Checkbox
+                                                id={key}
+                                                checked={selectedProviders.includes(key)}
+                                                onCheckedChange={(checked) => setSelectedProviders(prev => checked ? [...prev, key] : prev.filter(p => p !== key))}
+                                            />
+                                            <Label htmlFor={key} className="capitalize">{key}</Label>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="bg-muted/50 p-4 rounded-lg flex flex-col">
@@ -98,3 +106,4 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
         </Dialog>
     );
 };
+

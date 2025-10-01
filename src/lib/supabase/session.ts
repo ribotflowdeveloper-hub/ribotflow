@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { User, SupabaseClient } from "@supabase/supabase-js";
 
@@ -19,7 +18,7 @@ export type SessionError = {
 
 // Funció base que conté la lògica comuna
 async function getSessionCore() {
-    const supabase = createClient(cookies());
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

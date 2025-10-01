@@ -83,7 +83,7 @@ export async function createSocialPostAction(
     }
     const { supabase, user, activeTeamId } = validation;
     
-    const t = await getTranslations('SocialPlanner.toasts');
+    const t = await getTranslations('Planificador.toasts');
 
     let media_urls: string[] | null = null;
     if (mediaPaths && mediaPaths.length > 0) {
@@ -122,7 +122,9 @@ export async function scheduleSocialPostAction(postId: number, scheduledAt: stri
     if ('error' in validation) return { success: false, message: validation.error };
     const { supabase } = validation;
 
-    const t = await getTranslations('SocialPlanner.toasts');
+    // ✅ CORRECCIÓ: Canviem el 'namespace' al que correspon.
+    const t = await getTranslations('Planificador.toasts');
+    
     const { error } = await supabase
         .from('social_posts')
         .update({ status: 'scheduled', scheduled_at: scheduledAt })

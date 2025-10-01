@@ -2,8 +2,7 @@ import type { SocialPost } from '@/types/comunicacio/SocialPost';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Undo2, Trash2 } from 'lucide-react';
-import { PostPreview } from './PostPreview'; // ✅ 1. Importem el nou component de previsualització
-
+import { PostPreview } from './PostPreview';
 
 interface ViewPostDialogProps {
   isOpen: boolean;
@@ -12,7 +11,7 @@ interface ViewPostDialogProps {
   onUnschedule: (postId: number) => void;
   onDelete: (postId: number) => void;
   isPending: boolean;
-  t: (key: string) => string; // ✅ NOU
+  t: (key: string) => string;
 }
 
 export function ViewPostDialog({ isOpen, onOpenChange, post, onUnschedule, onDelete, isPending, t }: ViewPostDialogProps) {
@@ -21,12 +20,14 @@ export function ViewPostDialog({ isOpen, onOpenChange, post, onUnschedule, onDel
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogHeader><DialogTitle>{t('viewPostTitle')}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>{t('viewPostTitle')}</DialogTitle>
+        </DialogHeader>
 
-         {/* ✅ 2. Substituïm la previsualització antiga per la nova */}
-         <div className="max-h-[60vh] overflow-y-auto pr-2">
-                    <PostPreview post={post} />
-                </div>
+        <div className="max-h-[60vh] overflow-y-auto pr-2">
+          <PostPreview post={post} t={t} />
+        </div>
+
         <DialogFooter className="flex-col sm:flex-row sm:justify-between w-full gap-2">
           <div className="flex gap-2">
             {post.status === 'scheduled' && (
@@ -46,6 +47,3 @@ export function ViewPostDialog({ isOpen, onOpenChange, post, onUnschedule, onDel
     </Dialog>
   )
 }
-
-
-

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ThumbsUp, MessageCircle, Share2 } from 'lucide-react';
 import { FaLinkedin, FaFacebook, FaInstagram } from 'react-icons/fa';
 
-// Funció per a obtenir la icona del proveïdor
 const ProviderIcon = ({ provider }: { provider: string }) => {
     switch (provider) {
         case 'linkedin': return <FaLinkedin className="w-4 h-4 text-[#0A66C2]" />;
@@ -18,7 +17,7 @@ const ProviderIcon = ({ provider }: { provider: string }) => {
     }
 };
 
-export function PostPreview({ post }: { post: Partial<SocialPost> }) {
+export function PostPreview({ post, t }: { post: Partial<SocialPost>, t: (key: string) => string }) {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     const mediaUrls = Array.isArray(post.media_url) ? post.media_url : [];
@@ -30,32 +29,34 @@ export function PostPreview({ post }: { post: Partial<SocialPost> }) {
 
     return (
         <div className="border rounded-lg bg-card text-card-foreground shadow-sm w-full">
-            {/* Capçalera del Post */}
+            {/* Capçalera */}
             <div className="p-4 border-b">
                 <div className="flex items-center gap-3">
                     <Avatar>
-                        <AvatarFallback>R</AvatarFallback> {/* Pots posar les inicials de l'empresa */}
+                        <AvatarFallback>R</AvatarFallback>
                     </Avatar>
                     <div>
-                        <p className="font-semibold text-sm">La Teva Pàgina</p>
+                        <p className="font-semibold text-sm">{t('yourPage')}</p>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <span>Publicant a:</span>
+                            <span>{t('publishingTo')}</span>
                             {(post.provider || []).map(p => <ProviderIcon key={p} provider={p} />)}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Contingut del Post */}
+            {/* Contingut */}
             <div className="p-4 space-y-4">
-                <p className="text-sm whitespace-pre-wrap">{post.content || "El teu text apareixerà aquí..."}</p>
-                
+                <p className="text-sm whitespace-pre-wrap">
+                    {post.content || t('yourTextPlaceholder')}
+                </p>
+
                 {hasMedia && (
                     <div className="relative w-full aspect-square overflow-hidden rounded-md">
                         {mediaUrls.map((url, index) => (
                             <div key={index} className="absolute w-full h-full transition-opacity duration-300" style={{ opacity: index === currentImageIndex ? 1 : 0 }}>
                                 {mediaType === 'image' ? (
-                                    <Image src={url} alt={`Preview ${index + 1}`} layout="fill" className="object-cover" unoptimized/>
+                                    <Image src={url} alt={`Preview ${index + 1}`} layout="fill" className="object-cover" unoptimized />
                                 ) : (
                                     <video src={url} controls className="w-full h-full object-cover" />
                                 )}
@@ -76,11 +77,17 @@ export function PostPreview({ post }: { post: Partial<SocialPost> }) {
                 )}
             </div>
 
-            {/* Peu del Post (Interaccions) */}
+            {/* Peu */}
             <div className="p-2 border-t flex justify-around text-muted-foreground">
-                <Button variant="ghost" size="sm" className="w-full flex items-center gap-2"><ThumbsUp className="w-4 h-4"/> M'agrada</Button>
-                <Button variant="ghost" size="sm" className="w-full flex items-center gap-2"><MessageCircle className="w-4 h-4"/> Comentar</Button>
-                <Button variant="ghost" size="sm" className="w-full flex items-center gap-2"><Share2 className="w-4 h-4"/> Compartir</Button>
+                <Button variant="ghost" size="sm" className="w-full flex items-center gap-2">
+                    <ThumbsUp className="w-4 h-4" /> {t('like')}
+                </Button>
+                <Button variant="ghost" size="sm" className="w-full flex items-center gap-2">
+                    <MessageCircle className="w-4 h-4" /> {t('comment')}
+                </Button>
+                <Button variant="ghost" size="sm" className="w-full flex items-center gap-2">
+                    <Share2 className="w-4 h-4" /> {t('share')}
+                </Button>
             </div>
         </div>
     );
