@@ -196,7 +196,6 @@
     "brandName": "Ribotflow",
     "postToLinkedIn": "Publicació a LinkedIn",
     "mediaContentAlt": "Contingut multimèdia",
-  
     "createDialogTitle": "Crear Nova Publicació",
     "whatsOnYourMind": "Què vols compartir avui?",
     "preview": "Previsualització (LinkedIn)",
@@ -231,7 +230,13 @@
       "errorUnscheduling": "No s'ha pogut moure a esborranys.",
       "successUnscheduled": "Publicació moguda a esborranys.",
       "errorDeleting": "No s'ha pogut eliminar la publicació.",
-      "successPostDeleted": "Publicació eliminada correctament."
+      "successPostDeleted": "Publicació eliminada correctament.",
+      "invalidAspectRatioTitle": "Format d'imatge no vàlid",
+      "invalidAspectRatioDescription": "La imatge no té la relació d'aspecte correcta.",
+      "errorMediaMix": "No es poden barrejar imatges i vídeos a la mateixa selecció.",
+      "errorMultipleVideos": "Només es pot pujar un vídeo a la vegada.",
+      "errorFileTooLarge": "L'arxiu és massa gran.",
+      "errorUnsupportedFormat": "El format de l'arxiu no és compatible."
     }
   },
   "TemplatesPage": {
@@ -1373,5 +1378,4 @@
     "toastErrorValidation": "Si us plau, omple tots els camps obligatoris.",
     "toastErrorUser": "No s'ha trobat l'usuari"
   }
- 
 }

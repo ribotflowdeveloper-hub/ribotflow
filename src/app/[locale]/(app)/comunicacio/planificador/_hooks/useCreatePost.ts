@@ -15,7 +15,28 @@ interface UseCreatePostProps {
     onClose: () => void;
     t: (key: string) => string;
 }
+// --- Funció d'ajuda per a la validació ---
+const validateImageAspectRatio = (file: File): Promise<boolean> => {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) {
+            resolve(true); // No és una imatge, no la validem aquí
+            return;
+        }
 
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const aspectRatio = img.width / img.height;
+                // Instagram requereix entre 4:5 (0.8) i 1.91:1
+                const isValid = aspectRatio >= 0.8 && aspectRatio <= 1.91;
+                resolve(isValid);
+            };
+            img.src = e.target?.result as string;
+        };
+        reader.readAsDataURL(file);
+    });
+};
 export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t }: UseCreatePostProps) {
     const [content, setContent] = useState('');
     const [mediaFiles, setMediaFiles] = useState<File[]>([]);
@@ -29,7 +50,7 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
             setSelectedProviders(defaultProviders);
         }
     }, [isOpen, connectionStatuses]);
-    
+
     const resetState = () => {
         setContent('');
         setMediaFiles([]);
@@ -38,18 +59,52 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
         setSelectedProviders([]);
     };
 
-    const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleMediaChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
-        const newFiles = [...mediaFiles, ...files].slice(0, 10);
+        const isUploadingVideo = files.some(file => file.type.startsWith('video/'));
+        const hasExistingMedia = mediaFiles.length > 0;
+        const hasExistingVideo = hasExistingMedia && mediaFiles[0].type.startsWith('video/');
+
+        if ((isUploadingVideo && hasExistingMedia) || (hasExistingVideo && files.length > 0)) {
+            toast.error(t('errorMediaMix'), { description: t('errorMediaMixDescription') });
+            return;
+        }
+        if (isUploadingVideo && files.length > 1) {
+            toast.error(t('errorMultipleVideos'), { description: t('errorMultipleVideosDescription') });
+            return;
+        }
+
+        const validFiles: File[] = [];
+        for (const file of files) {
+            if (file.type.startsWith('image/')) {
+                const isValid = await validateImageAspectRatio(file);
+                if (isValid) {
+                    validFiles.push(file);
+                } else {
+                    toast.error(t('invalidAspectRatioTitle'), { description: t('invalidAspectRatioDescription') });
+                }
+            } else {
+                validFiles.push(file); // Afegim vídeos directament
+            }
+        }
+        if (validFiles.length === 0) return;
+
+        const newFiles = [...mediaFiles, ...validFiles].slice(0, 10);
         setMediaFiles(newFiles);
-        
-        const newPreviewUrls = newFiles.map(file => URL.createObjectURL(file));
-        setPreviewUrls(oldUrls => {
-            oldUrls.forEach(url => URL.revokeObjectURL(url));
-            return newPreviewUrls;
+
+        // Neteja URLs anteriors
+        previewUrls.forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
+
+        const newPreviewPromises = newFiles.map(file => {
+            if (file.type.startsWith('video/')) {
+                return generateVideoThumbnail(file);
+            }
+            return Promise.resolve(URL.createObjectURL(file));
         });
+        const newUrls = await Promise.all(newPreviewPromises);
+        setPreviewUrls(newUrls);
     };
 
     const removeMedia = (indexToRemove: number) => {
@@ -60,7 +115,7 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
             return prev.filter((_, index) => index !== indexToRemove);
         });
     };
-    
+
     const handleSubmit = () => {
         startTransition(async () => {
             let mediaPaths: string[] | null = null;
@@ -100,7 +155,7 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
             onClose();
         });
     };
-    
+
     return {
         content, setContent, mediaFiles, previewUrls, selectedProviders, isPending,
         handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState

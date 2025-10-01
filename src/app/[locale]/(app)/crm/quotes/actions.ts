@@ -2,10 +2,9 @@
 
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import type { QuoteWithContact } from "./page";
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 // ❌ The old getTeamId helper function is no longer needed and should be deleted.
 
@@ -13,14 +12,15 @@ import type { QuoteWithContact } from "./page";
  * @summary Deletes a quote and its associated items.
  */
 export async function deleteQuoteAction(quoteId: string) {
-    if (!quoteId) {
-        return { success: false, message: "Invalid quote ID." };
+    // ✅ 2. Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
     }
-    
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { success: false, message: "User not authenticated." };
+    const { supabase } = session;
+
+    if (!quoteId) {
+        return { success: false, message: "ID de pressupost invàlid." };
     }
 
     // This code is now secure. The RLS policies on both 'quote_items' and 'quotes'
@@ -29,7 +29,7 @@ export async function deleteQuoteAction(quoteId: string) {
         .from('quote_items')
         .delete()
         .eq('quote_id', quoteId);
-        
+
     if (itemsError) {
         console.error("Error deleting quote items:", itemsError);
         return { success: false, message: "Could not delete quote details." };
@@ -55,23 +55,20 @@ export async function deleteQuoteAction(quoteId: string) {
 export async function sortQuotesAction(
     sortState: { [key: string]: 'asc' | 'desc' }
 ): Promise<{ success: boolean; data?: QuoteWithContact[]; message?: string }> {
+    // ✅ Fem el mateix aquí
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase } = session;
+    
     try {
-        const supabase = createClient(cookies());
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("User not authenticated.");
 
-        // --- NEW, CORRECT TEAM LOGIC ---
-        // We get the active team ID directly from the user's session.
-        const activeTeamId = user.app_metadata?.active_team_id;
-        if (!activeTeamId) {
-            return { success: false, message: "Could not find an active team." };
-        }
-        // ---------------------------------
 
         let query = supabase
             .from('quotes')
             .select('*, contacts(nom, empresa)');
-        
+
         // ✅ The manual '.eq('team_id', teamId)' is no longer needed due to RLS.
 
         // Sorting logic remains the same.
@@ -93,7 +90,7 @@ export async function sortQuotesAction(
 
         const { data: quotes, error } = await query;
         if (error) throw error;
-        
+
         return { success: true, data: quotes as QuoteWithContact[] };
 
     } catch (error) {

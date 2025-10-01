@@ -59,6 +59,7 @@ export type Quote = {
   discount: number;
   subtotal: number;
   tax: number;
+  tax_percent: number; // ✅ Afegeix la nova propietat
   total: number;
   sent_at?: string | null;
   items: QuoteItem[];

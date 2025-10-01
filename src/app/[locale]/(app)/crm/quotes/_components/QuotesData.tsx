@@ -1,36 +1,21 @@
 // /app/crm/quotes/_components/QuotesData.tsx
 
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+
 import { QuotesClient } from './QuotesClient';
 import type { QuoteWithContact } from '../page';
+import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 export async function QuotesData({ searchParams }: {
     searchParams: { [key: string]: string | string[] | undefined }
 }) {
     try {
-        const supabase = createClient(cookies());
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return <QuotesClient initialQuotes={[]} />;
+      // ✅ 2. Validació de sessió que gestiona les redireccions.
+      const { supabase } = await validatePageSession();
 
-        // --- NEW, CORRECT TEAM LOGIC ---
-        // Get the true active team from the token to avoid cache issues.
-        const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-        if (claimsError || !claimsString) {
-            throw new Error("Could not get user claims from the database.");
-        }
-        const claims = JSON.parse(claimsString);
-        const activeTeamId = claims.app_metadata?.active_team_id;
-
-        if (!activeTeamId) {
-            return <QuotesClient initialQuotes={[]} />;
-        }
+      let query = supabase
+          .from('quotes')
+          .select('*, contacts(nom, empresa)');
         // ------------------------------------
-
-        let query = supabase
-            .from('quotes')
-            .select('*, contacts(nom, empresa)');
-
         // ✅ MASTER FILTER: No longer needed! RLS will automatically filter by the active team.
         // query = query.eq('team_id', teamId); 
         

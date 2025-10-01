@@ -151,29 +151,28 @@ async function publishToFacebook(creds: Credentials, post: Post) {
 
 async function publishToInstagram(creds: Credentials, post: Post) {
     if (!creds.provider_page_id) throw new Error("Falta l'ID del compte d'Instagram.");
-    const mediaUrls = post.media_url || [];
-    if (mediaUrls.length === 0) throw new Error("Instagram requereix almenys un element multimèdia.");
+    
+    // ✅ CORRECCIÓ: Si és un vídeo, redirigim a una nova funció específica per a Reels.
+    if (post.media_type === 'video') {
+        return await publishInstagramReel(creds, post);
+    }
 
+    // El codi existent per a imatges es manté igual
+    const mediaUrls = post.media_url || [];
+    if (mediaUrls.length === 0) throw new Error("Instagram requereix almenys una imatge.");
+    
     const itemContainerIds = await Promise.all(mediaUrls.map(async (url) => {
         const params = new URLSearchParams({
             access_token: creds.access_token,
+            image_url: url,
             is_carousel_item: (mediaUrls.length > 1).toString()
         });
-        if (post.media_type === 'image') {
-            params.append('image_url', url);
-        } else if (post.media_type === 'video') {
-            params.append('video_url', url);
-            params.append('media_type', 'VIDEO');
-        } else {
-            throw new Error(`Tipus de mèdia no compatible amb Instagram: ${post.media_type}`);
-        }
         const res = await fetch(`https://graph.facebook.com/v19.0/${creds.provider_page_id}/media?${params.toString()}`, { method: 'POST' });
         const data = await res.json();
-        if (!res.ok) throw new Error(`Error en crear contenidor de mèdia: ${JSON.stringify(data.error)}`);
+        if (!res.ok) throw new Error(`Error en crear contenidor de mèdia d'imatge: ${JSON.stringify(data.error)}`);
         return data.id;
     }));
     
-    // El 'caption' s'afegeix només al contenidor final, no a cada element.
     const creationId = mediaUrls.length > 1
         ? await createCarouselContainer(creds, itemContainerIds, post.content || '')
         : itemContainerIds[0];
@@ -215,6 +214,51 @@ async function publishToInstagram(creds: Credentials, post: Post) {
     const publishResponse = await fetch(`${publishUrl}?${publishParams.toString()}`, { method: 'POST' });
     if (!publishResponse.ok) throw new Error(`Error en la publicació final d'Instagram: ${JSON.stringify((await publishResponse.json()).error)}`);
     console.log(`[Instagram] Publicat amb èxit.`);
+}
+/**
+ * Nova funció específica per a publicar vídeos com a Reels a Instagram.
+ */
+async function publishInstagramReel(creds: Credentials, post: Post) {
+    const mediaUrls = post.media_url || [];
+    if (mediaUrls.length === 0) throw new Error("La publicació de Reels requereix un vídeo.");
+    
+    // Instagram només permet un vídeo per Reel
+    const videoUrl = mediaUrls[0];
+    
+    // 1. Crear contenidor per al vídeo
+    const createParams = new URLSearchParams({
+        access_token: creds.access_token,
+        video_url: videoUrl,
+        media_type: 'REELS',
+        caption: post.content || ''
+    });
+    const createRes = await fetch(`https://graph.facebook.com/v19.0/${creds.provider_page_id}/media?${createParams.toString()}`, { method: 'POST' });
+    const createData = await createRes.json();
+    if (!createRes.ok) throw new Error(`Error en crear contenidor de Reel: ${JSON.stringify(createData.error)}`);
+    const creationId = createData.id;
+
+    // 2. Bucle d'espera (polling) per comprovar l'estat del contenidor
+    let isReady = false;
+    for (let attempts = 0; attempts < 20; attempts++) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        const statusUrl = `https://graph.facebook.com/v19.0/${creationId}?fields=status_code&access_token=${creds.access_token}`;
+        const statusRes = await fetch(statusUrl);
+        const statusData = await statusRes.json();
+        if (statusData.status_code === 'FINISHED') {
+            isReady = true;
+            break;
+        }
+        if (statusData.status_code === 'ERROR') throw new Error(`Error en el processament del Reel per part d'Instagram.`);
+    }
+    if (!isReady) throw new Error("El contenidor del Reel no s'ha processat a temps.");
+    
+    // 3. Publicació final del Reel
+    const publishParams = new URLSearchParams({
+        creation_id: creationId,
+        access_token: creds.access_token
+    });
+    const publishRes = await fetch(`https://graph.facebook.com/v19.0/${creds.provider_page_id}/media_publish?${publishParams.toString()}`, { method: 'POST' });
+    if (!publishRes.ok) throw new Error(`Error en la publicació final del Reel: ${JSON.stringify((await publishRes.json()).error)}`);
 }
 
 async function createCarouselContainer(creds: Credentials, itemIds: string[], caption: string) {

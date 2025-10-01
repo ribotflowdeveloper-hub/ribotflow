@@ -47,23 +47,19 @@ export function PostCard({ post, isDragging, onDelete, t, children }: PostCardPr
 
             {hasMedia && (
                 <div className="relative w-10 h-10 flex-shrink-0 rounded-sm overflow-hidden bg-muted flex items-center justify-center">
+                    {/* ✅ LÒGICA ACTUALITZADA PER A LA PREVISUALITZACIÓ */}
                     {post.media_type === 'image' ? (
                         <>
-                            <Image
-                                src={mediaUrls[0]}
-                                alt={t('imagePreviewAlt')}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                            />
+                            <Image src={mediaUrls[0]} alt={t('imagePreviewAlt')} fill className="object-cover" unoptimized />
                             {imageCount > 1 && (
-                                <div className="absolute bottom-0.5 right-0.5 bg-black/70 text-white px-1 py-0.5 text-[10px] rounded-sm flex items-center gap-0.5">
+                                <div className="absolute bottom-0.5 right-0.5 bg-black/70 ...">
                                     <Images size={10} />
                                     <span>{imageCount}</span>
                                 </div>
                             )}
                         </>
                     ) : post.media_type === 'video' ? (
+                        // Mostrem la icona de vídeo
                         <Video className="w-5 h-5 text-muted-foreground" />
                     ) : null}
                 </div>

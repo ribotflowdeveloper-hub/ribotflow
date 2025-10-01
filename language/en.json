@@ -186,7 +186,6 @@
       "sat": "Sat",
       "sun": "Sun"
     },
-   
     "schedulePostTitle": "Schedule Post",
     "schedulePostDescription": "Select the time. The post will be published according to your local time.",
     "timeZone": "(Time zone: {timeZone})",
@@ -230,7 +229,13 @@
       "errorUnscheduling": "Could not move to drafts.",
       "successUnscheduled": "Post moved to drafts.",
       "errorDeleting": "Could not delete the post.",
-      "successPostDeleted": "Post deleted successfully."
+      "successPostDeleted": "Post deleted successfully.",
+      "invalidAspectRatioTitle": "Invalid image format",
+      "invalidAspectRatioDescription": "The image does not have the correct aspect ratio.",
+      "errorMediaMix": "You cannot mix images and videos in the same selection.",
+      "errorMultipleVideos": "Only one video can be uploaded at a time.",
+      "errorFileTooLarge": "The file is too large.",
+      "errorUnsupportedFormat": "The file format is not supported."
     }
   },
   "TemplatesPage": {
@@ -1327,5 +1332,4 @@
     "toastErrorValidation": "Please fill in all required fields.",
     "toastErrorUser": "User not found"
   }
-
 }

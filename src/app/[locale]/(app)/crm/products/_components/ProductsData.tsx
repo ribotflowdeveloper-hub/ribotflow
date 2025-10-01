@@ -1,23 +1,12 @@
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { ProductsClient } from "./ProductsClient";
-// ✅ Assegura't que aquest import apunta al teu fitxer de tipus centralitzat
 import type { Product } from '@/types/crm/products'; 
+import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 export async function ProductsData() {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return redirect('/login');
-    }
+    // ✅ 2. Validació de sessió que gestiona les redireccions.
+    const { supabase } = await validatePageSession();
 
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return redirect('/settings/team');
-    }
-
-    // La política RLS de la taula 'products' s'encarregarà de filtrar automàticament.
+    // La política RLS s'encarregarà de filtrar automàticament per l'equip actiu.
     const { data: products, error } = await supabase
         .from("products")
         .select("*")
@@ -28,7 +17,7 @@ export async function ProductsData() {
         return <ProductsClient initialProducts={[]} />;
     }
 
-    // Aquesta normalització és una bona pràctica per a assegurar la compatibilitat de tipus.
+    // La normalització de dades nul·les segueix sent una bona pràctica.
     const normalizedProducts: Product[] = (products || []).map(p => ({
         ...p,
         description: p.description ?? null,

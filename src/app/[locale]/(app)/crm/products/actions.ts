@@ -1,9 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { cookies } from "next/headers";
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 // Esquema de Zod per a validar les dades del formulari.
 const productSchema = z.object({
@@ -25,18 +24,15 @@ export type FormState = {
 };
 
 /**
- * Crea un nou producte associat a l'equip actiu de l'usuari.
+ * Crea un nou producte.
  */
 export async function createProduct(prevState: FormState, formData: FormData): Promise<FormState> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autoritzat" };
-
-    // Obtenim l'equip actiu directament del token de l'usuari.
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { success: false, message: "No s'ha pogut trobar l'equip actiu." };
+    // ✅ 2. Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
     }
+    const { supabase, user, activeTeamId } = session;
 
     const validatedFields = productSchema.safeParse({
         ...Object.fromEntries(formData.entries()),
@@ -47,8 +43,6 @@ export async function createProduct(prevState: FormState, formData: FormData): P
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    // Inserim les dades, afegint user_id i l'activeTeamId.
-    // La política RLS 'WITH CHECK' de la base de dades verificarà els permisos.
     const { error } = await supabase.from("products").insert({ 
         ...validatedFields.data, 
         user_id: user.id, 
@@ -67,9 +61,11 @@ export async function createProduct(prevState: FormState, formData: FormData): P
  * Actualitza un producte existent.
  */
 export async function updateProduct(id: number, prevState: FormState, formData: FormData): Promise<FormState> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autoritzat" };
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase } = session;
 
     const validatedFields = productSchema.safeParse({
         ...Object.fromEntries(formData.entries()),
@@ -80,8 +76,6 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
     
-    // La política RLS de la base de dades s'encarregarà de verificar
-    // que només podem editar un producte del nostre equip actiu.
     const { error } = await supabase
         .from("products")
         .update(validatedFields.data)
@@ -92,6 +86,7 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
     }
     
     revalidatePath("/crm/products");
+    revalidatePath(`/crm/products/${id}`); // ✅ Bona pràctica: revalidar també la pàgina de detall
     return { success: true, message: "Producte actualitzat correctament." };
 }
 
@@ -99,12 +94,12 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
  * Elimina un producte.
  */
 export async function deleteProduct(id: number): Promise<FormState> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autoritzat" };
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase } = session;
 
-    // La política RLS s'encarregarà de verificar que només podem eliminar
-    // un producte del nostre equip actiu.
     const { error } = await supabase.from("products").delete().eq("id", id);
 
     if (error) {

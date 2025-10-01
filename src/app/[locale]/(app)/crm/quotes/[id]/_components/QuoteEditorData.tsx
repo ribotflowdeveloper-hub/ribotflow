@@ -1,30 +1,24 @@
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+
 import { redirect } from 'next/navigation';
 import { QuoteEditorClient } from './QuoteEditorClient';
 // ✅ Canviem la importació de tipus per a utilitzar els nous centralitzats i correctes
 import type { Quote, Contact, Product , Opportunity} from '@/types/crm';
 import type { Team as TeamData, } from '@/types/settings/team';
+import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 interface QuoteEditorDataProps {
     quoteId: string;
 }
 
 export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
-
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) redirect('/settings/team');
+   // ✅ 2. Validació de sessió que gestiona les redireccions automàticament.
+   const { supabase, user, activeTeamId } = await validatePageSession();
     
-    // Les consultes auxiliars confien en RLS
-    const [contactsRes, productsRes, teamRes] = await Promise.all([
-        supabase.from('contacts').select('id, nom, empresa'),
-        supabase.from('products').select('*').eq('is_active', true),
-        // Busquem les dades de l'equip actiu a la taula 'teams'
-        supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-    ]);
+   const [contactsRes, productsRes, teamRes] = await Promise.all([
+       supabase.from('contacts').select('id, nom, empresa'),
+       supabase.from('products').select('*').eq('is_active', true),
+       supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+   ]);
 
     const contacts = (contactsRes.data as Contact[]) || [];
     const products = (productsRes.data as Product[]) || [];

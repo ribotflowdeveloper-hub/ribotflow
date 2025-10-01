@@ -181,7 +181,6 @@
       "sat": "Sáb",
       "sun": "Dom"
     },
-  
     "schedulePostTitle": "Programar Publicación",
     "schedulePostDescription": "Selecciona la hora. La publicación se realizará según tu hora local.",
     "timeZone": "(Zona horaria: {timeZone})",
@@ -191,7 +190,6 @@
     "brandName": "Ribotflow",
     "postToLinkedIn": "Publicar en LinkedIn",
     "mediaContentAlt": "Contenido multimedia",
-
     "createDialogTitle": "Crear Nueva Publicación",
     "whatsOnYourMind": "¿Qué quieres compartir hoy?",
     "preview": "Vista previa (LinkedIn)",
@@ -226,7 +224,13 @@
       "errorUnscheduling": "No se pudo mover a borradores.",
       "successUnscheduled": "Publicación movida a borradores.",
       "errorDeleting": "No se pudo eliminar la publicación.",
-      "successPostDeleted": "Publicación eliminada correctamente."
+      "successPostDeleted": "Publicación eliminada correctamente.",
+      "invalidAspectRatioTitle": "Formato de imagen no válido",
+      "invalidAspectRatioDescription": "La imagen no tiene la relación de aspecto correcta.",
+      "errorMediaMix": "No se pueden mezclar imágenes y vídeos en la misma selección.",
+      "errorMultipleVideos": "Solo se puede subir un vídeo a la vez.",
+      "errorFileTooLarge": "El archivo es demasiado grande.",
+      "errorUnsupportedFormat": "El formato del archivo no es compatible."
     }
   },
   "TemplatesPage": {
@@ -1320,5 +1324,4 @@
     "toastErrorValidation": "Por favor, completa todos los campos obligatorios.",
     "toastErrorUser": "Usuario no encontrado"
   }
-  
 }

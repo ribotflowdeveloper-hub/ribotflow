@@ -10,9 +10,9 @@ import { checkUserPermission, PERMISSIONS } from "@/lib/permissions";
 
 // ✅ CORRECCIÓ 1: El missatge ara és opcional.
 type ActionResult<T = unknown> = {
-  success: boolean;
-  message?: string;
-  data?: T;
+    success: boolean;
+    message?: string;
+    data?: T;
 };
 
 /**
@@ -32,7 +32,7 @@ async function validateSocialPlannerPermissions() {
         const t = await getTranslations('Errors');
         return { error: t('permissionDenied') };
     }
-    
+
     return { supabase, user, activeTeamId };
 }
 
@@ -55,7 +55,7 @@ export async function getPresignedUploadUrlAction(fileNames: string[]): Promise<
                 const { data, error } = await supabase.storage
                     .from('social_media')
                     .createSignedUploadUrl(filePath);
-                
+
                 if (error) throw new Error(`Error creant URL per a ${fileName}: ${error.message}`);
                 return { signedUrl: data.signedUrl, path: data.path };
             })
@@ -82,12 +82,12 @@ export async function createSocialPostAction(
         return { success: false, message: validation.error };
     }
     const { supabase, user, activeTeamId } = validation;
-    
+
     const t = await getTranslations('Planificador.toasts');
 
     let media_urls: string[] | null = null;
     if (mediaPaths && mediaPaths.length > 0) {
-        media_urls = mediaPaths.map(path => 
+        media_urls = mediaPaths.map(path =>
             supabase.storage.from('social_media').getPublicUrl(path).data.publicUrl
         );
     }
@@ -124,7 +124,7 @@ export async function scheduleSocialPostAction(postId: number, scheduledAt: stri
 
     // ✅ CORRECCIÓ: Canviem el 'namespace' al que correspon.
     const t = await getTranslations('Planificador.toasts');
-    
+
     const { error } = await supabase
         .from('social_posts')
         .update({ status: 'scheduled', scheduled_at: scheduledAt })
@@ -147,8 +147,8 @@ export async function unscheduleSocialPostAction(postId: number): Promise<Action
     if ('error' in validation) return { success: false, message: validation.error };
     const { supabase } = validation;
 
-    const t = await getTranslations('SocialPlanner.toasts');
-    const { error } = await supabase
+    // ✅ CORRECCIÓ: Canviem 'SocialPlanner.toasts' per 'Planificador.toasts'
+    const t = await getTranslations('Planificador.toasts'); const { error } = await supabase
         .from('social_posts')
         .update({ status: 'draft', scheduled_at: null })
         .eq('id', postId);
@@ -166,27 +166,28 @@ export async function unscheduleSocialPostAction(postId: number): Promise<Action
  * Elimina una publicació social.
  */
 export async function deleteSocialPostAction(postId: number): Promise<ActionResult> {
-  const validation = await validateSocialPlannerPermissions();
-  if ('error' in validation) return { success: false, message: validation.error };
-  const { supabase } = validation;
-  const t = await getTranslations('SocialPlanner.toasts');
-  
-  const { data: post } = await supabase.from('social_posts').select('media_url').eq('id', postId).single();
+    const validation = await validateSocialPlannerPermissions();
+    if ('error' in validation) return { success: false, message: validation.error };
+    const { supabase } = validation;
+    // ✅ CORRECCIÓ: Canviem 'SocialPlanner.toasts' per 'Planificador.toasts'
+    const t = await getTranslations('Planificador.toasts');
 
-  if (post && Array.isArray(post.media_url)) {
-      try {
-          // ✅ CORRECCIÓ 2: Afegim el tipus explícit a 'url'.
-          const pathsToRemove = post.media_url.map((url: string) => 
-              new URL(url).pathname.split('/social_media/')[1]
-          ).filter(Boolean);
-          
-          if (pathsToRemove.length > 0) {
-              await supabase.storage.from('social_media').remove(pathsToRemove);
-          }
-      } catch (e) {
-          console.error("Error en eliminar de Storage:", e);
-      }
-  }
+    const { data: post } = await supabase.from('social_posts').select('media_url').eq('id', postId).single();
+
+    if (post && Array.isArray(post.media_url)) {
+        try {
+            // ✅ CORRECCIÓ 2: Afegim el tipus explícit a 'url'.
+            const pathsToRemove = post.media_url.map((url: string) =>
+                new URL(url).pathname.split('/social_media/')[1]
+            ).filter(Boolean);
+
+            if (pathsToRemove.length > 0) {
+                await supabase.storage.from('social_media').remove(pathsToRemove);
+            }
+        } catch (e) {
+            console.error("Error en eliminar de Storage:", e);
+        }
+    }
 
     const { error: deleteError } = await supabase.from('social_posts').delete().eq('id', postId);
 

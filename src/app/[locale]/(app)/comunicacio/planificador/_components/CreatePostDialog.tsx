@@ -1,3 +1,4 @@
+/* eslint-disable react/jsx-no-undef */
 // Ubicació: /app/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx
 "use client";
 
@@ -22,24 +23,24 @@ interface CreatePostDialogProps {
 }
 
 export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionStatuses, t }: CreatePostDialogProps) {
-  const {
-      content, setContent, previewUrls, selectedProviders, isPending,
-      handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState
-  } = useCreatePost({ 
-      isOpen, 
-      connectionStatuses,
-      onCreate, 
-      onClose: () => onOpenChange(false),
-      t
-  });
+    const {
+        content, setContent, previewUrls, selectedProviders, isPending,
+        handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState
+    } = useCreatePost({
+        isOpen,
+        connectionStatuses,
+        onCreate,
+        onClose: () => onOpenChange(false),
+        t
+    });
 
-  const handleClose = (open: boolean) => {
-      if (!open) {
-          resetState();
-      }
-      onOpenChange(open);
-  };
-  const hasAnyConnection = Object.values(connectionStatuses).some(status => status === true);
+    const handleClose = (open: boolean) => {
+        if (!open) {
+            resetState();
+        }
+        onOpenChange(open);
+    };
+    const hasAnyConnection = Object.values(connectionStatuses).some(status => status === true);
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -56,7 +57,7 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
                         <input type="file" multiple accept="image/*,video/*" onChange={handleMediaChange} className="text-sm" />
                         <div className="space-y-2 pt-4 border-t">
                             <h4 className="font-semibold text-sm">{t('publishTo')}:</h4>
-                             {!hasAnyConnection ? (
+                            {!hasAnyConnection ? (
                                 <p className="text-sm text-muted-foreground italic">
                                     {t('noConnectionsMessage')} <Link href="/settings/integrations" className="underline text-primary hover:text-primary/80"> {t('connectHere')}</Link>.
                                 </p>
@@ -82,14 +83,25 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
                             <p className="text-sm whitespace-pre-wrap">{content || t('textWillAppearHere')}</p>
                             {previewUrls.length > 0 && (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-4">
-                                    {previewUrls.map((url, index) => (
-                                        <div key={url} className="relative group aspect-square">
-                                            <Image src={url} alt={`Preview ${index + 1}`} className="rounded-md object-cover" fill unoptimized />
-                                            <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index)}>
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    ))}
+                                    {previewUrls.map((url, index) => {
+                                        const file = mediaFiles[index];
+                                        const isVideo = file?.type.startsWith('video/');
+
+                                        return (
+                                            <div key={url} className="relative group aspect-square">
+                                                <Image src={url} alt={`Preview ${index + 1}`} className="rounded-md object-cover" fill unoptimized />
+                                                {/* ✅ ICONA DE PLAY PER A VÍDEOS */}
+                                                {isVideo && (
+                                                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                                        <PlayCircle className="w-8 h-8 text-white" />
+                                                    </div>
+                                                )}
+                                                <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 ..." onClick={() => removeMedia(index)}>
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

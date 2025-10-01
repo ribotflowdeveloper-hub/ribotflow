@@ -1,23 +1,23 @@
 "use server";
-"use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import type { Quote} from '@/types/crm';
-import type { CompanyProfile } from '@/types/settings/team'; // Importa els nous tipus
+import type { Quote, CompanyProfile } from '@/types/crm';
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ Importem la nostra funció
+
+// Definim un tipus de retorn més consistent per a les accions
+type ActionResult<T = unknown> = {
+    success: boolean;
+    message: string;
+    data?: T;
+};
 
 /**
- * Server Action per desar (crear o actualitzar) un pressupost i els seus conceptes.
+ * Desa (crea o actualitza) un pressupost i els seus conceptes.
  */
-export async function saveQuoteAction(quoteData: Quote) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
-
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
+export async function saveQuoteAction(quoteData: Quote): Promise<ActionResult<string>> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase, user, activeTeamId } = session;
 
     if (!quoteData.contact_id) return { success: false, message: "Si us plau, selecciona un client." };
 
@@ -26,28 +26,20 @@ export async function saveQuoteAction(quoteData: Quote) {
 
     try {
         if (id === 'new') {
-            const { data: newQuote, error } = await supabase
-                .from('quotes')
-                .insert({ ...quoteFields, user_id: user.id, team_id: activeTeamId }) // ✅ Afegim team_id
-                .select('id')
-                .single();
+            const { data: newQuote, error } = await supabase.from('quotes').insert({ ...quoteFields, user_id: user.id, team_id: activeTeamId }).select('id').single();
             if (error || !newQuote) throw error || new Error("No s'ha pogut crear el pressupost.");
             finalQuoteId = newQuote.id;
         } else {
-            // La RLS verificarà que tenim permís per actualitzar aquest pressupost
+            // La RLS verificarà que tenim permís per actualitzar
             await supabase.from('quotes').update(quoteFields).eq('id', id);
             await supabase.from('quote_items').delete().eq('quote_id', id);
         }
 
         if (items?.length) {
             const itemsToInsert = items.map(item => ({
-                quote_id: finalQuoteId,
-                user_id: user.id, // <-- CORREGIT
-                team_id: activeTeamId, // ✅ Afegim team_id
-                product_id: item.product_id || null,
-                description: item.description,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
+                quote_id: finalQuoteId, user_id: user.id, team_id: activeTeamId,
+                product_id: item.product_id || null, description: item.description,
+                quantity: item.quantity, unit_price: item.unit_price,
                 total: (item.quantity || 0) * (item.unit_price || 0),
             }));
             await supabase.from('quote_items').insert(itemsToInsert);
@@ -62,29 +54,29 @@ export async function saveQuoteAction(quoteData: Quote) {
         return { success: true, message: "Pressupost desat correctament.", data: finalQuoteId };
 
     } catch(error) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
+        const message = error instanceof Error ? error.message : "Error desconegut al desar el pressupost.";
         return { success: false, message };
     }
 }
 
 /**
- * Server Action per eliminar un pressupost.
+ * Elimina un pressupost.
  */
-export async function deleteQuoteAction(quoteId: string) {
-    if (!quoteId || quoteId === 'new') return { success: false, message: "ID invàlid." };
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autenticat." };
+export async function deleteQuoteAction(quoteId: string): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase } = session;
 
-    // ✅ Eliminem .eq('user_id', userId). La RLS s'encarregarà de la seguretat.
+    if (!quoteId || quoteId === 'new') return { success: false, message: "ID invàlid." };
+    
     try {
+        // La RLS s'encarregarà de la seguretat a nivell de fila
         await supabase.from('quote_items').delete().eq('quote_id', quoteId);
         await supabase.from('quotes').delete().eq('id', quoteId);
-
         revalidatePath('/crm/quotes');
         return { success: true, message: "Pressupost eliminat." };
     } catch(error) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
+        const message = error instanceof Error ? error.message : "Error en eliminar el pressupost.";
         return { success: false, message };
     }
 }
@@ -92,80 +84,55 @@ export async function deleteQuoteAction(quoteId: string) {
 /**
  * Acció per crear un nou producte desable.
  */
-export async function createProductAction(newProduct: { name: string, price: number }) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autenticat." };
-
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
+export async function createProductAction(newProduct: { name: string, price: number }): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase, user, activeTeamId } = session;
 
     try {
         const { data, error } = await supabase.from('products').insert({
-            user_id: user.id,
-            team_id: activeTeamId, // ✅ Afegim team_id
-            name: newProduct.name,
-            price: newProduct.price,
+            user_id: user.id, team_id: activeTeamId,
+            name: newProduct.name, price: newProduct.price,
         }).select().single();
 
         if (error) throw error;
-
-        // Revalidem el layout per assegurar que les dades es refresquen a tot arreu
         revalidatePath(`/crm`, 'layout');
-        return { success: true, message: 'Nou producte desat.', newProduct: data };
+        return { success: true, message: 'Nou producte desat.', data };
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
+        const message = error instanceof Error ? error.message : "Error en crear el producte.";
         return { success: false, message };
     }
 }
 
-// --- ACCIONS DE PRESSUPOSTOS ---
-
-
-
-
-/**
- * Inicia el procés d'enviament d'un pressupost cridant a una Edge Function.
- */
 /**
  * Acció segura que invoca l'Edge Function 'send-quote-pdf'.
  */
-export async function sendQuoteAction(quoteId: string) {
+export async function sendQuoteAction(quoteId: string): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase } = session;
+
     if (!quoteId) return { success: false, message: "ID de pressupost invàlid." };
     
-    const supabase = createClient(cookies());
-    
     try {
-        const { error } = await supabase.functions.invoke('send-quote-pdf', { 
-            body: { quoteId } 
-        });
-        if (error) throw error; // Si la funció retorna un error, el capturem
-        
+        const { error } = await supabase.functions.invoke('send-quote-pdf', { body: { quoteId } });
+        if (error) throw error;
         revalidatePath(`/crm/quotes/${quoteId}`);
         return { success: true, message: "S'ha iniciat l'enviament del pressupost." };
-
     } catch (error: unknown) {
-        // Fem que el missatge d'error sigui més explícit
-        const message = error instanceof Error ? error.message : "Error desconegut en invocar l'Edge Function.";
-        console.error("[sendQuoteAction] Error:", message);
+        const message = error instanceof Error ? error.message : "Error en invocar l'Edge Function.";
         return { success: false, message };
     }
 }
 
-// --- ACCIONS DE SUB-COMPONENTS ---
 /**
- * Acció per actualitzar el perfil de l'empresa de l'usuari.
+ * Acció per actualitzar el perfil de l'empresa de l'equip.
  */
-export async function updateTeamProfileAction(teamData: Partial<CompanyProfile>) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "User not authenticated." };
+export async function updateTeamProfileAction(teamData: Partial<CompanyProfile>): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase, activeTeamId } = session;
 
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) return { success: false, message: "No active team found." };
-
-    // Prepare data for the 'teams' table
     const dataToUpdate = {
         name: teamData.company_name,
         tax_id: teamData.company_tax_id,
@@ -176,20 +143,13 @@ export async function updateTeamProfileAction(teamData: Partial<CompanyProfile>)
     };
 
     try {
-        const { data, error } = await supabase
-            .from('teams')
-            .update(dataToUpdate)
-            .eq('id', activeTeamId) // Securely update only the active team
-            .select()
-            .single();
-        
+        const { data, error } = await supabase.from('teams').update(dataToUpdate).eq('id', activeTeamId).select().single();
         if (error) throw error;
         
         revalidatePath(`/crm/quotes/[id]`, 'page');
-        
-        return { success: true, message: 'Team profile updated.', updatedProfile: data };
+        return { success: true, message: 'Perfil de l\'equip actualitzat.', data };
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Unknown error";
+        const message = error instanceof Error ? error.message : "Error en actualitzar el perfil.";
         return { success: false, message };
     }
 }
