@@ -701,7 +701,14 @@
       "discountLine": "Descuento:",
       "taxesLine": "Impuestos (21%):",
       "notesAndTerms": "Notas y Términos",
-      "totalLabel": "TOTAL"
+      "totalLabel": "TOTAL",
+      "quantityHeader": "Cant.",
+      "priceHeader": "Precio/U."
+    },
+    "options": {
+      "title": "Opciones de Visualización",
+      "showQuantitiesLabel": "Mostrar cantidades y precios unitarios",
+      "showQuantitiesDescription": "Actívalo para mostrar las columnas de cantidad y precio por unidad en el PDF."
     }
   },
   "DashboardClient": {

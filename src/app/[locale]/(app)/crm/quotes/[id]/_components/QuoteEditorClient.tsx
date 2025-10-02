@@ -1,3 +1,4 @@
+
 "use client";
 
 import React from 'react';
@@ -10,6 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Quote, Contact, Product, Opportunity } from '@/types/crm';
 import type { TeamData } from '@/types/settings';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Importem Card
+import { Switch } from "@/components/ui/switch"; // ✅ CORRECCIÓ: Faltava aquesta importació
 
 // Importem el nostre hook personalitzat, que ara conté tota la lògica
 import { useQuoteEditor } from '../_hooks/useQuoteEditor';
@@ -62,7 +65,11 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isSaving}>Cancel·lar</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>
+                        <AlertDialogAction
+                            onClick={handleDelete} // <-- Aquesta és la connexió correcta
+                            className="bg-destructive hover:bg-destructive/90"
+                            disabled={isSaving}
+                        >
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Confirmar Eliminació
                         </AlertDialogAction>
@@ -168,30 +175,46 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 setTaxPercent={(p) => setQuote(q => ({ ...q, tax_percent: p }))}
                             />
                         </div>
-
+                        {/* ✅ CORRECCIÓ 1: L'interruptor ara va aquí, a sobre de les notes */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>{t('options.title')}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id="show-quantity"
+                                        checked={quote.show_quantity ?? true}
+                                        onCheckedChange={(checked) => setQuote(q => ({ ...q, show_quantity: checked }))}
+                                    />
+                                    <Label htmlFor="show-quantity">{t('options.showQuantitiesLabel')}</Label>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-2">{t('options.showQuantitiesDescription')}</p>
+                            </CardContent>
+                        </Card>
                         <div className="glass-card p-4">
                             <Label>Notes Addicionals</Label>
                             <Textarea
                                 value={quote.notes ?? ''}
                                 onChange={(e) => setQuote(q => ({ ...q, notes: e.target.value }))}
-                                className="mt-2"
+                                className="mt-2 mt-2 min-h-[220px]"
                             />
                         </div>
+          
                     </section>
 
-                    <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
-                        <div id="quote-preview-for-pdf">
-                            <QuotePreview
-                                quote={quote}
-                                contacts={props.contacts}
-                                companyProfile={currentTeamData}
-                                subtotal={subtotal}
-                                discountAmount={discountAmount}
-                                tax={tax}
-                                total={total}
 
-                            />
-                        </div>
+                    {/* ✅ TORNEM A L'ESTRUCTURA SIMPLE: Un sol 'aside' amb scroll */}
+                    <aside id="quote-preview-for-pdf-wrapper" className="hidden lg:block glass-card p-4 overflow-y-auto">
+                        <QuotePreview
+                            quote={quote}
+                            contacts={props.contacts}
+                            companyProfile={currentTeamData}
+                            subtotal={subtotal}
+                            discountAmount={discountAmount}
+                            tax={tax}
+                            total={total}
+                        />
                     </aside>
                 </main>
             </div>

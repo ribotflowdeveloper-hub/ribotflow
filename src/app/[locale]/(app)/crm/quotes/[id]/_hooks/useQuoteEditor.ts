@@ -3,8 +3,6 @@
 import { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from "sonner";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import { createClient } from '@/lib/supabase/client';
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
 import type { Quote, Opportunity, QuoteItem } from '@/types/crm';
@@ -83,45 +81,47 @@ export function useQuoteEditor({
             toast.error(t('toast.errorTitle'), { description: t('toast.saveFirst') });
             return;
         }
-
+    
         startSendTransition(async () => {
+            const element = document.getElementById('quote-preview-for-pdf');
+            if (!element) {
+                toast.error(t('toast.errorTitle'), { description: "Element de previsualització no trobat." });
+                return;
+            }
+    
             try {
                 setSendingStatus('generating');
                 toast.info(t('quoteEditor.generatingPDF'));
-                const element = document.getElementById('quote-preview-for-pdf');
-                if (!element) throw new Error("Element de previsualització no trobat.");
-
-                // ✅ CANVI: Afegim opcions a html2canvas
-                const canvas = await html2canvas(element, {
-                    scale: 3, // Escala 3x (alta resolució)
-                    useCORS: true,
-                    allowTaint: true,
-                    // Aquesta petita espera pot ser suficient per a que el logo es carregui
-                    // Canvia 'document' per '_document'
-                    // ✅ CORRECCIÓ: Canviem 'document' per '_document' per a ignorar-lo.
-                    async onclone(_document) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                }); const pdf = new jsPDF('p', 'mm', 'a4');
-
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-                const imgData = canvas.toDataURL('image/jpeg', 0.90);
-                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-                const pdfBlob = pdf.output('blob');
-
+    
+                // ✅ CORRECCIÓ CLAU: Importem la llibreria dinàmicament
+                // Això només s'executarà al navegador, quan l'usuari faci clic.
+                const { default: html2pdf } = await import('html2pdf.js');
+    
+                const PDF_OPTIONS = {
+                    // ✅ CORRECCIÓ: 'margin' ha de ser un número o un array, no un objecte.
+                    // Un número aplica el mateix marge a tots els costats (top, right, bottom, left).
+                    margin: 10, // Marge de 15mm a tots els costats
+                    filename: `pressupost-${quote.quote_number || 'esborrany'}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 3, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: 'css', before: '.page-break-before' }
+                };
+    
+                const pdfBlob = await html2pdf().from(element).set(PDF_OPTIONS).output('blob');
+    
                 setSendingStatus('uploading');
                 const filePath = `${userId}/${quote.id}.pdf`;
                 const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
                 if (uploadError) throw uploadError;
-
+    
                 setSendingStatus('sending');
                 const result = await sendQuoteAction(quote.id);
                 if (!result.success) throw new Error(result.message);
-
+    
                 setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
                 toast.success("Èxit!", { description: result.message });
-
+    
             } catch (error) {
                 const e = error instanceof Error ? error : new Error(t('toast.sendError'));
                 toast.error(t('toast.errorTitle'), { description: e.message });

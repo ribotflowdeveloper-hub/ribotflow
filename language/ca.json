@@ -707,7 +707,14 @@
       "discountLine": "Descompte:",
       "taxesLine": "Impostos (21%):",
       "notesAndTerms": "Notes i Termes",
-      "totalLabel": "TOTAL"
+      "totalLabel": "TOTAL",
+      "quantityHeader": "Quant.",
+      "priceHeader": "Preu/U."
+    },
+    "options": {
+      "title": "Opcions de Visualització",
+      "showQuantitiesLabel": "Mostrar quantitats i preus unitaris",
+      "showQuantitiesDescription": "Activa-ho per mostrar les columnes de quantitat i preu per unitat al PDF."
     }
   },
   "DashboardClient": {

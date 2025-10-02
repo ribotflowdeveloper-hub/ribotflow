@@ -66,14 +66,14 @@ export const QuotePreview = ({
         <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
 
             {/* AQUEST DIV ES CONVERTIRÀ A PDF */}
-            <div id="quote-preview-for-pdf" style={{ width: '210mm' }}> {/* A4 width */}
-            <div className="bg-white text-gray-900 p-8 font-sans text-sm">
+            <div id="quote-preview-for-pdf">
+                <div className="bg-white text-gray-900 px-8 py-2 font-sans text-sm">
 
                     {/* ---------------- HEADER ---------------- */}
                     {/* ✅ HEM MODIFICAT AQUESTA SECCIÓ */}
-                    <header className="flex justify-between items-center border-b-2 border-gray-200 pb-2"> {/* Reduït el padding inferior (pb-2) */}
-                       {/* Logo de l'empresa o placeholder */}
-                       {displayProfile?.logo_url ? (
+                    <header className="flex justify-between items-center border-b-2 border-gray-200"> {/* Reduït el padding inferior (pb-2) */}
+                        {/* Logo de l'empresa o placeholder */}
+                        {displayProfile?.logo_url ? (
                             <>
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -103,6 +103,8 @@ export const QuotePreview = ({
                             </p>
                             <p className="text-gray-600">{displayProfile?.company_address}</p>
                             <p className="text-gray-600">{displayProfile?.company_tax_id}</p>
+                            <p className="text-gray-600">{displayProfile?.company_email}</p>
+
                         </div>
 
                         <div className="text-right">
@@ -110,6 +112,8 @@ export const QuotePreview = ({
                                 {contact?.nom || t('preview.unselectedClient')}
                             </p>
                             <p className="text-gray-600">{contact?.empresa}</p>
+                            <p className="text-gray-600">{contact?.email}</p>
+
                         </div>
                     </section>
 
@@ -135,13 +139,27 @@ export const QuotePreview = ({
                     </section>
 
                     {/* ---------------- TAULA D'ITEMS ---------------- */}
+                    {/* ---------------- TAULA D'ITEMS (AMB LÒGICA CONDICIONAL) ---------------- */}
                     <section>
                         <table className="w-full">
                             <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="p-2 text-left font-bold text-xs uppercase">
+                                    <th className="p-2 text-left font-bold text-xs uppercase w-[60%]">
                                         {t('preview.itemHeader')}
                                     </th>
+
+                                    {/* ✅ Mostrem/amaguem les columnes segons la preferència */}
+                                    {(quote.show_quantity ?? true) && (
+                                        <>
+                                            <th className="p-2 text-center font-bold text-xs uppercase">
+                                                {t('preview.quantityHeader')}
+                                            </th>
+                                            <th className="p-2 text-right font-bold text-xs uppercase">
+                                                {t('preview.priceHeader')}
+                                            </th>
+                                        </>
+                                    )}
+
                                     <th className="p-2 text-right font-bold text-xs uppercase">
                                         {t('preview.totalHeader')}
                                     </th>
@@ -151,7 +169,19 @@ export const QuotePreview = ({
                             <tbody>
                                 {quote.items?.map((item, index) => (
                                     <tr key={index} className="border-b border-gray-200">
-                                        <td className="p-2 pr-2">{item.description}</td>
+                                        <td className="p-2 pr-2">
+                                            {/* ✅ CORRECCIÓ 2: El 'p' amb la quantitat extra s'ha eliminat. */}
+                                            {item.description}
+                                        </td>
+                                        
+                                        {/* Mostrem/amaguem les cel·les corresponents */}
+                                        {(quote.show_quantity ?? true) && (
+                                            <>
+                                                <td className="text-center p-2">{item.quantity}</td>
+                                                <td className="text-right p-2">{item.unit_price?.toFixed(2)} €</td>
+                                            </>
+                                        )}
+
                                         <td className="text-right p-2 font-medium">
                                             {((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)} €
                                         </td>

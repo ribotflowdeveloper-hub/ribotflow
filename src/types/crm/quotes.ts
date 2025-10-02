@@ -66,6 +66,8 @@ export type Quote = {
   user_id?: string;
   contacts?: { nom: string | null; } | null;
   secure_id?: string;
+  show_quantity?: boolean; // ✅ AFEGEIX AQUESTA LÍNIA
+
 };
 
 export type Opportunity = { 

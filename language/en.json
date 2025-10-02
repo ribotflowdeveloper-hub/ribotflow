@@ -649,7 +649,14 @@
       "discountLine": "Discount:",
       "taxesLine": "Taxes (21%):",
       "notesAndTerms": "Notes and Terms",
-      "totalLabel": "TOTAL"
+      "totalLabel": "TOTAL",
+      "quantityHeader": "Qty.",
+      "priceHeader": "Price/U."
+    },
+    "options": {
+      "title": "Display Options",
+      "showQuantitiesLabel": "Show quantities and unit prices",
+      "showQuantitiesDescription": "Enable this to display the quantity and unit price columns in the PDF."
     }
   },
   "ProductsPage": {

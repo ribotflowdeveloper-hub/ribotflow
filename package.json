@@ -58,6 +58,7 @@
     "framer-motion": "^12.23.12",
     "googleapis": "^159.0.0",
     "html2canvas": "^1.4.1",
+    "html2pdf.js": "^0.12.1",
     "i18next": "^25.4.2",
     "i18next-browser-languagedetector": "^8.2.0",
     "jspdf": "^3.0.2",
