@@ -4,7 +4,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { toast } from 'sonner';
-import { getPresignedUploadUrlAction, createSocialPostAction } from '../_components/actions';
+import { getPresignedUploadUrlAction, createSocialPostAction } from '../actions';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
 import { type ConnectionStatuses } from '../types';
 

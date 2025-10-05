@@ -12,11 +12,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Plus, Edit, Trash2, ShieldCheck, ArrowUpDown } from 'lucide-react'; // ✅ Afegim ArrowUpDown
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
-import type { Invoice, Contact } from '../types';
+import type { Invoice, Contact } from '@/types/finances/index';
 import { deleteInvoiceAction, issueInvoiceAction } from '../actions';
 import { InvoiceDialog } from './InvoiceDialog';
 import { useTranslations, useLocale } from 'next-intl';
-import { INVOICE_STATUS_MAP } from '../types';
+import { INVOICE_STATUS_MAP } from '@/types/finances/index';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Product } from '@/types/crm/products';
 

@@ -14,7 +14,7 @@ import { Plus } from 'lucide-react';
 import { ExpenseDialog } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog';
 import { ExpenseTable } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseTable';
 import { ExpenseDetailDrawer } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer';
-import { type Expense, type Supplier } from '../types';
+import { type Expense, type Supplier } from '@/types/finances/index';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslations } from 'next-intl';
 

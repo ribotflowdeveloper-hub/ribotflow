@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { toast } from "sonner";
 import { useTranslations } from 'next-intl';
 import { type EmailTemplate } from '../page';
-import { saveTemplateAction, deleteTemplateAction } from '../_components/actions';
+import { saveTemplateAction, deleteTemplateAction } from '../actions';
 
 type UseTemplatesProps = {
     initialTemplates: EmailTemplate[];

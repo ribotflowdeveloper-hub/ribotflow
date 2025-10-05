@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Paperclip } from 'lucide-react';
 import { format } from "date-fns";
 
-import { type Expense } from '../../types';
+import { type Expense } from '@/types/finances/index';
 import { useLocale, useTranslations } from 'next-intl';
 import { ca, es, enUS } from "date-fns/locale";
 

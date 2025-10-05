@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import type { DashboardInitialData, Task } from '@/types/crm'; 
 
 // Importació dels sub-components. Hauràs de crear cada un al seu propi fitxer.
-import { StatCard } from './_components/StartCard';
+import { StatCard } from '@/components/shared/StartCard';
 import { SalesPerformance } from './_components/SalesPerformance';
 import { QuickAccess } from './_components/QuickAccess';
 import { Agenda } from './_components/Agenda';

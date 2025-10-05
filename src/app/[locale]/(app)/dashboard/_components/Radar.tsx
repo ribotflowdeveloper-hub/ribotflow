@@ -8,7 +8,7 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, MessageSquare, Send, AlertTriangle } from 'lucide-react';
 import type { Invoice, Contact, Notification } from '@/types/crm';
-import { ActivityItem } from './ActivityItem';
+import { ActivityItem } from '@/components/shared/ActivityItem';
 
 interface RadarProps {
   attentionContacts: Contact[];

@@ -1,319 +1,61 @@
+// @/app/[locale]/(app)/crm/contactes/[id]/_components/ContactDetailClient.tsx (Versió Final Refactoritzada)
 "use client";
 
-import React, { useState, useTransition, FC, ElementType } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { toast } from "sonner"; // ✅ Canviem la importació
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, User, Briefcase, FileText, Receipt, Activity as ActivityIcon, Edit, Ban, Loader2 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format } from 'date-fns';
+import { useTranslations } from 'next-intl';
+import { type Contact, type Quote, type Opportunity, type Invoice, type Activity } from '@/types/crm';
+import { useContactDetail } from '../_hooks/useContactDetail.ts'; // ✅ 1. IMPORTA EL NOU HOOK
+import { ContactDetailHeader } from './ContactDetailHeader'; // ✅ 2. IMPORTA EL NOU COMPONENT DE CAPÇALERA
+import { ContactDetailTabs } from './ContactDetailTabs'; // El component de pestanyes que ja tenies
 
-import { deleteContactAction, updateContactAction } from './actions';
-import { type Contact, type Quote, type Opportunity, type Invoice, type Activity, CONTACT_STATUS_MAP } from '@/types/crm'; // Use central types
-import { Trash } from "lucide-react";
-import { ca, es } from 'date-fns/locale';// Importem el tipus de dades definit a la pàgina del servidor per a consistència.
-import { useTranslations, useLocale } from 'next-intl'; // ✅ Importem hooks d'idioma
-
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-/**
- * Mostra una etiqueta d'estat acolorida. Reutilitzable per a pressupostos, oportunitats, etc.
- */
-
-
-const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
-  const t = useTranslations('ContactDetailPage.status');
-
-  // ✅ 1. Valors per defecte
-  let colorClass = 'bg-muted text-muted-foreground';
-  let text = status || t('notAvailable');
-
-  // ✅ 2. El switch gestiona TOT: el text traduït i el color
-  switch (status?.toLowerCase()) {
-    case 'draft':
-      text = t('draft');
-      colorClass = 'bg-yellow-500/10 text-yellow-500';
-      break;
-    case 'sent':
-      text = t('sent');
-      colorClass = 'bg-blue-500/10 text-blue-500';
-      break;
-    case 'accepted':
-    case 'guanyat':
-    case 'paid':
-      text = t('wonPaid');
-      colorClass = 'bg-green-500/10 text-green-500';
-      break;
-    case 'declined':
-    case 'perdut':
-      text = t('rejected');
-      colorClass = 'bg-red-500/10 text-red-500';
-      break;
-    case 'negociació':
-      text = t('negotiation');
-      colorClass = 'bg-purple-500/10 text-purple-500';
-      break;
-    case 'overdue':
-      text = t('overdue');
-      colorClass = 'bg-orange-500/10 text-orange-500';
-      break;
-  }
-
-  // ✅ 3. Renderitzem el resultat final
-  return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorClass}`}>{text}</span>;
-};
-/**
- * Un 'trigger' de pestanya que inclou una icona i un comptador de resultats.
- */
-const TabTriggerWithCount: FC<{ value: string, icon: ElementType, count: number, label: string }> = ({ value, icon: Icon, count, label }) => (
-  <TabsTrigger value={value} className="flex items-center gap-2 text-sm px-4">
-    <Icon className="w-4 h-4" />
-    <span className="font-semibold">{label}</span>
-    {count > 0 && <span className="ml-1 px-2 py-0.5 text-xs font-bold rounded-full bg-primary/20 text-primary">{count}</span>}
-  </TabsTrigger>
-);
-// Definim les propietats que rep el component principal.
 interface ContactDetailClientProps {
-  initialContact: Contact; // Les dades inicials del contacte, carregades al servidor.
-  initialRelatedData: { // Dades relacionades amb aquest contacte (pressupostos, factures, etc.).
-    quotes: Quote[];
-    opportunities: Opportunity[];
-    invoices: Invoice[];
-    activities: Activity[];
-  };
+    initialContact: Contact;
+    initialRelatedData: {
+        quotes: Quote[];
+        opportunities: Opportunity[];
+        invoices: Invoice[];
+        activities: Activity[];
+    };
 }
-/**
- * Component de Client per a la pàgina de detall d'un contacte.
- * Gestiona tota la interactivitat, incloent:
- * - La visualització de dades en pestanyes.
- * - Un mode d'edició per modificar les dades del contacte.
- * - La crida a les accions per desar o eliminar el contacte.
- */
+
 export function ContactDetailClient({ initialContact, initialRelatedData }: ContactDetailClientProps) {
-  const t = useTranslations('ContactDetailPage');
-  const locale = useLocale(); // ✅ Obtenim l'idioma actual
-  const dateLocale = locale === 'ca' ? ca : es; // ✅ Seleccionem l'objecte de 'date-fns' correcte
-
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition(); // Estat de càrrega per a les accions.
-  const [isEditing, setIsEditing] = useState(false); // Booleà que controla si estem en mode vista o edició.
-  const [contact, setContact] = useState(initialContact); // Estat local per a les dades del contacte.
-  const formRef = React.useRef<HTMLFormElement>(null);// Referència al formulari per poder resetejar-lo.
-  /**
-   * Gestiona el desat dels canvis del formulari d'edició.
-   * Crida la Server Action 'updateContactAction'.
-   */
-  const handleSaveChanges = (formData: FormData) => {
-    startTransition(async () => {
-      const { data, error } = await updateContactAction(contact.id, formData);
-      if (error) {
-        toast.error(t('toast.errorTitle'), { description: error.message });
-      } else if (data) {
-        toast.success(t('toast.successTitle'), { description: t('toast.updateSuccess') });
-        setContact(data as Contact); // Actualitzem l'estat local amb les noves dades.
-        setIsEditing(false); // Tornem al mode de visualització.
-      }
-    });
-  };
-  /**
-  * Gestiona l'eliminació del contacte.
-  * Crida la Server Action 'deleteContactAction'.
-  */
-  const handleDelete = () => {
-    if (!confirm("Segur que vols eliminar aquest contacte? Aquesta acció no es pot desfer.")) {
-      return;
-    }
-    // La confirmació es gestiona ara amb un diàleg modal. Aquesta funció es crida
-    // des del botó de confirmació del diàleg.
-    startTransition(async () => {
-      const res = await deleteContactAction(contact.id);
-      if (!res.success) {
-        toast.error(t('toast.errorTitle'), { description: res.message });
-      } else {
-        toast.success(t('toast.successTitle'), { description: t('toast.deleteSuccess') });
-        router.push('/crm/contactes'); // Redirigim a la llista de contactes.
-      }
-    });
-  };
-  /**
- * Cancel·la el mode d'edició i reseteja el formulari als seus valors originals.
- */
-  const handleCancelEdit = () => {
-    setIsEditing(false);
-    formRef.current?.reset();
-  };
-  /**
-   * @summary Obté el text traduït per a un codi d'estat de contacte.
-   */
-  const getStatusLabel = (statusCode?: string) => {
-    if (!statusCode) return t('details.noData');
-    const status = CONTACT_STATUS_MAP.find(s => s.code === statusCode);
-    return status ? t(`contactStatuses.${status.key}`) : statusCode;
-  };
-
-  return (
-    // ✅ CORRECCIÓN: 'flex flex-col' para una disposición vertical en todas las pantallas
-    <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-full">
-      <form action={handleSaveChanges} ref={formRef} className="flex flex-col h-full">
-
-        {/* ==================== CABECERA ==================== */}
-        {/* La cabecera ahora es más compacta y se adapta a móvil */}
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6 flex-shrink-0">
-          <div className="flex-1">
-            <Button variant="ghost" onClick={() => router.push('/crm/contactes')} type="button" className="-ml-4">
-              <ArrowLeft className="w-4 h-4 mr-2" /> {t('backToContacts')}
-            </Button>
-            <div className="flex items-center gap-4 mt-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center shrink-0">
-                <User className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-              </div>
-              <div>
-                {isEditing ? <Input name="nom" defaultValue={contact.nom} className="text-2xl sm:text-3xl font-bold" /> : <h1 className="text-3xl sm:text-4xl font-bold">{contact.nom}</h1>}
-                {isEditing ? <Input name="empresa" defaultValue={contact.empresa || ''} className="text-lg sm:text-xl mt-1" /> : <p className="text-lg sm:text-xl text-muted-foreground mt-1">{contact.empresa}</p>}
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 items-center self-end w-full sm:w-auto">
-            {isEditing ? (
-              <>
-                <Button variant="ghost" onClick={handleCancelEdit} type="button"><Ban className="w-4 h-4 mr-2" />{t('buttons.cancel')}</Button>
-                <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{t('buttons.saveChanges')}</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={() => setIsEditing(true)} type="button"><Edit className="w-4 h-4 mr-2" />{t('buttons.editDetails')}</Button>
-                <Dialog>
-                  <DialogTrigger asChild><Button variant="destructive" type="button" className="gap-2"><Trash className="w-4 h-4" />{t('buttons.delete')}</Button></DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
-                    <DialogHeader className="space-y-4 text-center">
-                      <Trash className="w-12 h-12 mx-auto text-red-600" />
-                      <DialogTitle className="text-2xl font-bold text-red-600">{t('deleteDialog.title')}</DialogTitle>
-                      <DialogDescription className="text-base text-muted-foreground">
-                        {t('deleteDialog.description1')} <span className="font-semibold text-red-600">{t('deleteDialog.irreversible')}</span>. {t('deleteDialog.description2')}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter className="flex justify-end gap-3">
-                      <DialogTrigger asChild><Button variant="outline">{t('buttons.cancel')}</Button></DialogTrigger>
-                      <Button variant="destructive" onClick={handleDelete} disabled={isPending}>
-                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {t('buttons.confirmDelete')}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </>
-            )}
-          </div>
-        </div>
-
-       {/* ✅ 1. Tornem a posar el padding original a la targeta principal (ex: p-4 o p-6) */}
-<div className="glass-card p-4 mt-8">
-  <Tabs defaultValue="detalls" className="w-full">
+    const t = useTranslations('ContactDetailPage');
     
-    {/* ✅ 2. AFEGIM MARGES NEGATIUS AL CONTENIDOR DE SCROLL */}
-    {/* Aquests mx-[-1rem] (pels 1rem de p-4) fan que s'estiri fins a les vores de la targeta. */}
-    <div className="overflow-x-auto mx-[-1rem] pb-px -mb-px">
+    // ✅ 3. TOTA LA LÒGICA ESTÀ CENTRALITZADA AL HOOK
+    const {
+        contact,
+        isEditing,
+        isPending,
+        formRef,
+        handleSaveChanges,
+        handleDelete,
+        handleCancelEdit,
+        setIsEditing,
+    } = useContactDetail(initialContact, t);
 
-      {/* ✅ 3. AFEGIM PADDING A LA LLISTA PER COMPENSAR */}
-      {/* Aquest px-4 assegura que el contingut no comenci enganxat a la vora. */}
-      <TabsList className="grid-cols-none sm:grid w-full sm:w-auto sm:grid-cols-5 px-4">
-        <TabTriggerWithCount value="activitats" icon={ActivityIcon} count={initialRelatedData.activities.length} label={t('tabs.activities')} />
-        <TabTriggerWithCount value="oportunitats" icon={Briefcase} count={initialRelatedData.opportunities.length} label={t('tabs.opportunities')} />
-        <TabTriggerWithCount value="pressupostos" icon={FileText} count={initialRelatedData.quotes.length} label={t('tabs.quotes')} />
-        <TabTriggerWithCount value="factures" icon={Receipt} count={initialRelatedData.invoices.length} label={t('tabs.invoices')} />
-        <TabsTrigger value="detalls"><Edit className="w-4 h-4 mr-2"/>{t('tabs.details')}</TabsTrigger>
-      </TabsList>
-    </div>
+    return (
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-full">
+            <form action={handleSaveChanges} ref={formRef} className="flex flex-col h-full">
+                
+                {/* ✅ 4. RENDERITZA EL COMPONENT DE CAPÇALERA, PASSANT-LI ELS PROPS NECESSARIS */}
+                <ContactDetailHeader
+                    contact={contact}
+                    isEditing={isEditing}
+                    isPending={isPending}
+                    onEdit={() => setIsEditing(true)}
+                    onCancel={handleCancelEdit}
+                    onDelete={handleDelete}
+                />
+                
+                {/* ✅ 5. RENDERITZA LES PESTANYES. LA LÒGICA INTERNA DE LES PESTANYES JA ESTÀ SEPARADA */}
+                <ContactDetailTabs
+                    contact={contact}
+                    relatedData={initialRelatedData}
+                    isEditing={isEditing}
+                />
 
-            <TabsContent value="activitats" className="p-8">
-              <h3 className="text-2xl font-bold mb-6">{t('activities.title')}</h3>
-              <div className="space-y-4">{initialRelatedData.activities.length > 0 ? initialRelatedData.activities.map(act => (
-                <div key={`act-${act.id}`} className="..."><div className="..."><span className="...">{act.type}</span><span>{format(new Date(act.created_at), "d MMMM yyyy, HH:mm", { locale: dateLocale })}</span></div><p className="...">"{act.content}"</p></div>
-              )) : <p className="...">{t('activities.empty')}</p>}</div>
-            </TabsContent>
-
-            <TabsContent value="oportunitats" className="p-8">
-              <h3 className="text-2xl font-bold mb-6">{t('opportunities.title')}</h3>
-              <Table><TableHeader><TableRow><TableHead>{t('opportunities.table.name')}</TableHead><TableHead>{t('opportunities.table.status')}</TableHead><TableHead className="text-right">{t('opportunities.table.value')}</TableHead></TableRow></TableHeader><TableBody>
-                {initialRelatedData.opportunities.length > 0 ? initialRelatedData.opportunities.map(opp => (
-                  <TableRow key={`opp-${opp.id}`}><TableCell><Link href={`/crm/pipeline`} className="...">{opp.name}</Link></TableCell><TableCell><StatusBadge status={opp.stage_name} /></TableCell><TableCell className="text-right ...">€{(opp.value || 0).toLocaleString('ca-ES')}</TableCell></TableRow>
-                )) : <TableRow><TableCell colSpan={3} className="...">{t('opportunities.empty')}</TableCell></TableRow>}
-              </TableBody></Table>
-            </TabsContent>
-
-            <TabsContent value="pressupostos" className="p-8">
-              <h3 className="text-2xl font-bold mb-6">{t('quotes.title')}</h3>
-              <Table><TableHeader><TableRow><TableHead>{t('quotes.table.number')}</TableHead><TableHead>{t('quotes.table.status')}</TableHead><TableHead className="text-right">{t('quotes.table.total')}</TableHead></TableRow></TableHeader><TableBody>
-                {initialRelatedData.quotes.length > 0 ? initialRelatedData.quotes.map(quote => (
-                  <TableRow key={`quote-${quote.id}`}><TableCell><Link href={`/crm/quotes/${quote.id}`} className="...">{quote.quote_number}</Link></TableCell><TableCell><StatusBadge status={quote.status} /></TableCell><TableCell className="text-right ...">€{(quote.total || 0).toLocaleString('ca-ES')}</TableCell></TableRow>
-                )) : <TableRow><TableCell colSpan={3} className="...">{t('quotes.empty')}</TableCell></TableRow>}
-              </TableBody></Table>
-            </TabsContent>
-
-            <TabsContent value="factures" className="p-8">
-              <h3 className="text-2xl font-bold mb-6">{t('invoices.title')}</h3>
-              <Table><TableHeader><TableRow><TableHead>{t('invoices.table.number')}</TableHead><TableHead>{t('invoices.table.status')}</TableHead><TableHead className="text-right">{t('invoices.table.total')}</TableHead></TableRow></TableHeader><TableBody>
-                {initialRelatedData.invoices.length > 0 ? initialRelatedData.invoices.map(invoice => (
-                  <TableRow key={`inv-${invoice.id}`}><TableCell className="...">{invoice.invoice_number}</TableCell><TableCell><StatusBadge status={invoice.status} /></TableCell><TableCell className="text-right ...">€{(invoice.total || 0).toLocaleString('ca-ES')}</TableCell></TableRow>
-                )) : <TableRow><TableCell colSpan={3} className="...">{t('invoices.empty')}</TableCell></TableRow>}
-              </TableBody></Table>
-            </TabsContent>
-
-            {/* Pestanya de Detalls */}
-            <TabsContent value="detalls" className="p-4 sm:p-8 space-y-12 flex-1 overflow-y-auto">
-              <div>
-                <h3 className="text-2xl font-bold mb-6">{t('details.generalInfo')}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-8">
-                  <div className="space-y-2"><Label>{t('details.labels.email')}</Label>{isEditing ? (<Input name="email" type="email" defaultValue={contact.email || ''} />) : (<p className="text-lg pt-2">{contact.email || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.phone')}</Label>{isEditing ? (<Input name="telefon" defaultValue={contact.telefon || ''} />) : (<p className="text-lg pt-2">{contact.telefon || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.status')}</Label>{isEditing ? (
-                    <Select name="estat" defaultValue={contact.estat}>
-                      <SelectTrigger className="text-lg h-auto p-2"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {CONTACT_STATUS_MAP.map(status => <SelectItem key={status.code} value={status.code}>{t(`contactStatuses.${status.key}`)}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <p className="text-lg pt-2">{getStatusLabel(contact.estat)}</p>
-                  )}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.jobTitle')}</Label>{isEditing ? (<Input name="job_title" defaultValue={contact.job_title || ''} />) : (<p className="text-lg pt-2">{contact.job_title || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.industry')}</Label>{isEditing ? (<Input name="industry" defaultValue={contact.industry || ''} />) : (<p className="text-lg pt-2">{contact.industry || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.leadSource')}</Label>{isEditing ? (<Input name="lead_source" defaultValue={contact.lead_source || ''} />) : (<p className="text-lg pt-2">{contact.lead_source || t('details.noData')}</p>)}</div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold mb-6">{t('details.personalInfo')}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-8">
-                  <div className="space-y-2"><Label>{t('details.labels.birthday')}</Label>{isEditing ? (<Input type="date" name="birthday" defaultValue={contact.birthday || ''} />) : (<p className="text-lg pt-2">{contact.birthday ? format(new Date(contact.birthday), 'dd/MM/yyyy', { locale: dateLocale }) : t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.city')}</Label>{isEditing ? (<Input name="address.city" defaultValue={contact.address?.city || ''} />) : (<p className="text-lg pt-2">{contact.address?.city || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.linkedin')}</Label>{isEditing ? (<Input name="social_media.linkedin" defaultValue={contact.social_media?.linkedin || ''} />) : (<p className="text-lg pt-2">{contact.social_media?.linkedin || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.children')}</Label>{isEditing ? (<Input type="number" name="children_count" defaultValue={contact.children_count ?? ''} />) : (<p className="text-lg pt-2">{contact.children_count ?? t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.partnerName')}</Label>{isEditing ? (<Input name="partner_name" defaultValue={contact.partner_name || ''} />) : (<p className="text-lg pt-2">{contact.partner_name || t('details.noData')}</p>)}</div>
-                  <div className="space-y-2"><Label>{t('details.labels.hobbies')}</Label>{isEditing ? (<Input name="hobbies" defaultValue={contact.hobbies?.join(', ') || ''} />) : (<p className="text-lg pt-2">{contact.hobbies?.join(', ') || t('details.noData')}</p>)}</div>
-                </div>
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold mb-6">{t('details.notes')}</h3>
-                {isEditing ? (<Textarea name="notes" defaultValue={contact.notes || ''} rows={6} />) : (<p className="text-base text-muted-foreground whitespace-pre-wrap">{contact.notes || t('details.noNotes')}</p>)}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </form>
-    </motion.div>
-  );
+            </form>
+        </motion.div>
+    );
 }

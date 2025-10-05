@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { type Campaign } from '../page';
-import { updateCampaignAction } from './actions';
+import { updateCampaignAction } from '../actions';
 import { format } from 'date-fns';
 import { ca, es, enUS } from 'date-fns/locale';
 import { useTranslations } from 'next-intl';

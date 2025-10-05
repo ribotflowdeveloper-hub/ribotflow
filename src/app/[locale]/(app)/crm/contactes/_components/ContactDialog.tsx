@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { createContactAction } from './actions';
+import { createContactAction } from '../actions';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { CONTACT_STATUS_MAP } from '@/types/crm';

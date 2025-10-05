@@ -4,7 +4,7 @@ import React from 'react';
 // Framer Motion per a animacions fluides.
 import { motion } from 'framer-motion';
 // Icones de Lucide React.
-import { User, Building, Mail, Phone, Euro, Star } from 'lucide-react';
+import { User, Building, Mail, Phone} from 'lucide-react';
 // Importem el tipus de dades 'Contact' i el nostre mapa d'estats.
 import type { Contact } from '@/types/crm';
 import { CONTACT_STATUS_MAP } from '@/types/crm';

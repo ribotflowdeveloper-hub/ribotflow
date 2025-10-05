@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { generateStrategiesAction, draftContentAction, saveCampaignAction } from "../_components/actions";
+import { generateStrategiesAction, draftContentAction, saveCampaignAction } from "../actions";
 
 // Tipus per a les estratègies
 interface Strategy {

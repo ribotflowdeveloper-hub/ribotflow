@@ -6,7 +6,7 @@ import { DropResult } from '@hello-pangea/dnd';
 import { addMonths, subMonths } from 'date-fns';
 import { toast } from 'sonner';
 
-import { scheduleSocialPostAction, unscheduleSocialPostAction, deleteSocialPostAction } from '../_components/actions';
+import { scheduleSocialPostAction, unscheduleSocialPostAction, deleteSocialPostAction } from '../actions';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
 
 interface UseSocialPlannerProps {

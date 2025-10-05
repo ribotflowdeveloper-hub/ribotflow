@@ -1,111 +1,78 @@
+// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Refactoritzada)
 "use client";
 
-import React, { useState, useMemo, useTransition } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import React, { useState, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslations } from 'next-intl';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, LayoutGrid, List } from 'lucide-react';
-import { type Contact } from '@/types/crm'; // ✅ CORRECT
-import { CONTACT_STATUS_MAP } from '@/types/crm'; // ✅ Importa el nou mapa
-import { useTranslations } from 'next-intl';
-import Link from 'next/link';
+
+import { type Contact, CONTACT_STATUS_MAP } from '@/types/crm';
+
+import { useContactFilters} from '../_hooks/useContactFilters.ts'; // ✅ Importem el nou hook
+
 import { ContactDialog } from './ContactDialog';
+import ContactCard from './ContactCard';
+import ContactTable from './ContactTable';
+import { ExportContactsButton } from './ExportContactsButton';
 
-import ContactCard from '@/app/[locale]/(app)/crm/contactes/_components/ContactCard';
-import ContactTable from '@/app/[locale]/(app)/crm/contactes/_components/ContactTable';
+// (La definició de les Props no canvia)
+interface ContactsClientProps {
+    initialContacts: Contact[];
+    totalPages: number;
+    currentPage: number;
+    initialViewMode: 'cards' | 'list';
+}
 
-import { ExportContactsButton } from './ExportContactsButton'; // ✅ 1. IMPORTA EL NOU COMPONENT
-
-
-/**
- * Component principal i interactiu per a la pàgina de llista de contactes.
- * Gestiona l'estat de la cerca, el mode de visualització (targetes o llista)
- * i el diàleg per crear nous contactes.
- */
 export function ContactsClient({
     initialContacts,
     totalPages,
     currentPage,
-    initialSortBy,
-    initialStatus,
-    initialViewMode // ✅ NOU: Rebem el mode de vista inicial
-}: {
-    initialContacts: Contact[],
-    totalPages: number,
-    currentPage: number,
-    initialSortBy: string,
-    initialStatus: string,
-    initialViewMode: 'cards' | 'list' // ✅ NOU
-}) {
+    initialViewMode
+}: ContactsClientProps) {
     const t = useTranslations('ContactsClient');
     const router = useRouter();
-    const [, startTransition] = useTransition();
-    const [contacts, setContacts] = useState<Contact[]>(initialContacts);
     const searchParams = useSearchParams();
-    const pathname = usePathname();
+
+    // ✅ 2. TOTA LA LÒGICA DE FILTRES ARA VE DEL HOOK
+    const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
+    
+    // L'estat dels contactes i del cercador es manté al component, ja que
+    // no afecten la URL directament (el filtratge és al client).
+    const [contacts, setContacts] = useState<Contact[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-    const [viewMode, setViewMode] = useState<'cards' | 'list'>(initialViewMode);
-    const [sortBy] = useState(initialSortBy);
-    const [statusFilter] = useState(initialStatus);
-    // Funció per navegar a la pàgina de detall d'un contacte.
-    const handleContactClick = (contact: Contact) => {
-        router.push(`/crm/contactes/${contact.id}`);
-    };
-    // 'useMemo' optimitza el filtratge de contactes. Només es torna a executar
-    // si la llista de 'contacts' o el 'searchTerm' canvien.
+    
+    // Aquesta lògica es queda aquí perquè depèn de 'contacts' i 'searchTerm',
+    // que són estats interns d'aquest component.
     const filteredContacts = useMemo(() => contacts.filter(c =>
         (c.nom?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (c.empresa?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (c.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     ), [contacts, searchTerm]);
-    /**
-   * Gestiona l'enviament del formulari de nou contacte.
-   * Crida la Server Action 'createContactAction' i gestiona la resposta.
-   */
 
-    // ✅ NOU: Inicialitzem l'estat amb el valor de la URL
-
-
-    // ✅ MODIFICAT: La funció de canvi de filtre ara també gestiona la vista
-    const handleFilterChange = (type: 'sort' | 'status' | 'view', value: string) => {
-        const current = new URLSearchParams(Array.from(searchParams.entries()));
-        current.set(type, value);
-
-        // Si no és un canvi de vista, resetejem la pàgina
-        if (type !== 'view') {
-            current.set('page', '1');
-        }
-
-        const search = current.toString();
-        const query = search ? `?${search}` : "";
-
-        // Actualitzem l'estat local de la vista immediatament per a una resposta ràpida de la UI
-        if (type === 'view') {
-            setViewMode(value as 'cards' | 'list');
-        }
-
-        startTransition(() => {
-            router.push(`${pathname}${query}`);
-        });
+    const handleContactClick = (contact: Contact) => {
+        router.push(`/crm/contactes/${contact.id}`);
     };
+
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
-            {/* ✅ CAPÇALERA AMB DISSENY ADAPTABLE */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 flex-shrink-0">
+            {/* CAPÇALERA */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h1 className="text-3xl font-bold">{t('title')}</h1>
                 <div className="flex w-full sm:w-auto items-center gap-2">
-                    {/* El cercador ara ocupa tot l'ample disponible en mòbil */}
+                    {/* Cercador */}
                     <div className="relative flex-grow">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
-                    {/* ✅ NOU: Filtres */}
+                    
+                    {/* ✅ 3. ELS COMPONENTS DE FILTRE ARA SÓN MÉS SIMPLES */}
                     <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder={t('filters.sortBy')} />
-                        </SelectTrigger>
+                        <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.sortBy')} /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="newest">{t('filters.newest')}</SelectItem>
                             <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
@@ -113,9 +80,7 @@ export function ContactsClient({
                     </Select>
 
                     <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
-                        <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder={t('filters.status')} />
-                        </SelectTrigger>
+                        <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.status')} /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
                             {CONTACT_STATUS_MAP.map(status => (
@@ -125,26 +90,19 @@ export function ContactsClient({
                             ))}
                         </SelectContent>
                     </Select>
-                    {/* ✅ MODIFICAT: Els botons de vista ara criden a handleFilterChange */}
+
+                    {/* Botons de vista */}
                     <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                        <Button
-                            variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
-                            size="icon"
-                            onClick={() => handleFilterChange('view', 'cards')}
-                        >
+                        <Button variant={viewMode === 'cards' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleFilterChange('view', 'cards')}>
                             <LayoutGrid className="w-4 h-4" />
                         </Button>
-                        <Button
-                            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
-                            size="icon"
-                            onClick={() => handleFilterChange('view', 'list')}
-                        >
+                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleFilterChange('view', 'list')}>
                             <List className="w-4 h-4" />
                         </Button>
                     </div>
-                    <ExportContactsButton /> {/* ✅ 2. COL·LOCA EL BOTÓ AQUÍ */}
 
-                    {/* ✅ El botó "Nou Contacte" ara utilitza el nostre component reutilitzable */}
+                    <ExportContactsButton />
+
                     <ContactDialog
                         trigger={
                             <Button className="flex-shrink-0">
@@ -152,13 +110,12 @@ export function ContactsClient({
                                 <span className="hidden md:inline">{t('newContactButton')}</span>
                             </Button>
                         }
-                        onContactSaved={(newContact) => {
-                            setContacts(prev => [newContact as Contact, ...prev]);
-                        }}
+                        onContactSaved={(newContact) => setContacts(prev => [newContact as Contact, ...prev])}
                     />
                 </div>
             </div>
 
+            {/* LLISTA DE CONTACTES (Això no canvia) */}
             <div className="flex-1 overflow-y-auto -mr-4 pr-4">
                 <AnimatePresence mode="wait">
                     <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
