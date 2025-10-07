@@ -34,5 +34,5 @@ export async function getTeamMembersWithProfiles(
     }
 
     // La dada ja ve formatada com la necessites
-    return data;
+    return { data, error: null }; // Retornem un objecte consistent
 }

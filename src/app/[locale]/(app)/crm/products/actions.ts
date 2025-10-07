@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
+import type { Product } from '@/types/crm/products'; // ✅ Importa el tipus
 
 // Esquema de Zod per a validar les dades del formulari.
 const productSchema = z.object({
@@ -16,11 +17,12 @@ const productSchema = z.object({
     is_active: z.boolean().default(true),
 });
 
-// Tipus per a l'estat del formulari, útil per a la gestió d'errors amb 'useFormState'.
+// ✅ Modifiquem el tipus de retorn per incloure les dades del producte
 export type FormState = {
     success: boolean;
     message: string;
     errors?: Record<string, string[] | undefined>;
+    data?: Product | null; // ✅ AFEGEIX AIXÒ
 };
 
 /**
@@ -43,18 +45,19 @@ export async function createProduct(prevState: FormState, formData: FormData): P
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { error } = await supabase.from("products").insert({ 
+     // ✅ Modifiquem la inserció per obtenir el producte creat
+     const { data: newProduct, error } = await supabase.from("products").insert({ 
         ...validatedFields.data, 
         user_id: user.id, 
         team_id: activeTeamId 
-    });
+    }).select().single(); // ✅ AFEGEIX .select().single()
 
     if (error) {
         return { success: false, message: `Error en crear el producte: ${error.message}` };
     }
 
     revalidatePath("/crm/products");
-    return { success: true, message: "Producte creat correctament." };
+    return { success: true, message: "Producte creat correctament.", data: newProduct };
 }
  
 /**
@@ -76,18 +79,22 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
     
-    const { error } = await supabase
+    // ✅ Modifiquem l'actualització per obtenir el producte actualitzat
+    const { data: updatedProduct, error } = await supabase
         .from("products")
         .update(validatedFields.data)
-        .eq("id", id);
+        .eq("id", id)
+        .select() // ✅ AFEGEIX .select()
+        .single(); // ✅ AFEGEIX .single()
 
     if (error) {
         return { success: false, message: `Error en actualitzar el producte: ${error.message}` };
     }
     
     revalidatePath("/crm/products");
-    revalidatePath(`/crm/products/${id}`); // ✅ Bona pràctica: revalidar també la pàgina de detall
-    return { success: true, message: "Producte actualitzat correctament." };
+    revalidatePath(`/crm/products/${id}`);
+    // ✅ Retornem el producte actualitzat a la propietat 'data'
+    return { success: true, message: "Producte actualitzat correctament.", data: updatedProduct };
 }
 
 /**

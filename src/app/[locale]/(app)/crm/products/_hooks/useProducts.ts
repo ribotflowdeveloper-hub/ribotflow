@@ -1,72 +1,75 @@
+// /app/[locale]/(app)/crm/products/_hooks/useProducts.ts (VERSIÓ FINAL CORREGIDA)
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { useRouter } from 'next/navigation';
+// ✅ Importem useCallback
+import { useState, useMemo, useTransition, useCallback } from "react";
 import { toast } from 'sonner';
 import type { Product } from "@/types/crm/products";
 import { deleteProduct } from "../actions";
 
-// Tipus per a les props que el hook necessita
 type UseProductsProps = {
     initialProducts: Product[];
-    t: (key: string) => string; // Per a les traduccions
+    t: (key: string) => string;
 };
 
 export function useProducts({ initialProducts, t }: UseProductsProps) {
-    const router = useRouter(); // router.refresh() és millor que window.location.reload()
     const [isPending, startTransition] = useTransition();
-
-    // Estats per a la gestió del diàleg d'edició/creació.
+    const [products, setProducts] = useState<Product[]>(initialProducts);
     const [isFormOpen, setFormOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-    // Estats per a la interactivitat de la llista.
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [viewMode, setViewMode] = useState<"list" | "card">("list");
 
-    // Dades derivades amb 'useMemo'
     const categories = useMemo(() => {
-        const uniqueCategories = new Set(initialProducts.map(p => p.category).filter((c): c is string => !!c));
+        const uniqueCategories = new Set(products.map(p => p.category).filter((c): c is string => !!c));
         return ["all", ...Array.from(uniqueCategories)];
-    }, [initialProducts]);
+    }, [products]);
     
     const filteredProducts = useMemo(() => {
-        return initialProducts
+        return products
             .filter(p => p.is_active)
             .filter(p => categoryFilter === "all" || p.category === categoryFilter)
             .filter(p => !searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [initialProducts, categoryFilter, searchTerm]);
+    }, [products, categoryFilter, searchTerm]);
 
-    // Handlers
-    const handleEdit = (product: Product) => {
+    // ✅ Embolcallem les funcions amb useCallback per estabilitzar-les
+    const handleEdit = useCallback((product: Product) => {
         setSelectedProduct(product);
         setFormOpen(true);
-    };
+    }, []); // No té dependències, només es crea un cop.
 
-    const handleCreate = () => {
+    const handleCreate = useCallback(() => {
         setSelectedProduct(null);
         setFormOpen(true);
-    };
+    }, []); // No té dependències, només es crea un cop.
 
-    const handleDelete = (id: number) => {
+    const handleDelete = useCallback((id: number) => {
         startTransition(async () => {
+            setProducts(currentProducts => currentProducts.filter(p => p.id !== id));
+            
             const result = await deleteProduct(id);
             if (result.success) {
                 toast.success(t('toast.success'), { description: result.message });
-                router.refresh(); // Refresquem les dades del servidor
             } else {
                 toast.error(t('toast.error'), { description: result.message });
+                setProducts(initialProducts); 
             }
         });
-    };
+    }, [t, initialProducts]); // Aquesta funció depèn de 't' i 'initialProducts'.
 
-    const handleSuccess = () => {
+    const handleSuccess = useCallback((updatedOrNewProduct: Product) => {
         setFormOpen(false);
-        router.refresh();
-    };
+        setProducts(currentProducts => {
+            const exists = currentProducts.some(p => p.id === updatedOrNewProduct.id);
+            if (exists) {
+                return currentProducts.map(p => p.id === updatedOrNewProduct.id ? updatedOrNewProduct : p);
+            } else {
+                return [updatedOrNewProduct, ...currentProducts];
+            }
+        });
+    }, []); // No té dependències externes, només les funcions de setState.
     
-    // Retornem tot el que el component de presentació necessita
     return {
         isFormOpen, setFormOpen,
         selectedProduct,

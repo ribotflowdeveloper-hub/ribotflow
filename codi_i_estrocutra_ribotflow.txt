@@ -39,9 +39,9 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │       ├── useCompose.ts
 │       │   │   │       └── useInbox.ts
 │       │   │   ├── marketing
+│       │   │   │   ├── actions.ts
 │       │   │   │   ├── page.tsx
 │       │   │   │   ├── _components
-│       │   │   │   │   ├── actions.ts
 │       │   │   │   │   ├── AICampaignWizard.tsx
 │       │   │   │   │   ├── CampaignCalendar.tsx
 │       │   │   │   │   ├── CampaignDetailDialog.tsx
@@ -58,10 +58,10 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │       ├── useAICampaignWizard.ts
 │       │   │   │       └── useMarketing.ts
 │       │   │   ├── planificador
+│       │   │   │   ├── actions.ts
 │       │   │   │   ├── page.tsx
 │       │   │   │   ├── types.ts
 │       │   │   │   ├── _components
-│       │   │   │   │   ├── actions.ts
 │       │   │   │   │   ├── CreatePostDialog.tsx
 │       │   │   │   │   ├── PostCard.tsx
 │       │   │   │   │   ├── PostPreview.tsx
@@ -72,9 +72,9 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │       ├── useCreatePost.ts
 │       │   │   │       └── useSocialPlanner.ts
 │       │   │   └── templates
+│       │   │       ├── actions.ts
 │       │   │       ├── page.tsx
 │       │   │       ├── _components
-│       │   │       │   ├── actions.ts
 │       │   │       │   ├── TemplateEditor.tsx
 │       │   │       │   ├── TemplateList.tsx
 │       │   │       │   ├── templates-client.tsx
@@ -91,11 +91,12 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │       ├── ActivitiesData.tsx
 │       │   │   │       └── ActivitiesSkeleton.tsx
 │       │   │   ├── contactes
+│       │   │   │   ├── actions.ts
 │       │   │   │   ├── page.tsx
 │       │   │   │   ├── [contactId]
+│       │   │   │   │   ├── actions.ts
 │       │   │   │   │   ├── page.tsx
 │       │   │   │   │   ├── _components
-│       │   │   │   │   │   ├── actions.ts
 │       │   │   │   │   │   ├── contact-detail-client.tsx
 │       │   │   │   │   │   ├── ContactDetailData.tsx
 │       │   │   │   │   │   ├── ContactDetailHeader.tsx
@@ -104,8 +105,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   │   ├── DeleteConfirmationDialog.tsx
 │       │   │   │   │   │   ├── EditableField.tsx
 │       │   │   │   │   │   ├── shared
-│       │   │   │   │   │   │   ├── EmptyState.tsx
-│       │   │   │   │   │   │   ├── StatusBadge.tsx
 │       │   │   │   │   │   │   └── TabTriggerWithCount.tsx
 │       │   │   │   │   │   └── tabs
 │       │   │   │   │   │       ├── ActivitiesTab.tsx
@@ -117,7 +116,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   └── _hooks
 │       │   │   │   │       └── useContactDetail.ts
 │       │   │   │   ├── _components
-│       │   │   │   │   ├── actions.ts
 │       │   │   │   │   ├── ContactCard.tsx
 │       │   │   │   │   ├── ContactDialog.tsx
 │       │   │   │   │   ├── contacts-client.tsx
@@ -146,7 +144,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   ├── pipeline-client.tsx
 │       │   │   │   ├── _components
 │       │   │   │   │   ├── ColumnsView.tsx
-│       │   │   │   │   ├── ContactSelector.tsx
 │       │   │   │   │   ├── OportunityCard.tsx
 │       │   │   │   │   ├── OportunityRowCard.tsx
 │       │   │   │   │   ├── opportunity-actions.ts
@@ -154,9 +151,9 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   ├── PipelineData.tsx
 │       │   │   │   │   ├── PipelineSkeleton.tsx
 │       │   │   │   │   ├── RowsView.tsx
-│       │   │   │   │   ├── StageColumn.tsx
-│       │   │   │   │   └── useOpportunityForm.ts
+│       │   │   │   │   └── StageColumn.tsx
 │       │   │   │   └── _hooks
+│       │   │   │       ├── useOpportunityForm.ts
 │       │   │   │       └── usePipeline.ts
 │       │   │   ├── products
 │       │   │   │   ├── actions.ts
@@ -198,7 +195,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   ├── dashboard-client.tsx
 │       │   │   ├── page.tsx
 │       │   │   └── _components
-│       │   │       ├── ActivityItem.tsx
 │       │   │       ├── AddTaskDialog.tsx
 │       │   │       ├── Agenda.tsx
 │       │   │       ├── AIOracle.tsx
@@ -208,14 +204,12 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │       ├── QuickAccess.tsx
 │       │   │       ├── Radar.tsx
 │       │   │       ├── RecentActivities.tsx
-│       │   │       ├── SalesPerformance.tsx
-│       │   │       └── StartCard.tsx
+│       │   │       └── SalesPerformance.tsx
 │       │   ├── finances
 │       │   │   ├── despeses
+│       │   │   │   ├── actions.ts
 │       │   │   │   ├── page.tsx
-│       │   │   │   ├── types.ts
 │       │   │   │   └── _components
-│       │   │   │       ├── actions.ts
 │       │   │   │       ├── expenses
 │       │   │   │       │   ├── ExpenseDetailDrawer.tsx
 │       │   │   │       │   ├── ExpenseDialog.tsx
@@ -226,7 +220,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   └── facturacio
 │       │   │       ├── actions.ts
 │       │   │       ├── page.tsx
-│       │   │       ├── types.ts
 │       │   │       └── _components
 │       │   │           ├── FacturacioClient.tsx
 │       │   │           ├── FacturacioData.tsx
@@ -364,9 +357,16 @@ ESTRUCTURA DEL PROJECTE (./src)
 ├── components
 │   ├── chatbot
 │   │   └── Chatbot.tsx
+│   ├── features
+│   │   └── contactes
+│   │       └── ContactSelector.tsx
 │   ├── LanguageSwitcher.tsx
 │   ├── shared
-│   │   └── AccessDenied.tsx
+│   │   ├── AccessDenied.tsx
+│   │   ├── ActivityItem.tsx
+│   │   ├── EmptyState.tsx
+│   │   ├── StartCard.tsx
+│   │   └── StatusBadge.tsx
 │   ├── theme-provider.tsx
 │   ├── ThemeSwitcher.tsx
 │   └── ui
@@ -384,7 +384,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       ├── dropdown-menu.tsx
 │       ├── input.tsx
 │       ├── label.tsx
-│       ├── LanguageSwitcher.tsx
 │       ├── popover.tsx
 │       ├── progress.tsx
 │       ├── select.tsx
@@ -425,6 +424,8 @@ ESTRUCTURA DEL PROJECTE (./src)
 ├── stores
 │   └── navigationStore.ts
 └── types
+    ├── app
+    │   └── navigation.ts
     ├── comunicacio
     │   ├── inbox.ts
     │   └── SocialPost.ts
@@ -432,19 +433,28 @@ ESTRUCTURA DEL PROJECTE (./src)
     │   ├── contacts.ts
     │   ├── general.ts
     │   ├── index.ts
-    │   ├── notification.ts
     │   ├── products.ts
     │   └── quotes.ts
-    ├── DetailedAddress.ts
-    ├── mapbox.d.ts
-    ├── navigation.ts
-    ├── network.ts
-    ├── prism.d.ts
-    └── settings
-        ├── index.ts
-        ├── profiles.ts
-        ├── subscription.ts
-        └── team.ts
+    ├── declarations
+    │   ├── index.ts
+    │   ├── mapbox.d.ts
+    │   └── prism.d.ts
+    ├── finances
+    │   ├── despeses.ts
+    │   ├── factures.ts
+    │   └── index.ts
+    ├── network
+    │   └── network.ts
+    ├── settings
+    │   ├── index.ts
+    │   ├── profiles.ts
+    │   ├── subscription.ts
+    │   └── team.ts
+    ├── shared
+    │   ├── address.ts
+    │   ├── index.ts
+    │   └── notification.ts
+    └── socialPost
 
 
 CONTINGUT DELS FITXERS
@@ -3371,56 +3381,7 @@ export function useInbox({
     };
 }
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/marketing/page.tsx ===================
-
-/**
- * @file page.tsx (Marketing)
- * @summary Punt d'entrada per a la pàgina de Màrqueting, implementant React Suspense.
- */
-
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { MarketingData } from './_components/MarketingData';
-import { MarketingSkeleton } from './_components/MarketingSkeleton';
-
-// Les metadades es queden igual.
-export const metadata: Metadata = {
-  title: 'Marketing | Ribot',
-};
-
-// --- Definició de Tipus de Dades ---
-// Aquests tipus asseguren la consistència de les dades entre el servidor, el client i la base de dades.
-
-export type Campaign = {
-  id: string;
-  name: string;
-  type: string;
-  status: 'Completat' | 'Actiu' | 'Planificat';
-  campaign_date: string; // Utilitzem string per a una fàcil serialització.
-  goal: string;
-  target_audience: string;
-  content: string;
-};
-
-export type Kpis = {
-  totalLeads: number;
-  conversionRate: number;
-};
-
-/**
-* @function MarketingPage
-* @summary Aquesta pàgina ja no és 'async'. Mostra un esquelet de càrrega
-* mentre el component 'MarketingData' va a buscar les dades al servidor.
-*/
-export default function MarketingPage() {
- return (
-   <Suspense fallback={<MarketingSkeleton />}>
-     <MarketingData />
-   </Suspense>
- );
-}
-
-// =================== FILE: src/app/[locale]/(app)/comunicacio/marketing/_components/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/marketing/actions.ts ===================
 
 // Ubicació: /app/(app)/comunicacio/marketing/actions.ts
 
@@ -3561,6 +3522,55 @@ export async function updateCampaignAction(campaignId: string, name: string, con
         
     revalidatePath('/comunicacio/marketing');
     return { error };
+}
+
+// =================== FILE: src/app/[locale]/(app)/comunicacio/marketing/page.tsx ===================
+
+/**
+ * @file page.tsx (Marketing)
+ * @summary Punt d'entrada per a la pàgina de Màrqueting, implementant React Suspense.
+ */
+
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { MarketingData } from './_components/MarketingData';
+import { MarketingSkeleton } from './_components/MarketingSkeleton';
+
+// Les metadades es queden igual.
+export const metadata: Metadata = {
+  title: 'Marketing | Ribot',
+};
+
+// --- Definició de Tipus de Dades ---
+// Aquests tipus asseguren la consistència de les dades entre el servidor, el client i la base de dades.
+
+export type Campaign = {
+  id: string;
+  name: string;
+  type: string;
+  status: 'Completat' | 'Actiu' | 'Planificat';
+  campaign_date: string; // Utilitzem string per a una fàcil serialització.
+  goal: string;
+  target_audience: string;
+  content: string;
+};
+
+export type Kpis = {
+  totalLeads: number;
+  conversionRate: number;
+};
+
+/**
+* @function MarketingPage
+* @summary Aquesta pàgina ja no és 'async'. Mostra un esquelet de càrrega
+* mentre el component 'MarketingData' va a buscar les dades al servidor.
+*/
+export default function MarketingPage() {
+ return (
+   <Suspense fallback={<MarketingSkeleton />}>
+     <MarketingData />
+   </Suspense>
+ );
 }
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/marketing/_components/AICampaignWizard.tsx ===================
@@ -3775,7 +3785,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { type Campaign } from '../page';
-import { updateCampaignAction } from './actions';
+import { updateCampaignAction } from '../actions';
 import { format } from 'date-fns';
 import { ca, es, enUS } from 'date-fns/locale';
 import { useTranslations } from 'next-intl';
@@ -4280,7 +4290,7 @@ export const WizardStep3_Finalize = ({ strategy, onStrategyChange, onSave, onBac
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { generateStrategiesAction, draftContentAction, saveCampaignAction } from "../_components/actions";
+import { generateStrategiesAction, draftContentAction, saveCampaignAction } from "../actions";
 
 // Tipus per a les estratègies
 interface Strategy {
@@ -4412,95 +4422,7 @@ export function useMarketing() {
     };
 }
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/page.tsx ===================
-
-// Ubicació: /app/(app)/comunicacio/planificador/page.tsx
-
-import { Suspense } from 'react';
-import { SocialPlannerClient } from './_components/SocialPlannerClient';
-import type { SocialPost } from "@/types/comunicacio/SocialPost";
-import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
-import { validatePageSession } from '@/lib/supabase/session';
-
-// ✅ Esborrem les importacions de 'permissions' que no s'utilitzen aquí directament.
-// import { hasPermission, PERMISSIONS } from '@/lib/permissions';
-// import { getUserRoleInTeam } from '@/lib/permissions';
-
-export default async function SocialPlannerPage() {
-    const session = await validatePageSession();
-    // ✅ CORRECCIÓ 1: Comprovem si hi ha hagut un error (encara que 'validatePageSession' redirigeix,
-    // TypeScript necessita aquesta comprovació per saber que 'session' no és un error).
-    if (!session) {
-        // Aquesta línia realment no s'executarà perquè validatePageSession ja haurà redirigit,
-        // però satisfà el tipatge de TypeScript.
-        return null; 
-    }
-    const { supabase, user, activeTeamId } = session;
-    const locale = user.user_metadata?.locale || 'ca';
-
-    // Comprovació de pla de subscripció
-    const activeTeamPlan = user.app_metadata?.active_team_plan as string | undefined;
-    const allowedPlans = ['plus', 'premium'];
-    // ✅ CORRECCIÓ 2: Fem la comprovació més robusta (insensible a majúscules/minúscules).
-    if (!activeTeamPlan || !allowedPlans.includes(activeTeamPlan.toLowerCase())) {
-        return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
-    }
-
-    // ✅ CORRECCIÓ 3: La comprovació de permisos es feia DUES VEGADES i amb permisos incorrectes.
-    // La centralitzarem i la simplificarem. La lògica principal de permisos ja està dins
-    // de les 'actions', així que la comprovació aquí només ha de ser de visualització bàsica si cal.
-    // De moment, la podem eliminar si les RLS de Supabase ja protegeixen les dades. Si no,
-    // hauria de ser una única comprovació amb el permís correcte.
-
-    // Com que les Server Actions ja tenen una validació robusta amb 'validateSocialPlannerPermissions',
-    // podem confiar en que l'usuari no podrà fer accions no permeses. La càrrega inicial
-    // de dades estarà protegida per les polítiques RLS de Supabase.
-
-    // La resta de la càrrega de dades es manté igual...
-    const { data: posts, error } = await supabase
-        .from('social_posts')
-        .select('*')
-        .eq('team_id', activeTeamId) // Afegim el filtre per equip per RLS.
-        .order('created_at', { ascending: false });
-
-    if (error) console.error("Error carregant les publicacions:", error);
-
-    const [userCredsRes, teamCredsRes] = await Promise.all([
-        supabase.from('user_credentials').select('provider').eq('user_id', user.id),
-        supabase.from('team_credentials').select('provider').eq('team_id', activeTeamId)
-    ]);
-    const userProviders = userCredsRes.data?.map(c => c.provider) || [];
-    const teamProviders = teamCredsRes.data?.map(c => c.provider) || [];
-    const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
-
-    const connectionStatuses = {
-        linkedin: allConnectedProviders.has('linkedin'),
-        facebook: allConnectedProviders.has('facebook'),
-        instagram: allConnectedProviders.has('instagram'),
-    };
-
-    return (
-        <Suspense fallback={<div>Carregant planificador...</div>}>
-            <SocialPlannerClient
-                initialPosts={(posts as SocialPost[]) || []}
-                connectionStatuses={connectionStatuses}
-            />
-        </Suspense>
-    );
-}
-
-// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/types.ts ===================
-
-// Ubicació: /app/(app)/comunicacio/planificador/types.ts (Fitxer nou)
-
-export interface ConnectionStatuses {
-    [key: string]: boolean;
-    linkedin: boolean;
-    facebook: boolean;
-    instagram: boolean;
-}
-
-// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/_components/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/actions.ts ===================
 
 "use server";
 
@@ -4702,6 +4624,94 @@ export async function deleteSocialPostAction(postId: number): Promise<ActionResu
 
     revalidatePath('/comunicacio/planificador');
     return { success: true, message: t('successPostDeleted') };
+}
+
+// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/page.tsx ===================
+
+// Ubicació: /app/(app)/comunicacio/planificador/page.tsx
+
+import { Suspense } from 'react';
+import { SocialPlannerClient } from './_components/SocialPlannerClient';
+import type { SocialPost } from "@/types/comunicacio/SocialPost";
+import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
+import { validatePageSession } from '@/lib/supabase/session';
+
+// ✅ Esborrem les importacions de 'permissions' que no s'utilitzen aquí directament.
+// import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+// import { getUserRoleInTeam } from '@/lib/permissions';
+
+export default async function SocialPlannerPage() {
+    const session = await validatePageSession();
+    // ✅ CORRECCIÓ 1: Comprovem si hi ha hagut un error (encara que 'validatePageSession' redirigeix,
+    // TypeScript necessita aquesta comprovació per saber que 'session' no és un error).
+    if (!session) {
+        // Aquesta línia realment no s'executarà perquè validatePageSession ja haurà redirigit,
+        // però satisfà el tipatge de TypeScript.
+        return null; 
+    }
+    const { supabase, user, activeTeamId } = session;
+    const locale = user.user_metadata?.locale || 'ca';
+
+    // Comprovació de pla de subscripció
+    const activeTeamPlan = user.app_metadata?.active_team_plan as string | undefined;
+    const allowedPlans = ['plus', 'premium'];
+    // ✅ CORRECCIÓ 2: Fem la comprovació més robusta (insensible a majúscules/minúscules).
+    if (!activeTeamPlan || !allowedPlans.includes(activeTeamPlan.toLowerCase())) {
+        return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
+    }
+
+    // ✅ CORRECCIÓ 3: La comprovació de permisos es feia DUES VEGADES i amb permisos incorrectes.
+    // La centralitzarem i la simplificarem. La lògica principal de permisos ja està dins
+    // de les 'actions', així que la comprovació aquí només ha de ser de visualització bàsica si cal.
+    // De moment, la podem eliminar si les RLS de Supabase ja protegeixen les dades. Si no,
+    // hauria de ser una única comprovació amb el permís correcte.
+
+    // Com que les Server Actions ja tenen una validació robusta amb 'validateSocialPlannerPermissions',
+    // podem confiar en que l'usuari no podrà fer accions no permeses. La càrrega inicial
+    // de dades estarà protegida per les polítiques RLS de Supabase.
+
+    // La resta de la càrrega de dades es manté igual...
+    const { data: posts, error } = await supabase
+        .from('social_posts')
+        .select('*')
+        .eq('team_id', activeTeamId) // Afegim el filtre per equip per RLS.
+        .order('created_at', { ascending: false });
+
+    if (error) console.error("Error carregant les publicacions:", error);
+
+    const [userCredsRes, teamCredsRes] = await Promise.all([
+        supabase.from('user_credentials').select('provider').eq('user_id', user.id),
+        supabase.from('team_credentials').select('provider').eq('team_id', activeTeamId)
+    ]);
+    const userProviders = userCredsRes.data?.map(c => c.provider) || [];
+    const teamProviders = teamCredsRes.data?.map(c => c.provider) || [];
+    const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
+
+    const connectionStatuses = {
+        linkedin: allConnectedProviders.has('linkedin'),
+        facebook: allConnectedProviders.has('facebook'),
+        instagram: allConnectedProviders.has('instagram'),
+    };
+
+    return (
+        <Suspense fallback={<div>Carregant planificador...</div>}>
+            <SocialPlannerClient
+                initialPosts={(posts as SocialPost[]) || []}
+                connectionStatuses={connectionStatuses}
+            />
+        </Suspense>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/types.ts ===================
+
+// Ubicació: /app/(app)/comunicacio/planificador/types.ts (Fitxer nou)
+
+export interface ConnectionStatuses {
+    [key: string]: boolean;
+    linkedin: boolean;
+    facebook: boolean;
+    instagram: boolean;
 }
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx ===================
@@ -5257,7 +5267,7 @@ export function ViewPostDialog({ isOpen, onOpenChange, post, onUnschedule, onDel
 
 import { useState, useTransition, useEffect } from 'react';
 import { toast } from 'sonner';
-import { getPresignedUploadUrlAction, createSocialPostAction } from '../_components/actions';
+import { getPresignedUploadUrlAction, createSocialPostAction } from '../actions';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
 import { type ConnectionStatuses } from '../types';
 
@@ -5425,7 +5435,7 @@ import { DropResult } from '@hello-pangea/dnd';
 import { addMonths, subMonths } from 'date-fns';
 import { toast } from 'sonner';
 
-import { scheduleSocialPostAction, unscheduleSocialPostAction, deleteSocialPostAction } from '../_components/actions';
+import { scheduleSocialPostAction, unscheduleSocialPostAction, deleteSocialPostAction } from '../actions';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
 
 interface UseSocialPlannerProps {
@@ -5529,41 +5539,7 @@ export function useSocialPlanner({ initialPosts }: UseSocialPlannerProps) {
     };
 }
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/templates/page.tsx ===================
-
-/**
- * @file page.tsx (Templates)
- * @summary Componente de Página que implementa React Suspense para una carga instantánea.
- */
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { TemplatesData } from './_components/TemplatesData';
-import { TemplatesSkeleton } from './_components/TemplatesSkeleton';
-
-export const metadata: Metadata = {
-  title: 'Plantilles d\'Email | Ribot',
-};
-
-// El tipo de dato puede vivir aquí o en un fichero centralizado (ej: src/types/comunicacio.ts)
-export type EmailTemplate = {
-  id: string;
-  created_at: string;
-  user_id: string;
-  name: string;
-  subject: string;
-  body: string;
-  variables: string[];
-};
-
-export default function TemplatesPage() {
-  return (
-    <Suspense fallback={<TemplatesSkeleton />}>
-      <TemplatesData />
-    </Suspense>
-  );
-}
-
-// =================== FILE: src/app/[locale]/(app)/comunicacio/templates/_components/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/templates/actions.ts ===================
 
 "use server";
 
@@ -5650,6 +5626,40 @@ export async function deleteTemplateAction(
 
     revalidatePath('/comunicacio/templates');
     return { error: null };
+}
+
+// =================== FILE: src/app/[locale]/(app)/comunicacio/templates/page.tsx ===================
+
+/**
+ * @file page.tsx (Templates)
+ * @summary Componente de Página que implementa React Suspense para una carga instantánea.
+ */
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { TemplatesData } from './_components/TemplatesData';
+import { TemplatesSkeleton } from './_components/TemplatesSkeleton';
+
+export const metadata: Metadata = {
+  title: 'Plantilles d\'Email | Ribot',
+};
+
+// El tipo de dato puede vivir aquí o en un fichero centralizado (ej: src/types/comunicacio.ts)
+export type EmailTemplate = {
+  id: string;
+  created_at: string;
+  user_id: string;
+  name: string;
+  subject: string;
+  body: string;
+  variables: string[];
+};
+
+export default function TemplatesPage() {
+  return (
+    <Suspense fallback={<TemplatesSkeleton />}>
+      <TemplatesData />
+    </Suspense>
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/templates/_components/TemplateEditor.tsx ===================
@@ -6030,7 +6040,7 @@ import { useState, useTransition } from 'react';
 import { toast } from "sonner";
 import { useTranslations } from 'next-intl';
 import { type EmailTemplate } from '../page';
-import { saveTemplateAction, deleteTemplateAction } from '../_components/actions';
+import { saveTemplateAction, deleteTemplateAction } from '../actions';
 
 type UseTemplatesProps = {
     initialTemplates: EmailTemplate[];
@@ -6325,6 +6335,63 @@ export function ActivitiesSkeleton() {
   );
 }
 
+// =================== FILE: src/app/[locale]/(app)/crm/contactes/actions.ts ===================
+
+// a l'arxiu d'accions dels contactes
+
+"use server";
+
+import { revalidatePath } from "next/cache";
+import type { Contact } from '@/types/crm';
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nova funció
+
+export async function createContactAction(
+    formData: FormData
+): Promise<{ data: Contact | null; error: { message: string } | null }> {
+
+    // ✅ 2. Cridem la funció de validació. Tot en una línia.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { data: null, error: session.error };
+    }
+    // A partir d'aquí, sabem que tenim tot el que necessitem.
+    const { supabase, user, activeTeamId } = session;
+
+    const nom = formData.get('nom') as string;
+    const email = formData.get('email') as string;
+
+    if (!nom || !email) {
+        return { data: null, error: { message: 'El nom i l\'email són obligatoris.' } };
+    }
+
+    const dataToInsert = {
+        nom,
+        email,
+        empresa: formData.get('empresa') as string,
+        telefon: formData.get('telefon') as string,
+        estat: formData.get('estat') as 'Lead' | 'Proveidor' | 'Client',
+        valor: parseFloat(formData.get('valor') as string) || 0,
+        team_id: activeTeamId, // ✅ Inserim l'ID de l'equip actiu
+        user_id: user.id,
+    };
+
+    // La política RLS 'WITH CHECK' de la taula 'contacts' verificarà que
+    // l'usuari té permís per inserir en aquest 'team_id'.
+    const { data, error } = await supabase
+        .from('contacts')
+        .insert(dataToInsert)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error en crear el contacte:", error);
+        return { data: null, error: { message: error.message } };
+    }
+
+    revalidatePath('/crm/contactes');
+    return { data, error: null };
+}
+
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/page.tsx ===================
 
 import { Suspense } from 'react';
@@ -6374,55 +6441,7 @@ export default async function ContactesPage(props: ContactesPageProps) {
     );
 }
 
-// =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/page.tsx ===================
-
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { ContactDetailData } from './_components/ContactDetailData';
-import { ContactDetailSkeleton } from './_components/ContactDetailSkeleton';
-
-// Definim el tipus de les propietats, que ara poden arribar com una promesa
-interface ContactDetailPageProps {
-  params: Promise<{ contactId: string }>;
-}
-
-/**
- * Funció per generar metadades dinàmiques.
- */
-export async function generateMetadata(props: ContactDetailPageProps): Promise<Metadata> {
-  // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
-  const { contactId } = await props.params;
-
-  const supabase = createClient(cookies())
-;
-  
-  const { data: contact } = await supabase
-    .from('contacts')
-    .select('nom')
-    .eq('id', contactId)
-    .single();
-
-  return { title: `${contact?.nom || 'Contacte'} | Ribot` };
-}
-
-/**
- * La pàgina principal de detall de contacte.
- */
-export default async function ContactDetailPage(props: ContactDetailPageProps) {
-  // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
-  const { contactId } = await props.params;
-
-  return (
-    <Suspense fallback={<ContactDetailSkeleton />}>
-      {/* Passem l'ID ja resolt al component de dades */}
-      <ContactDetailData contactId={contactId} />
-    </Suspense>
-  );
-}
-
-// =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/_components/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/actions.ts ===================
 
 // /app/[locale]/crm/contactes/[contactId]/actions.ts
 
@@ -6520,6 +6539,54 @@ export async function deleteContactAction(
 
     revalidatePath('/crm/contactes');
     return { success: true, message: "Contact deleted successfully." };
+}
+
+// =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/page.tsx ===================
+
+import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { ContactDetailData } from './_components/ContactDetailData';
+import { ContactDetailSkeleton } from './_components/ContactDetailSkeleton';
+
+// Definim el tipus de les propietats, que ara poden arribar com una promesa
+interface ContactDetailPageProps {
+  params: Promise<{ contactId: string }>;
+}
+
+/**
+ * Funció per generar metadades dinàmiques.
+ */
+export async function generateMetadata(props: ContactDetailPageProps): Promise<Metadata> {
+  // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
+  const { contactId } = await props.params;
+
+  const supabase = createClient(cookies())
+;
+  
+  const { data: contact } = await supabase
+    .from('contacts')
+    .select('nom')
+    .eq('id', contactId)
+    .single();
+
+  return { title: `${contact?.nom || 'Contacte'} | Ribot` };
+}
+
+/**
+ * La pàgina principal de detall de contacte.
+ */
+export default async function ContactDetailPage(props: ContactDetailPageProps) {
+  // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
+  const { contactId } = await props.params;
+
+  return (
+    <Suspense fallback={<ContactDetailSkeleton />}>
+      {/* Passem l'ID ja resolt al component de dades */}
+      <ContactDetailData contactId={contactId} />
+    </Suspense>
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/_components/contact-detail-client.tsx ===================
@@ -6910,68 +6977,6 @@ export const EditableField: React.FC<EditableFieldProps> = ({ label, isEditing, 
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/_components/shared/EmptyState.tsx ===================
-
-import { FC } from 'react';
-
-export const EmptyState: FC<{ message: string }> = ({ message }) => (
-    <p className="text-center text-muted-foreground py-8">{message}</p>
-);
-
-// =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/_components/shared/StatusBadge.tsx ===================
-
-/**
- * @file StatusBadge.tsx
- * @summary Muestra una etiqueta de estado coloreada y traducida. Reutilizable para presupuestos, oportunidades, etc.
- */
-"use client";
-
-import { FC } from 'react';
-import { useTranslations } from 'next-intl';
-
-export const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
-    const t = useTranslations('ContactDetailPage.status');
-    
-    // 1. Establecemos valores por defecto para el texto y el color.
-    let colorClass = 'bg-muted text-muted-foreground';
-    let text = status || t('notAvailable');
-
-    // 2. Usamos el 'switch' para asignar el texto traducido y el color a la vez,
-    //    basándonos en el valor que viene de la base de datos.
-    switch (status?.toLowerCase()) {
-        case 'draft':
-            text = t('draft');
-            colorClass = 'bg-yellow-500/10 text-yellow-500';
-            break;
-        case 'sent':
-            text = t('sent');
-            colorClass = 'bg-blue-500/10 text-blue-500';
-            break;
-        case 'accepted':
-        case 'guanyat': // Mantenemos alias si vienen de la BD
-        case 'paid':
-            text = t('wonPaid');
-            colorClass = 'bg-green-500/10 text-green-500';
-            break;
-        case 'declined':
-        case 'perdut':
-            text = t('rejected');
-            colorClass = 'bg-red-500/10 text-red-500';
-            break;
-        case 'negociació':
-            text = t('negotiation');
-            colorClass = 'bg-purple-500/10 text-purple-500';
-            break;
-        case 'overdue':
-            text = t('overdue');
-            colorClass = 'bg-orange-500/10 text-orange-500';
-            break;
-    }
-
-    // 3. Renderizamos el resultado final.
-    return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorClass}`}>{text}</span>;
-};
-
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/[contactId]/_components/shared/TabTriggerWithCount.tsx ===================
 
 import { FC, ElementType } from 'react';
@@ -6992,7 +6997,7 @@ export const TabTriggerWithCount: FC<Props> = ({ value, icon: Icon, count, label
 import { FC } from 'react';
 import { format } from 'date-fns';
 import { type Activity } from '@/types/crm';
-import { EmptyState } from '../shared/EmptyState';
+import { EmptyState } from '@/components/shared/EmptyState';   
 
 interface Props { activities: Activity[]; dateLocale: Locale; emptyMessage: string; }
 
@@ -7186,8 +7191,8 @@ export const PersonalInfoSection: FC<Props> = ({ contact, isEditing, dateLocale 
 import Link from 'next/link';
 import { FC } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusBadge } from '../shared/StatusBadge';
-import { EmptyState } from '../shared/EmptyState';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 type DataItem = { id: string; status?: string | null; stage_name?: string | null; total?: number | null; value?: number | null; name?: string | null; quote_number?: string | null; invoice_number?: string | null; };
 interface Column { key: string; label: string; }
@@ -7223,7 +7228,7 @@ import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { type Contact } from '@/types/crm';
-import { updateContactAction, deleteContactAction } from '../_components/actions.ts'; // Ajusta la ruta a les teves Server Actions
+import { updateContactAction, deleteContactAction } from '../actions'; // Ajusta la ruta a les teves Server Actions
 
 // Tipus per a la funció de traducció, per a més seguretat
 type TFunction = (key: string) => string;
@@ -7280,63 +7285,6 @@ export function useContactDetail(initialContact: Contact, t: TFunction) {
         handleCancelEdit,
         setIsEditing,
     };
-}
-
-// =================== FILE: src/app/[locale]/(app)/crm/contactes/_components/actions.ts ===================
-
-// a l'arxiu d'accions dels contactes
-
-"use server";
-
-import { revalidatePath } from "next/cache";
-import type { Contact } from '@/types/crm';
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nova funció
-
-export async function createContactAction(
-    formData: FormData
-): Promise<{ data: Contact | null; error: { message: string } | null }> {
-
-    // ✅ 2. Cridem la funció de validació. Tot en una línia.
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { data: null, error: session.error };
-    }
-    // A partir d'aquí, sabem que tenim tot el que necessitem.
-    const { supabase, user, activeTeamId } = session;
-
-    const nom = formData.get('nom') as string;
-    const email = formData.get('email') as string;
-
-    if (!nom || !email) {
-        return { data: null, error: { message: 'El nom i l\'email són obligatoris.' } };
-    }
-
-    const dataToInsert = {
-        nom,
-        email,
-        empresa: formData.get('empresa') as string,
-        telefon: formData.get('telefon') as string,
-        estat: formData.get('estat') as 'Lead' | 'Proveidor' | 'Client',
-        valor: parseFloat(formData.get('valor') as string) || 0,
-        team_id: activeTeamId, // ✅ Inserim l'ID de l'equip actiu
-        user_id: user.id,
-    };
-
-    // La política RLS 'WITH CHECK' de la taula 'contacts' verificarà que
-    // l'usuari té permís per inserir en aquest 'team_id'.
-    const { data, error } = await supabase
-        .from('contacts')
-        .insert(dataToInsert)
-        .select()
-        .single();
-
-    if (error) {
-        console.error("Error en crear el contacte:", error);
-        return { data: null, error: { message: error.message } };
-    }
-
-    revalidatePath('/crm/contactes');
-    return { data, error: null };
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/_components/ContactCard.tsx ===================
@@ -7470,7 +7418,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { createContactAction } from './actions';
+import { createContactAction } from '../actions';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { CONTACT_STATUS_MAP } from '@/types/crm';
@@ -8893,60 +8841,6 @@ export const ColumnsView: React.FC<ColumnsViewProps> = ({ stages, opportunitiesB
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/ContactSelector.tsx ===================
-
-import { FC, useState } from 'react';
-import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown } from 'lucide-react';
-import { cn } from "@/lib/utils/utils";
-import type { Contact } from '../page';
-
-interface Props {
-    contacts: Contact[];
-    selectedId: string;
-    onSelect: (contactId: string) => void;
-}
-
-export const ContactSelector: FC<Props> = ({ contacts, selectedId, onSelect }) => {
-    const t = useTranslations('OpportunityDialog');
-    const [open, setOpen] = useState(false);
-
-    const selectedContact = contacts.find(c => c.id === selectedId);
-
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between">
-                    {selectedContact ? selectedContact.nom : t('selectContactPlaceholder')}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <Command>
-                    <CommandInput placeholder={t('searchContactPlaceholder')} />
-                    <CommandList>
-                        <CommandEmpty>{t('noContactFound')}</CommandEmpty>
-                        <CommandGroup>
-                            {contacts.map(contact => (
-                                <CommandItem key={contact.id} value={contact.nom} onSelect={() => {
-                                    onSelect(contact.id);
-                                    setOpen(false);
-                                }}>
-                                    <Check className={cn("mr-2 h-4 w-4", selectedId === contact.id ? "opacity-100" : "opacity-0")} />
-                                    {contact.nom}
-                                </CommandItem>
-                            ))}
-                        </CommandGroup>
-                    </CommandList>
-                </Command>
-            </PopoverContent>
-        </Popover>
-    );
-};
-
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/OportunityCard.tsx ===================
 
 /**
@@ -9152,8 +9046,9 @@ import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils/utils";
 
 // Lògica i components refactoritzats
-import { useOpportunityForm } from './useOpportunityForm';
-import { ContactSelector } from './ContactSelector';
+import { useOpportunityForm } from '../_hooks/useOpportunityForm';
+import { ContactSelector }  from '@/components/features/contactes/ContactSelector';
+
 
 interface Props {
     open: boolean;
@@ -9464,7 +9359,7 @@ export const StageColumn: React.FC<StageColumnProps> = ({ stage, opportunities, 
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/useOpportunityForm.ts ===================
+// =================== FILE: src/app/[locale]/(app)/crm/pipeline/_hooks/useOpportunityForm.ts ===================
 
 import { useState, useEffect, useTransition } from 'react';
 import { toast } from 'sonner';
@@ -12273,7 +12168,7 @@ import { useTranslations } from 'next-intl';
 import type { DashboardInitialData, Task } from '@/types/crm'; 
 
 // Importació dels sub-components. Hauràs de crear cada un al seu propi fitxer.
-import { StatCard } from './_components/StartCard';
+import { StatCard } from '@/components/shared/StartCard';
 import { SalesPerformance } from './_components/SalesPerformance';
 import { QuickAccess } from './_components/QuickAccess';
 import { Agenda } from './_components/Agenda';
@@ -12405,39 +12300,6 @@ export default function DashboardPage() {
   );
 }
 
-
-// =================== FILE: src/app/[locale]/(app)/dashboard/_components/ActivityItem.tsx ===================
-
-/**
- * @file ActivityItem.tsx
- * @summary Component presentacional per a un únic ítem al feed d'activitats.
- */
-"use client";
-
-import Link from 'next/link';
-import { FC, ElementType } from 'react';
-
-interface ActivityItemProps {
-  icon: ElementType;
-  tone: { bg: string; text: string };
-  title: string;
-  meta: string;
-  href: string;
-}
-
-export const ActivityItem: FC<ActivityItemProps> = ({ icon: Icon, tone, title, meta, href }) => (
-  <Link href={href} className="block">
-    <div className="flex items-start gap-3">
-      <div className={`mt-0.5 rounded-full p-2 ${tone.bg} ${tone.text}`}>
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="flex-1">
-        <p className="text-sm">{title}</p>
-        <p className="text-xs text-muted-foreground">{meta}</p>
-      </div>
-    </div>
-  </Link>
-);
 
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/AddTaskDialog.tsx ===================
 
@@ -12940,7 +12802,7 @@ import React from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, MessageSquare, Send, AlertTriangle } from 'lucide-react';
 import type { Invoice, Contact, Notification } from '@/types/crm';
-import { ActivityItem } from './ActivityItem';
+import { ActivityItem } from '@/components/shared/ActivityItem';
 
 interface RadarProps {
   attentionContacts: Contact[];
@@ -13031,8 +12893,7 @@ import React, { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, CheckCircle2, Clock3, Users } from 'lucide-react';
 import type { Invoice, Task, Contact } from '@/types/crm';
-import { ActivityItem } from './ActivityItem';
-
+import { ActivityItem } from '@/components/shared/ActivityItem';
 interface RecentActivitiesProps {
   overdueInvoices: Invoice[];
   tasks: Task[];
@@ -13150,111 +13011,7 @@ export function SalesPerformance({ stats, percentGoal, monthlyGoal }: SalesPerfo
   );
 }
 
-// =================== FILE: src/app/[locale]/(app)/dashboard/_components/StartCard.tsx ===================
-
-"use client";
-import Link from 'next/link';
-import { FC, ElementType } from 'react';
-import { ArrowRight } from 'lucide-react';
-
-interface StatCardProps {
-  href: string;
-  icon: ElementType;
-  title: string;
-  value: string;
-  color: string;
-  openText: string;
-}
-
-export const StatCard: FC<StatCardProps> = ({ href, icon: Icon, title, value, color, openText }) => (
-  <Link href={href} className="group block">
-    {/* ✅ CORRECCIÓN: Eliminamos 'text-white'. El color de fondo ya define
-        que el texto debe ser 'primary-foreground' (blanco) según tus variables CSS. */}
-    <div className={`rounded-2xl p-5 shadow-xl transition-all ring-1 ring-black/10 dark:ring-white/10 hover:-translate-y-0.5 hover:shadow-2xl ${color}`}>
-      <div className="flex items-start justify-between">
-        <div className="text-sm/5 opacity-90">{title}</div>
-        <Icon className="w-6 h-6 opacity-90" />
-      </div>
-      <div className="mt-2 text-3xl font-extrabold tracking-tight">{value}</div>
-      <div className="mt-2 inline-flex items-center text-xs opacity-85 group-hover:opacity-100">
-        {openText} <ArrowRight className="w-3.5 h-3.5 ml-1" />
-      </div>
-    </div>
-  </Link>
-);
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/page.tsx ===================
-
-/**
- * @file page.tsx (Despeses)
- * @summary Punto de entrada de la página, implementando React Suspense para carga optimizada.
- */
-
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { ExpensesData } from './_components/ExpensesData';
-import { ExpensesSkeleton } from './_components/ExpensesSkeleton';
-
-export const metadata: Metadata = {
-  title: 'Despeses | Ribot',
-};
-
-// Ya no necesitamos exportar los tipos desde aquí.
-
-export default function DespesesPage() {
-  return (
-    <Suspense fallback={<ExpensesSkeleton />}>
-      <ExpensesData />
-    </Suspense>
-  );
-}
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/types.ts ===================
-
-/**
- * @file types.ts (Despeses)
- * @summary Fichero centralizado para las definiciones de tipos del módulo de gastos.
- */
-
-export type Supplier = { 
-    id: string; 
-    nom: string; 
-  };
-  
-  export type ExpenseItem = { 
-    description: string; 
-    quantity: number; 
-    unit_price: number; 
-  };
-  
-  export type ExpenseAttachment = { 
-    id: string; 
-    file_path: string; 
-    filename: string; 
-    mime_type: string; 
-  };
-  
-  export type Expense = {
-    id: string;
-    created_at: string;
-    user_id: string;
-    supplier_id: string | null;
-    invoice_number: string | null;
-    expense_date: string;
-    category: string | null; // Podríamos aplicar el patrón de MAPA aquí en el futuro
-    description: string;
-    subtotal: number;
-    total_amount: number;
-    suppliers: Pick<Supplier, 'nom'> | null; // Solo necesitamos el nombre para la lista inicial
-    expense_items: ExpenseItem[];
-    expense_attachments: ExpenseAttachment[]; 
-    notes?: string | null;
-    discount_amount?: number | null;
-    tax_rate?: number | null;
-    tax_amount?: number | null;
-  };
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/finances/despeses/actions.ts ===================
 
 /**
  * @file actions.ts (Despeses)
@@ -13410,6 +13167,32 @@ export async function uploadAttachmentAction(
 }
 
 
+// =================== FILE: src/app/[locale]/(app)/finances/despeses/page.tsx ===================
+
+/**
+ * @file page.tsx (Despeses)
+ * @summary Punto de entrada de la página, implementando React Suspense para carga optimizada.
+ */
+
+import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { ExpensesData } from './_components/ExpensesData';
+import { ExpensesSkeleton } from './_components/ExpensesSkeleton';
+
+export const metadata: Metadata = {
+  title: 'Despeses | Ribot',
+};
+
+// Ya no necesitamos exportar los tipos desde aquí.
+
+export default function DespesesPage() {
+  return (
+    <Suspense fallback={<ExpensesSkeleton />}>
+      <ExpensesData />
+    </Suspense>
+  );
+}
+
 // =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer.tsx ===================
 
 /**
@@ -13430,7 +13213,7 @@ import { Paperclip, Edit, Download } from 'lucide-react';
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
 import { toast } from 'sonner';
-import { type Expense } from '../../types';
+import { type Expense } from '@/types/finances/index';
 import { useLocale, useTranslations } from 'next-intl';
 
 interface ExpenseDetailDrawerProps {
@@ -13614,8 +13397,8 @@ import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
 import { useLocale, useTranslations } from 'next-intl';
-import { type Expense, type Supplier, type ExpenseItem } from '../../types';
-import { saveExpenseAction, processOcrAction, uploadAttachmentAction } from '@/app/[locale]/(app)/finances/despeses/_components/actions';
+import { type Expense, type Supplier, type ExpenseItem } from '@/types/finances/index';
+import { saveExpenseAction, processOcrAction, uploadAttachmentAction } from '@/app/[locale]/(app)/finances/despeses/actions';
 
 // Definim les propietats que el component espera rebre.
 interface ExpenseDialogProps {
@@ -13979,7 +13762,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Paperclip } from 'lucide-react';
 import { format } from "date-fns";
 
-import { type Expense } from '../../types';
+import { type Expense } from '@/types/finances/index';
 import { useLocale, useTranslations } from 'next-intl';
 import { ca, es, enUS } from "date-fns/locale";
 
@@ -14065,7 +13848,7 @@ import { Plus } from 'lucide-react';
 import { ExpenseDialog } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog';
 import { ExpenseTable } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseTable';
 import { ExpenseDetailDrawer } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer';
-import { type Expense, type Supplier } from '../types';
+import { type Expense, type Supplier } from '@/types/finances/index';
 import { createClient } from '@/lib/supabase/client';
 import { useTranslations } from 'next-intl';
 
@@ -14382,58 +14165,6 @@ export default function FacturacioPage() {
   );
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/types.ts ===================
-
-/**
- * @file types.ts (Facturació)
- * @summary Fichero centralizado para las definiciones de tipos del módulo de facturación.
- */
-
-// Mapa de datos para los estados de las facturas (base de datos -> UI)
-export const INVOICE_STATUS_MAP = [
-    { dbValue: 'Draft',   key: 'draft',   colorClass: 'bg-gray-500/10 text-gray-400 border border-gray-400/30' },
-    { dbValue: 'Issued',  key: 'issued',  colorClass: 'bg-purple-500/10 text-purple-400 border border-purple-400/30' },
-    { dbValue: 'Paid',    key: 'paid',    colorClass: 'bg-green-500/10 text-green-400 border border-green-400/30' },
-    { dbValue: 'Overdue', key: 'overdue', colorClass: 'bg-red-500/10 text-red-400 border border-red-400/30' },
-  ] as const;
-  
-  // Tipo seguro para los valores de estado en la base de datos
-  type InvoiceStatus = typeof INVOICE_STATUS_MAP[number]['dbValue'];
-  
-  export type Contact = {
-    id: string;
-    nom: string;
-  };
-  
-  export type InvoiceItem = {
-    id?: string;
-    description: string;
-    quantity: number;
-    unit_price: number;
-    tax_rate?: number | null; // ✅ CANVIA AIXÒ
-    product_id?: number; // ✅ AFEGEIX AQUESTA LÍNIA
-
-  };
-  
-  export type Invoice = {
-    id: string;
-    user_id: string;
-    contact_id: string;
-    invoice_number: string | null;
-    issue_date: string;
-    due_date: string | null;
-    status: InvoiceStatus;
-    subtotal: number | null;
-    tax_amount: number | null;
-    total_amount: number | null;
-    notes: string | null;
-    created_at: string;
-    company_name: string | null;
-    client_name: string | null;
-    contacts: Contact | null;
-    invoice_items: InvoiceItem[];
-  };
-
 // =================== FILE: src/app/[locale]/(app)/finances/facturacio/_components/FacturacioClient.tsx ===================
 
 // /app/finances/facturacio/_components/FacturacioClient.tsx
@@ -14450,11 +14181,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Plus, Edit, Trash2, ShieldCheck, ArrowUpDown } from 'lucide-react'; // ✅ Afegim ArrowUpDown
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
-import type { Invoice, Contact } from '../types';
+import type { Invoice, Contact } from '@/types/finances/index';
 import { deleteInvoiceAction, issueInvoiceAction } from '../actions';
 import { InvoiceDialog } from './InvoiceDialog';
 import { useTranslations, useLocale } from 'next-intl';
-import { INVOICE_STATUS_MAP } from '../types';
+import { INVOICE_STATUS_MAP } from '@/types/finances/index';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Product } from '@/types/crm/products';
 
@@ -22705,6 +22436,60 @@ export function Chatbot() {
     );
 }
 
+// =================== FILE: src/components/features/contactes/ContactSelector.tsx ===================
+
+import { FC, useState } from 'react';
+import { useTranslations } from 'next-intl';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from "@/lib/utils/utils";
+import type { Contact } from '../page';
+
+interface Props {
+    contacts: Contact[];
+    selectedId: string;
+    onSelect: (contactId: string) => void;
+}
+
+export const ContactSelector: FC<Props> = ({ contacts, selectedId, onSelect }) => {
+    const t = useTranslations('OpportunityDialog');
+    const [open, setOpen] = useState(false);
+
+    const selectedContact = contacts.find(c => c.id === selectedId);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {selectedContact ? selectedContact.nom : t('selectContactPlaceholder')}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                    <CommandInput placeholder={t('searchContactPlaceholder')} />
+                    <CommandList>
+                        <CommandEmpty>{t('noContactFound')}</CommandEmpty>
+                        <CommandGroup>
+                            {contacts.map(contact => (
+                                <CommandItem key={contact.id} value={contact.nom} onSelect={() => {
+                                    onSelect(contact.id);
+                                    setOpen(false);
+                                }}>
+                                    <Check className={cn("mr-2 h-4 w-4", selectedId === contact.id ? "opacity-100" : "opacity-0")} />
+                                    {contact.nom}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+};
+
 // =================== FILE: src/components/LanguageSwitcher.tsx ===================
 
 "use client";
@@ -22798,6 +22583,134 @@ export function AccessDenied() {
     </div>
   );
 }
+
+// =================== FILE: src/components/shared/ActivityItem.tsx ===================
+
+/**
+ * @file ActivityItem.tsx
+ * @summary Component presentacional per a un únic ítem al feed d'activitats.
+ */
+"use client";
+
+import Link from 'next/link';
+import { FC, ElementType } from 'react';
+
+interface ActivityItemProps {
+  icon: ElementType;
+  tone: { bg: string; text: string };
+  title: string;
+  meta: string;
+  href: string;
+}
+
+export const ActivityItem: FC<ActivityItemProps> = ({ icon: Icon, tone, title, meta, href }) => (
+  <Link href={href} className="block">
+    <div className="flex items-start gap-3">
+      <div className={`mt-0.5 rounded-full p-2 ${tone.bg} ${tone.text}`}>
+        <Icon className="w-4 h-4" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm">{title}</p>
+        <p className="text-xs text-muted-foreground">{meta}</p>
+      </div>
+    </div>
+  </Link>
+);
+
+// =================== FILE: src/components/shared/EmptyState.tsx ===================
+
+import { FC } from 'react';
+
+export const EmptyState: FC<{ message: string }> = ({ message }) => (
+    <p className="text-center text-muted-foreground py-8">{message}</p>
+);
+
+// =================== FILE: src/components/shared/StartCard.tsx ===================
+
+"use client";
+import Link from 'next/link';
+import { FC, ElementType } from 'react';
+import { ArrowRight } from 'lucide-react';
+
+interface StatCardProps {
+  href: string;
+  icon: ElementType;
+  title: string;
+  value: string;
+  color: string;
+  openText: string;
+}
+
+export const StatCard: FC<StatCardProps> = ({ href, icon: Icon, title, value, color, openText }) => (
+  <Link href={href} className="group block">
+    {/* ✅ CORRECCIÓN: Eliminamos 'text-white'. El color de fondo ya define
+        que el texto debe ser 'primary-foreground' (blanco) según tus variables CSS. */}
+    <div className={`rounded-2xl p-5 shadow-xl transition-all ring-1 ring-black/10 dark:ring-white/10 hover:-translate-y-0.5 hover:shadow-2xl ${color}`}>
+      <div className="flex items-start justify-between">
+        <div className="text-sm/5 opacity-90">{title}</div>
+        <Icon className="w-6 h-6 opacity-90" />
+      </div>
+      <div className="mt-2 text-3xl font-extrabold tracking-tight">{value}</div>
+      <div className="mt-2 inline-flex items-center text-xs opacity-85 group-hover:opacity-100">
+        {openText} <ArrowRight className="w-3.5 h-3.5 ml-1" />
+      </div>
+    </div>
+  </Link>
+);
+
+// =================== FILE: src/components/shared/StatusBadge.tsx ===================
+
+/**
+ * @file StatusBadge.tsx
+ * @summary Muestra una etiqueta de estado coloreada y traducida. Reutilizable para presupuestos, oportunidades, etc.
+ */
+"use client";
+
+import { FC } from 'react';
+import { useTranslations } from 'next-intl';
+
+export const StatusBadge: FC<{ status?: string | null }> = ({ status }) => {
+    const t = useTranslations('ContactDetailPage.status');
+    
+    // 1. Establecemos valores por defecto para el texto y el color.
+    let colorClass = 'bg-muted text-muted-foreground';
+    let text = status || t('notAvailable');
+
+    // 2. Usamos el 'switch' para asignar el texto traducido y el color a la vez,
+    //    basándonos en el valor que viene de la base de datos.
+    switch (status?.toLowerCase()) {
+        case 'draft':
+            text = t('draft');
+            colorClass = 'bg-yellow-500/10 text-yellow-500';
+            break;
+        case 'sent':
+            text = t('sent');
+            colorClass = 'bg-blue-500/10 text-blue-500';
+            break;
+        case 'accepted':
+        case 'guanyat': // Mantenemos alias si vienen de la BD
+        case 'paid':
+            text = t('wonPaid');
+            colorClass = 'bg-green-500/10 text-green-500';
+            break;
+        case 'declined':
+        case 'perdut':
+            text = t('rejected');
+            colorClass = 'bg-red-500/10 text-red-500';
+            break;
+        case 'negociació':
+            text = t('negotiation');
+            colorClass = 'bg-purple-500/10 text-purple-500';
+            break;
+        case 'overdue':
+            text = t('overdue');
+            colorClass = 'bg-orange-500/10 text-orange-500';
+            break;
+    }
+
+    // 3. Renderizamos el resultado final.
+    return <span className={`px-2.5 py-1 text-xs font-bold rounded-full ${colorClass}`}>{text}</span>;
+};
 
 // =================== FILE: src/components/theme-provider.tsx ===================
 
@@ -24224,47 +24137,6 @@ function Label({
 
 export { Label }
 
-
-// =================== FILE: src/components/ui/LanguageSwitcher.tsx ===================
-
-// src/components/ui/LanguageSwitcher.tsx
-"use client";
-
-import { usePathname, useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-export function LanguageSwitcher() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const locale = useLocale();
-
-  const handleLanguageChange = (nextLocale: string) => {
-    // Reemplaça el codi de l'idioma actual a la URL.
-    // Això funciona perquè el pathname ja conté el prefix de l'idioma.
-    router.replace(pathname.replace(`/${locale}`, `/${nextLocale}`));
-  };
-
-  return (
-    <Select defaultValue={locale} onValueChange={handleLanguageChange}>
-      <SelectTrigger className="w-auto gap-2">
-        <span className="fi fi-ww rounded-sm"></span> 
-        <SelectValue placeholder="Idioma" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="ca">Català</SelectItem>
-        <SelectItem value="es">Español</SelectItem>
-        <SelectItem value="en">English</SelectItem>
-      </SelectContent>
-    </Select>
-  );
-}
 
 // =================== FILE: src/components/ui/popover.tsx ===================
 
@@ -25998,6 +25870,52 @@ export const useNavigationStore = create<NavigationState>((set) => ({
   toggleChatbot: () => set((state) => ({ isChatbotOpen: !state.isChatbotOpen })),
 }));
 
+// =================== FILE: src/types/app/navigation.ts ===================
+
+// src/types/navigation.ts
+import type { LucideIcon } from 'lucide-react';
+
+/**
+ * @summary Aquesta constant defineix TOTES les claus de traducció possibles per a la navegació.
+ * És la nostra font única de la veritat. Si afegeixes un nou element al menú,
+ * has d'afegir la seva 'labelKey' aquí primer.
+ */
+export const NAVIGATION_KEYS = [
+  'dashboard', 'crm', 'finances', 'communication', 'network', 'architecture',
+  'crmGeneral', 'contacts', 'pipeline', 'quotes', 'concepts', 'activities', // ✅ 'concepts' i 'activities' afegits
+  'invoicing', 'expenses', 'inbox', 'templates', 'marketing', 'profile', 'customization',
+  'ai', 'settings', 'planner'
+] as const;
+
+/**
+ * @summary Aquest tipus es genera automàticament a partir de la constant de dalt.
+ * Crea una unió de tots els possibles valors: 'dashboard' | 'crm' | 'finances' | ...
+ */
+export type NavigationKey = typeof NAVIGATION_KEYS[number];
+
+/**
+ * @summary Aquesta és la interfície per a cada element de navegació.
+ * Ara utilitza 'NavigationKey' per assegurar que 'labelKey' sempre sigui un valor vàlid.
+ */
+export interface NavItem {
+  id: string;
+  labelKey: NavigationKey; // ✅ Ara és totalment segur i tipat.
+  descKey?: NavigationKey; // ✅ NOU: Clau per a la descripció (opcional).
+  icon: LucideIcon;
+  path: string;
+  isSingle: boolean;
+  basePath?: string;
+  children?: NavItem[];
+  notImplemented?: boolean;
+  // ✅ AQUÍ AFEGIM LA NOVA PROPIETAT
+  // És opcional ('?') perquè no tots els enllaços requeriran un pla específic.
+  // Serà un array de strings, ex: ['plus', 'premium'].
+  requiredPlan?: string[];
+  allowedRoles?: string[]; // Rols que poden accedir (ex: ['owner', 'admin'])
+
+
+}
+
 // =================== FILE: src/types/comunicacio/inbox.ts ===================
 
 /**
@@ -26290,20 +26208,8 @@ export * from './contacts';
 export * from './quotes';
 export * from '../comunicacio/inbox';
 export * from './general';
-export * from './notification';
 export * from './products';
 
-
-// =================== FILE: src/types/crm/notification.ts ===================
-
-export interface Notification {
-    id: number;
-    user_id: string;
-    message: string;
-    type?: string;
-    is_read: boolean;
-    created_at: string;
-  }
 
 // =================== FILE: src/types/crm/products.ts ===================
 
@@ -26419,20 +26325,13 @@ export type Invoice = {
 
 
 
-// =================== FILE: src/types/DetailedAddress.ts ===================
+// =================== FILE: src/types/declarations/index.ts ===================
 
-export interface DetailedAddress {
-  street: string;
-  city: string;
-  postcode: string;
-  region: string;
-  country: string;
-  latitude: number | null;
-  longitude: number | null;
-}
+export * from './mapbox';
+export * from './prism';
 
 
-// =================== FILE: src/types/mapbox.d.ts ===================
+// =================== FILE: src/types/declarations/mapbox.d.ts ===================
 
 // mapbox.d.ts
 
@@ -26467,53 +26366,119 @@ declare module '@mapbox/search-js-react' {
   }
   
 
-// =================== FILE: src/types/navigation.ts ===================
+// =================== FILE: src/types/declarations/prism.d.ts ===================
 
-// src/types/navigation.ts
-import type { LucideIcon } from 'lucide-react';
+// src/types/prism.d.ts
 
-/**
- * @summary Aquesta constant defineix TOTES les claus de traducció possibles per a la navegació.
- * És la nostra font única de la veritat. Si afegeixes un nou element al menú,
- * has d'afegir la seva 'labelKey' aquí primer.
- */
-export const NAVIGATION_KEYS = [
-  'dashboard', 'crm', 'finances', 'communication', 'network', 'architecture',
-  'crmGeneral', 'contacts', 'pipeline', 'quotes', 'concepts', 'activities', // ✅ 'concepts' i 'activities' afegits
-  'invoicing', 'expenses', 'inbox', 'templates', 'marketing', 'profile', 'customization',
-  'ai', 'settings', 'planner'
-] as const;
+declare module 'prismjs/components/prism-core';
+declare module 'prismjs/components/prism-clike';
+declare module 'prismjs/components/prism-javascript';
+declare module 'prismjs/components/prism-markup';
+
+// =================== FILE: src/types/finances/despeses.ts ===================
 
 /**
- * @summary Aquest tipus es genera automàticament a partir de la constant de dalt.
- * Crea una unió de tots els possibles valors: 'dashboard' | 'crm' | 'finances' | ...
+ * @file types.ts (Facturació)
+ * @summary Fichero centralizado para las definiciones de tipos del módulo de facturación.
  */
-export type NavigationKey = typeof NAVIGATION_KEYS[number];
+
+// Mapa de datos para los estados de las facturas (base de datos -> UI)
+export const INVOICE_STATUS_MAP = [
+    { dbValue: 'Draft',   key: 'draft',   colorClass: 'bg-gray-500/10 text-gray-400 border border-gray-400/30' },
+    { dbValue: 'Issued',  key: 'issued',  colorClass: 'bg-purple-500/10 text-purple-400 border border-purple-400/30' },
+    { dbValue: 'Paid',    key: 'paid',    colorClass: 'bg-green-500/10 text-green-400 border border-green-400/30' },
+    { dbValue: 'Overdue', key: 'overdue', colorClass: 'bg-red-500/10 text-red-400 border border-red-400/30' },
+  ] as const;
+  
+  // Tipo seguro para los valores de estado en la base de datos
+  type InvoiceStatus = typeof INVOICE_STATUS_MAP[number]['dbValue'];
+  
+  export type Contact = {
+    id: string;
+    nom: string;
+  };
+  
+  export type InvoiceItem = {
+    id?: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_rate?: number | null; // ✅ CANVIA AIXÒ
+    product_id?: number; // ✅ AFEGEIX AQUESTA LÍNIA
+
+  };
+  
+  export type Invoice = {
+    id: string;
+    user_id: string;
+    contact_id: string;
+    invoice_number: string | null;
+    issue_date: string;
+    due_date: string | null;
+    status: InvoiceStatus;
+    subtotal: number | null;
+    tax_amount: number | null;
+    total_amount: number | null;
+    notes: string | null;
+    created_at: string;
+    company_name: string | null;
+    client_name: string | null;
+    contacts: Contact | null;
+    invoice_items: InvoiceItem[];
+  };
+
+// =================== FILE: src/types/finances/factures.ts ===================
 
 /**
- * @summary Aquesta és la interfície per a cada element de navegació.
- * Ara utilitza 'NavigationKey' per assegurar que 'labelKey' sempre sigui un valor vàlid.
+ * @file types.ts (Despeses)
+ * @summary Fichero centralizado para las definiciones de tipos del módulo de gastos.
  */
-export interface NavItem {
-  id: string;
-  labelKey: NavigationKey; // ✅ Ara és totalment segur i tipat.
-  descKey?: NavigationKey; // ✅ NOU: Clau per a la descripció (opcional).
-  icon: LucideIcon;
-  path: string;
-  isSingle: boolean;
-  basePath?: string;
-  children?: NavItem[];
-  notImplemented?: boolean;
-  // ✅ AQUÍ AFEGIM LA NOVA PROPIETAT
-  // És opcional ('?') perquè no tots els enllaços requeriran un pla específic.
-  // Serà un array de strings, ex: ['plus', 'premium'].
-  requiredPlan?: string[];
-  allowedRoles?: string[]; // Rols que poden accedir (ex: ['owner', 'admin'])
+
+export type Supplier = { 
+    id: string; 
+    nom: string; 
+  };
+  
+  export type ExpenseItem = { 
+    description: string; 
+    quantity: number; 
+    unit_price: number; 
+  };
+  
+  export type ExpenseAttachment = { 
+    id: string; 
+    file_path: string; 
+    filename: string; 
+    mime_type: string; 
+  };
+  
+  export type Expense = {
+    id: string;
+    created_at: string;
+    user_id: string;
+    supplier_id: string | null;
+    invoice_number: string | null;
+    expense_date: string;
+    category: string | null; // Podríamos aplicar el patrón de MAPA aquí en el futuro
+    description: string;
+    subtotal: number;
+    total_amount: number;
+    suppliers: Pick<Supplier, 'nom'> | null; // Solo necesitamos el nombre para la lista inicial
+    expense_items: ExpenseItem[];
+    expense_attachments: ExpenseAttachment[]; 
+    notes?: string | null;
+    discount_amount?: number | null;
+    tax_rate?: number | null;
+    tax_amount?: number | null;
+  };
+
+// =================== FILE: src/types/finances/index.ts ===================
+
+export * from './despeses';
+export * from './factures';
 
 
-}
-
-// =================== FILE: src/types/network.ts ===================
+// =================== FILE: src/types/network/network.ts ===================
 
 // types/network.ts
 export interface PublicProfile {
@@ -26527,15 +26492,6 @@ export interface PublicProfile {
   latitude: number;
   longitude: number;
 }
-
-// =================== FILE: src/types/prism.d.ts ===================
-
-// src/types/prism.d.ts
-
-declare module 'prismjs/components/prism-core';
-declare module 'prismjs/components/prism-clike';
-declare module 'prismjs/components/prism-javascript';
-declare module 'prismjs/components/prism-markup';
 
 // =================== FILE: src/types/settings/index.ts ===================
 
@@ -26687,3 +26643,34 @@ export type CompanyProfile = {
     company_phone: string | null;
     logo_url: string | null;
 };
+
+// =================== FILE: src/types/shared/address.ts ===================
+
+export interface DetailedAddress {
+  street: string;
+  city: string;
+  postcode: string;
+  region: string;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+
+// =================== FILE: src/types/shared/index.ts ===================
+
+export * from './address';
+export * from './notification';
+
+
+
+// =================== FILE: src/types/shared/notification.ts ===================
+
+export interface Notification {
+    id: number;
+    user_id: string;
+    message: string;
+    type?: string;
+    is_read: boolean;
+    created_at: string;
+  }

@@ -28,13 +28,17 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
   const { pending } = useFormStatus();
   return <Button type="submit" disabled={pending}>{pending ? t('form.saving') : (isEditing ? t('form.saveChanges') : t('form.createConcept'))}</Button>;
 }
-
+// ✅ PAS 1: Canvia la definició de 'onSuccess' per acceptar un producte.
+interface ProductFormProps {
+  product: Product | null;
+  onSuccess: (product: Product) => void;
+}
 /**
  * Component del formulari per crear o editar un producte/concepte.
  * @param {Product | null} product - Si rep un objecte 'product', funciona en mode edició. Si és 'null', funciona en mode creació.
  * @param {() => void} onSuccess - Funció de callback a executar quan l'operació té èxit (ex: tancar el diàleg).
  */
-export function ProductForm({ product, onSuccess }: { product: Product | null, onSuccess: () => void }) {
+export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const t = useTranslations('ProductsPage');
 
   // Determina quina Server Action s'ha d'executar: 'updateProduct' si estem editant,
@@ -56,15 +60,18 @@ export function ProductForm({ product, onSuccess }: { product: Product | null, o
    */
   useEffect(() => {
     if (state.message) {
-      if (state.success) {
-        toast.success(t('toast.success'), { description: state.message });
-        onSuccess(); // Executa el callback per tancar el diàleg.
-      } else if (!state.errors) { // Només mostra error general si no hi ha errors de camp específics.
-        toast.error(t('toast.error'), { description: state.message });
-      }
+        if (state.success) {
+            toast.success(t('toast.success'), { description: state.message });
+            // ✅ PAS 2: Comprova si l'acció ha retornat dades.
+            if (state.data) {
+                // ✅ PAS 3: Passa les dades del producte al callback.
+                onSuccess(state.data);
+            }
+        } else if (!state.errors) {
+            toast.error(t('toast.error'), { description: state.message });
+        }
     }
-  }, [state, onSuccess, t]); // ✅ AFEGEIX 't' AQUÍ
-
+}, [state, onSuccess, t]);
   return (
        // L'atribut 'action' connecta directament aquest formulari a la nostra Server Action.
     // En fer 'submit', s'executarà la funció 'formAction' al servidor.
