@@ -65,3 +65,4 @@ export async function updateOpportunityStageAction(opportunityId: string, newSta
         return { error: { message } };
     }
 }
+
