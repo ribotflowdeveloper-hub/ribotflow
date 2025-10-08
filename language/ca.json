@@ -1393,6 +1393,8 @@
     "couldnotcomplete": "No s'ha pogut completar l'acció.",
     "nofileselected": "No s'ha seleccionat cap fitxer.",
     "processingfile": "Processant el fitxer Excel...",
+    "errorloadingdata":"Error en carregar les dades.",
+    "unexpectederrorloadingfile":"S'ha produït un error inesperat en carregar el fitxer.",
     "contacts": {
       "create": "Crear plantilla",
       "load": "Carregar contactes",

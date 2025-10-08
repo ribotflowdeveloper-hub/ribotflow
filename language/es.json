@@ -1339,6 +1339,8 @@
     "couldnotcomplete": "No se ha podido completar la acción.",
     "nofileselected": "No se ha seleccionado ningún archivo.",
     "processingfile": "Procesando el archivo Excel...",
+    "errorloadingdata": "Error en cargar los datos.",
+    "unexpectederrorloadingfile": "Se ha producido un error inesperado al cargar el archivo.",
     "contacts": {
       "create": "Crear plantilla",
       "load": "Cargar contactos",

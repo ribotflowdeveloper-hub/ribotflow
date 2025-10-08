@@ -1347,6 +1347,10 @@
     "couldnotcomplete": "The action could not be completed.",
     "nofileselected": "No file selected.",
     "processingfile": "Processing excel file...",
+        "errorloadingdata": "Error loading data from the file.",
+    "unexpectederrorloadingfile": "An unexpected error has occurred while loading the file.",
+
+
     "contacts": {
       "create": "Create template",
       "load": "Load contacts",
