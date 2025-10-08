@@ -64,7 +64,7 @@ export function ContactsClient({
     ];
 
     async function handleExportAndDownload(shouldDownload: boolean) {
-        toast.info("Iniciant l'exportació de contactes...");
+        toast.info(t2('contacts.startingexport'));
         try {
             const result = await exportToExcel('contacts', shouldDownload);
 
@@ -84,12 +84,12 @@ export function ContactsClient({
                 link.click();
                 document.body.removeChild(link);
 
-                toast.success("L'exportació s'ha completat amb èxit.");
+                toast.success(t2('successexport'));
             } else {
-                toast.error("Hi ha hagut un error en exportar les dades.", { description: result.message });
+                toast.error(t2('errorexport'), { description: result.message });
             }
         } catch (error) {
-            toast.error("Hi ha hagut un error inesperat.", { description: "No s'ha pogut completar l'acció." });
+            toast.error(t2('unexpectederror'), { description: (error as Error).message });
             console.error(error);
         }
     }
@@ -105,11 +105,12 @@ export function ContactsClient({
         input.onchange = async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (!file) {
-                toast.error("No s'ha seleccionat cap fitxer.");
+
+            toast.error(t2('nofileselected'));
                 return;
             }
 
-            toast.info("Processant el fitxer Excel...");
+            toast.info(t2('processingfile'));
 
             const formData = new FormData();
             formData.append('file', file);
@@ -121,10 +122,10 @@ export function ContactsClient({
                     if (result.success) {
                         toast.success(result.message);
                     } else {
-                        toast.error("Error en carregar les dades.", { description: result.message });
+                        toast.error(t2('errorloadingdata'), { description: result.message });
                     }
                 } catch (error) {
-                    toast.error("Hi ha hagut un error inesperat en carregar el fitxer.", { description: (error as Error).message });
+                    toast.error(t2('unexpectederrorloadingfile'), { description: (error as Error).message });
                 }
             });
         };

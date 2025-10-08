@@ -1333,15 +1333,21 @@
   },
   "excel": {
     "template": "Plantilla",
-      "contacts": {
-        "create": "Crear plantilla",
-        "load": "Cargar contactos",
-        "download": "Descargar contactos"
-      },
-      "products": {
-        "create": "Crear plantilla",
-        "load": "Cargar conceptos",
-        "download": "Descargar conceptos"
-      }
+    "successexport": "La exportación se ha completado con éxito.",
+    "errorexport": "Ha habido un error al exportar los datos.",
+    "unexpectederror": "Se ha producido un error inesperado.",
+    "couldnotcomplete": "No se ha podido completar la acción.",
+    "nofileselected": "No se ha seleccionado ningún archivo.",
+    "processingfile": "Procesando el archivo Excel...",
+    "contacts": {
+      "create": "Crear plantilla",
+      "load": "Cargar contactos",
+      "download": "Descargar contactos"
+    },
+    "products": {
+      "create": "Crear plantilla",
+      "load": "Cargar conceptos",
+      "download": "Descargar conceptos"
     }
+  }
 }

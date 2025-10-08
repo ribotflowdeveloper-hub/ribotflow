@@ -1387,15 +1387,23 @@
   },
   "excel": {
     "template": "Plantilla",
+    "successexport": "L'exportació s'ha completat amb èxit.",
+    "errorexport": "Hi ha hagut un error en exportar les dades.",
+    "unexpectederror": "S'ha produït un error inesperat.",
+    "couldnotcomplete": "No s'ha pogut completar l'acció.",
+    "nofileselected": "No s'ha seleccionat cap fitxer.",
+    "processingfile": "Processant el fitxer Excel...",
     "contacts": {
       "create": "Crear plantilla",
       "load": "Carregar contactes",
-      "download": "Descarregar contactes"
+      "download": "Descarregar contactes",
+      "startingexport": "Iniciant l'exportació de contactes..."
     },
     "products": {
       "create": "Crear plantilla",
       "load": "Carregar conceptes",
-      "download": "Descarregar conceptes"
+      "download": "Descarregar conceptes",
+      "startingexport": "Iniciant l'exportació de conceptes..."
     }
   }
 }
