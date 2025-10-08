@@ -304,6 +304,11 @@
       "status": "Estat",
       "allStatuses": "Tots els estats"
     },
+    "excel": {
+      "create": "Crear plantilla",
+      "load": "Carregar contactes",
+      "download": "Descarregar contactes"
+    },
     "table": {
       "name": "Nom",
       "status": "Estat",

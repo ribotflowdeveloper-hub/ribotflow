@@ -21,7 +21,7 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
     // mostrem el component client amb dades buides.
     if ('error' in session) {
         console.error("ContactsData: Sessió invàlida.", session.error.message);
-        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
+        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialViewMode={viewMode} />;
     }
 
     // A partir d'aquí, sabem que tenim una sessió vàlida.
@@ -51,7 +51,7 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
     
     if (error) {
         console.error("Error en obtenir contactes (pot ser per RLS):", error.message);
-        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialSortBy={sortBy} initialStatus={status} initialViewMode={viewMode} />;
+        return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialViewMode={viewMode} />;
     }
 
     const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE);
@@ -61,8 +61,6 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
             initialContacts={contacts as Contact[] || []} 
             totalPages={totalPages} 
             currentPage={currentPage}
-            initialSortBy={sortBy}
-            initialStatus={status}
             initialViewMode={viewMode}
         />
     );

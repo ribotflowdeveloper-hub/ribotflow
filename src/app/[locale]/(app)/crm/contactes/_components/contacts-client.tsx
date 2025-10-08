@@ -1,7 +1,7 @@
 // @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Refactoritzada)
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -9,16 +9,19 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, LayoutGrid, List } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { type Contact, CONTACT_STATUS_MAP } from '@/types/crm';
 
-import { useContactFilters} from '../_hooks/useContactFilters.ts'; // ✅ Importem el nou hook
+import { useContactFilters} from '../_hooks/useContactFilters';
 
 import { ContactDialog } from './ContactDialog';
 import ContactCard from './ContactCard';
 import ContactTable from './ContactTable';
-import { ExportContactsButton } from './ExportContactsButton';
+import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
+import { exportToExcel } from '@/app/[locale]/(app)/excel/actions';
+
 
 // (La definició de les Props no canvia)
 interface ContactsClientProps {
@@ -37,6 +40,7 @@ export function ContactsClient({
     const t = useTranslations('ContactsClient');
     const router = useRouter();
     const searchParams = useSearchParams();
+    const [isExporting, startExportTransition] = useTransition();
 
     // ✅ 2. TOTA LA LÒGICA DE FILTRES ARA VE DEL HOOK
     const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
@@ -56,6 +60,43 @@ export function ContactsClient({
 
     const handleContactClick = (contact: Contact) => {
         router.push(`/crm/contactes/${contact.id}`);
+    };
+
+    const excelOptions: DropdownOption[] = [
+        { value: 'create', label: t('excel.create'), icon: FilePlus2 },
+        { value: 'load', label: t('excel.load'), icon: Upload },
+        { value: 'download', label: t('excel.download'), icon: Download },
+    ];
+
+    const handleExcelAction = (option: DropdownOption) => {
+        if (option.value === 'download') {
+            startExportTransition(async () => {
+                toast.info("Iniciant l'exportació de contactes...");
+                const result = await exportToExcel('contacts', true);
+
+                if (result.success && result.fileBuffer) {
+                    // Lògica per descarregar el fitxer al client
+                    const byteCharacters = atob(result.fileBuffer);
+                    const byteNumbers = new Array(byteCharacters.length);
+                    for (let i = 0; i < byteCharacters.length; i++) {
+                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+                    }
+                    const byteArray = new Uint8Array(byteNumbers);
+                    const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = result.fileName || 'export.xlsx';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    toast.success("L'exportació s'ha completat amb èxit.");
+                } else {
+                    toast.error("Hi ha hagut un error en exportar les dades.", { description: result.message });
+                }
+            });
+        }
     };
 
     return (
@@ -101,7 +142,11 @@ export function ContactsClient({
                         </Button>
                     </div>
 
-                    <ExportContactsButton />
+                    {/* ✅ AQUÍ AFEGIM EL NOU BOTÓ */}
+                    <ExcelDropdownButton
+                        options={excelOptions}
+                        onSelect={handleExcelAction}
+                    />
 
                     <ContactDialog
                         trigger={
