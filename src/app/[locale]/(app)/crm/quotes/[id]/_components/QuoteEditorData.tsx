@@ -1,43 +1,46 @@
-
 import { redirect } from 'next/navigation';
 import { QuoteEditorClient } from './QuoteEditorClient';
-// ✅ Canviem la importació de tipus per a utilitzar els nous centralitzats i correctes
-import type { Quote, Contact, Product , Opportunity} from '@/types/crm';
-import type { Team as TeamData, } from '@/types/settings/team';
-import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
+import type { Quote } from '@/types/crm';
+import { validatePageSession } from "@/lib/supabase/session";
 
 interface QuoteEditorDataProps {
     quoteId: string;
 }
 
+/**
+ * Aquest és un Server Component que s'encarrega de tota la càrrega de dades
+ * necessària per a l'editor de pressupostos. Prepara totes les 'props'
+ * i les passa al component de client 'QuoteEditorClient', que gestionarà la UI.
+ */
 export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
-   // ✅ 2. Validació de sessió que gestiona les redireccions automàticament.
-   const { supabase, user, activeTeamId } = await validatePageSession();
+    // 1. Validació de la sessió: Assegura que l'usuari està autenticat
+    // i té un equip actiu. Si no, redirigeix automàticament.
+    const { supabase, user, activeTeamId } = await validatePageSession();
     
-   const [contactsRes, productsRes, teamRes] = await Promise.all([
-       supabase.from('contacts').select('id, nom, empresa'),
-       supabase.from('products').select('*').eq('is_active', true),
-       supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-   ]);
-
-    const contacts = (contactsRes.data as Contact[]) || [];
-    const products = (productsRes.data as Product[]) || [];
-    // ✅ CORRECCIÓ DE TIPUS: Ara 'teamData' coincideix amb el que espera el client
-    const teamData = teamRes.data as TeamData | null;
-
-    let initialQuote: Quote;
-    let contactOpportunities: Opportunity[] = [];
-    
-    // Logic for a NEW quote
+    // --- LÒGICA PER A UN PRESSUPOST NOU ---
     if (quoteId === 'new') {
-        const { data: lastQuote } = await supabase
-            .from('quotes')
-            .select('quote_number')
-            .eq('team_id', activeTeamId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-            
+        // Per a un pressupost nou, necessitem carregar dades de suport (contactes, productes)
+        // i calcular el següent número de pressupost.
+        const [contactsRes, productsRes, teamRes, lastQuoteRes] = await Promise.all([
+            supabase.from('contacts').select('id, nom, empresa'),
+            supabase.from('products').select('*').eq('is_active', true),
+            supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+            supabase.from('quotes').select('quote_number').order('created_at', { ascending: false }).limit(1).single()
+        ]);
+
+        // Gestió d'errors per a les consultes
+        if (contactsRes.error || productsRes.error || teamRes.error || lastQuoteRes.error) {
+            console.error("Error en carregar les dades per a un nou pressupost:", {
+                contacts: contactsRes.error,
+                products: productsRes.error,
+                team: teamRes.error,
+                lastQuote: lastQuoteRes.error,
+            });
+            return <div>Error en carregar les dades de l'editor.</div>;
+        }
+        
+        // Càlcul del següent número de pressupost
+        const lastQuote = lastQuoteRes.data;
         let nextNumber = 1;
         if (lastQuote?.quote_number) {
             const match = lastQuote.quote_number.match(/\d+$/);
@@ -45,7 +48,8 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
         }
         const year = new Date().getFullYear();
 
-        initialQuote = {
+        // Creació de l'objecte inicial per al nou pressupost
+        const initialQuote: Quote = {
             id: 'new',
             contact_id: null,
             quote_number: `PRE-${year}-${String(nextNumber).padStart(4, '0')}`,
@@ -54,34 +58,62 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
             notes: 'Gràcies pel vostre interès en els nostres serveis.',
             discount: 0,
             subtotal: 0, tax: 0, total: 0,
+            tax_percent: 21,
+            show_quantity: true,
             items: [{
-                description: '',
-                quantity: 1,
-                unit_price: 0,
-                product_id: null,
-                user_id: user.id
+                description: '', quantity: 1, unit_price: 0,
+                product_id: null, user_id: user.id
             }]
         };
-    } else {
-        // La RLS a 'quotes' s'assegurarà que només puguem carregar un pressupost de l'equip actiu
-        const { data: quoteData } = await supabase.from('quotes').select('*, items:quote_items(*)').eq('id', quoteId).single();
-        if (!quoteData) redirect('/crm/quotes');
 
-        initialQuote = quoteData as unknown as Quote;
-        
-        if (quoteData.contact_id) {
-            const { data: opportunitiesData } = await supabase.from('opportunities').select('*').eq('contact_id', quoteData.contact_id);
-            contactOpportunities = (opportunitiesData as Opportunity[]) || [];
-        }
+        // Passem les dades al component de client
+        return (
+            <QuoteEditorClient
+                initialQuote={initialQuote}
+                contacts={contactsRes.data || []}
+                products={productsRes.data || []}
+                companyProfile={teamRes.data}
+                initialOpportunities={[]} // No hi ha oportunitats al crear un pressupost sense client
+                userId={user.id}
+            />
+        );
     }
 
+    // --- LÒGICA PER A EDITAR UN PRESSUPOST EXISTENT ---
+    // Utilitzem la funció RPC 'get_quote_details' per a obtenir el pressupost i les
+    // oportunitats relacionades en una sola crida a la base de dades.
+    const [contactsRes, productsRes, teamRes, quoteDetailsRes] = await Promise.all([
+        supabase.from('contacts').select('id, nom, empresa'),
+        supabase.from('products').select('*').eq('is_active', true),
+        supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+        supabase.rpc('get_quote_details', { p_quote_id: quoteId })
+    ]);
+
+    // Gestió d'errors per a les consultes
+    if (contactsRes.error || productsRes.error || teamRes.error || quoteDetailsRes.error) {
+        console.error("Error en carregar les dades d'un pressupost existent:", {
+            contacts: contactsRes.error,
+            products: productsRes.error,
+            team: teamRes.error,
+            quoteDetails: quoteDetailsRes.error,
+        });
+        return <div>Error en carregar les dades de l'editor.</div>;
+    }
+
+    const quoteDetails = quoteDetailsRes.data;
+    // Si la funció RPC no retorna un pressupost, vol dir que no existeix o l'usuari no hi té accés
+    if (!quoteDetails?.quote) {
+        redirect('/crm/quotes');
+    }
+
+    // Passem les dades obtingudes al component de client
     return (
         <QuoteEditorClient
-            initialQuote={initialQuote}
-            contacts={contacts}
-            products={products}
-            companyProfile={teamData} // ✅ Passem les dades de l'equip correctament
-            initialOpportunities={contactOpportunities}
+            initialQuote={quoteDetails.quote as unknown as Quote}
+            contacts={contactsRes.data || []}
+            products={productsRes.data || []}
+            companyProfile={teamRes.data}
+            initialOpportunities={quoteDetails.opportunities || []}
             userId={user.id}
         />
     );

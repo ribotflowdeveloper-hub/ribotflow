@@ -20,12 +20,13 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
     // ✅ 2. Tota la lògica i estats venen del hook.
     const {
         isPending,
+        quotes, // ✅ Ara reps la llista de l'estat del hook
         quoteToDelete,
         setQuoteToDelete,
         handleSort,
         handleDelete,
         searchParams,
-    } = useQuotes({ t });
+    } = useQuotes({ initialQuotes, t });
 
     // Component intern per a les capçaleres ordenables, ara utilitza 'searchParams' del hook.
     const SortableHeader = ({ column, label }: { column: string, label: string }) => {
@@ -61,7 +62,7 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {initialQuotes.length > 0 ? initialQuotes.map(quote => {
+                            {quotes.length > 0 ? quotes.map(quote => {
                                 const statusInfo = QUOTE_STATUS_MAP.find(s => s.dbValue === quote.status) || { key: 'unknown', colorClass: 'bg-gray-100' };
                                 return (
                                     <TableRow key={quote.id}>

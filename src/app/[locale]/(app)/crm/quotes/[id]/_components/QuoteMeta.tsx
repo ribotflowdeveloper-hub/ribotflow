@@ -18,12 +18,28 @@ import { useTranslations } from 'next-intl';
  * - El número de pressupost.
  * - Les dates d'emissió i venciment.
  */
-export const QuoteMeta = ({ quote, setQuote, contacts }: {
-    quote: Quote;
-    setQuote: React.Dispatch<React.SetStateAction<Quote>>;
+
+// ✅ PAS 2.1: Definim les noves props. Més específiques i sense 'setQuote'.
+interface QuoteMetaProps {
+    contact_id: string | null;
+    quote_number: string | null;
+    issue_date: string;
+    expiry_date: string | null;
+    // La definició de la funció ara també és genèrica.
+    onMetaChange: <K extends keyof Quote>(field: K, value: Quote[K]) => void;
     contacts: Contact[];
-}) => {
-    const selectedContact = contacts.find(c => c.id === quote.contact_id);
+}
+export const QuoteMeta = ({
+    contact_id,
+    quote_number,
+    issue_date,
+    expiry_date,
+    onMetaChange,
+    contacts
+}: QuoteMetaProps) => {
+
+    // ✅ CORRECCIÓ 1: Utilitza la prop 'contact_id' directament, no 'quote.contact_id'
+    const selectedContact = contacts.find(c => c.id === contact_id);
     const t = useTranslations('QuoteEditor.meta');
 
     return (
@@ -45,8 +61,9 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
                                     <CommandEmpty>{t('noClientFound')}</CommandEmpty>
                                     <CommandGroup>
                                         {contacts.map(c => (
-                                            <CommandItem key={c.id} value={`${c.nom} ${c.empresa}`} onSelect={() => setQuote(q => ({ ...q, contact_id: c.id, opportunity_id: null }))}>
-                                                <Check className={cn("mr-2 h-4 w-4", quote.contact_id === c.id ? "opacity-100" : "opacity-0")} />
+                                            // ✅ PAS 2.2: Utilitzem el nou callback 'onMetaChange'
+                                            <CommandItem key={c.id} value={`${c.nom} ${c.empresa}`} onSelect={() => onMetaChange('contact_id', c.id)}>
+                                                <Check className={cn("mr-2 h-4 w-4", contact_id === c.id ? "opacity-100" : "opacity-0")} />
                                                 {c.nom} <span className="text-xs text-muted-foreground ml-2">{c.empresa}</span>
                                             </CommandItem>
                                         ))}
@@ -58,15 +75,15 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
                 </div>
                 <div>
                     <Label>{t('quoteNumberLabel')}</Label>
-                    <Input value={quote.quote_number || ''} onChange={(e) => setQuote(q => ({ ...q, quote_number: e.target.value }))} className="mt-1" />
+                    <Input value={quote_number || ''} onChange={(e) => setQuote(q => ({ ...q, quote_number: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
                     <Label>{t('issueDateLabel')}</Label>
-                    <Input type="date" value={quote.issue_date} onChange={(e) => setQuote(q => ({ ...q, issue_date: e.target.value }))} className="mt-1" />
+                    <Input type="date" value={issue_date} onChange={(e) => setQuote(q => ({ ...q, issue_date: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
                     <Label>{t('expiryDateLabel')}</Label>
-                    <Input type="date" value={quote.expiry_date || ''} onChange={(e) => setQuote(q => ({ ...q, expiry_date: e.target.value }))} className="mt-1" />
+                    <Input type="date" value={expiry_date || ''} onChange={(e) => setQuote(q => ({ ...q, expiry_date: e.target.value }))} className="mt-1" />
                 </div>
             </div>
         </div>

@@ -11,28 +11,24 @@ import type { QuoteItem, Product } from '@/types/crm';
 import { useTranslations } from 'next-intl';
 import { useQuoteItems } from '../_hooks/useQuoteItems'; // ✅ 1. Importem el hook
 
+// ✅ 1. Definim les props correctes. 'onAddNewItem' ja no és necessària per separat.
 interface QuoteItemsProps {
     items: QuoteItem[];
-    setItems: (newItems: QuoteItem[]) => void;
+    onItemsChange: (newItems: QuoteItem[]) => void;
     products: Product[];
     userId: string;
-    onAddNewItem: () => void;
 }
 
+// ✅ PAS 3.2: Canviem el nom de la prop que passem al hook
 export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
     const t = useTranslations('QuoteEditor.items');
 
-    // ✅ 2. Tota la lògica i estats venen del hook.
+    // ✅ 2. Passem 'onItemsChange' directament al hook a través de '...props'
     const {
-        isSavingProduct,
-        isCreating, setIsCreating,
-        newProduct, setNewProduct,
-        isPopoverOpen, setIsPopoverOpen,
-        handleItemChange,
-        handleAddProduct,
-        handleRemoveItem,
-        handleSaveNewProduct,
-        handleManualItem
+        isSavingProduct, isCreating, setIsCreating,
+        newProduct, setNewProduct, isPopoverOpen, setIsPopoverOpen,
+        handleItemChange, handleAddProduct, handleRemoveItem,
+        handleSaveNewProduct, handleManualItem
     } = useQuoteItems({ ...props, t });
 
     return (
@@ -46,15 +42,15 @@ export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
                 )}
                 {props.items.map((item, index) => (
                     <div key={index} className="flex items-start gap-2">
-                          <TextareaAutosize
+                        <TextareaAutosize
                             placeholder={t('placeholderDescription')}
                             value={item.description}
                             onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                             minRows={1}
                             className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-w-[300px]"
                         />
-                        <Input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 1)} className="w-20" />
-                        <Input type="number" value={item.unit_price} onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)} className="w-24" />
+                        <Input type="number" value={item.quantity ?? 1} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 1)} className="w-20" />
+                        <Input type="number" value={item.unit_price ?? 0} onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)} className="w-24" />
                         <div className="w-24 text-right font-mono pt-2">€{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}</div>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>

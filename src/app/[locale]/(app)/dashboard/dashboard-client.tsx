@@ -1,109 +1,98 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
-import { useTranslations } from 'next-intl';
-import type { DashboardInitialData, Task } from '@/types/crm'; 
+import React from "react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-// Importació dels sub-components. Hauràs de crear cada un al seu propi fitxer.
-import { StatCard } from '@/components/shared/StartCard';
-import { SalesPerformance } from './_components/SalesPerformance';
-import { QuickAccess } from './_components/QuickAccess';
-import { Agenda } from './_components/Agenda';
-import { Radar } from './_components/Radar';
-import { RecentActivities } from './_components/RecentActivities';
-import AddTaskDialog from './_components/AddTaskDialog';
-import { BadgePercent, Euro, Target, Users } from 'lucide-react';
+import { useDashboardTasks } from "./_hooks/useDashboardTasks";
 
+// 🧩 Components del dashboard
+import { StatCardsGrid } from "./_components/StatCardsGrid";       // → Targetes estadístiques resum
+import { DashboardMainGrid } from "./_components/DashboardMainGrid"; // → Secció superior: vendes + activitats
+import { QuickAccess } from "./_components/QuickAccess";             // → Accions ràpides (botons, accessos)
+import { DashboardBottomGrid } from "./_components/DashboardBottomGrid"; // → Secció inferior: agenda + radar + oracle IA
+import AddTaskDialog from "./_components/AddTaskDialog";             // → Diàleg per crear noves tasques
 
+import type { DashboardInitialData } from "@/types/crm";
 
-const MONTHLY_GOAL = 50000;
+// 🎯 Objectiu mensual (s'utilitza per calcular el % de progrés)
+const MONTHLY_GOAL = 50_000;
 
-export function DashboardClient({ initialData, children }: { 
-  initialData: DashboardInitialData, 
-  children: React.ReactNode 
+export function DashboardClient({
+  initialData,
+  children,
+}: {
+  initialData: DashboardInitialData;
+  children: React.ReactNode;
 }) {
-  const t = useTranslations('DashboardClient');
+  // 🌍 Traduccions i navegació
+  const t = useTranslations("DashboardClient");
   const router = useRouter();
-  const supabase = createClient()
-;
-  
-  const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
-  const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
 
-  const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
-    const originalTasks = [...tasks];
-    setTasks(currentTasks => currentTasks.map(t => (t.id === taskId ? { ...t, is_completed: !currentStatus } : t)));
-    
-    const { error } = await supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', taskId);
-    
-    if (error) {
-      toast.error(t('toast.errorTitle'), { description: t('taskUpdateError') });
-      setTasks(originalTasks);
-    }
-  };
+  // ✅ Estat per gestionar les tasques
+  const { tasks, toggleTask } = useDashboardTasks(initialData.tasks);
+  const pendingTasks = tasks.filter((t) => !t.is_completed);
 
-  const pendingTasks = useMemo(() => tasks.filter(t => !t.is_completed), [tasks]);
-  
-  const percentGoal = useMemo(() => {
-    if (!initialData.stats) return 0;
-    return Math.max(0, Math.min(100, Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)));
-  }, [initialData.stats]);
+  // ⚙️ Estat per al diàleg de creació de tasques
+  const [isTaskDialogOpen, setTaskDialogOpen] = React.useState(false);
+
+  // 🔁 Handler per canviar estat d'una tasca
+  const handleToggleTask = React.useCallback(
+    (id: string, status: boolean) => {
+      toggleTask(id, status);
+    },
+    [toggleTask]
+  );
+
+  // 📊 Percentatge de progrés mensual
+  const percentGoal = Math.round(
+    (initialData.stats.invoiced / MONTHLY_GOAL) * 100
+  );
 
   return (
-    <>
-      {/* Fons decoratiu de la pàgina. */}
-      <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
-      
-      <div className="space-y-8">
-        {/* Secció de KPIs (Targetes d'Estadístiques) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          <StatCard href="/crm/contactes" icon={Users} title={t('totalContacts')} value={initialData.stats.totalContacts.toLocaleString()} color="bg-[#2d7ef7]" openText={t('openLink')} />
-          <StatCard href="/crm/pipeline" icon={Target} title={t('activeOpportunities')} value={initialData.stats.opportunities.toLocaleString()} color="bg-[#12a150]" openText={t('openLink')} />
-          <StatCard href="/finances/facturacio" icon={Euro} title={t('monthlyInvoicing')} value={`€${initialData.stats.invoiced.toLocaleString()}`} color="bg-[#8a3ffc]" openText={t('openLink')} />
-          <StatCard href="/finances/facturacio" icon={BadgePercent} title={t('pendingVAT')} value={`€${initialData.stats.pending.toLocaleString()}`} color="bg-[#f27917]" openText={t('openLink')} />
-        </div>
+    <div className="relative space-y-8">
+      {/* 🎨 Fons decoratiu amb patró radial (només visual) */}
+      <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
 
-        {/* Cos principal: Rendiment de Vendes i Activitats Recents */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <SalesPerformance stats={initialData.stats} percentGoal={percentGoal} monthlyGoal={MONTHLY_GOAL} />
-          <RecentActivities overdueInvoices={initialData.overdueInvoices} tasks={initialData.tasks} contacts={initialData.contacts} />
-        </div>
+      {/* 📈 Targetes estadístiques resum del mes (facturació, quotes, clients...) */}
+      <StatCardsGrid stats={initialData.stats} t={t} />
 
-        {/* Secció d'Accés Ràpid */}
-        <QuickAccess />
+      {/* 🧭 Secció superior: rendiment de vendes + activitats recents */}
+      <DashboardMainGrid
+        stats={initialData.stats}
+        percentGoal={percentGoal}
+        monthlyGoal={MONTHLY_GOAL}
+        overdueInvoices={initialData.overdueInvoices}
+        tasks={initialData.tasks}
+        contacts={initialData.contacts}
+      />
 
-        {/* Seccions finals: Agenda, Radar i Oracle d'IA */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Agenda 
-            pendingTasks={pendingTasks} 
-            onToggleTask={handleToggleTask} 
-            onOpenNewTask={() => setTaskDialogOpen(true)} 
-          />
-          <div className="space-y-6">
-            <Radar 
-              attentionContacts={initialData.attentionContacts} 
-              overdueInvoices={initialData.overdueInvoices} 
-              notifications={initialData.notifications}
+      {/* ⚡ Accions ràpides (botons d’accés a seccions clau del CRM) */}
+      <QuickAccess />
 
-            />
-            {/* El component Oracle d'IA es passa com a 'children' des del servidor per a streaming. */}
-            {children}
-          </div>
-        </div>
-      </div>
-      
+      {/* 🗓️ Secció inferior: agenda + radar + oracle IA (streaming des del servidor) */}
+      <DashboardBottomGrid
+        pendingTasks={pendingTasks}
+        onToggleTask={handleToggleTask}
+        onOpenNewTask={() => setTaskDialogOpen(true)}
+        attentionContacts={initialData.attentionContacts}
+        overdueInvoices={initialData.overdueInvoices}
+        notifications={initialData.notifications}
+      >
+        {children}
+      </DashboardBottomGrid>
+
+      {/* 🧩 Diàleg per crear noves tasques */}
       <AddTaskDialog
         open={isTaskDialogOpen}
         onOpenChange={setTaskDialogOpen}
         contacts={initialData.contacts}
         onTaskCreated={() => {
           router.refresh();
-          toast.success(t('taskCreationSuccess'));
+          toast.success(t("taskCreationSuccess"));
         }}
       />
-    </>
+    </div>
   );
 }

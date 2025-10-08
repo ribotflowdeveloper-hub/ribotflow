@@ -17,48 +17,37 @@ type ActionResult<T = unknown> = {
 export async function saveQuoteAction(quoteData: Quote): Promise<ActionResult<string>> {
     const session = await validateUserSession();
     if ('error' in session) return { success: false, message: session.error.message };
-    const { supabase, user, activeTeamId } = session;
+    const { supabase } = session;
 
     if (!quoteData.contact_id) return { success: false, message: "Si us plau, selecciona un client." };
 
-    const { items, id, ...quoteFields } = quoteData;
-    let finalQuoteId = id;
-
     try {
-        if (id === 'new') {
-            const { data: newQuote, error } = await supabase.from('quotes').insert({ ...quoteFields, user_id: user.id, team_id: activeTeamId }).select('id').single();
-            if (error || !newQuote) throw error || new Error("No s'ha pogut crear el pressupost.");
-            finalQuoteId = newQuote.id;
-        } else {
-            // La RLS verificarà que tenim permís per actualitzar
-            await supabase.from('quotes').update(quoteFields).eq('id', id);
-            await supabase.from('quote_items').delete().eq('quote_id', id);
-        }
+        const { data, error } = await supabase.rpc('upsert_quote_with_items', {
+            quote_payload: quoteData
+        });
 
-        if (items?.length) {
-            const itemsToInsert = items.map(item => ({
-                quote_id: finalQuoteId, user_id: user.id, team_id: activeTeamId,
-                product_id: item.product_id || null, description: item.description,
-                quantity: item.quantity, unit_price: item.unit_price,
-                total: (item.quantity || 0) * (item.unit_price || 0),
-            }));
-            await supabase.from('quote_items').insert(itemsToInsert);
+        // ✅ AFEGIM AQUEST BLOC PER A DEPURAR
+        if (error) {
+            // Això imprimirà l'error detallat de Supabase a la consola del teu servidor (el terminal on executes 'next dev')
+            console.error("Supabase RPC Error:", JSON.stringify(error, null, 2));
+            // Llançar l'error farà que el bloc 'catch' el capturi amb més detall
+            throw error;
         }
-
-        if (quoteFields.opportunity_id) {
-            await supabase.from('opportunities').update({ stage_name: 'Proposta Enviada' }).eq('id', quoteFields.opportunity_id);
-        }
+        
+        const finalQuoteId = data.quote_id;
 
         revalidatePath('/crm/quotes');
         revalidatePath(`/crm/quotes/${finalQuoteId}`);
+        
         return { success: true, message: "Pressupost desat correctament.", data: finalQuoteId };
 
-    } catch(error) {
+    } catch(error: unknown) { // ✅ Canviem 'error' a 'unknown' per accedir a les seves propietats de manera segura
+        // Ara el missatge serà molt més específic
         const message = error instanceof Error ? error.message : "Error desconegut al desar el pressupost.";
+        console.error("Error a saveQuoteAction:", message);
         return { success: false, message };
     }
 }
-
 /**
  * Elimina un pressupost.
  */

@@ -15,8 +15,8 @@ import { type Expense, type ExpenseItem } from "../types";
 
 // Definim un tipus de resultat genèric per a les nostres accions.
 interface ActionResult<T = unknown> {
-  data: T | null;
-  error: { message: string } | null;
+    data: T | null;
+    error: { message: string } | null;
 }
 
 
@@ -27,17 +27,17 @@ interface ActionResult<T = unknown> {
  * @returns {Promise<ActionResult<Record<string, unknown>>>} Les dades extretes del document o un error.
  */
 export async function processOcrAction(
-  formData: FormData
+    formData: FormData
 ): Promise<ActionResult<Record<string, unknown>>> {
-  const supabase = createClient(cookies())
-;
-// Deleguem tota la lògica complexa de l'OCR a una Edge Function.
-  const { data, error } = await supabase.functions.invoke("process-ocr", {
-    body: formData,
-  });
+    const supabase = createClient(cookies())
+        ;
+    // Deleguem tota la lògica complexa de l'OCR a una Edge Function.
+    const { data, error } = await supabase.functions.invoke("process-ocr", {
+        body: formData,
+    });
 
-  if (error) return { data: null, error: { message: error.message } };
-  return { data, error: null };
+    if (error) return { data: null, error: { message: error.message } };
+    return { data, error: null };
 }
 
 
@@ -50,15 +50,12 @@ export async function saveExpenseAction(
     expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "suppliers" | "expense_attachments">,
     expenseId: string | null
 ): Promise<ActionResult<Expense>> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { message: "Not authenticated" } };
-
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No active team selected" } };
+    // Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { data: null, error: session.error };
     }
+    const { supabase, user, activeTeamId } = session;
     // ---------------------------------
 
     const { expense_items, ...expenseDetails } = expenseData;
@@ -113,15 +110,12 @@ export async function uploadAttachmentAction(
     expenseId: string,
     formData: FormData
 ): Promise<ActionResult<null>> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { message: "Not authenticated" } };
-    
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No active team selected" } };
+    // Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { data: null, error: session.error };
     }
+    const { supabase, user, activeTeamId } = session;
     // ---------------------------------
 
     const file = formData.get("file") as File | null;
