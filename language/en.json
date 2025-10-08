@@ -303,11 +303,6 @@
       "status": "Status",
       "allStatuses": "All statuses"
     },
-    "excel": {
-      "create": "Create template",
-      "load": "Load contacts",
-      "download": "Download contacts"
-    },
     "table": {
       "name": "Name",
       "status": "Status",
@@ -1343,5 +1338,18 @@
     "toastErrorTitle": "Error saving profile",
     "toastErrorValidation": "Please fill in all required fields.",
     "toastErrorUser": "User not found"
-  }
+  },
+  "excel": {
+      "template": "Template",
+      "contacts": {
+        "create": "Create template",
+      "load": "Load contacts",
+      "download": "Download contacts"
+      },
+      "products": {
+        "create": "Create template",
+        "load": "Load concepts",
+        "download": "Download concepts"
+      }
+    }
 }

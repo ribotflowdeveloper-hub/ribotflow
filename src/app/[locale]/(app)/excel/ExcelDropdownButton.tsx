@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FileSpreadsheet, FilePlus2, Download, Upload } from 'lucide-react';
+import { FileSpreadsheet } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -87,7 +87,7 @@ const DropdownButton: React.FC<DropdownButtonProps> = ({ options, onSelect }) =>
                     <option.icon className="h-5 w-5 text-white" />
                   </li>
                 </TooltipTrigger>
-                <TooltipContent side="right">
+                <TooltipContent side="right" className="bg-green-900/70 text-zinc-50 border-zinc-800">
                   <p>{option.label}</p>
                 </TooltipContent>
               </Tooltip>

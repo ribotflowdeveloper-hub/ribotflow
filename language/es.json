@@ -298,11 +298,6 @@
       "status": "Estado",
       "allStatuses": "Todos los estados"
     },
-    "excel": {
-      "create": "Crear plantilla",
-      "load": "Cargar contactos",
-      "download": "Descargar contactos"
-    },
     "table": {
       "name": "Nombre",
       "status": "Estado",
@@ -1335,5 +1330,18 @@
     "toastErrorTitle": "Error al guardar el perfil",
     "toastErrorValidation": "Por favor, completa todos los campos obligatorios.",
     "toastErrorUser": "Usuario no encontrado"
-  }
+  },
+  "excel": {
+    "template": "Plantilla",
+      "contacts": {
+        "create": "Crear plantilla",
+        "load": "Cargar contactos",
+        "download": "Descargar contactos"
+      },
+      "products": {
+        "create": "Crear plantilla",
+        "load": "Cargar conceptos",
+        "download": "Descargar conceptos"
+      }
+    }
 }

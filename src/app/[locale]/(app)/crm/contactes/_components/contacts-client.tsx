@@ -1,4 +1,4 @@
-// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Refactoritzada)
+// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Corregida)
 "use client";
 
 import React, { useState, useMemo, useTransition } from 'react';
@@ -9,21 +9,20 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download, Loader2 } from 'lucide-react';
+import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { type Contact, CONTACT_STATUS_MAP } from '@/types/crm';
 
-import { useContactFilters} from '../_hooks/useContactFilters';
+import { useContactFilters } from '../_hooks/useContactFilters';
 
 import { ContactDialog } from './ContactDialog';
 import ContactCard from './ContactCard';
 import ContactTable from './ContactTable';
 import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
-import { exportToExcel } from '@/app/[locale]/(app)/excel/actions';
+import { exportToExcel,importFromExcel } from '@/app/[locale]/(app)/excel/actions';
+import { TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST } from 'next/dist/shared/lib/constants';
 
-
-// (La definició de les Props no canvia)
 interface ContactsClientProps {
     initialContacts: Contact[];
     totalPages: number;
@@ -38,20 +37,16 @@ export function ContactsClient({
     initialViewMode
 }: ContactsClientProps) {
     const t = useTranslations('ContactsClient');
+    const t2 = useTranslations('excel');
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [isExporting, startExportTransition] = useTransition();
+    const [isExporting, startTransition] = useTransition(); 
 
-    // ✅ 2. TOTA LA LÒGICA DE FILTRES ARA VE DEL HOOK
     const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
-    
-    // L'estat dels contactes i del cercador es manté al component, ja que
-    // no afecten la URL directament (el filtratge és al client).
+
     const [contacts, setContacts] = useState<Contact[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
-    
-    // Aquesta lògica es queda aquí perquè depèn de 'contacts' i 'searchTerm',
-    // que són estats interns d'aquest component.
+
     const filteredContacts = useMemo(() => contacts.filter(c =>
         (c.nom?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (c.empresa?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -63,39 +58,93 @@ export function ContactsClient({
     };
 
     const excelOptions: DropdownOption[] = [
-        { value: 'create', label: t('excel.create'), icon: FilePlus2 },
-        { value: 'load', label: t('excel.load'), icon: Upload },
-        { value: 'download', label: t('excel.download'), icon: Download },
+        { value: 'create', label: t2('contacts.create'), icon: FilePlus2 },
+        { value: 'load', label: t2('contacts.load'), icon: Upload },
+        { value: 'download', label: t2('contacts.download'), icon: Download },
     ];
 
-    const handleExcelAction = (option: DropdownOption) => {
-        if (option.value === 'download') {
-            startExportTransition(async () => {
-                toast.info("Iniciant l'exportació de contactes...");
-                const result = await exportToExcel('contacts', true);
+    async function handleExportAndDownload(shouldDownload: boolean) {
+        toast.info("Iniciant l'exportació de contactes...");
+        try {
+            const result = await exportToExcel('contacts', shouldDownload);
 
-                if (result.success && result.fileBuffer) {
-                    // Lògica per descarregar el fitxer al client
-                    const byteCharacters = atob(result.fileBuffer);
-                    const byteNumbers = new Array(byteCharacters.length);
-                    for (let i = 0; i < byteCharacters.length; i++) {
-                        byteNumbers[i] = byteCharacters.charCodeAt(i);
+            if (result.success && result.fileBuffer) {
+                const byteCharacters = atob(result.fileBuffer);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = result.fileName || 'export.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                toast.success("L'exportació s'ha completat amb èxit.");
+            } else {
+                toast.error("Hi ha hagut un error en exportar les dades.", { description: result.message });
+            }
+        } catch (error) {
+            toast.error("Hi ha hagut un error inesperat.", { description: "No s'ha pogut completar l'acció." });
+            console.error(error);
+        }
+    }
+
+    /* Funció del costat del client per iniciar el procés d'importació.
+    * Crea un input de fitxers i el llança.
+     */
+    function handleImport() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.xlsx, .xls';
+
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (!file) {
+                toast.error("No s'ha seleccionat cap fitxer.");
+                return;
+            }
+
+            toast.info("Processant el fitxer Excel...");
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            startTransition(async () => {
+                try {
+                    const result = await importFromExcel('contacts', formData);
+
+                    if (result.success) {
+                        toast.success(result.message);
+                    } else {
+                        toast.error("Error en carregar les dades.", { description: result.message });
                     }
-                    const byteArray = new Uint8Array(byteNumbers);
-                    const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = result.fileName || 'export.xlsx';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    toast.success("L'exportació s'ha completat amb èxit.");
-                } else {
-                    toast.error("Hi ha hagut un error en exportar les dades.", { description: result.message });
+                } catch (error) {
+                    toast.error("Hi ha hagut un error inesperat en carregar el fitxer.", { description: (error as Error).message });
                 }
             });
+        };
+
+        input.click();
+    }
+
+    const handleExcelAction = (option: DropdownOption) => {
+        switch (option.value) {
+            case 'download':
+                startTransition(() => handleExportAndDownload(true)); // ➡️ ARA ES CRIDA startTransition
+                break;
+            case 'create':
+                startTransition(() => handleExportAndDownload(false)); // ➡️ I AQUÍ TAMBÉ
+                break;
+            case 'load':
+                handleImport();
+                break;
+            default:
+                break;
         }
     };
 
@@ -110,7 +159,7 @@ export function ContactsClient({
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
-                    
+
                     {/* ✅ 3. ELS COMPONENTS DE FILTRE ARA SÓN MÉS SIMPLES */}
                     <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
                         <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.sortBy')} /></SelectTrigger>

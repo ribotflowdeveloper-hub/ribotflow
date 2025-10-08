@@ -304,11 +304,6 @@
       "status": "Estat",
       "allStatuses": "Tots els estats"
     },
-    "excel": {
-      "create": "Crear plantilla",
-      "load": "Carregar contactes",
-      "download": "Descarregar contactes"
-    },
     "table": {
       "name": "Nom",
       "status": "Estat",
@@ -1389,5 +1384,18 @@
     "toastErrorTitle": "Error en desar el perfil",
     "toastErrorValidation": "Si us plau, omple tots els camps obligatoris.",
     "toastErrorUser": "No s'ha trobat l'usuari"
+  },
+  "excel": {
+    "template": "Plantilla",
+    "contacts": {
+      "create": "Crear plantilla",
+      "load": "Carregar contactes",
+      "download": "Descarregar contactes"
+    },
+    "products": {
+      "create": "Crear plantilla",
+      "load": "Carregar conceptes",
+      "download": "Descarregar conceptes"
+    }
   }
 }
