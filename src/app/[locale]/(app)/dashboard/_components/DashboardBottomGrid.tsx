@@ -12,7 +12,7 @@ import type { Task, Contact, Invoice, Notification } from "@/types/crm";
 
 interface DashboardBottomGridProps {
   pendingTasks: Task[];
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
+  onTaskClick: (task: Task) => void; // <-- La nova prop
   onOpenNewTask: () => void;
   attentionContacts: Contact[];
   overdueInvoices: Invoice[];
@@ -27,7 +27,7 @@ interface DashboardBottomGridProps {
 export const DashboardBottomGrid = memo(
   ({
     pendingTasks,
-    onToggleTask,
+    onTaskClick, // ✅ 2. Rebem la nova prop
     onOpenNewTask,
     attentionContacts,
     overdueInvoices,
@@ -39,7 +39,7 @@ export const DashboardBottomGrid = memo(
         {/* 🗓️ Agenda de tasques */}
         <Agenda
           pendingTasks={pendingTasks}
-          onToggleTask={onToggleTask}
+          onTaskClick={onTaskClick} // ✅ 3. Passem la prop correcta a l'Agenda
           onOpenNewTask={onOpenNewTask}
         />
 

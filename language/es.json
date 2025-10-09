@@ -733,7 +733,7 @@
     "invoices": "Facturas",
     "expenses": "Gastos",
     "costs": "Costes",
-    "inbox": "Inbox",
+    "inbox": "Bandeja de entrada",
     "communication": "Comunicación",
     "quotes": "Presupuestos",
     "agenda": "Agenda",
@@ -742,7 +742,7 @@
     "radar": "Radar",
     "allInOrder": "Todo en orden.",
     "overdueInvoice": "Factura vencida de {clientName}",
-    "dueDate": "Vencía el {dueDate}",
+    "dueDate": "Venció el {dueDate}",
     "taskCompleted": "Tarea completada: {taskTitle}",
     "taskCreated": "Tarea creada: {taskTitle}",
     "newContact": "Nuevo contacto: {contactName}",
@@ -768,9 +768,12 @@
         "errorTitle": "Error",
         "unauthenticated": "Usuario no autenticado.",
         "emptyTitle": "El título de la tarea no puede estar vacío.",
-        "saveError": "Error al guardar la tarea",
+        "saveError": "Error al guardar la tarea.",
         "successTitle": "¡Éxito!",
-        "successDescription": "La tarea se ha creado correctamente."
+        "successDescription": "La tarea se ha creado correctamente.",
+        "taskCreatedToast": "¡Tarea creada!",
+        "taskUpdateErrorToast": "No se pudo actualizar la tarea.",
+        "taskCreationError": "No se pudo crear la tarea."
       }
     },
     "aiOracle": {
@@ -782,6 +785,14 @@
       "noSuggestion": "Inténtalo de nuevo más tarde.",
       "errorTitle": "Error",
       "loadError": "No se ha podido contactar con el Oráculo de IA."
+    },
+    "taskDetails": {
+      "title": "Detalles de la Tarea",
+      "createdOn": "Creada el",
+      "assignedTo": "Asignada a:",
+      "deleteButton": "Eliminar",
+      "markAsPendingButton": "Marcar como pendiente",
+      "markAsCompletedButton": "Marcar como completada"
     }
   },
   "Expenses": {

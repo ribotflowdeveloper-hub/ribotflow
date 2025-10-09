@@ -2,7 +2,7 @@
 
 import React, { memo } from "react";
 import { useTranslations } from "next-intl";
-import { StatCard } from "@/components/shared/StatCard";
+import { StatCard } from "@/components/shared/StartCard";
 import { Users, Target, Euro, BadgePercent } from "lucide-react";
 import type { DashboardInitialData } from "@/types/crm";
 

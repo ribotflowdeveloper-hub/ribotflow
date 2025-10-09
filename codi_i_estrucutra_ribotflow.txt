@@ -30,7 +30,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   ├── MobileDetailView.tsx
 │       │   │   │   │   ├── SafeEmailRenderer.tsx
 │       │   │   │   │   ├── TicketDetail.tsx
-│       │   │   │   │   └── TicketList
+│       │   │   │   │   └── ticketList
 │       │   │   │   │       ├── index.tsx
 │       │   │   │   │       ├── TicketListFilters.tsx
 │       │   │   │   │       ├── TicketListHeader.tsx
@@ -146,7 +146,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   ├── ColumnsView.tsx
 │       │   │   │   │   ├── OportunityCard.tsx
 │       │   │   │   │   ├── OportunityRowCard.tsx
-│       │   │   │   │   ├── opportunity-actions.ts
 │       │   │   │   │   ├── OpportunityDialog.tsx
 │       │   │   │   │   ├── PipelineData.tsx
 │       │   │   │   │   ├── PipelineSkeleton.tsx
@@ -181,7 +180,8 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │       │   │   ├── QuoteItems.tsx
 │       │   │       │   │   ├── QuoteMeta.tsx
 │       │   │       │   │   ├── QuotePreview.tsx
-│       │   │       │   │   └── QuoteTotals.tsx
+│       │   │       │   │   ├── QuoteTotals.tsx
+│       │   │       │   │   └── StatCardsGrid.tsx
 │       │   │       │   └── _hooks
 │       │   │       │       ├── useQuoteEditor.ts
 │       │   │       │       └── useQuoteItems.ts
@@ -192,22 +192,31 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │       └── _hooks
 │       │   │           └── useQuotes.ts
 │       │   ├── dashboard
+│       │   │   ├── actions.ts
 │       │   │   ├── dashboard-client.tsx
 │       │   │   ├── page.tsx
-│       │   │   └── _components
-│       │   │       ├── AddTaskDialog.tsx
-│       │   │       ├── Agenda.tsx
-│       │   │       ├── AIOracle.tsx
-│       │   │       ├── AIOracleSkeleton.tsx
-│       │   │       ├── DashboardData.tsx
-│       │   │       ├── DashboardSkeleton.tsx
-│       │   │       ├── QuickAccess.tsx
-│       │   │       ├── Radar.tsx
-│       │   │       ├── RecentActivities.tsx
-│       │   │       └── SalesPerformance.tsx
+│       │   │   ├── _components
+│       │   │   │   ├── AddTaskDialog.tsx
+│       │   │   │   ├── Agenda.tsx
+│       │   │   │   ├── AIOracle.tsx
+│       │   │   │   ├── AIOracleSkeleton.tsx
+│       │   │   │   ├── DashboardBottomGrid.tsx
+│       │   │   │   ├── DashboardData.tsx
+│       │   │   │   ├── DashboardMainGrid.tsx
+│       │   │   │   ├── DashboardSkeleton.tsx
+│       │   │   │   ├── QuickAccess.tsx
+│       │   │   │   ├── Radar.tsx
+│       │   │   │   ├── RecentActivities.tsx
+│       │   │   │   ├── SalesPerformance.tsx
+│       │   │   │   ├── StatCardsGrid.tsx
+│       │   │   │   └── TaskDetailSheet.tsx
+│       │   │   └── _hooks
+│       │   │       ├── useAddTask.ts
+│       │   │       └── useDashboardTasks.ts
 │       │   ├── finances
 │       │   │   ├── despeses
 │       │   │   │   ├── actions.ts
+│       │   │   │   ├── error.tsx
 │       │   │   │   ├── page.tsx
 │       │   │   │   └── _components
 │       │   │   │       ├── expenses
@@ -365,7 +374,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │   ├── AccessDenied.tsx
 │   │   ├── ActivityItem.tsx
 │   │   ├── EmptyState.tsx
-│   │   ├── StartCard.tsx
+│   │   ├── StatCard.tsx
 │   │   └── StatusBadge.tsx
 │   ├── theme-provider.tsx
 │   ├── ThemeSwitcher.tsx
@@ -417,6 +426,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │   ├── session.ts
 │   │   └── teams.ts
 │   └── utils
+│       ├── formatters.ts
 │       ├── media.ts
 │       ├── templates.ts
 │       └── utils.ts
@@ -442,7 +452,8 @@ ESTRUCTURA DEL PROJECTE (./src)
     ├── finances
     │   ├── despeses.ts
     │   ├── factures.ts
-    │   └── index.ts
+    │   ├── index.ts
+    │   └── scheams.ts
     ├── network
     │   └── network.ts
     ├── settings
@@ -2651,7 +2662,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ ticket, body, isLoad
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/TicketList/index.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/index.tsx ===================
 
 "use client";
 
@@ -2739,7 +2750,7 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/TicketList/TicketListFilters.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/TicketListFilters.tsx ===================
 
 "use client";
 
@@ -2788,7 +2799,7 @@ export const TicketListFilters: React.FC<TicketListFiltersProps> = ({ activeFilt
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/TicketList/TicketListHeader.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/TicketListHeader.tsx ===================
 
 "use client";
 
@@ -2882,7 +2893,7 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
     );
 };
 
-// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/TicketList/TicketListItem.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/TicketListItem.tsx ===================
 
 "use client";
 
@@ -8638,6 +8649,8 @@ export async function updateOpportunityStageAction(opportunityId: string, newSta
     }
 }
 
+
+
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/loading.tsx ===================
 
 /**
@@ -8724,7 +8737,7 @@ export default function PipelinePage() {
 // @/app/[locale]/(app)/crm/pipeline/page.tsx (Client component part, refactored)
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // ✅ Importem useState i useEffect
 import { motion } from 'framer-motion';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { useTranslations } from 'next-intl';
@@ -8746,6 +8759,15 @@ interface PipelineClientProps {
 export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
     const t = useTranslations('PipelinePage');
     
+    // ✅ PAS 1: L'estat ara viu aquí, al component pare. Aquesta és la nostra única font de la veritat.
+    const [opportunities, setOpportunities] = useState(initialOpportunities);
+
+    // ✅ PAS 2: Aquest useEffect s'encarrega de sincronitzar l'estat amb noves dades del servidor (després d'un router.refresh()).
+    useEffect(() => {
+        setOpportunities(initialOpportunities);
+    }, [initialOpportunities]);
+    
+    // ✅ PAS 3: Passem l'estat i la funció set al hook.
     const {
         isPending,
         opportunitiesByStage,
@@ -8757,7 +8779,11 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
         onDragEnd,
         handleOpenDialog,
         handleSuccess,
-    } = usePipeline(initialOpportunities, initialStages);
+    } = usePipeline({
+        initialStages,
+        opportunities,
+        setOpportunities
+    });
 
     return (
         <>
@@ -8956,73 +8982,6 @@ export const OpportunityRowCard: React.FC<OpportunityRowCardProps> = ({ op, inde
         </Draggable>
     );
 };
-
-// =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/opportunity-actions.ts ===================
-
-// A l'arxiu d'accions del pipeline
-
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nostra funció d'ajuda
-
-/**
- * Desa una oportunitat (crea o actualitza) assignant-la a l'equip actiu de l'usuari.
- */
-export async function saveOpportunityAction(
-    formData: FormData
-): Promise<{ success?: boolean; error?: { message: string } }> {
-    
-    // ✅ 2. Validació centralitzada i segura de la sessió.
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { error: session.error };
-    }
-    const { supabase, user, activeTeamId } = session;
-
-    // Obtenim l'ID per saber si estem creant o editant.
-    const id = formData.get('id') as string | null;
-
-    // Construïm l'objecte de dades a desar.
-    const dataToSave = {
-        name: formData.get('name') as string,
-        description: formData.get('description') as string,
-        contact_id: formData.get('contact_id') as string,
-        stage_name: formData.get('stage_name') as string,
-        value: parseFloat(formData.get('value') as string) || 0,
-        close_date: formData.get('close_date') ? new Date(formData.get('close_date') as string).toISOString() : null,
-        // ✅ 3. Assegurem que l'oportunitat SEMPRE s'associa a l'usuari i a l'equip actiu.
-        user_id: user.id,
-        team_id: activeTeamId,
-    };
-
-    // Validació bàsica de camps obligatoris.
-    if (!dataToSave.name || !dataToSave.contact_id) {
-        return { error: { message: 'El nom i el contacte són obligatoris.' } };
-    }
- 
-    try {
-        let query;
-        // Si hi ha un ID, actualitzem ('update').
-        if (id && id !== 'new') {
-            query = supabase.from('opportunities').update(dataToSave).eq('id', id);
-        } else { 
-            // Si no, inserim ('insert').
-            query = supabase.from('opportunities').insert(dataToSave);
-        }
-
-        const { error } = await query;
-        if (error) throw error;
-
-        revalidatePath('/crm/pipeline');
-        return { success: true };
-
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        console.error("Error en desar l'oportunitat:", message);
-        return { error: { message } };
-    }
-}
 
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/OpportunityDialog.tsx ===================
 
@@ -9413,25 +9372,29 @@ export function useOpportunityForm({ opportunityToEdit, onSuccess, onOpenChange 
 
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/_hooks/usePipeline.ts ===================
 
-import { useState, useMemo, useTransition, useEffect } from 'react';
+import { useState, useMemo, useTransition, useCallback } from 'react'; 
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { type DropResult } from '@hello-pangea/dnd';
 import { updateOpportunityStageAction } from '../actions.ts';
 import type { Opportunity, Stage } from '../app/[locale]/(app)/crm/pipeline/page';
 
-export function usePipeline(initialOpportunities: Opportunity[], initialStages: Stage[]) {
+// ✅ El hook ara rep l'estat i la funció per modificar-lo
+interface UsePipelineProps {
+    initialStages: Stage[];
+    opportunities: Opportunity[];
+    setOpportunities: React.Dispatch<React.SetStateAction<Opportunity[]>>;
+}
+
+export function usePipeline({ initialStages, opportunities, setOpportunities }: UsePipelineProps) {
     const router = useRouter();
     const [isDndPending, startDndTransition] = useTransition();
-    
-    const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
+
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingOpportunity, setEditingOpportunity] = useState<Partial<Opportunity> | null>(null);
     const [viewMode, setViewMode] = useState<'columns' | 'rows'>('columns');
-    
-    useEffect(() => {
-        setOpportunities(initialOpportunities);
-    }, [initialOpportunities]);
+
+  
 
     const opportunitiesByStage = useMemo(() => {
         const grouped = initialStages.reduce((acc, stage) => {
@@ -9444,41 +9407,50 @@ export function usePipeline(initialOpportunities: Opportunity[], initialStages: 
                 grouped[op.stage_name].push(op);
             }
         });
-        // Ordenació opcional
         Object.values(grouped).forEach(ops => ops.sort((a, b) => (a.value ?? 0) - (b.value ?? 0)));
         return grouped;
     }, [opportunities, initialStages]);
 
-    const onDragEnd = (result: DropResult) => {
+    const onDragEnd = useCallback((result: DropResult) => {
         const { source, destination, draggableId } = result;
         if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) return;
 
         const newStage = destination.droppableId;
         const originalOpportunities = [...opportunities];
 
-        setOpportunities(prev => prev.map(op => op.id === draggableId ? { ...op, stage_name: newStage } : op));
+        // 1. Actualització Optimista
+        setOpportunities(prev => prev.map(op => 
+            op.id.toString() === draggableId ? { ...op, stage_name: newStage } : op
+        ));
 
         startDndTransition(async () => {
             const updateResult = await updateOpportunityStageAction(draggableId, newStage);
             if (updateResult.error) {
-                setOpportunities(originalOpportunities);
+                setOpportunities(originalOpportunities); // Revertim si falla
                 toast.error("Error", { description: updateResult.error.message });
             } else {
                 toast.success("Oportunitat moguda amb èxit.");
+                // router.refresh() ja no és estrictament necessari aquí
+                // perquè el useEffect del component pare ja sincronitzarà les dades.
+                // Però el podem deixar per forçar la consistència.
+                router.refresh();
             }
         });
-    };
+    }, [opportunities, setOpportunities, router]);
 
-    const handleOpenDialog = (opportunity?: Opportunity, stageName?: string) => {
+    const handleOpenDialog = useCallback((opportunity?: Opportunity, stageName?: string) => {
         if (opportunity) {
             setEditingOpportunity(opportunity);
         } else {
             setEditingOpportunity(stageName ? { stage_name: stageName } : {});
         }
         setIsDialogOpen(true);
-    };
+    }, []);
 
-    const handleSuccess = () => router.refresh();
+    const handleSuccess = useCallback(() => {
+        setIsDialogOpen(false);
+        router.refresh();
+    }, [router]);
 
     return {
         isPending: isDndPending,
@@ -9501,6 +9473,7 @@ export function usePipeline(initialOpportunities: Opportunity[], initialStages: 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
+import type { Product } from '@/types/crm/products'; // ✅ Importa el tipus
 
 // Esquema de Zod per a validar les dades del formulari.
 const productSchema = z.object({
@@ -9514,11 +9487,12 @@ const productSchema = z.object({
     is_active: z.boolean().default(true),
 });
 
-// Tipus per a l'estat del formulari, útil per a la gestió d'errors amb 'useFormState'.
+// ✅ Modifiquem el tipus de retorn per incloure les dades del producte
 export type FormState = {
     success: boolean;
     message: string;
     errors?: Record<string, string[] | undefined>;
+    data?: Product | null; // ✅ AFEGEIX AIXÒ
 };
 
 /**
@@ -9541,18 +9515,19 @@ export async function createProduct(prevState: FormState, formData: FormData): P
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { error } = await supabase.from("products").insert({ 
+     // ✅ Modifiquem la inserció per obtenir el producte creat
+     const { data: newProduct, error } = await supabase.from("products").insert({ 
         ...validatedFields.data, 
         user_id: user.id, 
         team_id: activeTeamId 
-    });
+    }).select().single(); // ✅ AFEGEIX .select().single()
 
     if (error) {
         return { success: false, message: `Error en crear el producte: ${error.message}` };
     }
 
     revalidatePath("/crm/products");
-    return { success: true, message: "Producte creat correctament." };
+    return { success: true, message: "Producte creat correctament.", data: newProduct };
 }
  
 /**
@@ -9574,18 +9549,22 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
     
-    const { error } = await supabase
+    // ✅ Modifiquem l'actualització per obtenir el producte actualitzat
+    const { data: updatedProduct, error } = await supabase
         .from("products")
         .update(validatedFields.data)
-        .eq("id", id);
+        .eq("id", id)
+        .select() // ✅ AFEGEIX .select()
+        .single(); // ✅ AFEGEIX .single()
 
     if (error) {
         return { success: false, message: `Error en actualitzar el producte: ${error.message}` };
     }
     
     revalidatePath("/crm/products");
-    revalidatePath(`/crm/products/${id}`); // ✅ Bona pràctica: revalidar també la pàgina de detall
-    return { success: true, message: "Producte actualitzat correctament." };
+    revalidatePath(`/crm/products/${id}`);
+    // ✅ Retornem el producte actualitzat a la propietat 'data'
+    return { success: true, message: "Producte actualitzat correctament.", data: updatedProduct };
 }
 
 /**
@@ -9669,13 +9648,17 @@ function SubmitButton({ isEditing }: { isEditing: boolean }) {
   const { pending } = useFormStatus();
   return <Button type="submit" disabled={pending}>{pending ? t('form.saving') : (isEditing ? t('form.saveChanges') : t('form.createConcept'))}</Button>;
 }
-
+// ✅ PAS 1: Canvia la definició de 'onSuccess' per acceptar un producte.
+interface ProductFormProps {
+  product: Product | null;
+  onSuccess: (product: Product) => void;
+}
 /**
  * Component del formulari per crear o editar un producte/concepte.
  * @param {Product | null} product - Si rep un objecte 'product', funciona en mode edició. Si és 'null', funciona en mode creació.
  * @param {() => void} onSuccess - Funció de callback a executar quan l'operació té èxit (ex: tancar el diàleg).
  */
-export function ProductForm({ product, onSuccess }: { product: Product | null, onSuccess: () => void }) {
+export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const t = useTranslations('ProductsPage');
 
   // Determina quina Server Action s'ha d'executar: 'updateProduct' si estem editant,
@@ -9697,15 +9680,18 @@ export function ProductForm({ product, onSuccess }: { product: Product | null, o
    */
   useEffect(() => {
     if (state.message) {
-      if (state.success) {
-        toast.success(t('toast.success'), { description: state.message });
-        onSuccess(); // Executa el callback per tancar el diàleg.
-      } else if (!state.errors) { // Només mostra error general si no hi ha errors de camp específics.
-        toast.error(t('toast.error'), { description: state.message });
-      }
+        if (state.success) {
+            toast.success(t('toast.success'), { description: state.message });
+            // ✅ PAS 2: Comprova si l'acció ha retornat dades.
+            if (state.data) {
+                // ✅ PAS 3: Passa les dades del producte al callback.
+                onSuccess(state.data);
+            }
+        } else if (!state.errors) {
+            toast.error(t('toast.error'), { description: state.message });
+        }
     }
-  }, [state, onSuccess, t]); // ✅ AFEGEIX 't' AQUÍ
-
+}, [state, onSuccess, t]);
   return (
        // L'atribut 'action' connecta directament aquest formulari a la nostra Server Action.
     // En fer 'submit', s'executarà la funció 'formAction' al servidor.
@@ -10107,75 +10093,78 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
 
 // =================== FILE: src/app/[locale]/(app)/crm/products/_hooks/useProducts.ts ===================
 
+// /app/[locale]/(app)/crm/products/_hooks/useProducts.ts (VERSIÓ FINAL CORREGIDA)
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
-import { useRouter } from 'next/navigation';
+// ✅ Importem useCallback
+import { useState, useMemo, useTransition, useCallback } from "react";
 import { toast } from 'sonner';
 import type { Product } from "@/types/crm/products";
 import { deleteProduct } from "../actions";
 
-// Tipus per a les props que el hook necessita
 type UseProductsProps = {
     initialProducts: Product[];
-    t: (key: string) => string; // Per a les traduccions
+    t: (key: string) => string;
 };
 
 export function useProducts({ initialProducts, t }: UseProductsProps) {
-    const router = useRouter(); // router.refresh() és millor que window.location.reload()
     const [isPending, startTransition] = useTransition();
-
-    // Estats per a la gestió del diàleg d'edició/creació.
+    const [products, setProducts] = useState<Product[]>(initialProducts);
     const [isFormOpen, setFormOpen] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-
-    // Estats per a la interactivitat de la llista.
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [viewMode, setViewMode] = useState<"list" | "card">("list");
 
-    // Dades derivades amb 'useMemo'
     const categories = useMemo(() => {
-        const uniqueCategories = new Set(initialProducts.map(p => p.category).filter((c): c is string => !!c));
+        const uniqueCategories = new Set(products.map(p => p.category).filter((c): c is string => !!c));
         return ["all", ...Array.from(uniqueCategories)];
-    }, [initialProducts]);
+    }, [products]);
     
     const filteredProducts = useMemo(() => {
-        return initialProducts
+        return products
             .filter(p => p.is_active)
             .filter(p => categoryFilter === "all" || p.category === categoryFilter)
             .filter(p => !searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [initialProducts, categoryFilter, searchTerm]);
+    }, [products, categoryFilter, searchTerm]);
 
-    // Handlers
-    const handleEdit = (product: Product) => {
+    // ✅ Embolcallem les funcions amb useCallback per estabilitzar-les
+    const handleEdit = useCallback((product: Product) => {
         setSelectedProduct(product);
         setFormOpen(true);
-    };
+    }, []); // No té dependències, només es crea un cop.
 
-    const handleCreate = () => {
+    const handleCreate = useCallback(() => {
         setSelectedProduct(null);
         setFormOpen(true);
-    };
+    }, []); // No té dependències, només es crea un cop.
 
-    const handleDelete = (id: number) => {
+    const handleDelete = useCallback((id: number) => {
         startTransition(async () => {
+            setProducts(currentProducts => currentProducts.filter(p => p.id !== id));
+            
             const result = await deleteProduct(id);
             if (result.success) {
                 toast.success(t('toast.success'), { description: result.message });
-                router.refresh(); // Refresquem les dades del servidor
             } else {
                 toast.error(t('toast.error'), { description: result.message });
+                setProducts(initialProducts); 
             }
         });
-    };
+    }, [t, initialProducts]); // Aquesta funció depèn de 't' i 'initialProducts'.
 
-    const handleSuccess = () => {
+    const handleSuccess = useCallback((updatedOrNewProduct: Product) => {
         setFormOpen(false);
-        router.refresh();
-    };
+        setProducts(currentProducts => {
+            const exists = currentProducts.some(p => p.id === updatedOrNewProduct.id);
+            if (exists) {
+                return currentProducts.map(p => p.id === updatedOrNewProduct.id ? updatedOrNewProduct : p);
+            } else {
+                return [updatedOrNewProduct, ...currentProducts];
+            }
+        });
+    }, []); // No té dependències externes, només les funcions de setState.
     
-    // Retornem tot el que el component de presentació necessita
     return {
         isFormOpen, setFormOpen,
         selectedProduct,
@@ -10200,7 +10189,6 @@ export function useProducts({ initialProducts, t }: UseProductsProps) {
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { QuoteWithContact } from "./page";
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 
 // ❌ The old getTeamId helper function is no longer needed and should be deleted.
@@ -10246,56 +10234,7 @@ export async function deleteQuoteAction(quoteId: string) {
     return { success: true, message: "Quote deleted successfully." };
 }
 
-/**
- * @summary Gets quotes for the team, sorted by the given parameters.
- */
-export async function sortQuotesAction(
-    sortState: { [key: string]: 'asc' | 'desc' }
-): Promise<{ success: boolean; data?: QuoteWithContact[]; message?: string }> {
-    // ✅ Fem el mateix aquí
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase } = session;
-    
-    try {
 
-
-        let query = supabase
-            .from('quotes')
-            .select('*, contacts(nom, empresa)');
-
-        // ✅ The manual '.eq('team_id', teamId)' is no longer needed due to RLS.
-
-        // Sorting logic remains the same.
-        // ... (your existing for-loop for sorting is fine)
-        const sortCriteria = Object.entries(sortState);
-        if (sortCriteria.length > 0) {
-            for (const [column, order] of sortCriteria) {
-                const ascending = order === 'asc';
-                if (column.includes('.')) {
-                    const [referencedTable, referencedColumn] = column.split('.');
-                    query = query.order(referencedColumn, { referencedTable, ascending });
-                } else {
-                    query = query.order(column, { ascending });
-                }
-            }
-        } else {
-            query = query.order('issue_date', { ascending: false });
-        }
-
-        const { data: quotes, error } = await query;
-        if (error) throw error;
-
-        return { success: true, data: quotes as QuoteWithContact[] };
-
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown error";
-        console.error("Error in sortQuotesAction:", message);
-        return { success: false, message };
-    }
-}
 
 // =================== FILE: src/app/[locale]/(app)/crm/quotes/page.tsx ===================
 
@@ -10308,8 +10247,6 @@ import { QuotesData } from './_components/QuotesData';
 import { QuotesSkeleton } from './_components/QuotesSkeleton';
 import type { Quote } from '@/types/crm';
 
-// ✅ AQUESTA LÍNIA ÉS CRÍTICA: Assegura que la pàgina mai es guardi a la memòria cau.
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
     title: 'Pressupostos | Ribot',
@@ -10368,48 +10305,37 @@ type ActionResult<T = unknown> = {
 export async function saveQuoteAction(quoteData: Quote): Promise<ActionResult<string>> {
     const session = await validateUserSession();
     if ('error' in session) return { success: false, message: session.error.message };
-    const { supabase, user, activeTeamId } = session;
+    const { supabase } = session;
 
     if (!quoteData.contact_id) return { success: false, message: "Si us plau, selecciona un client." };
 
-    const { items, id, ...quoteFields } = quoteData;
-    let finalQuoteId = id;
-
     try {
-        if (id === 'new') {
-            const { data: newQuote, error } = await supabase.from('quotes').insert({ ...quoteFields, user_id: user.id, team_id: activeTeamId }).select('id').single();
-            if (error || !newQuote) throw error || new Error("No s'ha pogut crear el pressupost.");
-            finalQuoteId = newQuote.id;
-        } else {
-            // La RLS verificarà que tenim permís per actualitzar
-            await supabase.from('quotes').update(quoteFields).eq('id', id);
-            await supabase.from('quote_items').delete().eq('quote_id', id);
-        }
+        const { data, error } = await supabase.rpc('upsert_quote_with_items', {
+            quote_payload: quoteData
+        });
 
-        if (items?.length) {
-            const itemsToInsert = items.map(item => ({
-                quote_id: finalQuoteId, user_id: user.id, team_id: activeTeamId,
-                product_id: item.product_id || null, description: item.description,
-                quantity: item.quantity, unit_price: item.unit_price,
-                total: (item.quantity || 0) * (item.unit_price || 0),
-            }));
-            await supabase.from('quote_items').insert(itemsToInsert);
+        // ✅ AFEGIM AQUEST BLOC PER A DEPURAR
+        if (error) {
+            // Això imprimirà l'error detallat de Supabase a la consola del teu servidor (el terminal on executes 'next dev')
+            console.error("Supabase RPC Error:", JSON.stringify(error, null, 2));
+            // Llançar l'error farà que el bloc 'catch' el capturi amb més detall
+            throw error;
         }
-
-        if (quoteFields.opportunity_id) {
-            await supabase.from('opportunities').update({ stage_name: 'Proposta Enviada' }).eq('id', quoteFields.opportunity_id);
-        }
+        
+        const finalQuoteId = data.quote_id;
 
         revalidatePath('/crm/quotes');
         revalidatePath(`/crm/quotes/${finalQuoteId}`);
+        
         return { success: true, message: "Pressupost desat correctament.", data: finalQuoteId };
 
-    } catch(error) {
+    } catch(error: unknown) { // ✅ Canviem 'error' a 'unknown' per accedir a les seves propietats de manera segura
+        // Ara el missatge serà molt més específic
         const message = error instanceof Error ? error.message : "Error desconegut al desar el pressupost.";
+        console.error("Error a saveQuoteAction:", message);
         return { success: false, message };
     }
 }
-
 /**
  * Elimina un pressupost.
  */
@@ -10710,7 +10636,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
 
 // =================== FILE: src/app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorClient.tsx ===================
 
-
 "use client";
 
 import React from 'react';
@@ -10721,12 +10646,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Quote, Contact, Product, Opportunity } from '@/types/crm';
+import type { Quote, Contact, Product, Opportunity} from '@/types/crm';
 import type { TeamData } from '@/types/settings';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Importem Card
-import { Switch } from "@/components/ui/switch"; // ✅ CORRECCIÓ: Faltava aquesta importació
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from "@/components/ui/switch";
 
-// Importem el nostre hook personalitzat, que ara conté tota la lògica
+// Importem el hook que conté TOTA la lògica
 import { useQuoteEditor } from '../_hooks/useQuoteEditor';
 
 // Importem els sub-components de presentació
@@ -10743,33 +10668,35 @@ interface QuoteEditorClientProps {
     companyProfile: TeamData | null;
     initialOpportunities: Opportunity[];
     userId: string;
+    locale: string;
 }
 
 export function QuoteEditorClient(props: QuoteEditorClientProps) {
     const router = useRouter();
 
-    // Tota la lògica complexa (estats, handlers, càlculs) ara ve d'aquest hook.
     const {
-        quote, setQuote,
-        currentTeamData, setCurrentTeamData,
-        contactOpportunities,
-        isDeleteDialogOpen, setIsDeleteDialogOpen,
-        isProfileDialogOpen, setIsProfileDialogOpen,
-        isSaving, isSending, sendingStatus,
+        state,
+        quote,
+        onQuoteChange,
+        onItemsChange,
+        setCurrentTeamData,
+        setIsDeleteDialogOpen,
+        setIsProfileDialogOpen,
         subtotal, discountAmount, tax, total,
-        handleSave, handleDelete, handleSend, handleAddNewItem,
-        t, locale
+        handleSave, handleDelete, handleSend,
+        isSaving, isSending,
+        t
     } = useQuoteEditor(props);
 
     return (
         <>
             <CompanyProfileDialog
-                open={isProfileDialogOpen}
+                open={state.isProfileDialogOpen}
                 onOpenChange={setIsProfileDialogOpen}
-                profile={currentTeamData}
+                profile={state.currentTeamData}
                 onProfileUpdate={setCurrentTeamData}
             />
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialog open={state.isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t('quoteEditor.deleteDialogTitle')}</AlertDialogTitle>
@@ -10777,11 +10704,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isSaving}>Cancel·lar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete} // <-- Aquesta és la connexió correcta
-                            className="bg-destructive hover:bg-destructive/90"
-                            disabled={isSaving}
-                        >
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Confirmar Eliminació
                         </AlertDialogAction>
@@ -10804,7 +10727,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             </Button>
                         }
                         <Button onClick={handleSave} disabled={isSaving || isSending}>
-                            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             {quote.id === 'new' ? t('quoteEditor.createButton') : t('quoteEditor.saveButton')}
                         </Button>
                         {quote.id !== 'new' && (
@@ -10812,9 +10735,9 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 {isSending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {sendingStatus === 'generating' && t('quoteEditor.generatingPDF')}
-                                        {sendingStatus === 'uploading' && t('quoteEditor.uploadingFile')}
-                                        {sendingStatus === 'sending' && t('quoteEditor.sending')}
+                                        {state.sendingStatus === 'generating' && t('quoteEditor.generatingPDF')}
+                                        {state.sendingStatus === 'uploading' && t('quoteEditor.uploadingFile')}
+                                        {state.sendingStatus === 'sending' && t('quoteEditor.sending')}
                                     </>
                                 ) : (
                                     <>
@@ -10829,7 +10752,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
 
                 {quote.sent_at && (
                     <div className="mb-4 p-2 text-center bg-green-100 text-green-800 rounded-md text-sm">
-                        {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
+                        {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(props.locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
                     </div>
                 )}
 
@@ -10837,25 +10760,28 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                     <section className="flex flex-col gap-4 overflow-y-auto pr-4">
                         <div className="glass-card p-4">
                             <QuoteMeta
-                                quote={quote}
-                                setQuote={setQuote}
+                                contact_id={quote.contact_id}
+                                quote_number={quote.quote_number}
+                                issue_date={quote.issue_date}
+                                expiry_date={quote.expiry_date}
+                                onMetaChange={onQuoteChange}
                                 contacts={props.contacts}
                             />
                         </div>
 
                         <div className="glass-card p-4">
                             <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
-                            {contactOpportunities.length > 0 ? (
+                            {state.contactOpportunities.length > 0 ? (
                                 <Select
                                     value={quote.opportunity_id || ''}
-                                    onValueChange={(value) => setQuote(q => ({ ...q, opportunity_id: value || null }))}
+                                    onValueChange={(value) => onQuoteChange('opportunity_id', value || null)}
                                     disabled={!quote.contact_id}
                                 >
                                     <SelectTrigger className="mt-2 w-full">
                                         <SelectValue placeholder={t('quoteEditor.noOpportunityAssociated')} />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {contactOpportunities.map(o => (
+                                        {state.contactOpportunities.map(o => (
                                             <SelectItem key={o.id} value={o.id}>
                                                 {o.name} ({o.stage_name})
                                             </SelectItem>
@@ -10869,59 +10795,53 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
 
                         <div className="glass-card p-2">
                             <QuoteItems
-                                items={quote.items}
-                                setItems={(newItems) => setQuote(q => ({ ...q, items: newItems }))}
+                                items={quote.items || []}
+                                onItemsChange={onItemsChange}
                                 products={props.products}
-                                onAddNewItem={handleAddNewItem}
                                 userId={props.userId}
                             />
                             <QuoteTotals
                                 subtotal={subtotal}
                                 discount={quote.discount}
-                                setDiscount={(d) => setQuote(q => ({ ...q, discount: d }))}
+                                setDiscount={(d) => onQuoteChange('discount', d)}
                                 discountAmount={discountAmount}
                                 tax={tax}
                                 total={total}
-                                // ✅ Connectem el nou camp d'IVA
                                 tax_percent={quote.tax_percent}
-                                setTaxPercent={(p) => setQuote(q => ({ ...q, tax_percent: p }))}
+                                setTaxPercent={(p) => onQuoteChange('tax_percent', p)}
                             />
                         </div>
-                        {/* ✅ CORRECCIÓ 1: L'interruptor ara va aquí, a sobre de les notes */}
+                        
                         <Card>
-                            <CardHeader>
-                                <CardTitle>{t('options.title')}</CardTitle>
-                            </CardHeader>
+                            <CardHeader><CardTitle>{t('options.title')}</CardTitle></CardHeader>
                             <CardContent>
                                 <div className="flex items-center space-x-2">
                                     <Switch
                                         id="show-quantity"
                                         checked={quote.show_quantity ?? true}
-                                        onCheckedChange={(checked) => setQuote(q => ({ ...q, show_quantity: checked }))}
+                                        onCheckedChange={(checked) => onQuoteChange('show_quantity', checked)}
                                     />
                                     <Label htmlFor="show-quantity">{t('options.showQuantitiesLabel')}</Label>
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-2">{t('options.showQuantitiesDescription')}</p>
                             </CardContent>
                         </Card>
+
                         <div className="glass-card p-4">
                             <Label>Notes Addicionals</Label>
                             <Textarea
                                 value={quote.notes ?? ''}
-                                onChange={(e) => setQuote(q => ({ ...q, notes: e.target.value }))}
-                                className="mt-2 mt-2 min-h-[220px]"
+                                onChange={(e) => onQuoteChange('notes', e.target.value)}
+                                className="mt-2 min-h-[220px]"
                             />
                         </div>
-          
                     </section>
-
-
-                    {/* ✅ TORNEM A L'ESTRUCTURA SIMPLE: Un sol 'aside' amb scroll */}
+                    
                     <aside id="quote-preview-for-pdf-wrapper" className="hidden lg:block glass-card p-4 overflow-y-auto">
                         <QuotePreview
                             quote={quote}
                             contacts={props.contacts}
-                            companyProfile={currentTeamData}
+                            companyProfile={state.currentTeamData}
                             subtotal={subtotal}
                             discountAmount={discountAmount}
                             tax={tax}
@@ -10936,46 +10856,49 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
 
 // =================== FILE: src/app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorData.tsx ===================
 
-
 import { redirect } from 'next/navigation';
 import { QuoteEditorClient } from './QuoteEditorClient';
-// ✅ Canviem la importació de tipus per a utilitzar els nous centralitzats i correctes
-import type { Quote, Contact, Product , Opportunity} from '@/types/crm';
-import type { Team as TeamData, } from '@/types/settings/team';
-import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
+import type { Quote } from '@/types/crm';
+import { validatePageSession } from "@/lib/supabase/session";
 
 interface QuoteEditorDataProps {
     quoteId: string;
 }
 
+/**
+ * Aquest és un Server Component que s'encarrega de tota la càrrega de dades
+ * necessària per a l'editor de pressupostos. Prepara totes les 'props'
+ * i les passa al component de client 'QuoteEditorClient', que gestionarà la UI.
+ */
 export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
-   // ✅ 2. Validació de sessió que gestiona les redireccions automàticament.
-   const { supabase, user, activeTeamId } = await validatePageSession();
+    // 1. Validació de la sessió: Assegura que l'usuari està autenticat
+    // i té un equip actiu. Si no, redirigeix automàticament.
+    const { supabase, user, activeTeamId } = await validatePageSession();
     
-   const [contactsRes, productsRes, teamRes] = await Promise.all([
-       supabase.from('contacts').select('id, nom, empresa'),
-       supabase.from('products').select('*').eq('is_active', true),
-       supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-   ]);
-
-    const contacts = (contactsRes.data as Contact[]) || [];
-    const products = (productsRes.data as Product[]) || [];
-    // ✅ CORRECCIÓ DE TIPUS: Ara 'teamData' coincideix amb el que espera el client
-    const teamData = teamRes.data as TeamData | null;
-
-    let initialQuote: Quote;
-    let contactOpportunities: Opportunity[] = [];
-    
-    // Logic for a NEW quote
+    // --- LÒGICA PER A UN PRESSUPOST NOU ---
     if (quoteId === 'new') {
-        const { data: lastQuote } = await supabase
-            .from('quotes')
-            .select('quote_number')
-            .eq('team_id', activeTeamId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-            
+        // Per a un pressupost nou, necessitem carregar dades de suport (contactes, productes)
+        // i calcular el següent número de pressupost.
+        const [contactsRes, productsRes, teamRes, lastQuoteRes] = await Promise.all([
+            supabase.from('contacts').select('id, nom, empresa'),
+            supabase.from('products').select('*').eq('is_active', true),
+            supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+            supabase.from('quotes').select('quote_number').order('created_at', { ascending: false }).limit(1).single()
+        ]);
+
+        // Gestió d'errors per a les consultes
+        if (contactsRes.error || productsRes.error || teamRes.error || lastQuoteRes.error) {
+            console.error("Error en carregar les dades per a un nou pressupost:", {
+                contacts: contactsRes.error,
+                products: productsRes.error,
+                team: teamRes.error,
+                lastQuote: lastQuoteRes.error,
+            });
+            return <div>Error en carregar les dades de l'editor.</div>;
+        }
+        
+        // Càlcul del següent número de pressupost
+        const lastQuote = lastQuoteRes.data;
         let nextNumber = 1;
         if (lastQuote?.quote_number) {
             const match = lastQuote.quote_number.match(/\d+$/);
@@ -10983,7 +10906,8 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
         }
         const year = new Date().getFullYear();
 
-        initialQuote = {
+        // Creació de l'objecte inicial per al nou pressupost
+        const initialQuote: Quote = {
             id: 'new',
             contact_id: null,
             quote_number: `PRE-${year}-${String(nextNumber).padStart(4, '0')}`,
@@ -10992,34 +10916,62 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
             notes: 'Gràcies pel vostre interès en els nostres serveis.',
             discount: 0,
             subtotal: 0, tax: 0, total: 0,
+            tax_percent: 21,
+            show_quantity: true,
             items: [{
-                description: '',
-                quantity: 1,
-                unit_price: 0,
-                product_id: null,
-                user_id: user.id
+                description: '', quantity: 1, unit_price: 0,
+                product_id: null, user_id: user.id
             }]
         };
-    } else {
-        // La RLS a 'quotes' s'assegurarà que només puguem carregar un pressupost de l'equip actiu
-        const { data: quoteData } = await supabase.from('quotes').select('*, items:quote_items(*)').eq('id', quoteId).single();
-        if (!quoteData) redirect('/crm/quotes');
 
-        initialQuote = quoteData as unknown as Quote;
-        
-        if (quoteData.contact_id) {
-            const { data: opportunitiesData } = await supabase.from('opportunities').select('*').eq('contact_id', quoteData.contact_id);
-            contactOpportunities = (opportunitiesData as Opportunity[]) || [];
-        }
+        // Passem les dades al component de client
+        return (
+            <QuoteEditorClient
+                initialQuote={initialQuote}
+                contacts={contactsRes.data || []}
+                products={productsRes.data || []}
+                companyProfile={teamRes.data}
+                initialOpportunities={[]} // No hi ha oportunitats al crear un pressupost sense client
+                userId={user.id}
+            />
+        );
     }
 
+    // --- LÒGICA PER A EDITAR UN PRESSUPOST EXISTENT ---
+    // Utilitzem la funció RPC 'get_quote_details' per a obtenir el pressupost i les
+    // oportunitats relacionades en una sola crida a la base de dades.
+    const [contactsRes, productsRes, teamRes, quoteDetailsRes] = await Promise.all([
+        supabase.from('contacts').select('id, nom, empresa'),
+        supabase.from('products').select('*').eq('is_active', true),
+        supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+        supabase.rpc('get_quote_details', { p_quote_id: quoteId })
+    ]);
+
+    // Gestió d'errors per a les consultes
+    if (contactsRes.error || productsRes.error || teamRes.error || quoteDetailsRes.error) {
+        console.error("Error en carregar les dades d'un pressupost existent:", {
+            contacts: contactsRes.error,
+            products: productsRes.error,
+            team: teamRes.error,
+            quoteDetails: quoteDetailsRes.error,
+        });
+        return <div>Error en carregar les dades de l'editor.</div>;
+    }
+
+    const quoteDetails = quoteDetailsRes.data;
+    // Si la funció RPC no retorna un pressupost, vol dir que no existeix o l'usuari no hi té accés
+    if (!quoteDetails?.quote) {
+        redirect('/crm/quotes');
+    }
+
+    // Passem les dades obtingudes al component de client
     return (
         <QuoteEditorClient
-            initialQuote={initialQuote}
-            contacts={contacts}
-            products={products}
-            companyProfile={teamData} // ✅ Passem les dades de l'equip correctament
-            initialOpportunities={contactOpportunities}
+            initialQuote={quoteDetails.quote as unknown as Quote}
+            contacts={contactsRes.data || []}
+            products={productsRes.data || []}
+            companyProfile={teamRes.data}
+            initialOpportunities={quoteDetails.opportunities || []}
             userId={user.id}
         />
     );
@@ -11077,28 +11029,24 @@ import type { QuoteItem, Product } from '@/types/crm';
 import { useTranslations } from 'next-intl';
 import { useQuoteItems } from '../_hooks/useQuoteItems'; // ✅ 1. Importem el hook
 
+// ✅ 1. Definim les props correctes. 'onAddNewItem' ja no és necessària per separat.
 interface QuoteItemsProps {
     items: QuoteItem[];
-    setItems: (newItems: QuoteItem[]) => void;
+    onItemsChange: (newItems: QuoteItem[]) => void;
     products: Product[];
     userId: string;
-    onAddNewItem: () => void;
 }
 
+// ✅ PAS 3.2: Canviem el nom de la prop que passem al hook
 export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
     const t = useTranslations('QuoteEditor.items');
 
-    // ✅ 2. Tota la lògica i estats venen del hook.
+    // ✅ 2. Passem 'onItemsChange' directament al hook a través de '...props'
     const {
-        isSavingProduct,
-        isCreating, setIsCreating,
-        newProduct, setNewProduct,
-        isPopoverOpen, setIsPopoverOpen,
-        handleItemChange,
-        handleAddProduct,
-        handleRemoveItem,
-        handleSaveNewProduct,
-        handleManualItem
+        isSavingProduct, isCreating, setIsCreating,
+        newProduct, setNewProduct, isPopoverOpen, setIsPopoverOpen,
+        handleItemChange, handleAddProduct, handleRemoveItem,
+        handleSaveNewProduct, handleManualItem
     } = useQuoteItems({ ...props, t });
 
     return (
@@ -11112,15 +11060,15 @@ export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
                 )}
                 {props.items.map((item, index) => (
                     <div key={index} className="flex items-start gap-2">
-                          <TextareaAutosize
+                        <TextareaAutosize
                             placeholder={t('placeholderDescription')}
                             value={item.description}
                             onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                             minRows={1}
                             className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-w-[300px]"
                         />
-                        <Input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 1)} className="w-20" />
-                        <Input type="number" value={item.unit_price} onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)} className="w-24" />
+                        <Input type="number" value={item.quantity ?? 1} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value) || 1)} className="w-20" />
+                        <Input type="number" value={item.unit_price ?? 0} onChange={(e) => handleItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)} className="w-24" />
                         <div className="w-24 text-right font-mono pt-2">€{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}</div>
                         <Button variant="ghost" size="icon" onClick={() => handleRemoveItem(index)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>
@@ -11199,12 +11147,28 @@ import { useTranslations } from 'next-intl';
  * - El número de pressupost.
  * - Les dates d'emissió i venciment.
  */
-export const QuoteMeta = ({ quote, setQuote, contacts }: {
-    quote: Quote;
-    setQuote: React.Dispatch<React.SetStateAction<Quote>>;
+
+// ✅ PAS 2.1: Definim les noves props. Més específiques i sense 'setQuote'.
+interface QuoteMetaProps {
+    contact_id: string | null;
+    quote_number: string | null;
+    issue_date: string;
+    expiry_date: string | null;
+    // La definició de la funció ara també és genèrica.
+    onMetaChange: <K extends keyof Quote>(field: K, value: Quote[K]) => void;
     contacts: Contact[];
-}) => {
-    const selectedContact = contacts.find(c => c.id === quote.contact_id);
+}
+export const QuoteMeta = ({
+    contact_id,
+    quote_number,
+    issue_date,
+    expiry_date,
+    onMetaChange,
+    contacts
+}: QuoteMetaProps) => {
+
+    // ✅ CORRECCIÓ 1: Utilitza la prop 'contact_id' directament, no 'quote.contact_id'
+    const selectedContact = contacts.find(c => c.id === contact_id);
     const t = useTranslations('QuoteEditor.meta');
 
     return (
@@ -11226,8 +11190,9 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
                                     <CommandEmpty>{t('noClientFound')}</CommandEmpty>
                                     <CommandGroup>
                                         {contacts.map(c => (
-                                            <CommandItem key={c.id} value={`${c.nom} ${c.empresa}`} onSelect={() => setQuote(q => ({ ...q, contact_id: c.id, opportunity_id: null }))}>
-                                                <Check className={cn("mr-2 h-4 w-4", quote.contact_id === c.id ? "opacity-100" : "opacity-0")} />
+                                            // ✅ PAS 2.2: Utilitzem el nou callback 'onMetaChange'
+                                            <CommandItem key={c.id} value={`${c.nom} ${c.empresa}`} onSelect={() => onMetaChange('contact_id', c.id)}>
+                                                <Check className={cn("mr-2 h-4 w-4", contact_id === c.id ? "opacity-100" : "opacity-0")} />
                                                 {c.nom} <span className="text-xs text-muted-foreground ml-2">{c.empresa}</span>
                                             </CommandItem>
                                         ))}
@@ -11239,15 +11204,15 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
                 </div>
                 <div>
                     <Label>{t('quoteNumberLabel')}</Label>
-                    <Input value={quote.quote_number || ''} onChange={(e) => setQuote(q => ({ ...q, quote_number: e.target.value }))} className="mt-1" />
+                    <Input value={quote_number || ''} onChange={(e) => setQuote(q => ({ ...q, quote_number: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
                     <Label>{t('issueDateLabel')}</Label>
-                    <Input type="date" value={quote.issue_date} onChange={(e) => setQuote(q => ({ ...q, issue_date: e.target.value }))} className="mt-1" />
+                    <Input type="date" value={issue_date} onChange={(e) => setQuote(q => ({ ...q, issue_date: e.target.value }))} className="mt-1" />
                 </div>
                 <div>
                     <Label>{t('expiryDateLabel')}</Label>
-                    <Input type="date" value={quote.expiry_date || ''} onChange={(e) => setQuote(q => ({ ...q, expiry_date: e.target.value }))} className="mt-1" />
+                    <Input type="date" value={expiry_date || ''} onChange={(e) => setQuote(q => ({ ...q, expiry_date: e.target.value }))} className="mt-1" />
                 </div>
             </div>
         </div>
@@ -11597,11 +11562,79 @@ export const QuoteTotals: React.FC<QuoteTotalsProps> = ({
     );
 };
 
+// =================== FILE: src/app/[locale]/(app)/crm/quotes/[id]/_components/StatCardsGrid.tsx ===================
+
+"use client";
+
+import React, { memo } from "react";
+import { useTranslations } from "next-intl";
+import { StatCard } from "@/components/shared/StartCard";
+import { Users, Target, Euro, BadgePercent } from "lucide-react";
+import type { DashboardInitialData } from "@/types/crm";
+
+/**
+ * @file StatCardsGrid.tsx
+ * @description Mostra la graella de targetes de KPI principals del Dashboard.
+ */
+
+interface StatCardsGridProps {
+  stats: DashboardInitialData["stats"];
+}
+
+/**
+ * ✅ Component memoitzat per evitar re-render innecessaris.
+ * S’encarrega només de representar les targetes de mètriques principals.
+ */
+export const StatCardsGrid = memo(({ stats }: StatCardsGridProps) => {
+  const t = useTranslations("DashboardClient");
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      <StatCard
+        href="/crm/contactes"
+        icon={Users}
+        title={t("totalContacts")}
+        value={stats.totalContacts.toLocaleString()}
+        color="bg-[#2d7ef7]"
+        openText={t("openLink")}
+      />
+      <StatCard
+        href="/crm/pipeline"
+        icon={Target}
+        title={t("activeOpportunities")}
+        value={stats.opportunities.toLocaleString()}
+        color="bg-[#12a150]"
+        openText={t("openLink")}
+      />
+      <StatCard
+        href="/finances/facturacio"
+        icon={Euro}
+        title={t("monthlyInvoicing")}
+        value={`€${stats.invoiced.toLocaleString()}`}
+        color="bg-[#8a3ffc]"
+        openText={t("openLink")}
+      />
+      <StatCard
+        href="/finances/facturacio"
+        icon={BadgePercent}
+        title={t("pendingVAT")}
+        value={`€${stats.pending.toLocaleString()}`}
+        color="bg-[#f27917]"
+        openText={t("openLink")}
+      />
+    </div>
+  );
+});
+
+StatCardsGrid.displayName = "StatCardsGrid";
+
+
 // =================== FILE: src/app/[locale]/(app)/crm/quotes/[id]/_hooks/useQuoteEditor.ts ===================
 
 "use client";
 
-import { useState, useMemo, useTransition, useEffect } from 'react';
+// ✅ Importem 'useReducer' i 'useCallback' a més dels altres hooks
+import { useMemo, useTransition, useEffect, useReducer, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from "sonner";
 import { createClient } from '@/lib/supabase/client';
@@ -11610,7 +11643,9 @@ import type { Quote, Opportunity, QuoteItem } from '@/types/crm';
 import type { TeamData } from '@/types/settings';
 import { useTranslations } from 'next-intl';
 
-// Props que el hook necessita per a inicialitzar el seu estat
+// ----------------------------------------------------------------
+// 1. DEFINICIÓ DE PROPS (Això no canvia)
+// ----------------------------------------------------------------
 interface UseQuoteEditorProps {
     initialQuote: Quote;
     initialOpportunities: Opportunity[];
@@ -11618,6 +11653,55 @@ interface UseQuoteEditorProps {
     userId: string;
 }
 
+// ----------------------------------------------------------------
+// 2. DEFINICIÓ DE L'ESTAT I LES ACCIONS PER AL REDUCER
+// ----------------------------------------------------------------
+type EditorState = {
+    quote: Quote;
+    currentTeamData: TeamData | null;
+    contactOpportunities: Opportunity[];
+    isDeleteDialogOpen: boolean;
+    isProfileDialogOpen: boolean;
+    sendingStatus: 'idle' | 'generating' | 'uploading' | 'sending';
+};
+
+type EditorAction =
+    | { type: 'SET_QUOTE'; payload: Quote }
+    | { type: 'UPDATE_QUOTE_FIELD'; payload: { field: keyof Quote; value: Quote[keyof Quote] } } // <-- Línia corregida
+    | { type: 'SET_TEAM_DATA'; payload: TeamData | null }
+    | { type: 'SET_OPPORTUNITIES'; payload: Opportunity[] }
+    | { type: 'SET_DELETE_DIALOG'; payload: boolean }
+    | { type: 'SET_PROFILE_DIALOG'; payload: boolean }
+    | { type: 'SET_SENDING_STATUS'; payload: EditorState['sendingStatus'] };
+
+// ----------------------------------------------------------------
+// 3. LA FUNCIÓ REDUCER (EL "PANELL DE CONTROL")
+// Aquesta funció pura rep l'estat actual i una acció, i retorna el nou estat.
+// ----------------------------------------------------------------
+function editorReducer(state: EditorState, action: EditorAction): EditorState {
+    switch (action.type) {
+        case 'SET_QUOTE':
+            return { ...state, quote: action.payload };
+        case 'UPDATE_QUOTE_FIELD':
+            return { ...state, quote: { ...state.quote, [action.payload.field]: action.payload.value } };
+        case 'SET_TEAM_DATA':
+            return { ...state, currentTeamData: action.payload };
+        case 'SET_OPPORTUNITIES':
+            return { ...state, contactOpportunities: action.payload };
+        case 'SET_DELETE_DIALOG':
+            return { ...state, isDeleteDialogOpen: action.payload };
+        case 'SET_PROFILE_DIALOG':
+            return { ...state, isProfileDialogOpen: action.payload };
+        case 'SET_SENDING_STATUS':
+            return { ...state, sendingStatus: action.payload };
+        default:
+            throw new Error('Unhandled action type');
+    }
+}
+
+// ----------------------------------------------------------------
+// 4. EL HOOK 'useQuoteEditor' REFACTORITZAT
+// ----------------------------------------------------------------
 export function useQuoteEditor({
     initialQuote,
     initialOpportunities,
@@ -11628,46 +11712,67 @@ export function useQuoteEditor({
     const supabase = createClient();
     const t = useTranslations('QuoteEditor');
 
-    // --- Gestió de l'Estat ---
-    const [quote, setQuote] = useState<Quote>(initialQuote);
-    const [currentTeamData, setCurrentTeamData] = useState<TeamData | null>(companyProfile);
-    const [contactOpportunities, setContactOpportunities] = useState<Opportunity[]>(initialOpportunities);
-    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+    const initialState: EditorState = {
+        quote: initialQuote,
+        currentTeamData: companyProfile,
+        contactOpportunities: initialOpportunities,
+        isDeleteDialogOpen: false,
+        isProfileDialogOpen: false,
+        sendingStatus: 'idle',
+    };
+
+    // Utilitzem useReducer en lloc de múltiples useStates
+    const [state, dispatch] = useReducer(editorReducer, initialState);
+
     const [isSaving, startSaveTransition] = useTransition();
     const [isSending, startSendTransition] = useTransition();
-    const [sendingStatus, setSendingStatus] = useState<'idle' | 'generating' | 'uploading' | 'sending'>('idle');
 
-    // --- Dades Derivades (Càlculs) ---
+    // Dades Derivades (llegeixen de 'state.quote')
     const { subtotal, discountAmount, tax, total } = useMemo(() => {
-        if (!quote?.items) return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
-        const sub = quote.items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0), 0);
-        const calculatedDiscountAmount = sub * ((quote.discount || 0) / 100);
+        const { items, discount, tax_percent } = state.quote;
+        if (!items) return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
+        const sub = items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0), 0);
+        const calculatedDiscountAmount = sub * ((discount || 0) / 100);
         const subAfterDiscount = sub - calculatedDiscountAmount;
-        // La línia clau: utilitzem el percentatge del pressupost, o 21 per defecte.
-        const taxAmount = subAfterDiscount * ((quote.tax_percent ?? 21) / 100);
-        return { subtotal: sub, discountAmount: calculatedDiscountAmount, tax: taxAmount, total: subAfterDiscount + taxAmount };
-    }, [quote?.items, quote?.discount, quote?.tax_percent]); // ✅ Afegim la nova dependència
+        const taxAmount = subAfterDiscount * ((tax_percent ?? 21) / 100);
+        // ✅ CORRECCIÓ: Utilitza la variable correcta 'calculatedDiscountAmount'
+        return {
+            subtotal: sub,
+            discountAmount: calculatedDiscountAmount, // <-- Aquí estava l'error
+            tax: taxAmount,
+            total: subAfterDiscount + taxAmount
+        };
+    }, [state.quote]);
 
-    // --- Handlers ---
-    const handleSave = () => {
+
+    // --- Handlers que despatxen accions ---
+    const onQuoteChange = useCallback(<K extends keyof Quote>(field: K, value: Quote[K]) => {
+        dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field, value } });
+    }, []);
+
+    const onItemsChange = useCallback((items: QuoteItem[]) => {
+        dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field: 'items', value: items } });
+    }, []);
+
+    // Handlers d'Accions (despatxen accions al reducer)
+    const handleSave = useCallback(() => {
         startSaveTransition(async () => {
-            const result = await saveQuoteAction({ ...quote, subtotal, tax, total });
+            const result = await saveQuoteAction({ ...state.quote, subtotal, tax, total });
             if (result.success && result.data) {
                 toast.success(result.message);
-                if (quote.id === 'new') {
+                if (state.quote.id === 'new') {
                     router.replace(`/crm/quotes/${result.data}`);
                 }
             } else {
                 toast.error(t('toast.errorTitle'), { description: result.message });
             }
         });
-    };
+    }, [state.quote, subtotal, tax, total, router, t]);
 
-    const handleDelete = () => {
-        if (quote.id === 'new') return;
+    const handleDelete = useCallback(() => {
+        if (state.quote.id === 'new') return;
         startSaveTransition(async () => {
-            const result = await deleteQuoteAction(quote.id);
+            const result = await deleteQuoteAction(state.quote.id);
             if (result.success) {
                 toast.success(result.message);
                 router.push('/crm/quotes');
@@ -11675,29 +11780,29 @@ export function useQuoteEditor({
                 toast.error(t('toast.errorTitle'), { description: result.message });
             }
         });
-    };
+    }, [state.quote.id, router, t]);
 
     const handleSend = () => {
         if (quote.id === 'new') {
             toast.error(t('toast.errorTitle'), { description: t('toast.saveFirst') });
             return;
         }
-    
+
         startSendTransition(async () => {
             const element = document.getElementById('quote-preview-for-pdf');
             if (!element) {
                 toast.error(t('toast.errorTitle'), { description: "Element de previsualització no trobat." });
                 return;
             }
-    
+
             try {
                 setSendingStatus('generating');
                 toast.info(t('quoteEditor.generatingPDF'));
-    
+
                 // ✅ CORRECCIÓ CLAU: Importem la llibreria dinàmicament
                 // Això només s'executarà al navegador, quan l'usuari faci clic.
                 const { default: html2pdf } = await import('html2pdf.js');
-    
+
                 const PDF_OPTIONS = {
                     // ✅ CORRECCIÓ: 'margin' ha de ser un número o un array, no un objecte.
                     // Un número aplica el mateix marge a tots els costats (top, right, bottom, left).
@@ -11708,21 +11813,21 @@ export function useQuoteEditor({
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: 'css', before: '.page-break-before' }
                 };
-    
+
                 const pdfBlob = await html2pdf().from(element).set(PDF_OPTIONS).output('blob');
-    
+
                 setSendingStatus('uploading');
                 const filePath = `${userId}/${quote.id}.pdf`;
                 const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
                 if (uploadError) throw uploadError;
-    
+
                 setSendingStatus('sending');
                 const result = await sendQuoteAction(quote.id);
                 if (!result.success) throw new Error(result.message);
-    
+
                 setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
                 toast.success("Èxit!", { description: result.message });
-    
+
             } catch (error) {
                 const e = error instanceof Error ? error : new Error(t('toast.sendError'));
                 toast.error(t('toast.errorTitle'), { description: e.message });
@@ -11732,74 +11837,84 @@ export function useQuoteEditor({
         });
     };
 
-    const handleAddNewItem = () => {
-        const newItem: QuoteItem = {
-            product_id: null,
-            description: '',
-            quantity: 1,
-            unit_price: 0,
-            user_id: userId
-        };
-        setQuote(prevQuote => ({ ...prevQuote, items: [...(prevQuote.items || []), newItem] }));
-    };
 
-    // --- Efectes ---
+    // Efectes (despatxen accions)
+    useEffect(() => {
+        // Sincronitza l'estat si les props inicials canvien (ex: després d'un router.refresh)
+        dispatch({ type: 'SET_QUOTE', payload: initialQuote });
+    }, [initialQuote]);
+
     useEffect(() => {
         const fetchOpportunities = async () => {
-            if (!quote.contact_id) {
-                setContactOpportunities([]);
+            if (!state.quote.contact_id) {
+                dispatch({ type: 'SET_OPPORTUNITIES', payload: [] });
                 return;
             }
-            const { data } = await supabase.from('opportunities').select('*').eq('contact_id', quote.contact_id);
-            setContactOpportunities(data || []);
+            const { data } = await supabase.from('opportunities').select('*').eq('contact_id', state.quote.contact_id);
+            dispatch({ type: 'SET_OPPORTUNITIES', payload: data || [] });
         };
         fetchOpportunities();
-    }, [quote.contact_id, supabase]);
+    }, [state.quote.contact_id, supabase]);
 
-    // Retornem tots els estats i funcions que el component necessita
+    // Retornem l'estat i les funcions que el component de UI necessita
     return {
-        quote, setQuote,
-        currentTeamData, setCurrentTeamData,
-        contactOpportunities,
-        isDeleteDialogOpen, setIsDeleteDialogOpen,
-        isProfileDialogOpen, setIsProfileDialogOpen,
-        isSaving, isSending, sendingStatus,
+        // L'estat sencer
+        state,
+        // Accés directe a les parts de l'estat més usades
+        quote: state.quote,
+        // Funcions per a modificar l'estat (per a passar als fills)
+        dispatch, // Podem passar 'dispatch' directament o crear funcions més específiques
+        // ✅ Retornem els callbacks amb els noms correctes
+        onQuoteChange,
+        onItemsChange,
+        setQuote: (newQuote: Quote) => dispatch({ type: 'SET_QUOTE', payload: newQuote }),
+        setIsDeleteDialogOpen: (isOpen: boolean) => dispatch({ type: 'SET_DELETE_DIALOG', payload: isOpen }),
+        setIsProfileDialogOpen: (isOpen: boolean) => dispatch({ type: 'SET_PROFILE_DIALOG', payload: isOpen }),
+        setCurrentTeamData: (data: TeamData | null) => dispatch({ type: 'SET_TEAM_DATA', payload: data }),
+        // Dades derivades
         subtotal, discountAmount, tax, total,
-        handleSave, handleDelete, handleSend, handleAddNewItem,
+        // Handlers d'accions
+        handleSave, handleDelete, handleSend,
+        // Estats de transició
+        isSaving, isSending,
+        // Traduccions
         t
     };
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/quotes/[id]/_hooks/useQuoteItems.ts ===================
 
+// /_hooks/useQuoteItems.ts (VERSIÓ FINAL I CORRECTA)
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { toast } from 'sonner';
 import { createProductAction } from '../actions';
 import type { QuoteItem, Product } from '@/types/crm';
 
-type UseQuoteItemsProps = {
+// ✅ 1. Definim les props correctes. Només necessita 'onItemsChange'.
+interface UseQuoteItemsProps {
     items: QuoteItem[];
-    setItems: (newItems: QuoteItem[]) => void;
+    onItemsChange: (newItems: QuoteItem[]) => void;
     userId: string;
-    onAddNewItem: () => void;
     t: (key: string) => string;
 };
 
-export function useQuoteItems({ items, setItems, userId, onAddNewItem, t }: UseQuoteItemsProps) {
+// ✅ 2. Desestructurem 'onItemsChange' i eliminem les props antigues.
+export function useQuoteItems({ items, onItemsChange, userId, t }: UseQuoteItemsProps) {
     const [isSavingProduct, startSaveProductTransition] = useTransition();
     const [isCreating, setIsCreating] = useState(false);
     const [newProduct, setNewProduct] = useState({ name: '', price: '' });
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    const handleItemChange = <K extends keyof QuoteItem>(index: number, field: K, value: QuoteItem[K]) => {
+    // Totes aquestes funcions ara criden a 'onItemsChange' per notificar al pare.
+    const handleItemChange = useCallback(<K extends keyof QuoteItem>(index: number, field: K, value: QuoteItem[K]) => {
         const newItems = [...items];
         newItems[index] = { ...newItems[index], [field]: value };
-        setItems(newItems);
-    };
+        onItemsChange(newItems);
+    }, [items, onItemsChange]);
 
-    const handleAddProduct = (product: Product) => {
+    const handleAddProduct = useCallback((product: Product) => {
         const newItem: QuoteItem = {
             description: product.name || product.description || '',
             quantity: 1,
@@ -11807,47 +11922,48 @@ export function useQuoteItems({ items, setItems, userId, onAddNewItem, t }: UseQ
             product_id: product.id,
             user_id: userId
         };
-        setItems([...items, newItem]);
+        onItemsChange([...items, newItem]);
         setIsPopoverOpen(false);
-    };
+    }, [items, onItemsChange, userId]);
 
-    const handleRemoveItem = (index: number) => {
-        setItems(items.filter((_, i) => i !== index));
-    };
+    const handleRemoveItem = useCallback((index: number) => {
+        onItemsChange(items.filter((_, i) => i !== index));
+    }, [items, onItemsChange]);
+    
+    const handleManualItem = useCallback(() => {
+        const newItem: QuoteItem = {
+            product_id: null, description: '', quantity: 1,
+            unit_price: 0, user_id: userId
+        };
+        onItemsChange([...items, newItem]);
+        setIsPopoverOpen(false);
+    }, [items, onItemsChange, userId]);
 
-    const handleSaveNewProduct = () => {
+    const handleSaveNewProduct = useCallback(() => {
         if (!newProduct.name || !newProduct.price) {
             toast.error(t('toast.requiredFields'), { description: t('toast.requiredFieldsDesc') });
             return;
         }
         startSaveProductTransition(async () => {
             const result = await createProductAction({ name: newProduct.name, price: parseFloat(newProduct.price) });
-            if (result.success && result.newProduct) {
+            // ✅ A la resposta de l'acció, la dada del producte ve a 'result.data'
+            if (result.success && result.data) {
                 toast.success(t('toast.productCreated'), { description: t('toast.productCreatedDesc') });
-                handleAddProduct(result.newProduct);
+                // 'result.data' és el nou producte, el passem a handleAddProduct
+                handleAddProduct(result.data as Product);
                 setNewProduct({ name: '', price: '' });
                 setIsCreating(false);
             } else {
                 toast.error("Error", { description: result.message });
             }
         });
-    };
+    }, [newProduct, t, handleAddProduct]);
 
-    const handleManualItem = () => {
-        onAddNewItem();
-        setIsPopoverOpen(false);
-    };
 
     return {
-        isSavingProduct,
-        isCreating, setIsCreating,
-        newProduct, setNewProduct,
-        isPopoverOpen, setIsPopoverOpen,
-        handleItemChange,
-        handleAddProduct,
-        handleRemoveItem,
-        handleSaveNewProduct,
-        handleManualItem,
+        isSavingProduct, isCreating, setIsCreating, newProduct, setNewProduct,
+        isPopoverOpen, setIsPopoverOpen, handleItemChange, handleAddProduct,
+        handleRemoveItem, handleSaveNewProduct, handleManualItem,
     };
 }
 
@@ -11875,12 +11991,13 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
     // ✅ 2. Tota la lògica i estats venen del hook.
     const {
         isPending,
+        quotes, // ✅ Ara reps la llista de l'estat del hook
         quoteToDelete,
         setQuoteToDelete,
         handleSort,
         handleDelete,
         searchParams,
-    } = useQuotes({ t });
+    } = useQuotes({ initialQuotes, t });
 
     // Component intern per a les capçaleres ordenables, ara utilitza 'searchParams' del hook.
     const SortableHeader = ({ column, label }: { column: string, label: string }) => {
@@ -11916,7 +12033,7 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {initialQuotes.length > 0 ? initialQuotes.map(quote => {
+                            {quotes.length > 0 ? quotes.map(quote => {
                                 const statusInfo = QUOTE_STATUS_MAP.find(s => s.dbValue === quote.status) || { key: 'unknown', colorClass: 'bg-gray-100' };
                                 return (
                                     <TableRow key={quote.id}>
@@ -12092,25 +12209,37 @@ export function QuotesSkeleton() {
 
 // =================== FILE: src/app/[locale]/(app)/crm/quotes/_hooks/useQuotes.ts ===================
 
+// /_hooks/useQuotes.ts (VERSIÓ CORREGIDA MANTENINT LA SEPARACIÓ)
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import type { QuoteWithContact } from '../page';
 import { deleteQuoteAction } from '../actions';
 
 type UseQuotesProps = {
-    t: (key: string) => string; // Per a les traduccions
+    initialQuotes: QuoteWithContact[]; // ✅ Rep les dades inicials
+    t: (key: string) => string;
 };
 
-export function useQuotes({ t }: UseQuotesProps) {
+export function useQuotes({ initialQuotes, t }: UseQuotesProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const [isPending, startTransition] = useTransition();
+
+    // ✅ Gestiona l'estat localment dins del hook
+    const [quotes, setQuotes] = useState(initialQuotes);
     const [quoteToDelete, setQuoteToDelete] = useState<QuoteWithContact | null>(null);
+
+    // ✅ Un useEffect per sincronitzar si les dades del servidor canvien
+    // (important després d'un router.refresh() o navegació)
+
+    useEffect(() => {
+        setQuotes(initialQuotes);
+    }, [initialQuotes]);
 
     const handleSort = (column: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -12131,140 +12260,216 @@ export function useQuotes({ t }: UseQuotesProps) {
         });
     };
 
-    const handleDelete = () => {
+    const handleDelete = useCallback(() => {
         if (!quoteToDelete) return;
+
+        // ✅ Lògica d'actualització optimista
+        setQuotes(currentQuotes => currentQuotes.filter(q => q.id !== quoteToDelete.id));
+        setQuoteToDelete(null); // Tanca el diàleg a l'instant
+
         startTransition(async () => {
             const result = await deleteQuoteAction(quoteToDelete.id);
-             // ✅ CORRECCIÓ: Utilitzem la funció 't' per a les notificacions
-             if (result.success) {
+            if (result.success) {
                 toast.success(t('toast.successTitle'), { description: result.message });
+                // Forcem una resincronització amb el servidor per si de cas
+                router.refresh();
             } else {
                 toast.error(t('toast.errorTitle'), { description: result.message });
+                setQuotes(initialQuotes); // Revertim si falla
             }
-      
-            setQuoteToDelete(null);
         });
-    };
+    }, [quoteToDelete, t, initialQuotes, router]);
 
     return {
         isPending,
+        quotes, // ✅ Retorna l'estat local, no les props inicials
         quoteToDelete,
         setQuoteToDelete,
         handleSort,
         handleDelete,
-        searchParams, // Passem els searchParams per a poder llegir-los a la UI
+        searchParams,
     };
+}
+
+// =================== FILE: src/app/[locale]/(app)/dashboard/actions.ts ===================
+
+// /dashboard/actions.ts (CODI COMPLET I DEFINITIU)
+"use server";
+
+import { revalidateTag } from "next/cache";
+import { validateUserSession } from "@/lib/supabase/session";
+import { z } from "zod";
+
+const taskSchema = z.object({
+  title: z.string().min(1, { message: "El títol no pot estar buit." }),
+  contact_id: z.string().optional(),
+  description: z.string().optional().nullable(),
+  due_date: z.string().optional().nullable(),
+  priority: z.enum(['Baixa', 'Mitjana', 'Alta']).optional().nullable(),
+});
+
+export type ActionResult = {
+    success: boolean;
+    message: string;
+};
+
+export async function createTaskAction(prevState: ActionResult, formData: FormData): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase, user, activeTeamId } = session;
+
+    const validatedFields = taskSchema.safeParse(Object.fromEntries(formData.entries()));
+    if (!validatedFields.success) return { success: false, message: "Dades invàlides." };
+    
+    const { title, contact_id, description, due_date, priority } = validatedFields.data;
+
+    const { error } = await supabase.from('tasks').insert({
+        title,
+        contact_id: (contact_id === 'none' || !contact_id) ? null : contact_id,
+        description,
+        due_date: due_date || null,
+        priority,
+        user_id: user.id,
+        team_id: activeTeamId,
+    });
+
+    if (error) {
+        console.error("Error en crear la tasca:", error);
+        return { success: false, message: "No s'ha pogut crear la tasca." };
+    }
+
+    revalidateTag('tasks');
+    return { success: true, message: "Tasca creada amb èxit!" };
+}
+
+
+export async function updateTaskStatusAction(taskId: string, newStatus: boolean): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase } = session;
+
+    const { error } = await supabase.from('tasks').update({ is_completed: newStatus }).eq('id', taskId);
+    if (error) return { success: false, message: "No s'ha pogut actualitzar la tasca." };
+    
+    revalidateTag('tasks');
+    return { success: true, message: "Tasca actualitzada." };
+}
+
+export async function deleteTaskAction(taskId: string): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ('error' in session) return { success: false, message: session.error.message };
+    const { supabase } = session;
+
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (error) return { success: false, message: "No s'ha pogut eliminar la tasca." };
+    
+    revalidateTag('tasks');
+    return { success: true, message: "Tasca eliminada." };
 }
 
 // =================== FILE: src/app/[locale]/(app)/dashboard/dashboard-client.tsx ===================
 
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
-import { useTranslations } from 'next-intl';
-import type { DashboardInitialData, Task } from '@/types/crm'; 
-
-// Importació dels sub-components. Hauràs de crear cada un al seu propi fitxer.
-import { StatCard } from '@/components/shared/StartCard';
-import { SalesPerformance } from './_components/SalesPerformance';
-import { QuickAccess } from './_components/QuickAccess';
-import { Agenda } from './_components/Agenda';
-import { Radar } from './_components/Radar';
-import { RecentActivities } from './_components/RecentActivities';
-import AddTaskDialog from './_components/AddTaskDialog';
-import { BadgePercent, Euro, Target, Users } from 'lucide-react';
+import React from "react";
+import { useTranslations } from "next-intl";
 
 
+import { useDashboardTasks } from "./_hooks/useDashboardTasks";
 
-const MONTHLY_GOAL = 50000;
+// 🧩 Components del dashboard
+import { StatCardsGrid } from "./_components/StatCardsGrid";       // → Targetes estadístiques resum
+import { DashboardMainGrid } from "./_components/DashboardMainGrid"; // → Secció superior: vendes + activitats
+import { QuickAccess } from "./_components/QuickAccess";             // → Accions ràpides (botons, accessos)
+import { DashboardBottomGrid } from "./_components/DashboardBottomGrid"; // → Secció inferior: agenda + radar + oracle IA
+import AddTaskDialog from "./_components/AddTaskDialog";             // → Diàleg per crear noves tasques
+import { TaskDetailSheet } from "./_components/TaskDetailSheet"; // ✅ Importem el nou component
 
-export function DashboardClient({ initialData, children }: { 
-  initialData: DashboardInitialData, 
-  children: React.ReactNode 
+import type { DashboardInitialData } from "@/types/crm";
+
+// 🎯 Objectiu mensual (s'utilitza per calcular el % de progrés)
+const MONTHLY_GOAL = 50_000;
+
+export function DashboardClient({
+  initialData,
+  children,
+}: {
+  initialData: DashboardInitialData;
+  children: React.ReactNode;
 }) {
-  const t = useTranslations('DashboardClient');
-  const router = useRouter();
-  const supabase = createClient()
-;
-  
-  const [tasks, setTasks] = useState<Task[]>(initialData.tasks);
-  const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
+  // 🌍 Traduccions i navegació
+  const t = useTranslations("DashboardClient");
 
-  const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
-    const originalTasks = [...tasks];
-    setTasks(currentTasks => currentTasks.map(t => (t.id === taskId ? { ...t, is_completed: !currentStatus } : t)));
-    
-    const { error } = await supabase.from('tasks').update({ is_completed: !currentStatus }).eq('id', taskId);
-    
-    if (error) {
-      toast.error(t('toast.errorTitle'), { description: t('taskUpdateError') });
-      setTasks(originalTasks);
-    }
-  };
+  // ✅ Estat per gestionar les tasques
+  const {
+    tasks,
+    selectedTask,
+    setSelectedTask,
+    handleUpdateStatus,
+    handleDelete,
+    isPending
+  } = useDashboardTasks(initialData.tasks);
+  const pendingTasks = tasks.filter((t) => !t.is_completed);
 
-  const pendingTasks = useMemo(() => tasks.filter(t => !t.is_completed), [tasks]);
-  
-  const percentGoal = useMemo(() => {
-    if (!initialData.stats) return 0;
-    return Math.max(0, Math.min(100, Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)));
-  }, [initialData.stats]);
+  // ⚙️ Estat per al diàleg de creació de tasques
+  const [isTaskDialogOpen, setTaskDialogOpen] = React.useState(false);
+
+  // 📊 Percentatge de progrés mensual
+  const percentGoal = Math.round(
+    (initialData.stats.invoiced / MONTHLY_GOAL) * 100
+  );
 
   return (
-    <>
-      {/* Fons decoratiu de la pàgina. */}
-      <div className="absolute inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
-      
-      <div className="space-y-8">
-        {/* Secció de KPIs (Targetes d'Estadístiques) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          <StatCard href="/crm/contactes" icon={Users} title={t('totalContacts')} value={initialData.stats.totalContacts.toLocaleString()} color="bg-[#2d7ef7]" openText={t('openLink')} />
-          <StatCard href="/crm/pipeline" icon={Target} title={t('activeOpportunities')} value={initialData.stats.opportunities.toLocaleString()} color="bg-[#12a150]" openText={t('openLink')} />
-          <StatCard href="/finances/facturacio" icon={Euro} title={t('monthlyInvoicing')} value={`€${initialData.stats.invoiced.toLocaleString()}`} color="bg-[#8a3ffc]" openText={t('openLink')} />
-          <StatCard href="/finances/facturacio" icon={BadgePercent} title={t('pendingVAT')} value={`€${initialData.stats.pending.toLocaleString()}`} color="bg-[#f27917]" openText={t('openLink')} />
-        </div>
+    <div className="relative space-y-8">
+      {/* 🎨 Fons decoratiu amb patró radial (només visual) */}
+      <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
 
-        {/* Cos principal: Rendiment de Vendes i Activitats Recents */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <SalesPerformance stats={initialData.stats} percentGoal={percentGoal} monthlyGoal={MONTHLY_GOAL} />
-          <RecentActivities overdueInvoices={initialData.overdueInvoices} tasks={initialData.tasks} contacts={initialData.contacts} />
-        </div>
+      {/* 📈 Targetes estadístiques resum del mes (facturació, quotes, clients...) */}
+      <StatCardsGrid stats={initialData.stats} t={t} />
 
-        {/* Secció d'Accés Ràpid */}
-        <QuickAccess />
+      {/* 🧭 Secció superior: rendiment de vendes + activitats recents */}
+      <DashboardMainGrid
+        stats={initialData.stats}
+        percentGoal={percentGoal}
+        monthlyGoal={MONTHLY_GOAL}
+        overdueInvoices={initialData.overdueInvoices}
+        tasks={initialData.tasks}
+        contacts={initialData.contacts}
+      />
 
-        {/* Seccions finals: Agenda, Radar i Oracle d'IA */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Agenda 
-            pendingTasks={pendingTasks} 
-            onToggleTask={handleToggleTask} 
-            onOpenNewTask={() => setTaskDialogOpen(true)} 
-          />
-          <div className="space-y-6">
-            <Radar 
-              attentionContacts={initialData.attentionContacts} 
-              overdueInvoices={initialData.overdueInvoices} 
-              notifications={initialData.notifications}
+      {/* ⚡ Accions ràpides (botons d’accés a seccions clau del CRM) */}
+      <QuickAccess />
 
-            />
-            {/* El component Oracle d'IA es passa com a 'children' des del servidor per a streaming. */}
-            {children}
-          </div>
-        </div>
-      </div>
-      
+      {/* 🗓️ Secció inferior: agenda + radar + oracle IA (streaming des del servidor) */}
+      <DashboardBottomGrid
+        pendingTasks={pendingTasks}
+        onTaskClick={setSelectedTask}
+        onOpenNewTask={() => setTaskDialogOpen(true)}
+        attentionContacts={initialData.attentionContacts}
+        overdueInvoices={initialData.overdueInvoices}
+        notifications={initialData.notifications}
+      >
+        {children}
+      </DashboardBottomGrid>
+
       <AddTaskDialog
         open={isTaskDialogOpen}
         onOpenChange={setTaskDialogOpen}
         contacts={initialData.contacts}
-        onTaskCreated={() => {
-          router.refresh();
-          toast.success(t('taskCreationSuccess'));
-        }}
+        onAddTaskOptimistically={addTaskOptimistically}
+        onSyncTask={syncCreatedTask}
+        onRevertOptimisticAdd={revertOptimisticAdd}
       />
-    </>
+
+      <TaskDetailSheet
+        task={selectedTask}
+        onOpenChange={() => setSelectedTask(null)}
+        onUpdateStatus={handleUpdateStatus}
+        onDelete={handleDelete}
+        isPending={isPending}
+      />
+    </div>
+
   );
 }
 
@@ -12303,189 +12508,229 @@ export default function DashboardPage() {
 
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/AddTaskDialog.tsx ===================
 
-/**
- * @file AddTaskDialog.tsx
- * @summary Defineix el diàleg modal per crear una nova tasca.
- */
+// /_components/AddTaskDialog.tsx (CODI COMPLET I DEFINITIU)
 "use client";
 
-import React, { useState, FC } from 'react';
+import React, { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
+import { useActionState, useFormStatus } from 'react-dom';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandInput, CommandItem, CommandGroup, CommandList } from "@/components/ui/command";
-import { Check, ChevronsUpDown, ListTodo, User } from 'lucide-react';
-import { cn } from "@/lib/utils/utils";
-import { useTranslations } from 'next-intl';
+import { Loader2, ListTodo } from 'lucide-react';
+import { createTaskAction } from '../actions';
+import type { Contact } from '@/types/crm';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from '@/components/ui/textarea';
 
-type Contact = { id: string; nom: string; };
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  const t = useTranslations("DashboardClient.addTaskDialog");
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+      {pending ? t("savingButton") : t("saveButton")}
+    </Button>
+  );
+}
 
 interface AddTaskDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (isOpen: boolean) => void;
   contacts: Contact[];
   onTaskCreated: () => void;
 }
 
-const AddTaskDialog: FC<AddTaskDialogProps> = ({ open, onOpenChange, contacts, onTaskCreated }) => {
-  const t = useTranslations('DashboardClient.addTaskDialog');
-  const supabase = createClient()
-;
-  const [title, setTitle] = useState('');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [comboboxOpen, setComboboxOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+export default function AddTaskDialog({ open, onOpenChange, contacts, onTaskCreated }: AddTaskDialogProps) {
+  const t = useTranslations("DashboardClient.addTaskDialog");
+  const formRef = useRef<HTMLFormElement>(null);
 
-  /**
-   * @summary Gestor per desar la nova tasca.
-   */
-  const handleSaveTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim()) {
-      toast.error(t('toast.errorTitle'), { description: t('toast.emptyTitle') });
-      return;
+  const [state, formAction] = useActionState(createTaskAction, { success: false, message: "" });
+
+  useEffect(() => {
+    if (state.message) {
+      if (state.success) {
+        toast.success(state.message);
+        onTaskCreated();
+        onOpenChange(false);
+      } else {
+        toast.error("Error", { description: state.message });
+      }
     }
+  }, [state, onTaskCreated, onOpenChange]);
 
-    setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      toast.error(t('toast.errorTitle'), { description: t('toast.unauthenticated') });
-      setIsSaving(false);
-      return;
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      formRef.current?.reset();
     }
-    
-    const { error } = await supabase.from('tasks').insert({
-      title,
-      contact_id: selectedContact?.id || null,
-      user_id: user.id,
-    });
-    
-    setIsSaving(false);
-
-    if (error) {
-      toast.error(t('toast.saveError'), { description: error.message });
-    } else {
-      toast.success(t('toast.successTitle'), { description: t('toast.successDescription') });
-      onTaskCreated();
-      
-      // Resetejem l'estat del formulari i tanquem el diàleg.
-      setTitle('');
-      setSelectedContact(null);
-      onOpenChange(false);
-    }
+    onOpenChange(isOpen);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="text-2xl">{t('title')}</DialogTitle>
-          <DialogDescription>{t('description')}</DialogDescription>
+          <DialogTitle className="text-2xl">{t("title")}</DialogTitle>
+          <DialogDescription>{t("description")}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSaveTask} className="grid gap-6 pt-4">
+
+        <form ref={formRef} action={formAction} className="grid gap-6 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="flex items-center gap-2"><ListTodo className="w-4 h-4" />{t('taskTitleLabel')}</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('taskTitlePlaceholder')} required />
+            <Label htmlFor="title" className="flex items-center gap-2">
+              <ListTodo className="w-4 h-4" /> {t("taskTitleLabel")}
+            </Label>
+            <Input id="title" name="title" placeholder={t("taskTitlePlaceholder")} required />
           </div>
+          {/* ✅ NOU: Camp de Descripció */}
           <div className="space-y-2">
-            <Label className="flex items-center gap-2"><User className="w-4 h-4" />{t('assignContactLabel')}</Label>
-            <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
-                  {selectedContact ? selectedContact.nom : t('selectContactPlaceholder')}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                <Command>
-                  <CommandInput placeholder={t('searchContactPlaceholder')} />
-                  <CommandList>
-                    <CommandEmpty>{t('noContactFound')}</CommandEmpty>
-                    <CommandGroup>
-                      {contacts.map((contact) => (
-                        <CommandItem key={contact.id} value={contact.nom} onSelect={() => {
-                          setSelectedContact(contact);
-                          setComboboxOpen(false);
-                        }}>
-                          <Check className={cn("mr-2 h-4 w-4", selectedContact?.id === contact.id ? "opacity-100" : "opacity-0")} />
-                          {contact.nom}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <Label htmlFor="description">{t("taskDescriptionLabel")}</Label>
+            <Textarea id="description" name="description" placeholder={t("taskDescriptionPlaceholder")} />
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* ✅ NOU: Camp de Prioritat */}
+            <div className="space-y-2">
+              <Label htmlFor="priority">{t("priorityLabel")}</Label>
+              <Select name="priority" defaultValue="Mitjana">
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Baixa">{t('priority.low')}</SelectItem>
+                  <SelectItem value="Mitjana">{t('priority.medium')}</SelectItem>
+                  <SelectItem value="Alta">{t('priority.high')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* ✅ NOU: Camp de Data de Venciment */}
+            <div className="space-y-2">
+              <Label htmlFor="due_date">{t("dueDateLabel")}</Label>
+              {/* Aquest és un component de calendari bàsic, pots millorar-lo */}
+              <Input type="date" name="due_date" />
+            </div>
+          </div>
+          {/* ✅ AQUÍ IMPLEMENTEM EL SELECTOR */}
+          <div className="space-y-2">
+            <Label htmlFor="contact_id">{t("assignContactLabel")}</Label>
+            <Select name="contact_id">
+              <SelectTrigger>
+                <SelectValue placeholder={t("selectContactPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">{t("noContactFound")}</SelectItem>
+                {contacts.map(contact => (
+                  <SelectItem key={contact.id} value={contact.id.toString()}>
+                    {contact.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <DialogFooter className="pt-4">
-            <DialogClose asChild><Button type="button" variant="ghost">{t('cancelButton')}</Button></DialogClose>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? t('savingButton') : t('saveButton')}
-            </Button>
+            <DialogClose asChild><Button type="button" variant="ghost">{t("cancelButton")}</Button></DialogClose>
+            <SubmitButton />
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-};
-
-export default AddTaskDialog;
+}
 
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/Agenda.tsx ===================
 
-/**
- * @file Agenda.tsx
- * @summary Renderitza la secció d'agenda amb les tasques pendents.
- */
+// /_components/Agenda.tsx (VERSIÓ FINAL I MILLORADA)
 "use client";
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, Flag } from 'lucide-react';
 import type { Task } from '@/types/crm';
+import { cn } from '@/lib/utils/utils';
+import { format, isSameDay, isPast } from 'date-fns';
 
 interface AgendaProps {
-  pendingTasks: Task[];
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
-  onOpenNewTask: () => void;
+    pendingTasks: Task[];
+    onTaskClick: (task: Task) => void;
+    onOpenNewTask: () => void;
 }
 
-export function Agenda({ pendingTasks, onToggleTask, onOpenNewTask }: AgendaProps) {
-  const t = useTranslations('DashboardClient');
+// Funció d'ajuda per a obtenir l'estil de la data de venciment
+const getDueDateInfo = (dueDate: string | null) => {
+    if (!dueDate) return null;
+    const date = new Date(dueDate);
+    const today = new Date();
+    
+    const isOverdue = isPast(date) && !isSameDay(date, today);
 
-  return (
-    // ✅ CORRECCIÓ: Usem 'bg-card' i 'text-foreground'.
-    <div className="rounded-2xl p-6 ring-1 ring-border bg-card lg:col-span-2">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-foreground">{t('agenda')}</h2>
-        <Button variant="ghost" size="sm" onClick={onOpenNewTask}>
-          <Plus className="w-4 h-4 mr-2" /> {t('newTask')}
-        </Button>
-      </div>
-      <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-        {pendingTasks.length > 0 ? (
-          pendingTasks.map((task) => (
-            // ✅ CORRECCIÓ: Usem 'bg-muted/50' i 'hover:bg-muted'.
-            <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition">
-              <Checkbox id={`task-${task.id}`} checked={task.is_completed} onCheckedChange={() => onToggleTask(task.id, task.is_completed)} />
-              <label htmlFor={`task-${task.id}`} className={`flex-1 cursor-pointer ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                {task.title}
-              </label>
+    let colorClass = "text-muted-foreground";
+    if (isOverdue) colorClass = "text-red-500";
+    else if (isSameDay(date, today)) colorClass = "text-yellow-600";
+    
+    return {
+        formattedDate: format(date, "d MMM"), // Format curt (ex: "25 Oct")
+        className: colorClass
+    };
+};
+
+export function Agenda({ pendingTasks, onTaskClick, onOpenNewTask }: AgendaProps) {
+    const t = useTranslations('DashboardClient');
+
+    const priorityStyles = {
+        'Alta': "text-red-500",
+        'Mitjana': "text-yellow-500",
+        'Baixa': "text-blue-500",
+    };
+
+    return (
+        <div className="rounded-2xl p-6 ring-1 ring-border bg-card lg:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-foreground">{t('agenda')}</h2>
+                <Button variant="ghost" size="sm" onClick={onOpenNewTask}>
+                    <Plus className="w-4 h-4 mr-2" /> {t('newTask')}
+                </Button>
             </div>
-          ))
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-4">{t('noPendingTasks')}</p>
-        )}
-      </div>
-    </div>
-  );
+            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
+                {pendingTasks.length > 0 ? (
+                    pendingTasks.map((task) => {
+                        const dueDateInfo = getDueDateInfo(task.due_date);
+                        return (
+                            <div
+                                key={task.id}
+                                onClick={() => onTaskClick(task)}
+                                className="flex flex-col gap-2 p-3 rounded-xl bg-muted/50 hover:bg-muted transition cursor-pointer"
+                            >
+                                {/* Línia principal amb el títol */}
+                                <p className="font-medium text-foreground">{task.title}</p>
+                                
+                                {/* Línia secundària amb detalls addicionals */}
+                                <div className="flex items-center gap-4 text-xs">
+                                    {/* Prioritat */}
+                                    {task.priority && (
+                                        <div className={cn("flex items-center gap-1.5", priorityStyles[task.priority])}>
+                                            <Flag className="w-3 h-3" />
+                                            <span>{task.priority}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Data de Venciment */}
+                                    {dueDateInfo && (
+                                        <div className={cn("flex items-center gap-1.5", dueDateInfo.className)}>
+                                            <CalendarIcon className="w-3 h-3" />
+                                            <span>{dueDateInfo.formattedDate}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">{t('noPendingTasks')}</p>
+                )}
+            </div>
+        </div>
+    );
 }
 
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/AIOracle.tsx ===================
@@ -12576,6 +12821,71 @@ export function AIOracleSkeleton() {
   );
 }
 
+// =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardBottomGrid.tsx ===================
+
+"use client";
+
+import React, { memo } from "react";
+import { Agenda } from "./Agenda";
+import { Radar } from "./Radar";
+import type { Task, Contact, Invoice, Notification } from "@/types/crm";
+
+/**
+ * @file DashboardBottomGrid.tsx
+ * @description Renderitza la secció inferior del dashboard: Agenda, Radar i Oracle d’IA.
+ */
+
+interface DashboardBottomGridProps {
+  pendingTasks: Task[];
+  onTaskClick: (task: Task) => void; // <-- La nova prop
+  onOpenNewTask: () => void;
+  attentionContacts: Contact[];
+  overdueInvoices: Invoice[];
+  notifications: Notification[];
+  children: React.ReactNode; // Oracle d'IA injectat via streaming
+}
+
+/**
+ * ✅ Component memoitzat per millorar rendiment.
+ * Manté la coherència del layout inferior i suporta streaming dinàmic.
+ */
+export const DashboardBottomGrid = memo(
+  ({
+    pendingTasks,
+    onTaskClick, // ✅ 2. Rebem la nova prop
+    onOpenNewTask,
+    attentionContacts,
+    overdueInvoices,
+    notifications,
+    children,
+  }: DashboardBottomGridProps) => {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 🗓️ Agenda de tasques */}
+        <Agenda
+          pendingTasks={pendingTasks}
+          onTaskClick={onTaskClick} // ✅ 3. Passem la prop correcta a l'Agenda
+          onOpenNewTask={onOpenNewTask}
+        />
+
+        {/* 🎯 Radar + Oracle IA */}
+        <div className="space-y-6">
+          <Radar
+            attentionContacts={attentionContacts}
+            overdueInvoices={overdueInvoices}
+            notifications={notifications}
+          />
+          {/* 🧠 Oracle d’IA (streaming des del servidor) */}
+          {children}
+        </div>
+      </div>
+    );
+  }
+);
+
+DashboardBottomGrid.displayName = "DashboardBottomGrid";
+
+
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardData.tsx ===================
 
 import { createClient } from '@/lib/supabase/server';
@@ -12602,21 +12912,28 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         // Esta redirección es correcta, por si un usuario no autenticado intenta acceder
         return redirect(`/${locale}/login`);
     }
-    
-    
+
+
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
     // ✅ Les consultes ara són segures. La RLS filtrarà 'tasks', 'invoices', i 'contacts'.
     // La funció RPC 'get_dashboard_stats' ara també filtra internament.
     const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes] = await Promise.all([
-        supabase.rpc('get_dashboard_stats'), 
-        supabase.from('tasks').select('*').order('is_completed, created_at'),
-        supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
+        supabase.rpc('get_dashboard_stats'),
+        // ✅ AFEGIM L'ETIQUETA 'tasks' A LA CONSULTA
+        supabase.from('tasks')
+            .select('*, contacts(id, nom)')
+            .order('is_completed, created_at')
+            .then(response => ({
+                ...response,
+                // Adjuntem una etiqueta personalitzada a la resposta
+                next: { tags: ['tasks'] }
+            })), supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
         supabase.from('contacts').select('*').order('created_at', { ascending: false }),
         supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
     ]);
-    
-    
+
+
     const statsData = statsRes.data?.[0] || {};
     const contactsData = (contactsRes.data as Contact[]) || [];
     const transformedOverdueInvoices = ((overdueInvoicesRes.data as Invoice[]) || []).map(invoice => ({
@@ -12652,6 +12969,65 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         </DashboardClient>
     );
 }
+
+
+// =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardMainGrid.tsx ===================
+
+"use client";
+
+import React, { memo } from "react";
+import type { DashboardInitialData } from "@/types/crm";
+import { SalesPerformance } from "./SalesPerformance";
+import { RecentActivities } from "./RecentActivities";
+
+/**
+ * @file DashboardMainGrid.tsx
+ * @description Conté el bloc principal del dashboard: rendiment de vendes + activitats recents.
+ */
+
+interface DashboardMainGridProps {
+  stats: DashboardInitialData["stats"];
+  percentGoal: number;
+  monthlyGoal: number;
+  overdueInvoices: DashboardInitialData["overdueInvoices"];
+  tasks: DashboardInitialData["tasks"];
+  contacts: DashboardInitialData["contacts"];
+}
+
+/**
+ * ✅ Component memoitzat per optimitzar rendiment.
+ * Manté el layout consistent i responsive.
+ */
+export const DashboardMainGrid = memo(
+  ({
+    stats,
+    percentGoal,
+    monthlyGoal,
+    overdueInvoices,
+    tasks,
+    contacts,
+  }: DashboardMainGridProps) => {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* 🧭 Rendiment de vendes */}
+        <SalesPerformance
+          stats={stats}
+          percentGoal={percentGoal}
+          monthlyGoal={monthlyGoal}
+        />
+
+        {/* 🕒 Activitats recents */}
+        <RecentActivities
+          overdueInvoices={overdueInvoices}
+          tasks={tasks}
+          contacts={contacts}
+        />
+      </div>
+    );
+  }
+);
+
+DashboardMainGrid.displayName = "DashboardMainGrid";
 
 
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardSkeleton.tsx ===================
@@ -13011,6 +13387,291 @@ export function SalesPerformance({ stats, percentGoal, monthlyGoal }: SalesPerfo
   );
 }
 
+// =================== FILE: src/app/[locale]/(app)/dashboard/_components/StatCardsGrid.tsx ===================
+
+// /dashboard/_components/StatCardsGrid.tsx (CODI COMPLET)
+"use client";
+
+import React, { memo } from "react";
+import { useTranslations } from "next-intl";
+import { StatCard } from "@/components/shared/StatCard"; // Assegura't que la ruta a StatCard sigui correcta
+import { Users, Target, Euro, BadgePercent } from "lucide-react";
+import type { DashboardInitialData } from "@/types/crm";
+
+interface StatCardsGridProps {
+    stats: DashboardInitialData["stats"];
+}
+
+export const StatCardsGrid = memo(({ stats }: StatCardsGridProps) => {
+    const t = useTranslations("DashboardClient");
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            <StatCard
+                href="/crm/contactes"
+                icon={Users}
+                title={t("totalContacts")}
+                value={stats.totalContacts.toLocaleString()}
+                color="bg-[#2d7ef7]"
+                openText={t("openLink")}
+            />
+            <StatCard
+                href="/crm/pipeline"
+                icon={Target}
+                title={t("activeOpportunities")}
+                value={stats.opportunities.toLocaleString()}
+                color="bg-[#12a150]"
+                openText={t("openLink")}
+            />
+            <StatCard
+                href="/finances/facturacio"
+                icon={Euro}
+                title={t("monthlyInvoicing")}
+                value={`€${stats.invoiced.toLocaleString()}`}
+                color="bg-[#8a3ffc]"
+                openText={t("openLink")}
+            />
+            <StatCard
+                href="/finances/facturacio"
+                icon={BadgePercent}
+                title={t("pendingVAT")}
+                value={`€${stats.pending.toLocaleString()}`}
+                color="bg-[#f27917]"
+                openText={t("openLink")}
+            />
+        </div>
+    );
+});
+
+StatCardsGrid.displayName = "StatCardsGrid";
+
+// =================== FILE: src/app/[locale]/(app)/dashboard/_components/TaskDetailSheet.tsx ===================
+
+// /_components/TaskDetailSheet.tsx (VERSIÓ FINAL I MILLORADA)
+"use client";
+
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useTranslations } from "next-intl";
+import Link from 'next/link';
+import type { Task } from "@/types/crm";
+import { Check, Trash2, Loader2, User, Calendar as CalendarIcon, Signal } from "lucide-react";
+import { format, isSameDay, isPast } from 'date-fns';
+
+interface TaskDetailSheetProps {
+    task: Task | null;
+    onOpenChange: (isOpen: boolean) => void;
+    onUpdateStatus: (taskId: string, newStatus: boolean) => void;
+    onDelete: (taskId: string) => void;
+    isPending: boolean;
+}
+
+// Funció d'ajuda per a formatar i donar color a la data de venciment
+const formatDueDate = (dueDate: string | null) => {
+    if (!dueDate) return null;
+    const date = new Date(dueDate);
+    const today = new Date();
+    
+    // Compara les dates sense tenir en compte l'hora
+    const isOverdue = isPast(date) && !isSameDay(date, today);
+
+    let colorClass = "text-muted-foreground";
+    if (isOverdue) colorClass = "text-red-500 font-semibold";
+    else if (isSameDay(date, today)) colorClass = "text-yellow-600 font-semibold";
+
+    return {
+        formattedDate: format(date, "d 'de' MMMM 'de' yyyy"),
+        className: colorClass
+    };
+};
+
+export function TaskDetailSheet({ task, onOpenChange, onUpdateStatus, onDelete, isPending }: TaskDetailSheetProps) {
+    const t = useTranslations("DashboardClient");
+    const isOpen = !!task;
+
+    if (!task) return null;
+
+    const priorityStyles = {
+        'Alta': "bg-red-100 text-red-800 border-red-200",
+        'Mitjana': "bg-yellow-100 text-yellow-800 border-yellow-200",
+        'Baixa': "bg-blue-100 text-blue-800 border-blue-200",
+    };
+    
+    const dueDateInfo = formatDueDate(task.due_date);
+
+    return (
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+            <SheetContent className="flex flex-col">
+                <SheetHeader className="flex-shrink-0">
+                    <SheetTitle className="text-2xl">{task.title}</SheetTitle>
+                    <SheetDescription>
+                        {t('taskDetails.createdOn')} {new Date(task.created_at).toLocaleDateString()}
+                    </SheetDescription>
+                </SheetHeader>
+                
+                {/* Contingut principal amb scroll */}
+                <div className="flex-1 overflow-y-auto py-6 space-y-6">
+                    {/* Secció de Detalls Principals */}
+                    <div className="space-y-4">
+                        {task.priority && (
+                            <div className="flex items-center gap-3">
+                                <Signal className="w-5 h-5 text-muted-foreground" />
+                                <Badge variant="outline" className={`font-semibold ${priorityStyles[task.priority]}`}>{task.priority}</Badge>
+                            </div>
+                        )}
+                        {dueDateInfo && (
+                            <div className={`flex items-center gap-3 text-sm ${dueDateInfo.className}`}>
+                                <CalendarIcon className="w-5 h-5" />
+                                <span>{dueDateInfo.formattedDate}</span>
+                            </div>
+                        )}
+                        {task.contacts && (
+                            <div className="flex items-center gap-3 text-sm">
+                                <User className="w-5 h-5 text-muted-foreground" />
+                                <span className="text-muted-foreground">{t('taskDetails.assignedTo')}</span>
+                                <Link href={`/crm/contactes/${task.contacts.id}`} className="font-medium text-primary hover:underline">
+                                    {task.contacts.nom}
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Secció de Descripció */}
+                    {task.description && (
+                        <div>
+                            <h4 className="font-semibold text-base mb-2">{t('taskDescriptionLabel')}</h4>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+                                {task.description}
+                            </p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer Fix */}
+                <SheetFooter className="mt-auto flex-shrink-0">
+                    <div className="flex w-full flex-col sm:flex-row sm:justify-end gap-2">
+                        <Button variant="destructive" onClick={() => onDelete(task.id)} disabled={isPending}>
+                            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                            <span className="ml-2 sm:hidden md:inline">{t('taskDetails.deleteButton')}</span>
+                        </Button>
+                        <Button onClick={() => onUpdateStatus(task.id, !task.is_completed)} disabled={isPending}>
+                            {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            <span className="ml-2 sm:hidden md:inline">
+                                {task.is_completed ? t('taskDetails.markAsPendingButton') : t('taskDetails.markAsCompletedButton')}
+                            </span>
+                        </Button>
+                    </div>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/dashboard/_hooks/useAddTask.ts ===================
+
+// /_hooks/useAddTask.ts (VERSIÓ REFACTORITZADA)
+import { useState, useCallback } from "react";
+import { toast } from "sonner";
+import { useTranslations } from "next-intl";
+import { v4 as uuidv4 } from 'uuid'; // Necessitem generar un ID temporal
+import type { Contact, Task } from '@/types/crm';
+
+// ✅ El hook ara rep la funció per a afegir la tasca
+interface UseAddTaskProps {
+    // 5. El hook espera rebre 'onTaskCreated'.
+    onTaskCreated: (newTask: Task) => void;}
+
+export function useAddTask({ onTaskCreated }: UseAddTaskProps) {
+    const t = useTranslations("DashboardClient.addTaskDialog");
+    const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+
+    const addTask = useCallback(
+        async (title: string, userId: string) => {
+            if (!title.trim()) {
+                toast.error(t("toast.errorTitle"), { description: t("toast.emptyTitle") });
+                return;
+            }
+
+            // ✅ Creem un objecte de tasca complet al client
+            const newTask: Task = {
+                id: uuidv4(), // ID temporal per a l'actualització optimista
+                created_at: new Date().toISOString(),
+                title,
+                contact_id: selectedContact?.id || null,
+                user_id: userId,
+                is_completed: false,
+            };
+            console.log("1. [useAddTask] S'ha creat l'objecte newTask:", newTask);
+
+            // ✅ Cridem al callback del pare amb la nova tasca
+            onTaskCreated(newTask);
+        },
+        [selectedContact, onTaskCreated, t]
+    );
+
+    return { addTask, selectedContact, setSelectedContact };
+}
+
+// =================== FILE: src/app/[locale]/(app)/dashboard/_hooks/useDashboardTasks.ts ===================
+
+// /_hooks/useDashboardTasks.ts (CODI COMPLET I DEFINITIU)
+"use client";
+
+import { useCallback, useTransition, useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import type { Task } from '@/types/crm';
+import { useTranslations } from 'next-intl';
+import { updateTaskStatusAction, deleteTaskAction } from '../actions';
+
+export function useDashboardTasks(initialTasks: Task[]) {
+    const t = useTranslations('DashboardClient');
+    const [tasks, setTasks] = useState(initialTasks);
+    const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+    const [isPending, startTransition] = useTransition();
+
+    useEffect(() => {
+        setTasks(initialTasks);
+    }, [initialTasks]);
+
+    const handleUpdateStatus = useCallback((taskId: string, newStatus: boolean) => {
+        const previousTasks = [...tasks];
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, is_completed: newStatus } : t));
+        setSelectedTask(null);
+
+        startTransition(async () => {
+            const result = await updateTaskStatusAction(taskId, newStatus);
+            if (!result.success) {
+                toast.error(t('toast.errorTitle'), { description: result.message });
+                setTasks(previousTasks);
+            }
+        });
+    }, [tasks, t]);
+
+    const handleDelete = useCallback((taskId: string) => {
+        const previousTasks = [...tasks];
+        setTasks(prev => prev.filter(t => t.id !== taskId));
+        setSelectedTask(null);
+
+        startTransition(async () => {
+            const result = await deleteTaskAction(taskId);
+            if (!result.success) {
+                toast.error(t('toast.errorTitle'), { description: result.message });
+                setTasks(previousTasks);
+            }
+        });
+    }, [tasks, t]);
+
+    return { 
+        tasks, 
+        selectedTask, 
+        setSelectedTask,
+        handleUpdateStatus, 
+        handleDelete, 
+        isPending 
+    };
+}
+
 // =================== FILE: src/app/[locale]/(app)/finances/despeses/actions.ts ===================
 
 /**
@@ -13030,8 +13691,8 @@ import { type Expense, type ExpenseItem } from "../types";
 
 // Definim un tipus de resultat genèric per a les nostres accions.
 interface ActionResult<T = unknown> {
-  data: T | null;
-  error: { message: string } | null;
+    data: T | null;
+    error: { message: string } | null;
 }
 
 
@@ -13042,17 +13703,17 @@ interface ActionResult<T = unknown> {
  * @returns {Promise<ActionResult<Record<string, unknown>>>} Les dades extretes del document o un error.
  */
 export async function processOcrAction(
-  formData: FormData
+    formData: FormData
 ): Promise<ActionResult<Record<string, unknown>>> {
-  const supabase = createClient(cookies())
-;
-// Deleguem tota la lògica complexa de l'OCR a una Edge Function.
-  const { data, error } = await supabase.functions.invoke("process-ocr", {
-    body: formData,
-  });
+    const supabase = createClient(cookies())
+        ;
+    // Deleguem tota la lògica complexa de l'OCR a una Edge Function.
+    const { data, error } = await supabase.functions.invoke("process-ocr", {
+        body: formData,
+    });
 
-  if (error) return { data: null, error: { message: error.message } };
-  return { data, error: null };
+    if (error) return { data: null, error: { message: error.message } };
+    return { data, error: null };
 }
 
 
@@ -13061,27 +13722,44 @@ interface ActionResult<T = unknown> {
     error: { message: string } | null;
 }
 
+
 export async function saveExpenseAction(
-    expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "suppliers" | "expense_attachments">,
+    expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "suppliers" | "expense_attachments"> & { expense_items: ExpenseItem[] },
     expenseId: string | null
 ): Promise<ActionResult<Expense>> {
+    console.log('Objecte rebut al servidor:', expenseData);
+
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: null, error: { message: "Not authenticated" } };
 
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
     const activeTeamId = user.app_metadata?.active_team_id;
     if (!activeTeamId) {
         return { data: null, error: { message: "No active team selected" } };
     }
-    // ---------------------------------
 
+    // Separem els conceptes de la resta de detalls de la despesa
     const { expense_items, ...expenseDetails } = expenseData;
+
+    // ✅ PAS CLAU: Assegurem el format de la data abans d'enviar-la a la BBDD
+    if (expenseDetails.expense_date) {
+        // Convertim la data ISO string a 'AAAA-MM-DD'
+        try {
+            expenseDetails.expense_date = new Date(expenseDetails.expense_date)
+                .toISOString()
+                .split('T')[0];
+        } catch (e) {
+            // Imprimim l'error real al terminal del servidor
+            console.error("Error al formatar la data de la despesa:", e);
+            return { data: null, error: { message: "Format de data invàlid." } };
+        }
+    }
     let savedExpense: Expense | null = null;
     let expenseError: { message: string } | null = null;
 
+    // Pas 1: Desar la despesa principal (crear o actualitzar)
     if (expenseId) {
-        // La política RLS verificarà que tenim permís per actualitzar aquesta despesa.
+        // Actualitzem la despesa existent
         const { data, error } = await supabase
             .from("expenses")
             .update(expenseDetails)
@@ -13091,7 +13769,7 @@ export async function saveExpenseAction(
         savedExpense = data as Expense | null;
         if (error) expenseError = { message: error.message };
     } else {
-        // ✅ Afegim 'team_id' i 'user_id' en crear una nova despesa.
+        // Creem una nova despesa
         const { data, error } = await supabase
             .from("expenses")
             .insert({ ...expenseDetails, user_id: user.id, team_id: activeTeamId })
@@ -13104,18 +13782,52 @@ export async function saveExpenseAction(
     if (expenseError) return { data: null, error: expenseError };
     if (!savedExpense) return { data: null, error: { message: "Could not save expense" } };
 
+    // Pas 2: Gestionar els conceptes (`expense_items`) amb la nova lògica
     if (expense_items) {
-        await supabase.from("expense_items").delete().eq("expense_id", savedExpense.id);
+        // Obtenim els IDs dels conceptes que arriben del formulari (només els que ja existien)
+        const itemIdsFromForm = expense_items.map(item => item.id).filter(Boolean);
 
-        const itemsToInsert = expense_items.map((item: ExpenseItem) => ({
-            ...item,
+        // Esborrem els conceptes que estiguin a la BBDD però no al formulari
+        // (l'usuari els ha eliminat)
+        if (itemIdsFromForm.length > 0) {
+            const { error: deleteError } = await supabase
+                .from('expense_items')
+                .delete()
+                .eq('expense_id', savedExpense.id)
+                .not('id', 'in', `(${itemIdsFromForm.join(',')})`);
+
+            if (deleteError) return { data: null, error: { message: `Error deleting old items: ${deleteError.message}` } };
+        } else if (expenseId) {
+            // Si és una actualització i no arriba cap concepte amb ID, els esborrem tots
+            const { error: deleteAllError } = await supabase
+                .from('expense_items')
+                .delete()
+                .eq('expense_id', savedExpense.id);
+
+            if (deleteAllError) return { data: null, error: { message: `Error deleting all items: ${deleteAllError.message}` } };
+        }
+
+        // Preparem els conceptes per a l'operació `upsert`
+        const itemsToUpsert = expense_items.map((item: ExpenseItem) => ({
+            id: item.id, // L'ID és clau per a l'upsert. Serà null/undefined per a conceptes nous.
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: (item.quantity || 0) * (item.unit_price || 0),
             expense_id: savedExpense!.id,
             user_id: user.id,
-            team_id: activeTeamId // ✅ Afegim 'team_id' també als ítems
+            team_id: activeTeamId
         }));
 
-        const { error: itemsError } = await supabase.from("expense_items").insert(itemsToInsert);
-        if (itemsError) return { data: null, error: { message: itemsError.message } };
+        // Fem upsert: actualitza els existents i insereix els nous
+        if (itemsToUpsert.length > 0) {
+            const { error: upsertError } = await supabase.from("expense_items").upsert(itemsToUpsert);
+            if (upsertError) return { data: null, error: { message: `Error upserting items: ${upsertError.message}` } };
+        }
+
+    } else if (expenseId) {
+        // Si és una actualització i no rebem `expense_items`, vol dir que s'han esborrat tots
+        await supabase.from("expense_items").delete().eq("expense_id", savedExpense.id);
     }
 
     revalidatePath("/finances/despeses");
@@ -13131,7 +13843,7 @@ export async function uploadAttachmentAction(
     const supabase = createClient(cookies());
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { data: null, error: { message: "Not authenticated" } };
-    
+
     // --- NOVA LÒGICA D'EQUIP ACTIU ---
     const activeTeamId = user.app_metadata?.active_team_id;
     if (!activeTeamId) {
@@ -13166,6 +13878,41 @@ export async function uploadAttachmentAction(
     return { data: null, error: null };
 }
 
+
+// =================== FILE: src/app/[locale]/(app)/finances/despeses/error.tsx ===================
+
+"use client"; // Els fitxers d'error han de ser components de client.
+
+import { Button } from '@/components/ui/button';
+import { useEffect } from 'react';
+
+export default function ExpensesError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    // Pots registrar l'error en un servei extern com Sentry
+    console.error(error);
+  }, [error]);
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-center">
+      <h2 className="text-2xl font-bold mb-4">Alguna cosa ha anat malament!</h2>
+      <p className="mb-6">{error.message}</p>
+      <Button
+        onClick={
+          // Intenta recuperar-se tornant a renderitzar el segment
+          () => reset()
+        }
+      >
+        Torna a intentar-ho
+      </Button>
+    </div>
+  );
+}
 
 // =================== FILE: src/app/[locale]/(app)/finances/despeses/page.tsx ===================
 
@@ -13549,7 +14296,20 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
          */
     const handleSave = () => {
         startSaveTransition(async () => {
-            const { error } = await saveExpenseAction(currentExpense, initialData?.id || null);
+
+            // ✅ AQUEST ÉS EL NOU CODI, A PROVA DE LINTERS ESTRICTES
+            // 1. Creem una còpia completa de l'objecte de l'estat.
+            const dataToSend = { ...currentExpense };
+
+            // 2. Esborrem manualment les propietats que no existeixen a la taula 'expenses'.
+            delete dataToSend.expense_attachments;
+            delete dataToSend.suppliers;
+
+            console.log("Enviant aquest objecte DEFINITIVAMENT NET al servidor:", dataToSend);
+
+            // Passem només les dades netes a l'acció.
+            const { error } = await saveExpenseAction(dataToSend, initialData?.id || null);
+
             if (error) {
                 toast.error(t('saveErrorTitle'), { description: error.message });
             } else {
@@ -13632,17 +14392,20 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                             <div className="border rounded-lg overflow-hidden">
                                 <Table>
                                     <TableHeader>
-                                        {/* ✅ Estructura correcta: una sola fila para la cabecera */}
+                                        {/* ASSEGURA'T QUE NO HI HA ESPAIS NI SALTS DE LÍNIA AQUÍ FORA */}
                                         <TableRow>
+                                            {/* NI AQUÍ DINS, ENTRE EL TABLE ROW I EL PRIMER TABLE HEAD */}
                                             <TableHead className='w-2/4'>{t('itemDescription')}</TableHead>
                                             <TableHead>{t('itemQuantity')}</TableHead>
                                             <TableHead>{t('itemUnitPrice')}</TableHead>
                                             <TableHead className="text-right">{t('itemTotal')}</TableHead>
-                                            <TableHead className="w-[50px]"></TableHead> {/* Espacio para el botón */}
+                                            <TableHead className="w-[50px]">{/* Cel·la per al botó */}</TableHead>
                                         </TableRow>
+                                        {/* NI AQUÍ */}
                                     </TableHeader>
                                     <TableBody>
                                         {(currentExpense.expense_items || []).map((item, index) => (
+                                            // LA MATEIXA REGLA S'APLICA AQUÍ
                                             <TableRow key={index}>
                                                 <TableCell>
                                                     <Input
@@ -13841,7 +14604,7 @@ export const ExpenseTable: FC<ExpenseTableProps> = ({ expenses, onViewDetails })
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useOptimistic} from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -13860,12 +14623,29 @@ interface ExpensesClientProps {
 export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesClientProps) {
   const t = useTranslations('Expenses');
 
+
+  // NOU: L'estat optimista.
+  // 'state' és el valor base (les despeses del servidor).
+  // 'action' és la nova despesa que afegim "optimísticament".
+  const [optimisticExpenses] = useOptimistic<Expense[], Expense>(
+    initialExpenses,
+    (state, newExpense) => {
+      // Aquesta funció defineix com canvia l'estat.
+      // Si la despesa ja existeix, la reemplacem. Si no, l'afegim al principi.
+      const existingIndex = state.findIndex(e => e.id === newExpense.id);
+      if (existingIndex !== -1) {
+        state[existingIndex] = newExpense;
+        return [...state];
+      }
+      return [newExpense, ...state];
+    }
+  );
   // Gestió de l'estat del component.
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false); // Controla la visibilitat del diàleg de creació/edició.
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false); // Controla la visibilitat del calaix de detalls.
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null); // Emmagatzema la despesa seleccionada.
   const supabase = createClient()
-;
+    ;
 
   /**
    * @summary Gestor per obrir el diàleg per crear una nova despesa.
@@ -13898,6 +14678,17 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
     setSelectedExpense(expense);
     setIsFormDialogOpen(true);
   };
+  // ✅ NOU: AFEGEIX AQUESTA FUNCIÓ
+  // Aquesta funció s'executarà quan el diàleg ens notifiqui que ha desat amb èxit.
+  const handleSaveSuccess = () => {
+    setIsFormDialogOpen(false); // Simplement tanquem el diàleg
+    // La taula s'actualitzarà sola gràcies a 'revalidatePath' de la Server Action
+  };
+  /**
+    * NOU: Funció que s'executa quan el diàleg de formulari desa les dades.
+    * Aquesta funció serà passada com a prop a `ExpenseDialog`.
+    */
+  
 
   return (
     <>
@@ -13911,7 +14702,7 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
         </div>
 
         {/* La taula de despeses rep les dades inicials i una funció per gestionar el clic en una fila. */}
-        <ExpenseTable expenses={initialExpenses} onViewDetails={handleViewDetails} />
+        <ExpenseTable expenses={optimisticExpenses} onViewDetails={handleViewDetails} />
       </motion.div>
 
       {/* Els components de diàleg i calaix es mantenen fora del flux principal per a un millor rendiment
@@ -13928,6 +14719,8 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
         setIsOpen={setIsFormDialogOpen}
         initialData={selectedExpense}
         suppliers={initialSuppliers}
+        onSaveSuccess={handleSaveSuccess} // <-- Passem la nova funció
+
       />
     </>
   );
@@ -13965,9 +14758,12 @@ export async function ExpensesData() {
         supabase.from('expenses').select('*, suppliers(nom), expense_attachments(id)').order('expense_date', { ascending: false }),
         supabase.from('suppliers').select('id, nom').order('nom')
     ]);
-
+    // CANVI: En lloc d'un console.error, llancem un error de veritat.
     if (expensesRes.error || suppliersRes.error) {
-        console.error("Error al carregar les dades de despeses:", expensesRes.error || suppliersRes.error);
+        const error = expensesRes.error || suppliersRes.error;
+        console.error("Error en carregar les dades de despeses:", error);
+        // Això aturarà el renderitzat i farà que Next.js busqui el fitxer error.tsx més proper.
+        throw new Error("No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
     }
 
     return <ExpensesClient initialExpenses={expensesRes.data || []} initialSuppliers={suppliersRes.data || []} />;
@@ -22625,7 +23421,7 @@ export const EmptyState: FC<{ message: string }> = ({ message }) => (
     <p className="text-center text-muted-foreground py-8">{message}</p>
 );
 
-// =================== FILE: src/components/shared/StartCard.tsx ===================
+// =================== FILE: src/components/shared/StatCard.tsx ===================
 
 "use client";
 import Link from 'next/link';
@@ -25702,7 +26498,53 @@ export async function getTeamMembersWithProfiles(
     }
 
     // La dada ja ve formatada com la necessites
-    return data;
+    return { data, error: null }; // Retornem un objecte consistent
+}
+
+// =================== FILE: src/lib/utils/formatters.ts ===================
+
+import { ca, es, enUS } from "date-fns/locale";
+import { format } from "date-fns";
+
+/**
+ * Obté l'objecte de 'locale' de date-fns basat en l'string del locale actual (ex: 'ca', 'es').
+ */
+export const getDateLocale = (locale: string) => {
+    switch (locale) {
+        case 'es': return es;
+        case 'en': return enUS;
+        default: return ca;
+    }
+};
+
+/**
+ * Formata una data en una cadena de text localitzada.
+ * @param date La data a formatar (pot ser string, Date, o null).
+ * @param formatString El format desitjat (ex: "PPP", "dd MMM, yyyy").
+ * @param currentLocale El locale actual ('ca', 'es', 'en').
+ * @returns La data formatada o un guió si la data és nul·la.
+ */
+export function formatLocalizedDate(
+    date: string | Date | null | undefined,
+    formatString: string,
+    currentLocale: string
+): string {
+    if (!date) return '-';
+    const locale = getDateLocale(currentLocale);
+    return format(new Date(date), formatString, { locale });
+}
+
+/**
+ * Formata un número com a moneda en Euros.
+ * @param amount El número a formatar.
+ * @returns La quantitat formatada (ex: "1.234,56 €").
+ */
+export function formatCurrency(amount: number | null | undefined): string {
+    const num = amount || 0;
+    return new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'EUR',
+    }).format(num);
 }
 
 // =================== FILE: src/lib/utils/media.ts ===================
@@ -26190,6 +27032,19 @@ export type Task = {
   is_completed: boolean;
   contact_id: string | null;
   user_id: string;
+  is_completed: boolean;
+  contacts: { id: string; nom: string; } | null;
+
+  // ✅ NOU CAMP: Pot ser un objecte Contact o null si no hi ha cap contacte associat.
+  contacts: {
+    id: string;
+    nom: string;
+  } | null;
+
+  // ✅ NOUS CAMPS AFEGITS
+  description: string | null;
+  due_date: string | null; // El tipus 'date' de SQL es representa com a string (YYYY-MM-DD)
+  priority: 'Baixa' | 'Mitjana' | 'Alta' | null;
 };
 export type CompanyProfile = CompanyProfileObject | null;
 
@@ -26476,7 +27331,39 @@ export type Supplier = {
 
 export * from './despeses';
 export * from './factures';
+export * from './scheams';
 
+// =================== FILE: src/types/finances/scheams.ts ===================
+
+import { z } from 'zod';
+
+// Definim aquí els esquemes, que seran la nostra font de veritat
+
+export const expenseItemSchema = z.object({
+  description: z.string().min(1, "La descripció de l'ítem és necessària."),
+  quantity: z.number().min(0),
+  unit_price: z.number().min(0),
+  total: z.number().min(0),
+});
+
+export const expenseSchema = z.object({
+  description: z.string().min(3, "La descripció ha de tenir almenys 3 caràcters."),
+  total_amount: z.number().positive("L'import total ha de ser un número positiu."),
+  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "El format de la data ha de ser AAAA-MM-DD."),
+  supplier_id: z.string().uuid("L'ID del proveïdor no és vàlid.").optional().nullable(),
+  category: z.string().optional().nullable(),
+  invoice_number: z.string().optional().nullable(),
+  tax_amount: z.number().min(0).optional().nullable(),
+  subtotal: z.number().min(0).optional().nullable(),
+  discount_amount: z.number().min(0).optional().nullable(),
+  notes: z.string().optional().nullable(),
+  tax_rate: z.number().min(0).optional().nullable(),
+  extra_data: z.any().optional().nullable(),
+  expense_items: z.array(expenseItemSchema).optional(),
+});
+
+// Definim el tipus de TypeScript a partir de l'esquema per poder-lo reutilitzar
+export type ExpenseFormData = z.infer<typeof expenseSchema>;
 
 // =================== FILE: src/types/network/network.ts ===================
 
