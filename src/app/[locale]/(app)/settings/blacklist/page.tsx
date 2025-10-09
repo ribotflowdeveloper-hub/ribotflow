@@ -1,28 +1,45 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
+
+import { validatePageSession } from '@/lib/supabase/session';
+import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+
 import { BlacklistData } from './_components/BlacklistData';
 import { BlacklistSkeleton } from './_components/BlacklistSkeleton';
+import { AccessDenied } from '@/components/shared/AccessDenied';
 
-export const metadata: Metadata = {
-  title: 'Filtre Inbox (Blacklist) | Ribot',
-};
+export const dynamic = 'force-dynamic';
 
-// Mantenim el tipus aquí per a que els components fills l'importin fàcilment.
-export type Rule = {
-  id: string;
-  value: string;
-  rule_type: 'email' | 'domain';
-  created_at: string; // Afegim camps que puguin faltar
-  user_id: string;
-};
+// ✅ REFACTORITZACIÓ: Metadades dinàmiques per a la internacionalització.
+export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
+  const t = await getTranslations({ locale, namespace: 'SettingsPage.blacklist' });
+  return { title: `${t('metaTitle')} | Ribot` };
+}
 
 /**
- * @summary La pàgina principal de la Blacklist, que ara actua com a orquestradora de Suspense.
+ * Pàgina de la Blacklist.
+ * Valida la sessió i els permisos de l'usuari abans de renderitzar el contingut.
  */
-export default function BlacklistPage() {
+export default async function BlacklistPage() {
+  const { supabase, user, activeTeamId } = await validatePageSession();
+
+  const { data: member } = await supabase
+    .from('team_members')
+    .select('role')
+    .match({ user_id: user.id, team_id: activeTeamId })
+    .single();
+
+  // ✅ REFACTORITZACIÓ: Comprovació de permís per a VEURE la pàgina.
+  if (!hasPermission(member?.role, PERMISSIONS.VIEW_BLACKLIST)) {
+    return <AccessDenied message="No tens permisos per a veure aquesta secció." />;
+  }
+
   return (
-    <Suspense fallback={<BlacklistSkeleton />}>
-      <BlacklistData />
-    </Suspense>
+    <div className="space-y-6">
+      <Suspense fallback={<BlacklistSkeleton />}>
+        <BlacklistData currentUserRole={member?.role || null} />
+      </Suspense>
+    </div>
   );
 }

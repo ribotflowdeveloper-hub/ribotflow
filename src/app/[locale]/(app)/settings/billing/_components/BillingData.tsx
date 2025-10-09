@@ -4,9 +4,13 @@ import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import type { Subscription, Plan } from '@/types/settings';
-import { plansStructure } from '@/config/billing';
 
-
+const plansStructure = [
+    { id: 'free', name: 'Free', iconName: 'Gift', priceMonthly: 0, priceYearly: 0, colors: { border: "border-muted", text: "text-muted-foreground", bg: "bg-muted", hoverBg: "hover:bg-muted/80" } },
+    { id: 'plus', name: 'Plus', iconName: 'Star', priceMonthly: 29, priceYearly: 290, isPopular: true, colors: { border: "border-primary", text: "text-primary", bg: "bg-primary", hoverBg: "hover:bg-primary/90" } },
+    { id: 'premium', name: 'Premium', iconName: 'Gem', priceMonthly: 79, priceYearly: 790, colors: { border: "border-teal-500", text: "text-teal-500", bg: "bg-teal-500", hoverBg: "hover:bg-teal-500/90" } },
+    { id: 'custom', name: 'Personalitzat', iconName: 'Settings', priceMonthly: null, priceYearly: null, colors: { border: "border-foreground", text: "text-foreground", bg: "bg-foreground", hoverBg: "hover:bg-foreground/90" } },
+];
 
 export async function BillingData() {
     const t = await getTranslations('SettingsPage.billing');
