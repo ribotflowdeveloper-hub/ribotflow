@@ -3,14 +3,27 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import type { QuoteItem } from '@/types/crm';
+import { z } from 'zod';
+
+// Esquema de validació per a l'acceptació
+const AcceptQuoteSchema = z.string().uuid("L'identificador del pressupost és invàlid.");
+
+// Esquema de validació per al rebuig
+const RejectQuoteSchema = z.object({
+    secureId: z.string().uuid("L'identificador del pressupost és invàlid."),
+    reason: z.string().min(10, "El motiu del rebuig ha de tenir almenys 10 caràcters.").max(500, "El motiu és massa llarg."),
+});
+
 /**
  * Gestiona l'acceptació d'un pressupost, actualitza l'oportunitat associada
  * i crea un esborrany de factura amb tots els seus conceptes.
  */
 export async function acceptQuoteAction(secureId: string) {
-    if (!secureId) {
-        return { success: false, message: "ID de pressupost invàlid." };
+    const validation = AcceptQuoteSchema.safeParse(secureId);
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
     }
+
     const supabaseAdmin = createAdminClient();
 
     try {
@@ -52,7 +65,7 @@ export async function acceptQuoteAction(secureId: string) {
             })
             .select('id')
             .single();
-        
+
         if (invoiceError) throw new Error(`Error en crear la factura: ${invoiceError.message}`);
 
         // PAS 4: Copiem els conceptes del pressupost a la nova factura.
@@ -73,7 +86,7 @@ export async function acceptQuoteAction(secureId: string) {
                     team_id: quote.team_id,
                 };
             });
-            
+
             await supabaseAdmin.from('invoice_items').insert(newInvoiceItems).throwOnError();
         }
 
@@ -92,7 +105,11 @@ export async function acceptQuoteAction(secureId: string) {
  * Gestiona el rebuig d'un pressupost de manera segura al servidor.
  */
 export async function rejectQuoteAction(secureId: string, reason: string) {
-    if (!reason) return { success: false, message: "El motiu del rebuig és obligatori." };
+    const validation = RejectQuoteSchema.safeParse({ secureId, reason });
+    if (!validation.success) {
+        return { success: false, message: validation.error.issues[0].message };
+    }
+
     const supabaseAdmin = createAdminClient();
 
     try {
@@ -108,7 +125,7 @@ export async function rejectQuoteAction(secureId: string, reason: string) {
         if (quote.opportunity_id) {
             await supabaseAdmin.from('opportunities').update({ stage_name: 'Negociació' }).eq('id', quote.opportunity_id);
         }
-        
+
         await supabaseAdmin.from('activities').insert({
             user_id: quote.user_id,
             team_id: quote.team_id,
