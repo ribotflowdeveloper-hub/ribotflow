@@ -1,6 +1,6 @@
 // /app/[locale]/login/page.tsx
 
-import LoginForm from './_components/LoginForm';
+import LoginForm from './_components/LoginClient';
 import { Suspense } from 'react';
 
 // This Server Component is now very simple.

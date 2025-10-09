@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import {
     Loader2, User, Building, Phone, Briefcase, ArrowRight, ArrowLeft, Globe, FileText,
     MapPin, Home, Mailbox, Landmark
-} from 'lucide-react'; import type { DetailedAddress } from '@/types/DetailedAddress';
+} from 'lucide-react'; import type { DetailedAddress } from '@/types/shared/address';
 import { useTranslations } from 'next-intl';
 import { AddressSearch } from '@/app/[locale]/_components/AddressSearch';
 import { submitOnboardingAction } from '../actions';
