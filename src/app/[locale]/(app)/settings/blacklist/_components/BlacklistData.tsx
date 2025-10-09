@@ -1,42 +1,42 @@
-// /app/[locale]/settings/blacklist/_components/BlacklistData.tsx
-
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { BlacklistClient } from './BlacklistClient';
-import type { Rule } from '../page';
+import { validatePageSession } from '@/lib/supabase/session';
+import type { BlacklistRule } from '@/types/settings';
 
-export async function BlacklistData() {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        redirect('/login');
-    }
+interface BlacklistDataProps {
+  currentUserRole: string | null;
+}
 
-    // --- LÒGICA D'EQUIP ACTIU ---
-    // Aquesta és la nostra manera estàndard i segura de saber per a quin equip
-    // hem de carregar les dades, evitant problemes de memòria cau.
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        redirect('/settings/team');
-    }
-    const claims = JSON.parse(claimsString);
-    if (!claims.app_metadata?.active_team_id) {
-        redirect('/settings/team');
-    }
-    // ----------------------------
+/**
+ * Aquest Server Component obté les dades de la blacklist i les passa
+ * al Client Component que gestionarà la interactivitat.
+ */
+export async function BlacklistData({ currentUserRole }: BlacklistDataProps) {
+  const t = await getTranslations('SettingsPage.blacklist');
+  
+  // ✅ REFACTORITZACIÓ: Utilitzem el nostre helper per simplificar la validació.
+  const { supabase } = await validatePageSession();
 
-    // ✅ La consulta ara és més simple. No té cap filtre manual.
-    // La política RLS que crearem s'encarregarà de filtrar les regles
-    // que pertanyen a l'equip actiu de l'usuari.
-    const { data: rules, error } = await supabase
-        .from('blacklist_rules')
-        .select('*')
-        .order('created_at', { ascending: false });
+  // La consulta és simple perquè la seguretat (filtrar per equip actiu)
+  // es delega a les Polítiques de Row Level Security (RLS) de Supabase.
+  const { data: rules, error } = await supabase
+    .from('blacklist_rules')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error("Error en carregar les regles de la blacklist (pot ser RLS):", error);
-    }
+  if (error) {
+    console.error("Error en carregar les regles de la blacklist:", error.message);
+    // Podríem mostrar un missatge d'error aquí si fos necessari.
+  }
 
-    return <BlacklistClient initialRules={(rules as Rule[]) || []} />;
+  return (
+    <div>
+       <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>
+       <p className="text-muted-foreground mb-8">{t('pageDescription')}</p>
+       <BlacklistClient 
+          initialRules={(rules as BlacklistRule[]) || []} 
+          currentUserRole={currentUserRole}
+       />
+    </div>
+  );
 }

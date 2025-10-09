@@ -1,7 +1,7 @@
 // @/app/[locale]/(app)/crm/pipeline/page.tsx (Client component part, refactored)
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // ✅ Importem useState i useEffect
 import { motion } from 'framer-motion';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { useTranslations } from 'next-intl';
@@ -23,6 +23,15 @@ interface PipelineClientProps {
 export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
     const t = useTranslations('PipelinePage');
     
+    // ✅ PAS 1: L'estat ara viu aquí, al component pare. Aquesta és la nostra única font de la veritat.
+    const [opportunities, setOpportunities] = useState(initialOpportunities);
+
+    // ✅ PAS 2: Aquest useEffect s'encarrega de sincronitzar l'estat amb noves dades del servidor (després d'un router.refresh()).
+    useEffect(() => {
+        setOpportunities(initialOpportunities);
+    }, [initialOpportunities]);
+    
+    // ✅ PAS 3: Passem l'estat i la funció set al hook.
     const {
         isPending,
         opportunitiesByStage,
@@ -34,7 +43,11 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
         onDragEnd,
         handleOpenDialog,
         handleSuccess,
-    } = usePipeline(initialOpportunities, initialStages);
+    } = usePipeline({
+        initialStages,
+        opportunities,
+        setOpportunities
+    });
 
     return (
         <>

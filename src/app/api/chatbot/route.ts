@@ -1,4 +1,4 @@
-import { chatbotAction } from './actions';
+import { chatbotAction } from '../../actions/chatbotActions';
 
 export async function POST(req: Request) {
   try {

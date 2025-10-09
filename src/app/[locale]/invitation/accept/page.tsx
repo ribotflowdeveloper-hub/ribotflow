@@ -3,7 +3,6 @@
 import { Suspense } from 'react';
 import { InvitedSignupForm } from './_components/InvitedSignupForm';
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 
 // Assegura que els paràmetres de cerca estiguin sempre disponibles
 export const dynamic = 'force-dynamic';
@@ -24,7 +23,7 @@ export default async function InvitedSignupPage({ searchParams }: InvitedSignupP
     // Encara podem intentar obtenir el nom de l'equip per a una millor experiència d'usuari.
     // Aquesta consulta es fa des del servidor i pot utilitzar RLS si està ben configurada.
     if (invite_token) {
-        const supabase = createClient(cookies());
+        const supabase = createClient();
         const { data: invitationData } = await supabase
             .from('invitations')
             .select('team_name')

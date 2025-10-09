@@ -18,13 +18,38 @@ import { useTranslations } from 'next-intl';
  * - El número de pressupost.
  * - Les dates d'emissió i venciment.
  */
-export const QuoteMeta = ({ quote, setQuote, contacts }: {
-    quote: Quote;
-    setQuote: React.Dispatch<React.SetStateAction<Quote>>;
+
+// ✅ PAS 2.1: Definim les noves props. Més específiques i sense 'setQuote'.
+interface QuoteMetaProps {
+    contact_id: string | null;
+    quote_number: string | null;
+    issue_date: string;
+    expiry_date: string | null;
+    // La definició de la funció ara també és genèrica.
+    onMetaChange: <K extends keyof Quote>(field: K, value: Quote[K]) => void;
     contacts: Contact[];
-}) => {
-    const selectedContact = contacts.find(c => c.id === quote.contact_id);
+}
+export const QuoteMeta = ({
+    contact_id,
+    quote_number,
+    issue_date,
+    expiry_date,
+    onMetaChange,
+    contacts
+}: QuoteMetaProps) => {
+
+    // ✅ CORRECCIÓ 1: Utilitza la prop 'contact_id' directament, no 'quote.contact_id'
+    const selectedContact = contacts.find(c => c.id === contact_id);
     const t = useTranslations('QuoteEditor.meta');
+
+    // Funció per convertir la data per a l'input de tipus 'date'
+    const formatDateForInput = (dateString: string) => {
+        try {
+            return new Date(dateString).toISOString().split('T')[0];
+        } catch {
+            return '';
+        }
+    };
 
     return (
         <div className="glass-card p-2">
@@ -45,8 +70,9 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
                                     <CommandEmpty>{t('noClientFound')}</CommandEmpty>
                                     <CommandGroup>
                                         {contacts.map(c => (
-                                            <CommandItem key={c.id} value={`${c.nom} ${c.empresa}`} onSelect={() => setQuote(q => ({ ...q, contact_id: c.id, opportunity_id: null }))}>
-                                                <Check className={cn("mr-2 h-4 w-4", quote.contact_id === c.id ? "opacity-100" : "opacity-0")} />
+                                            // ✅ PAS 2.2: Utilitzem el nou callback 'onMetaChange'
+                                            <CommandItem key={c.id} value={`${c.nom} ${c.empresa}`} onSelect={() => onMetaChange('contact_id', c.id)}>
+                                                <Check className={cn("mr-2 h-4 w-4", contact_id === c.id ? "opacity-100" : "opacity-0")} />
                                                 {c.nom} <span className="text-xs text-muted-foreground ml-2">{c.empresa}</span>
                                             </CommandItem>
                                         ))}
@@ -56,17 +82,40 @@ export const QuoteMeta = ({ quote, setQuote, contacts }: {
                         </PopoverContent>
                     </Popover>
                 </div>
-                <div>
-                    <Label>{t('quoteNumberLabel')}</Label>
-                    <Input value={quote.quote_number || ''} onChange={(e) => setQuote(q => ({ ...q, quote_number: e.target.value }))} className="mt-1" />
+                {/* Número de Pressupost */}
+                <div className="flex flex-col">
+                    <Label htmlFor="quote_number" className="mb-1">{t('quoteNumberLabel')}</Label>
+                    {/* ✅ CORRECCIÓ: Utilitza onMetaChange */}
+                    <Input
+                        id="quote_number"
+                        type="text" // ✅ CORRECCIÓ
+                        value={quote_number || ''}
+                        onChange={(e) => onMetaChange('quote_number', e.target.value)}
+                    />
                 </div>
-                <div>
-                    <Label>{t('issueDateLabel')}</Label>
-                    <Input type="date" value={quote.issue_date} onChange={(e) => setQuote(q => ({ ...q, issue_date: e.target.value }))} className="mt-1" />
+
+                {/* Data d'Emissió */}
+                <div className="flex flex-col">
+                    <Label htmlFor="issue_date" className="mb-1">{t('issueDateLabel')}</Label>
+                    {/* ✅ CORRECCIÓ: Utilitza onMetaChange */}
+                    <Input
+                        id="issue_date"
+                        type="date"
+                        value={formatDateForInput(issue_date)}
+                        onChange={(e) => onMetaChange('issue_date', e.target.value)}
+                    />
                 </div>
-                <div>
-                    <Label>{t('expiryDateLabel')}</Label>
-                    <Input type="date" value={quote.expiry_date || ''} onChange={(e) => setQuote(q => ({ ...q, expiry_date: e.target.value }))} className="mt-1" />
+
+                {/* Data de Venciment */}
+                <div className="flex flex-col">
+                    <Label htmlFor="expiry_date" className="mb-1">{t('expiryDateLabel')}</Label>
+                    {/* ✅ CORRECCIÓ: Utilitza onMetaChange */}
+                    <Input
+                        id="expiry_date"
+                        type="date"
+                        value={expiry_date ? formatDateForInput(expiry_date) : ''}
+                        onChange={(e) => onMetaChange('expiry_date', e.target.value)}
+                    />
                 </div>
             </div>
         </div>

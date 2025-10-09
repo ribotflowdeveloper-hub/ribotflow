@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { validateUserSession } from '@/lib/supabase/session'; // Importem la nova funció
 
 /**
  * Subscriu l'equip actiu de l'usuari a un nou pla.
@@ -13,12 +14,12 @@ import { revalidatePath } from "next/cache";
  * Subscriu l'equip actiu de l'usuari a un nou pla.
  */
 export async function subscribeToPlanAction(planId: string) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autenticat." };
-
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) return { success: false, message: "No hi ha cap equip actiu seleccionat." };
+    // ✅ 2. Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase, user, activeTeamId } = session;
 
     try {
         await supabase
@@ -51,12 +52,12 @@ export async function subscribeToPlanAction(planId: string) {
  * Cancel·la la subscripció de l'equip actiu.
  */
 export async function cancelSubscriptionAction() {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autenticat." };
-
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) return { success: false, message: "No hi ha cap equip actiu seleccionat." };
+    // ✅ 2. Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase, user, activeTeamId } = session;
 
     // Per a cancel·lar, necessitem permisos d'administrador de l'equip.
     // Ho gestionarem amb una comprovació de rol.

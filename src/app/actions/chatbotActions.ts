@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 
 interface DocumentMatch {
   id: number;
@@ -17,7 +16,7 @@ export async function chatbotAction(question: string): Promise<{ data: string | 
 
   try {
     // 🔹 1. Recuperem documents similars de Supabase
-    const supabase = createClient(cookies());
+    const supabase = createClient();
 
     const { data: matches, error: dbError } = await supabase.rpc("match_documents", {
       query_embedding: await embedQuestion(question),

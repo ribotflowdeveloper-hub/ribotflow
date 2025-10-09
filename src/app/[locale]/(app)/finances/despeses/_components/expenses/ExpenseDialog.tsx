@@ -168,7 +168,20 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
          */
     const handleSave = () => {
         startSaveTransition(async () => {
-            const { error } = await saveExpenseAction(currentExpense, initialData?.id || null);
+
+            // ✅ AQUEST ÉS EL NOU CODI, A PROVA DE LINTERS ESTRICTES
+            // 1. Creem una còpia completa de l'objecte de l'estat.
+            const dataToSend = { ...currentExpense };
+
+            // 2. Esborrem manualment les propietats que no existeixen a la taula 'expenses'.
+            delete dataToSend.expense_attachments;
+            delete dataToSend.suppliers;
+
+            console.log("Enviant aquest objecte DEFINITIVAMENT NET al servidor:", dataToSend);
+
+            // Passem només les dades netes a l'acció.
+            const { error } = await saveExpenseAction(dataToSend, initialData?.id || null);
+
             if (error) {
                 toast.error(t('saveErrorTitle'), { description: error.message });
             } else {
@@ -251,17 +264,20 @@ export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initi
                             <div className="border rounded-lg overflow-hidden">
                                 <Table>
                                     <TableHeader>
-                                        {/* ✅ Estructura correcta: una sola fila para la cabecera */}
+                                        {/* ASSEGURA'T QUE NO HI HA ESPAIS NI SALTS DE LÍNIA AQUÍ FORA */}
                                         <TableRow>
+                                            {/* NI AQUÍ DINS, ENTRE EL TABLE ROW I EL PRIMER TABLE HEAD */}
                                             <TableHead className='w-2/4'>{t('itemDescription')}</TableHead>
                                             <TableHead>{t('itemQuantity')}</TableHead>
                                             <TableHead>{t('itemUnitPrice')}</TableHead>
                                             <TableHead className="text-right">{t('itemTotal')}</TableHead>
-                                            <TableHead className="w-[50px]"></TableHead> {/* Espacio para el botón */}
+                                            <TableHead className="w-[50px]">{/* Cel·la per al botó */}</TableHead>
                                         </TableRow>
+                                        {/* NI AQUÍ */}
                                     </TableHeader>
                                     <TableBody>
                                         {(currentExpense.expense_items || []).map((item, index) => (
+                                            // LA MATEIXA REGLA S'APLICA AQUÍ
                                             <TableRow key={index}>
                                                 <TableCell>
                                                     <Input

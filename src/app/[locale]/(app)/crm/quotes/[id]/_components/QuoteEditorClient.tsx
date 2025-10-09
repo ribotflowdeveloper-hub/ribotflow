@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from 'react';
@@ -11,10 +10,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { Quote, Contact, Product, Opportunity } from '@/types/crm';
 import type { TeamData } from '@/types/settings';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Importem Card
-import { Switch } from "@/components/ui/switch"; // ✅ CORRECCIÓ: Faltava aquesta importació
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from "@/components/ui/switch";
 
-// Importem el nostre hook personalitzat, que ara conté tota la lògica
+// Importem el hook que conté TOTA la lògica
 import { useQuoteEditor } from '../_hooks/useQuoteEditor';
 
 // Importem els sub-components de presentació
@@ -31,33 +30,35 @@ interface QuoteEditorClientProps {
     companyProfile: TeamData | null;
     initialOpportunities: Opportunity[];
     userId: string;
+    locale: string;
 }
 
 export function QuoteEditorClient(props: QuoteEditorClientProps) {
     const router = useRouter();
 
-    // Tota la lògica complexa (estats, handlers, càlculs) ara ve d'aquest hook.
     const {
-        quote, setQuote,
-        currentTeamData, setCurrentTeamData,
-        contactOpportunities,
-        isDeleteDialogOpen, setIsDeleteDialogOpen,
-        isProfileDialogOpen, setIsProfileDialogOpen,
-        isSaving, isSending, sendingStatus,
+        state,
+        quote,
+        onQuoteChange,
+        onItemsChange,
+        setCurrentTeamData,
+        setIsDeleteDialogOpen,
+        setIsProfileDialogOpen,
         subtotal, discountAmount, tax, total,
-        handleSave, handleDelete, handleSend, handleAddNewItem,
-        t, locale
+        handleSave, handleDelete, handleSend,
+        isSaving, isSending,
+        t
     } = useQuoteEditor(props);
 
     return (
         <>
             <CompanyProfileDialog
-                open={isProfileDialogOpen}
+                open={state.isProfileDialogOpen}
                 onOpenChange={setIsProfileDialogOpen}
-                profile={currentTeamData}
+                profile={state.currentTeamData}
                 onProfileUpdate={setCurrentTeamData}
             />
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialog open={state.isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>{t('quoteEditor.deleteDialogTitle')}</AlertDialogTitle>
@@ -65,11 +66,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isSaving}>Cancel·lar</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleDelete} // <-- Aquesta és la connexió correcta
-                            className="bg-destructive hover:bg-destructive/90"
-                            disabled={isSaving}
-                        >
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90" disabled={isSaving}>
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             Confirmar Eliminació
                         </AlertDialogAction>
@@ -92,7 +89,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             </Button>
                         }
                         <Button onClick={handleSave} disabled={isSaving || isSending}>
-                            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                            {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             {quote.id === 'new' ? t('quoteEditor.createButton') : t('quoteEditor.saveButton')}
                         </Button>
                         {quote.id !== 'new' && (
@@ -100,9 +97,9 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 {isSending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {sendingStatus === 'generating' && t('quoteEditor.generatingPDF')}
-                                        {sendingStatus === 'uploading' && t('quoteEditor.uploadingFile')}
-                                        {sendingStatus === 'sending' && t('quoteEditor.sending')}
+                                        {state.sendingStatus === 'generating' && t('quoteEditor.generatingPDF')}
+                                        {state.sendingStatus === 'uploading' && t('quoteEditor.uploadingFile')}
+                                        {state.sendingStatus === 'sending' && t('quoteEditor.sending')}
                                     </>
                                 ) : (
                                     <>
@@ -117,7 +114,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
 
                 {quote.sent_at && (
                     <div className="mb-4 p-2 text-center bg-green-100 text-green-800 rounded-md text-sm">
-                        {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
+                        {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(props.locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
                     </div>
                 )}
 
@@ -125,26 +122,32 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                     <section className="flex flex-col gap-4 overflow-y-auto pr-4">
                         <div className="glass-card p-4">
                             <QuoteMeta
-                                quote={quote}
-                                setQuote={setQuote}
+                                contact_id={quote.contact_id}
+                                quote_number={quote.quote_number}
+                                issue_date={quote.issue_date}
+                                expiry_date={quote.expiry_date ?? null}
+                                onMetaChange={onQuoteChange}
                                 contacts={props.contacts}
                             />
                         </div>
 
                         <div className="glass-card p-4">
                             <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
-                            {contactOpportunities.length > 0 ? (
+                            {state.contactOpportunities.length > 0 ? (
                                 <Select
-                                    value={quote.opportunity_id || ''}
-                                    onValueChange={(value) => setQuote(q => ({ ...q, opportunity_id: value || null }))}
+                                    value={quote.opportunity_id ? String(quote.opportunity_id) : ''}
+                                    onValueChange={(value) => onQuoteChange('opportunity_id', value ? Number(value) : null)}
                                     disabled={!quote.contact_id}
                                 >
-                                    <SelectTrigger className="mt-2 w-full">
-                                        <SelectValue placeholder={t('quoteEditor.noOpportunityAssociated')} />
+                                    <SelectTrigger
+                                        className="w-full text-foreground" // ✅ AFEGEIX "text-foreground" AQUÍ
+                                    >
+                                        <SelectValue placeholder="Selecciona una oportunitat" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {contactOpportunities.map(o => (
-                                            <SelectItem key={o.id} value={o.id}>
+                                        {state.contactOpportunities.map(o => (
+                                            // ✅ CORRECCIÓ CLAU: Convertim l'ID a string aquí
+                                            <SelectItem key={o.id} value={String(o.id)}>
                                                 {o.name} ({o.stage_name})
                                             </SelectItem>
                                         ))}
@@ -157,59 +160,53 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
 
                         <div className="glass-card p-2">
                             <QuoteItems
-                                items={quote.items}
-                                setItems={(newItems) => setQuote(q => ({ ...q, items: newItems }))}
+                                items={quote.items || []}
+                                onItemsChange={onItemsChange}
                                 products={props.products}
-                                onAddNewItem={handleAddNewItem}
                                 userId={props.userId}
                             />
                             <QuoteTotals
                                 subtotal={subtotal}
                                 discount={quote.discount}
-                                setDiscount={(d) => setQuote(q => ({ ...q, discount: d }))}
+                                setDiscount={(d) => onQuoteChange('discount', d)}
                                 discountAmount={discountAmount}
                                 tax={tax}
                                 total={total}
-                                // ✅ Connectem el nou camp d'IVA
                                 tax_percent={quote.tax_percent}
-                                setTaxPercent={(p) => setQuote(q => ({ ...q, tax_percent: p }))}
+                                setTaxPercent={(p) => onQuoteChange('tax_percent', p)}
                             />
                         </div>
-                        {/* ✅ CORRECCIÓ 1: L'interruptor ara va aquí, a sobre de les notes */}
+
                         <Card>
-                            <CardHeader>
-                                <CardTitle>{t('options.title')}</CardTitle>
-                            </CardHeader>
+                            <CardHeader><CardTitle>{t('options.title')}</CardTitle></CardHeader>
                             <CardContent>
                                 <div className="flex items-center space-x-2">
                                     <Switch
                                         id="show-quantity"
                                         checked={quote.show_quantity ?? true}
-                                        onCheckedChange={(checked) => setQuote(q => ({ ...q, show_quantity: checked }))}
+                                        onCheckedChange={(checked) => onQuoteChange('show_quantity', checked)}
                                     />
                                     <Label htmlFor="show-quantity">{t('options.showQuantitiesLabel')}</Label>
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-2">{t('options.showQuantitiesDescription')}</p>
                             </CardContent>
                         </Card>
+
                         <div className="glass-card p-4">
                             <Label>Notes Addicionals</Label>
                             <Textarea
                                 value={quote.notes ?? ''}
-                                onChange={(e) => setQuote(q => ({ ...q, notes: e.target.value }))}
-                                className="mt-2 mt-2 min-h-[220px]"
+                                onChange={(e) => onQuoteChange('notes', e.target.value)}
+                                className="mt-2 min-h-[220px]"
                             />
                         </div>
-          
                     </section>
 
-
-                    {/* ✅ TORNEM A L'ESTRUCTURA SIMPLE: Un sol 'aside' amb scroll */}
                     <aside id="quote-preview-for-pdf-wrapper" className="hidden lg:block glass-card p-4 overflow-y-auto">
                         <QuotePreview
                             quote={quote}
                             contacts={props.contacts}
-                            companyProfile={currentTeamData}
+                            companyProfile={state.currentTeamData}
                             subtotal={subtotal}
                             discountAmount={discountAmount}
                             tax={tax}

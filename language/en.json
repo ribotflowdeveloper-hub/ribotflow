@@ -723,7 +723,7 @@
     "monthlyInvoicing": "Monthly Invoicing",
     "pendingVAT": "Pending VAT",
     "salesPerformance": "Sales Performance",
-    "goalCompleted": "% Completed",
+    "goalCompleted": "% completed",
     "invoicedMonth": "Invoiced (month)",
     "expensesMonth": "Expenses (month)",
     "netProfit": "Net Profit (est.)",
@@ -752,16 +752,16 @@
     "taskCreated": "Task created: {taskTitle}",
     "newContact": "New contact: {contactName}",
     "coolingContact": "Cooling contact: {contactName}",
-    "noInteraction7Days": "No interactions in 7+ days",
+    "noInteraction7Days": "No interactions in +7 days",
     "taskCreatedToast": "Task created!",
     "taskUpdateErrorToast": "Could not update the task.",
     "actionRequired": "Action required",
     "publishedSuccess": "Published successfully",
     "addTaskDialog": {
       "title": "Create New Task",
-      "description": "Add a new task to your daily routine. You can assign it to a contact if you wish.",
+      "description": "Add a new task to your day. You can assign it to a contact if you wish.",
       "taskTitleLabel": "Task Title",
-      "taskTitlePlaceholder": "E.g.: Follow up...",
+      "taskTitlePlaceholder": "E.g. Follow up...",
       "assignContactLabel": "Assign to Contact (Optional)",
       "selectContactPlaceholder": "Select a contact...",
       "searchContactPlaceholder": "Search contact...",
@@ -772,10 +772,13 @@
       "toast": {
         "errorTitle": "Error",
         "unauthenticated": "User not authenticated.",
-        "emptyTitle": "The task title cannot be empty.",
-        "saveError": "Error saving the task",
+        "emptyTitle": "Task title cannot be empty.",
+        "saveError": "Error saving the task.",
         "successTitle": "Success!",
-        "successDescription": "The task has been created successfully."
+        "successDescription": "The task was created successfully.",
+        "taskCreatedToast": "Task created!",
+        "taskUpdateErrorToast": "Could not update the task.",
+        "taskCreationError": "Could not create the task."
       }
     },
     "aiOracle": {
@@ -783,10 +786,18 @@
       "summary": "Summary",
       "suggestion": "Suggestion",
       "button": "Talk to the assistant",
-      "noSummary": "The summary could not be loaded.",
-      "noSuggestion": "Please try again later.",
+      "noSummary": "Could not load summary.",
+      "noSuggestion": "Try again later.",
       "errorTitle": "Error",
       "loadError": "Could not contact the AI Oracle."
+    },
+    "taskDetails": {
+      "title": "Task Details",
+      "createdOn": "Created on",
+      "assignedTo": "Assigned to:",
+      "deleteButton": "Delete",
+      "markAsPendingButton": "Mark as pending",
+      "markAsCompletedButton": "Mark as completed"
     }
   },
   "Expenses": {

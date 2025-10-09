@@ -1,65 +1,73 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
+import { validateUserSession } from "@/lib/supabase/session";
+import { hasPermission, PERMISSIONS } from "@/lib/permissions";
 
+/**
+ * Afegeix una nova regla a la blacklist per a l'equip actiu.
+ */
 export async function addRuleAction(formData: FormData) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { success: false, message: "Usuari no autenticat." };
-    }
+  const session = await validateUserSession();
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
-    }
-    // ---------------------------------
+  // ✅ REFACTORITZACIÓ: Comprovació de permisos. Només usuaris autoritzats poden afegir regles.
+  const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
+  if (!hasPermission(member?.role, PERMISSIONS.MANAGE_BLACKLIST)) {
+    return { success: false, message: "No tens permisos per a gestionar la llista negra." };
+  }
 
-    const newRule = formData.get('newRule') as string;
-    if (!newRule || !newRule.trim()) {
-        return { success: false, message: "La regla no pot estar buida." };
-    }
+  const newRule = formData.get('newRule') as string;
+  if (!newRule || !newRule.trim()) {
+    return { success: false, message: "La regla no pot estar buida." };
+  }
 
-    const value = newRule.trim().toLowerCase();
-    const rule_type = value.includes('@') ? 'email' : 'domain';
+  const value = newRule.trim().toLowerCase();
+  const rule_type = value.includes('@') ? 'email' : 'domain';
 
-    // ✅ La nova regla ara s'associa amb el 'team_id' i el 'user_id' de qui la crea.
-    const { error } = await supabase.from('blacklist_rules').insert({ 
-        user_id: user.id, 
-        team_id: activeTeamId,
-        value, 
-        rule_type 
-    });
+  const { error } = await supabase.from('blacklist_rules').insert({
+    user_id: user.id,
+    team_id: activeTeamId,
+    value,
+    rule_type
+  });
 
-    if (error) {
-        console.error('Error afegint regla:', error);
-        return { success: false, message: "No s'ha pogut afegir la regla. Potser ja existeix." };
-    }
+  if (error) {
+    console.error('Error afegint regla de blacklist:', error);
+    return { success: false, message: "No s'ha pogut afegir la regla. Potser ja existeix." };
+  }
 
-    revalidatePath('/settings/blacklist');
-    return { success: true, message: "Regla afegida correctament." };
+  revalidatePath('/settings/blacklist');
+  return { success: true, message: "Regla afegida correctament." };
 }
 
+/**
+ * Elimina una regla de la blacklist.
+ */
 export async function deleteRuleAction(id: string) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { success: false, message: "Usuari no autenticat." };
-    }
-    
-    // ✅ La consulta ara és més simple i segura.
-    // La política RLS impedirà que un usuari esborri una regla que no pertany al seu equip actiu.
-    // Ja no cal fer la comprovació manual amb '.match({ ..., user_id: user.id })'.
-    const { error } = await supabase.from('blacklist_rules').delete().eq('id', id);
+  const session = await validateUserSession();
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
-    if (error) {
-        console.error('Error eliminant regla:', error);
-        return { success: false, message: "No s'ha pogut eliminar la regla." };
-    }
-    
-    revalidatePath('/settings/blacklist');
-    return { success: true, message: "Regla eliminada." };
+  // ✅ REFACTORITZACIÓ: Comprovació de permisos abans d'intentar l'eliminació.
+  const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
+  if (!hasPermission(member?.role, PERMISSIONS.MANAGE_BLACKLIST)) {
+    return { success: false, message: "No tens permisos per a gestionar la llista negra." };
+  }
+
+  // La política RLS a la base de dades s'encarregarà de la seguretat a nivell de fila.
+  const { error } = await supabase.from('blacklist_rules').delete().eq('id', id);
+
+  if (error) {
+    console.error('Error eliminant regla de blacklist:', error);
+    return { success: false, message: "No s'ha pogut eliminar la regla." };
+  }
+
+  revalidatePath('/settings/blacklist');
+  return { success: true, message: "Regla eliminada correctament." };
 }

@@ -7,8 +7,6 @@ import { QuotesData } from './_components/QuotesData';
 import { QuotesSkeleton } from './_components/QuotesSkeleton';
 import type { Quote } from '@/types/crm';
 
-// ✅ AQUESTA LÍNIA ÉS CRÍTICA: Assegura que la pàgina mai es guardi a la memòria cau.
-export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
     title: 'Pressupostos | Ribot',

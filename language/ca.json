@@ -770,13 +770,25 @@
       "cancelButton": "Cancel·lar",
       "saveButton": "Desar Tasca",
       "savingButton": "Desant...",
+      "taskDescriptionLabel": "Descripció",
+      "taskDescriptionPlaceholder": "Afegeix més detalls sobre la tasca...",
+      "priorityLabel": "Prioritat",
+      "priority": {
+        "low": "Baixa",
+        "medium": "Mitjana",
+        "high": "Alta"
+      },
+      "dueDateLabel": "Data de venciment",
       "toast": {
         "errorTitle": "Error",
         "unauthenticated": "Usuari no autenticat.",
         "emptyTitle": "El títol de la tasca no pot estar buit.",
         "saveError": "Error en desar la tasca",
         "successTitle": "Èxit!",
-        "successDescription": "La tasca s'ha creat correctament."
+        "successDescription": "La tasca s'ha creat correctament.",
+        "taskCreatedToast": "Tasca creada!",
+        "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca.",
+        "taskCreationError": "No s'ha pogut crear la tasca."
       }
     },
     "aiOracle": {
@@ -788,6 +800,14 @@
       "noSuggestion": "Intenta-ho de nou més tard.",
       "errorTitle": "Error",
       "loadError": "No s'ha pogut contactar amb l'Oracle d'IA."
+    },
+    "taskDetails": {
+      "title": "Detalls de la Tasca",
+      "createdOn": "Creada el",
+      "assignedTo": "Assignada a:",
+      "deleteButton": "Eliminar",
+      "markAsPendingButton": "Marcar com a pendent",
+      "markAsCompletedButton": "Marcar com a completada"
     }
   },
   "Expenses": {

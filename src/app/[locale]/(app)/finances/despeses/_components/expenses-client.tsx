@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useOptimistic} from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -26,12 +26,29 @@ interface ExpensesClientProps {
 export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesClientProps) {
   const t = useTranslations('Expenses');
 
+
+  // NOU: L'estat optimista.
+  // 'state' és el valor base (les despeses del servidor).
+  // 'action' és la nova despesa que afegim "optimísticament".
+  const [optimisticExpenses] = useOptimistic<Expense[], Expense>(
+    initialExpenses,
+    (state, newExpense) => {
+      // Aquesta funció defineix com canvia l'estat.
+      // Si la despesa ja existeix, la reemplacem. Si no, l'afegim al principi.
+      const existingIndex = state.findIndex(e => e.id === newExpense.id);
+      if (existingIndex !== -1) {
+        state[existingIndex] = newExpense;
+        return [...state];
+      }
+      return [newExpense, ...state];
+    }
+  );
   // Gestió de l'estat del component.
   const [isFormDialogOpen, setIsFormDialogOpen] = useState(false); // Controla la visibilitat del diàleg de creació/edició.
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false); // Controla la visibilitat del calaix de detalls.
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null); // Emmagatzema la despesa seleccionada.
   const supabase = createClient()
-;
+    ;
 
   /**
    * @summary Gestor per obrir el diàleg per crear una nova despesa.
@@ -64,6 +81,17 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
     setSelectedExpense(expense);
     setIsFormDialogOpen(true);
   };
+  // ✅ NOU: AFEGEIX AQUESTA FUNCIÓ
+  // Aquesta funció s'executarà quan el diàleg ens notifiqui que ha desat amb èxit.
+  const handleSaveSuccess = () => {
+    setIsFormDialogOpen(false); // Simplement tanquem el diàleg
+    // La taula s'actualitzarà sola gràcies a 'revalidatePath' de la Server Action
+  };
+  /**
+    * NOU: Funció que s'executa quan el diàleg de formulari desa les dades.
+    * Aquesta funció serà passada com a prop a `ExpenseDialog`.
+    */
+  
 
   return (
     <>
@@ -77,7 +105,7 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
         </div>
 
         {/* La taula de despeses rep les dades inicials i una funció per gestionar el clic en una fila. */}
-        <ExpenseTable expenses={initialExpenses} onViewDetails={handleViewDetails} />
+        <ExpenseTable expenses={optimisticExpenses} onViewDetails={handleViewDetails} />
       </motion.div>
 
       {/* Els components de diàleg i calaix es mantenen fora del flux principal per a un millor rendiment
@@ -94,6 +122,8 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
         setIsOpen={setIsFormDialogOpen}
         initialData={selectedExpense}
         suppliers={initialSuppliers}
+        onSaveSuccess={handleSaveSuccess} // <-- Passem la nova funció
+
       />
     </>
   );

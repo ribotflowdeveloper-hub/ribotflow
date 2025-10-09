@@ -74,7 +74,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
         }
 
         startSaveTransition(async () => {
-            // ✅ Construïm l'objecte a enviar amb les dades de l'estat local.
             const profileToSend: Partial<CompanyProfile> = {
                 company_name: localProfile.company_name || null,
                 company_tax_id: localProfile.company_tax_id || null,
@@ -86,9 +85,10 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
 
             const result = await updateTeamProfileAction(profileToSend);
 
-            if (result.success && result.updatedProfile) {
+            // ✅ CORRECCIÓ: Canviem 'result.updatedProfile' per 'result.data'
+            if (result.success && result.data) {
                 toast.success(t('toast.successTitle'), { description: result.message });
-                onProfileUpdate(result.updatedProfile); // Retornem el perfil actualitzat al pare
+                onProfileUpdate(result.data); // <-- Aquí també
                 onOpenChange(false);
             } else {
                 toast.error(t('toast.errorTitle'), { description: result.message });

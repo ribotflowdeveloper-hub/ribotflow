@@ -1,5 +1,5 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { cookies, headers } from "next/headers";
+import { headers } from "next/headers";
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
     const locale = (await headers()).get('x-next-intl-locale') || 'ca';
 
     if (code) {
-        const cookieStore = cookies();
-        const supabase = createClient(cookieStore);
+
+        const supabase = createClient();
         const { error, data: { user } } = await supabase.auth.exchangeCodeForSession(code);
 
         if (!error && user) {

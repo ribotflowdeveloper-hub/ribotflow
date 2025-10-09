@@ -1,22 +1,34 @@
+// /_hooks/useQuotes.ts (VERSIÓ CORREGIDA MANTENINT LA SEPARACIÓ)
 "use client";
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import type { QuoteWithContact } from '../page';
 import { deleteQuoteAction } from '../actions';
 
 type UseQuotesProps = {
-    t: (key: string) => string; // Per a les traduccions
+    initialQuotes: QuoteWithContact[]; // ✅ Rep les dades inicials
+    t: (key: string) => string;
 };
 
-export function useQuotes({ t }: UseQuotesProps) {
+export function useQuotes({ initialQuotes, t }: UseQuotesProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const [isPending, startTransition] = useTransition();
+
+    // ✅ Gestiona l'estat localment dins del hook
+    const [quotes, setQuotes] = useState(initialQuotes);
     const [quoteToDelete, setQuoteToDelete] = useState<QuoteWithContact | null>(null);
+
+    // ✅ Un useEffect per sincronitzar si les dades del servidor canvien
+    // (important després d'un router.refresh() o navegació)
+
+    useEffect(() => {
+        setQuotes(initialQuotes);
+    }, [initialQuotes]);
 
     const handleSort = (column: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -37,27 +49,33 @@ export function useQuotes({ t }: UseQuotesProps) {
         });
     };
 
-    const handleDelete = () => {
+    const handleDelete = useCallback(() => {
         if (!quoteToDelete) return;
+
+        // ✅ Lògica d'actualització optimista
+        setQuotes(currentQuotes => currentQuotes.filter(q => q.id !== quoteToDelete.id));
+        setQuoteToDelete(null); // Tanca el diàleg a l'instant
+
         startTransition(async () => {
             const result = await deleteQuoteAction(quoteToDelete.id);
-             // ✅ CORRECCIÓ: Utilitzem la funció 't' per a les notificacions
-             if (result.success) {
+            if (result.success) {
                 toast.success(t('toast.successTitle'), { description: result.message });
+                // Forcem una resincronització amb el servidor per si de cas
+                router.refresh();
             } else {
                 toast.error(t('toast.errorTitle'), { description: result.message });
+                setQuotes(initialQuotes); // Revertim si falla
             }
-      
-            setQuoteToDelete(null);
         });
-    };
+    }, [quoteToDelete, t, initialQuotes, router]);
 
     return {
         isPending,
+        quotes, // ✅ Retorna l'estat local, no les props inicials
         quoteToDelete,
         setQuoteToDelete,
         handleSort,
         handleDelete,
-        searchParams, // Passem els searchParams per a poder llegir-los a la UI
+        searchParams,
     };
 }

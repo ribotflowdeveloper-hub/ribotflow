@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { resolveInvitationAction } from '@/app/[locale]/(app)/settings/team/actions'; 
 import { headers } from 'next/headers';
+
+// ✅ CORRECCIÓ: Importem l'acció des de la seva nova ubicació centralitzada.
+import { resolveInvitationAction } from '@/app/actions/invitationActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +13,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   const token = request.nextUrl.searchParams.get('token');
+  // Obtenim el locale a partir de les capçaleres que injecta el middleware
   const locale = (await headers()).get('x-next-intl-locale') || 'ca';
 
   if (!token) {
@@ -23,5 +26,7 @@ export async function GET(request: NextRequest) {
 
   // Cridem a l'acció que conté la lògica per decidir si l'usuari
   // ha d'anar a la pàgina de login o a la de registre per a convidats.
+  // Aquesta acció ja retorna una NextResponse.redirect(), per la qual cosa
+  // simplement retornem el seu resultat.
   return await resolveInvitationAction(token);
 }

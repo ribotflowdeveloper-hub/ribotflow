@@ -24,5 +24,18 @@ export type Task = {
   is_completed: boolean;
   contact_id: string | null;
   user_id: string;
+  is_completed: boolean;
+  contacts: { id: string; nom: string; } | null;
+
+  // ✅ NOU CAMP: Pot ser un objecte Contact o null si no hi ha cap contacte associat.
+  contacts: {
+    id: string;
+    nom: string;
+  } | null;
+
+  // ✅ NOUS CAMPS AFEGITS
+  description: string | null;
+  due_date: string | null; // El tipus 'date' de SQL es representa com a string (YYYY-MM-DD)
+  priority: 'Baixa' | 'Mitjana' | 'Alta' | null;
 };
 export type CompanyProfile = CompanyProfileObject | null;

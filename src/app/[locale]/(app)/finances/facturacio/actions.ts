@@ -1,8 +1,9 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
+
 
 // El tipus de dades que rebem del formulari del client
 type InvoiceItemData = {
@@ -31,54 +32,31 @@ export type InvoiceFormData = {
  * s'encarregarà de verificar que l'operació pertany a l'equip actiu.
  */
 export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase, user, activeTeamId } = session;
 
-    // ✅ Obtenim l'equip actiu directament del token de l'usuari
-    const teamId = user.app_metadata?.active_team_id;
-    if (!teamId) return { success: false, message: "No s'ha pogut determinar l'equip actiu." };
-    
     try {
-        let savedInvoiceId: string;
-        const { invoice_items, id, ...invoiceFields } = invoiceData;
+        const { invoice_items, ...invoiceFields } = invoiceData;
 
-        if (id) {
-            // En actualitzar, la política RLS 'WITH CHECK' verificarà el team_id automàticament
-            const { error: updateError } = await supabase
-                .from('invoices')
-                .update({ ...invoiceFields, user_id: user.id, team_id: teamId })
-                .eq('id', id);
-            if (updateError) throw updateError;
-            savedInvoiceId = id;
-        } else {
-            // En crear, afegim el team_id actiu. La RLS 'WITH CHECK' ho validarà.
-            const { data: newInvoice, error: insertError } = await supabase
-                .from('invoices')
-                .insert({ ...invoiceFields, user_id: user.id, team_id: teamId })
-                .select('id')
-                .single();
-            if (insertError || !newInvoice) throw insertError || new Error("No s'ha pogut crear la factura.");
-            savedInvoiceId = newInvoice.id;
-        }
+        // Simplement cridem la funció RPC amb les dades.
+        // La base de dades s'encarrega de la transacció.
+        const { error } = await supabase.rpc('upsert_invoice_with_items', {
+            invoice_data: invoiceFields,
+            items_data: invoice_items,
+            user_id: user.id,
+            team_id: activeTeamId
+        });
 
-        await supabase.from('invoice_items').delete().eq('invoice_id', savedInvoiceId);
+        if (error) throw error;
 
-        if (invoice_items && invoice_items.length > 0) {
-            const itemsToInsert = invoice_items.map(item => ({
-                ...item,
-                invoice_id: savedInvoiceId,
-                user_id: user.id,
-                team_id: teamId,
-            }));
-            const { error: itemsError } = await supabase.from('invoice_items').insert(itemsToInsert);
-            if (itemsError) throw itemsError;
-        }
-        
         revalidatePath('/finances/facturacio');
-        return { success: true, message: `Esborrany ${id ? 'actualitzat' : 'creat'} correctament.` };
-    
+        return { success: true, message: `Esborrany ${invoiceData.id ? 'actualitzat' : 'creat'} correctament.` };
+
     } catch (error) {
+        console.error("Error a upsert_invoice_with_items:", error);
         const message = error instanceof Error ? error.message : "Error desconegut en desar la factura.";
         return { success: false, message };
     }
@@ -88,20 +66,27 @@ export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) 
  * Elimina un esborrany de factura. La RLS s'encarregarà de la seguretat.
  */
 export async function deleteInvoiceAction(invoiceId: string) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
-    
+    // 2. Validem la sessió. Aquesta funció ens retorna o la sessió validada o un objecte d'error.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase } = session; // Obtenim el client de supabase validat
+
     try {
-        // La RLS impedirà que s'esborri una factura d'un altre equip
-        const { data: existingInvoice } = await supabase.from('invoices').select('status').eq('id', invoiceId).single();
+        const { data: existingInvoice } = await supabase
+            .from('invoices')
+            .select('status')
+            .eq('id', invoiceId)
+            .single();
+
         if (existingInvoice && existingInvoice.status !== 'Draft') {
             return { success: false, message: "Error: No es pot eliminar una factura que ja ha estat emesa." };
         }
 
         const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
         if (error) throw error;
-        
+
         revalidatePath('/finances/facturacio');
         return { success: true, message: "Esborrany eliminat." };
     } catch (error) {
@@ -114,9 +99,13 @@ export async function deleteInvoiceAction(invoiceId: string) {
  * Emet una factura legal (Veri*factu). La RLS s'encarregarà de la seguretat.
  */
 export async function issueInvoiceAction(draftInvoiceId: string) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "Usuari no autenticat." };
+    // 2. Validem la sessió. Aquesta funció ens retorna o la sessió validada o un objecte d'error.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase } = session; // Obtenim el client de supabase validat
+
 
     // La RLS ja s'haurà assegurat que l'usuari té accés a aquesta factura
     // abans de cridar l'acció, per la qual cosa no cal una doble comprovació aquí.
