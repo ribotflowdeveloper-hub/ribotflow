@@ -34,7 +34,9 @@ export function useQuoteItems({ items, onItemsChange, userId, t }: UseQuoteItems
             quantity: 1,
             unit_price: product.price || 0,
             product_id: product.id,
-            user_id: userId
+            user_id: userId,
+            tax_rate: 0,
+            total: product.price || 0
         };
         onItemsChange([...items, newItem]);
         setIsPopoverOpen(false);
@@ -46,8 +48,13 @@ export function useQuoteItems({ items, onItemsChange, userId, t }: UseQuoteItems
     
     const handleManualItem = useCallback(() => {
         const newItem: QuoteItem = {
-            product_id: null, description: '', quantity: 1,
-            unit_price: 0, user_id: userId
+            product_id: null,
+            description: '',
+            quantity: 1,
+            unit_price: 0,
+            user_id: userId,
+            tax_rate: 0,
+            total: 0
         };
         onItemsChange([...items, newItem]);
         setIsPopoverOpen(false);

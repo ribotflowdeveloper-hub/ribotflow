@@ -1,15 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Quote, CompanyProfile } from '@/types/crm';
+import type { Quote} from '@/types/crm';
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ Importem la nostra funció
+import type { ActionResult} from '@/types/shared/index'; // Importa el nou tipus genèric
+import type { TeamData, CompanyProfile } from '@/types/settings/team'; // Assegura't que TeamData està importat
 
-// Definim un tipus de retorn més consistent per a les accions
-type ActionResult<T = unknown> = {
-    success: boolean;
-    message: string;
-    data?: T;
-};
 
 /**
  * Desa (crea o actualitza) un pressupost i els seus conceptes.
@@ -117,7 +113,14 @@ export async function sendQuoteAction(quoteId: string): Promise<ActionResult> {
 /**
  * Acció per actualitzar el perfil de l'empresa de l'equip.
  */
-export async function updateTeamProfileAction(teamData: Partial<CompanyProfile>): Promise<ActionResult> {
+// ✅ CORRECCIÓ: Especifiquem que el 'data' de ActionResult serà de tipus 'TeamData'
+export async function updateTeamProfileAction(
+    teamData: Partial<CompanyProfile> | null
+): Promise<ActionResult<TeamData>> { // <-- Aquí fem el canvi
+    if (!teamData) {
+        return { success: false, message: 'No s\'han proporcionat dades per actualitzar.' };
+    }
+
     const session = await validateUserSession();
     if ('error' in session) return { success: false, message: session.error.message };
     const { supabase, activeTeamId } = session;
@@ -132,13 +135,21 @@ export async function updateTeamProfileAction(teamData: Partial<CompanyProfile>)
     };
 
     try {
-        const { data, error } = await supabase.from('teams').update(dataToUpdate).eq('id', activeTeamId).select().single();
+        const { data, error } = await supabase
+            .from('teams')
+            .update(dataToUpdate)
+            .eq('id', activeTeamId)
+            .select()
+            .single();
+            
         if (error) throw error;
         
         revalidatePath(`/crm/quotes/[id]`, 'page');
+        // Ara TypeScript sap que 'data' és de tipus TeamData, i el tipus de retorn és correcte.
         return { success: true, message: 'Perfil de l\'equip actualitzat.', data };
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Error en actualitzar el perfil.";
         return { success: false, message };
     }
 }
+

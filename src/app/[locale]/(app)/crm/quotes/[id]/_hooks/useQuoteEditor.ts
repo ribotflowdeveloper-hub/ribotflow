@@ -149,8 +149,11 @@ export function useQuoteEditor({
         });
     }, [state.quote.id, router, t]);
 
-    const handleSend = () => {
-        if (quote.id === 'new') {
+    // Dins del teu hook useQuoteEditor
+
+    const handleSend = useCallback(() => {
+        // ✅ CORRECCIÓ: Llegeix 'quote' des de l'objecte 'state'
+        if (state.quote.id === 'new') {
             toast.error(t('toast.errorTitle'), { description: t('toast.saveFirst') });
             return;
         }
@@ -163,46 +166,48 @@ export function useQuoteEditor({
             }
 
             try {
-                setSendingStatus('generating');
+                // ✅ CORRECCIÓ: Usa 'dispatch' per canviar l'estat
+                dispatch({ type: 'SET_SENDING_STATUS', payload: 'generating' });
                 toast.info(t('quoteEditor.generatingPDF'));
 
-                // ✅ CORRECCIÓ CLAU: Importem la llibreria dinàmicament
-                // Això només s'executarà al navegador, quan l'usuari faci clic.
                 const { default: html2pdf } = await import('html2pdf.js');
-
                 const PDF_OPTIONS = {
-                    // ✅ CORRECCIÓ: 'margin' ha de ser un número o un array, no un objecte.
-                    // Un número aplica el mateix marge a tots els costats (top, right, bottom, left).
-                    margin: 10, // Marge de 15mm a tots els costats
-                    filename: `pressupost-${quote.quote_number || 'esborrany'}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 },
+                    margin: 10,
+                    filename: `pressupost-${state.quote.quote_number || 'esborrany'}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 }, // TypeScript veu 'jpeg' com string
                     html2canvas: { scale: 3, useCORS: true },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak: { mode: 'css', before: '.page-break-before' }
-                };
+                    pagebreak: { mode: 'css' as const, before: '.page-break-before' }
+                } as const; // ✅ Amb "as const", TypeScript entén que 'jpeg' és del tipus 'jpeg'
 
                 const pdfBlob = await html2pdf().from(element).set(PDF_OPTIONS).output('blob');
 
-                setSendingStatus('uploading');
-                const filePath = `${userId}/${quote.id}.pdf`;
+                // ✅ CORRECCIÓ: Usa 'dispatch' per canviar l'estat
+                dispatch({ type: 'SET_SENDING_STATUS', payload: 'uploading' });
+                const filePath = `${userId}/${state.quote.id}.pdf`; // ✅ Llegeix 'id' des de 'state.quote'
                 const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
                 if (uploadError) throw uploadError;
 
-                setSendingStatus('sending');
-                const result = await sendQuoteAction(quote.id);
+                // ✅ CORRECCIÓ: Usa 'dispatch' per canviar l'estat
+                dispatch({ type: 'SET_SENDING_STATUS', payload: 'sending' });
+                const result = await sendQuoteAction(state.quote.id); // ✅ Llegeix 'id' des de 'state.quote'
                 if (!result.success) throw new Error(result.message);
 
-                setQuote(q => ({ ...q, status: 'Sent', sent_at: new Date().toISOString() }));
+                // ✅ CORRECCIÓ: Actualitza l'estat a través de múltiples 'dispatch'
+                dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field: 'status', value: 'Sent' } });
+                dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field: 'sent_at', value: new Date().toISOString() } });
+
                 toast.success("Èxit!", { description: result.message });
 
             } catch (error) {
                 const e = error instanceof Error ? error : new Error(t('toast.sendError'));
                 toast.error(t('toast.errorTitle'), { description: e.message });
             } finally {
-                setSendingStatus('idle');
+                // ✅ CORRECCIÓ: Usa 'dispatch' per tornar a l'estat inicial
+                dispatch({ type: 'SET_SENDING_STATUS', payload: 'idle' });
             }
         });
-    };
+    }, [state.quote, userId, supabase, t]); // ✅ Afegim les dependències necessàries al useCallback
 
 
     // Efectes (despatxen accions)

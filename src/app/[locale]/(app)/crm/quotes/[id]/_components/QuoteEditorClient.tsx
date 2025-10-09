@@ -8,7 +8,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Quote, Contact, Product, Opportunity} from '@/types/crm';
+import type { Quote, Contact, Product, Opportunity } from '@/types/crm';
 import type { TeamData } from '@/types/settings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from "@/components/ui/switch";
@@ -125,7 +125,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 contact_id={quote.contact_id}
                                 quote_number={quote.quote_number}
                                 issue_date={quote.issue_date}
-                                expiry_date={quote.expiry_date}
+                                expiry_date={quote.expiry_date ?? null}
                                 onMetaChange={onQuoteChange}
                                 contacts={props.contacts}
                             />
@@ -135,16 +135,19 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
                             {state.contactOpportunities.length > 0 ? (
                                 <Select
-                                    value={quote.opportunity_id || ''}
-                                    onValueChange={(value) => onQuoteChange('opportunity_id', value || null)}
+                                    value={quote.opportunity_id ? String(quote.opportunity_id) : ''}
+                                    onValueChange={(value) => onQuoteChange('opportunity_id', value ? Number(value) : null)}
                                     disabled={!quote.contact_id}
                                 >
-                                    <SelectTrigger className="mt-2 w-full">
-                                        <SelectValue placeholder={t('quoteEditor.noOpportunityAssociated')} />
+                                    <SelectTrigger
+                                        className="w-full text-foreground" // ✅ AFEGEIX "text-foreground" AQUÍ
+                                    >
+                                        <SelectValue placeholder="Selecciona una oportunitat" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {state.contactOpportunities.map(o => (
-                                            <SelectItem key={o.id} value={o.id}>
+                                            // ✅ CORRECCIÓ CLAU: Convertim l'ID a string aquí
+                                            <SelectItem key={o.id} value={String(o.id)}>
                                                 {o.name} ({o.stage_name})
                                             </SelectItem>
                                         ))}
@@ -173,7 +176,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 setTaxPercent={(p) => onQuoteChange('tax_percent', p)}
                             />
                         </div>
-                        
+
                         <Card>
                             <CardHeader><CardTitle>{t('options.title')}</CardTitle></CardHeader>
                             <CardContent>
@@ -198,7 +201,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             />
                         </div>
                     </section>
-                    
+
                     <aside id="quote-preview-for-pdf-wrapper" className="hidden lg:block glass-card p-4 overflow-y-auto">
                         <QuotePreview
                             quote={quote}

@@ -5,6 +5,8 @@ import { validatePageSession } from "@/lib/supabase/session";
 
 interface QuoteEditorDataProps {
     quoteId: string;
+    locale: string; // ✅ AFEGIM LOCALE A LES PROPS
+
 }
 
 /**
@@ -12,20 +14,25 @@ interface QuoteEditorDataProps {
  * necessària per a l'editor de pressupostos. Prepara totes les 'props'
  * i les passa al component de client 'QuoteEditorClient', que gestionarà la UI.
  */
-export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
+export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps) {
     // 1. Validació de la sessió: Assegura que l'usuari està autenticat
     // i té un equip actiu. Si no, redirigeix automàticament.
     const { supabase, user, activeTeamId } = await validatePageSession();
-    
+
     // --- LÒGICA PER A UN PRESSUPOST NOU ---
     if (quoteId === 'new') {
-        // Per a un pressupost nou, necessitem carregar dades de suport (contactes, productes)
-        // i calcular el següent número de pressupost.
+        // Per a un pressupost nou, necessitem carregar dades de suport i calcular el següent número.
         const [contactsRes, productsRes, teamRes, lastQuoteRes] = await Promise.all([
             supabase.from('contacts').select('id, nom, empresa'),
             supabase.from('products').select('*').eq('is_active', true),
             supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-            supabase.from('quotes').select('quote_number').order('created_at', { ascending: false }).limit(1).single()
+            // ✅ Busquem l'últim pressupost per ordenar-lo per número de forma descendent
+            supabase.from('quotes')
+                .select('sequence_number') // Seleccionem la nova columna numèrica
+                .eq('team_id', activeTeamId)
+                .order('sequence_number', { ascending: false }) // Ordenem per número, no per text
+                .limit(1)
+                .maybeSingle() // maybeSingle() evita errors si la taula està buida
         ]);
 
         // Gestió d'errors per a les consultes
@@ -38,21 +45,21 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
             });
             return <div>Error en carregar les dades de l'editor.</div>;
         }
-        
+
         // Càlcul del següent número de pressupost
-        const lastQuote = lastQuoteRes.data;
-        let nextNumber = 1;
-        if (lastQuote?.quote_number) {
-            const match = lastQuote.quote_number.match(/\d+$/);
-            if (match) nextNumber = parseInt(match[0]) + 1;
-        }
+        // ✅ LÒGICA PER CALCULAR EL NOU NÚMERO
+        // ✅ La lògica de càlcul és ara trivial i sense errors
+        const lastSequence = lastQuoteRes.data?.sequence_number || 0;
+        const nextSequence = lastSequence + 1;
         const year = new Date().getFullYear();
+        const formattedQuoteNumber = `PRE-${year}-${String(nextSequence).padStart(4, '0')}`;
 
         // Creació de l'objecte inicial per al nou pressupost
         const initialQuote: Quote = {
             id: 'new',
             contact_id: null,
-            quote_number: `PRE-${year}-${String(nextNumber).padStart(4, '0')}`,
+            quote_number: formattedQuoteNumber, // El text formatat
+            sequence_number: nextSequence, // ✅ El nou valor numèric
             issue_date: new Date().toISOString().slice(0, 10),
             status: 'Draft',
             notes: 'Gràcies pel vostre interès en els nostres serveis.',
@@ -61,8 +68,14 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
             tax_percent: 21,
             show_quantity: true,
             items: [{
-                description: '', quantity: 1, unit_price: 0,
-                product_id: null, user_id: user.id
+                description: '',
+                quantity: 1,
+                unit_price: 0,
+                product_id: null,
+                user_id: user.id,
+                // ✅ AFEGIM LES PROPIETATS QUE FALTEN
+                tax_rate: 21, // Un valor per defecte, com el general del pressupost
+                total: 0      // El total inicial és 0
             }]
         };
 
@@ -75,6 +88,8 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
                 companyProfile={teamRes.data}
                 initialOpportunities={[]} // No hi ha oportunitats al crear un pressupost sense client
                 userId={user.id}
+                locale={locale} // ✅ PASSEM LA PROP
+
             />
         );
     }
@@ -115,6 +130,8 @@ export async function QuoteEditorData({ quoteId }: QuoteEditorDataProps) {
             companyProfile={teamRes.data}
             initialOpportunities={quoteDetails.opportunities || []}
             userId={user.id}
+            locale={locale} // ✅ PASSEM LA PROP
+
         />
     );
 }
