@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PermissionsClient } from './_components/PermissionsClient';
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ type Member = { id: string; full_name: string | null; email: string | null; };
 type Permission = { grantee_user_id: string; target_user_id: string; };
 
 export default async function PermissionsPage() {
-    const supabase = createClient(cookies());
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
     

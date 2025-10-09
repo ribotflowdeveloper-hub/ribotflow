@@ -21,9 +21,9 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
         .select('target_user_id')
         .eq('team_id', activeTeamId)
         .eq('grantee_user_id', user.id);
-        
+
     if (permissionsError) console.error("Error en carregar els permisos de l'inbox:", permissionsError);
-    
+
     const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id).filter(Boolean) || [])];
 
     const [
@@ -34,8 +34,9 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
         sentCountRes,
         ticketsRes
     ] = await Promise.all([
-        getTeamMembersWithProfiles(supabase, activeTeamId).then(members =>
-            members.map(member => ({
+        getTeamMembersWithProfiles(supabase, activeTeamId).then(response =>
+            // Accedeix a l'array dins de .data i posa un valor per defecte ([])
+            (response.data || []).map(member => ({
                 ...member,
                 profiles: {
                     id: member.user_id,

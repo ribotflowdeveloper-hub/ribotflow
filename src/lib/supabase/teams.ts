@@ -22,17 +22,15 @@ export type TeamMemberWithProfile = {
 export async function getTeamMembersWithProfiles(
     supabase: SupabaseClient,
     teamId: string
-) { // El tipus de retorn el pot inferir TypeScript
-    const { data, error } = await supabase
-        .from('team_members_with_profiles') // Consultem la nova vista!
+) {
+    // La funció només ha de fer la consulta i retornar la resposta.
+    // Aquesta resposta SEMPRE serà un objecte amb format { data, error }.
+    const response = await supabase
+        .from('team_members_with_profiles') 
         .select('role, user_id, full_name, email, avatar_url')
         .eq('team_id', teamId);
-
-    if (error) {
-        console.error("Error en obtenir membres de l'equip:", error);
-        return [];
-    }
-
-    // La dada ja ve formatada com la necessites
-    return { data, error: null }; // Retornem un objecte consistent
+    
+    // Si hi ha un error, 'response.error' tindrà valor.
+    // Si no, 'response.data' tindrà valor. Però el format és el mateix.
+    return response;
 }
