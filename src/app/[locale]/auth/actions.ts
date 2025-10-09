@@ -1,70 +1,80 @@
+// /app/[locale]/auth/actions.ts
+
 "use server";
 
-import { createAdminClient, createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
+import { z } from 'zod';
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { headers } from 'next/headers';
 
+// ✅ PRINCIPI DRY: Un helper per a inicialitzar el context de l'acció
+async function createActionContext() {
+    const supabase = createClient();
+    const headersList = await headers();
+    const locale = headersList.get('x-next-intl-locale') || 'ca';
+    const origin = headersList.get('origin');
+    return { supabase, locale, origin };
+}
+
+// --- Esquemes de Validació amb Zod ---
+const LoginSchema = z.object({
+    email: z.string().email("L'adreça d'email no és vàlida."),
+    password: z.string().min(1, "La contrasenya és obligatòria."),
+});
+
+const SignupSchema = z.object({
+    fullName: z.string().min(3, "El nom complet és obligatori."),
+    email: z.string().email("L'adreça d'email no és vàlida."),
+    password: z.string().min(8, "La contrasenya ha de tenir almenys 8 caràcters."),
+    invite_token: z.string().optional(),
+});
+
+const ForgotPasswordSchema = z.object({
+    email: z.string().email("Si us plau, introdueix una adreça d'email vàlida."),
+});
+
+const UpdatePasswordSchema = z.object({
+    password: z.string().min(8, "La nova contrasenya ha de tenir almenys 8 caràcters."),
+    code: z.string().min(1, "Falta el token de restabliment."),
+});
+
+
+// --- Accions Refactoritzades ---
 
 export async function loginAction(formData: FormData) {
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
-    const supabase = createClient(cookies());
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+    const { supabase, locale } = await createActionContext();
+    const result = LoginSchema.safeParse(Object.fromEntries(formData));
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!result.success) {
+        return redirect(`/${locale}/login?message=${encodeURIComponent(result.error.issues[0].message)}`);
+    }
+    
+    const { error } = await supabase.auth.signInWithPassword(result.data);
     if (error) {
         return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
     }
-    // Això proporciona la millor experiència d'usuari i evita conflictes amb el middleware.
-    redirect(`/${locale}`);
-
-}
-export async function logoutAction() {
-    const supabase = createClient(cookies());
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
-
-    // signOut() s'executa al servidor, esborrant les cookies de manera segura
-    await supabase.auth.signOut();
-
-    // Redirigim a la pàgina de login
-    // ✅ CORRECCIÓ DEFINITIVA: Redirigim directament al dashboard.
-    redirect(`/${locale}/`);
-}
-export async function signupAction(formData: FormData) {
-    const origin = (await headers()).get('origin');
-    const email = (formData.get('email') as string).trim().toLowerCase();
-    const password = formData.get('password') as string;
-    const fullName = formData.get('fullName') as string;
-    const inviteToken = formData.get('invite_token') as string | null;
-    const supabase = createClient(cookies());
-    const supabaseAdmin = createAdminClient();
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
-
-    // ✅ CANVI: Tornem a utilitzar 'listUsers' que sabem que funciona de manera fiable.
-    const { data: existingUserData, error: userError } = await supabaseAdmin.auth.admin.listUsers({
-        // Podem paginar per si hi ha molts usuaris, però per a la comprovació
-        // normalment n'hi haurà 0 o 1 amb el mateix email.
-        page: 1,
-        perPage: 1,
-    });
     
-    // Filtrem la llista (encara que només tingui un element) per trobar la coincidència exacta.
-    const existingUser = existingUserData?.users.find(u => u.email === email);
+    redirect(`/${locale}/dashboard`);
+}
 
-    if (userError) {
-        return redirect(`/signup?message=${encodeURIComponent("Hi ha hagut un error al servidor.")}`);
+export async function signupAction(formData: FormData) {
+    const { supabase, locale, origin } = await createActionContext();
+    const supabaseAdmin = createAdminClient();
+    const result = SignupSchema.safeParse(Object.fromEntries(formData));
+
+    if (!result.success) {
+        return redirect(`/${locale}/signup?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-
+    
+    const { fullName, email, password, invite_token } = result.data;
+    
+    // La teva lògica per comprovar si l'usuari existeix és bona, la mantenim
+    const { data: existingUser } = await supabaseAdmin.from('users').select('id').eq('email', email).single();
     if (existingUser) {
-        // Si trobem l'usuari, el redirigim a la pàgina de login.
-        const message = "Ja existeix un compte amb aquest correu electrònic. Si us plau, inicia sessió.";
-        return redirect(`/${locale}/login?message=${encodeURIComponent(message)}`);
+        return redirect(`/${locale}/login?message=${encodeURIComponent("Ja existeix un compte amb aquest correu.")}`);
     }
 
-    // Si arribem aquí, l'usuari no existeix i podem procedir amb el registre.
-    const nextUrl = inviteToken ? `/dashboard?token=${inviteToken}` : `/onboarding`;
-
+    const nextUrl = invite_token ? `/dashboard?token=${invite_token}` : `/onboarding`;
     const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -75,32 +85,27 @@ export async function signupAction(formData: FormData) {
     });
 
     if (signUpError) {
-        let errorKey = 'unknown_error';
-        if (signUpError.message.includes('Password should be at least 6 characters')) {
-            errorKey = 'password_length';
-        } else if (signUpError.message.includes('email address')) {
-            errorKey = 'email_invalid';
-        }
-        return redirect(`/signup?errorKey=${errorKey}&email=${encodeURIComponent(email)}`);
+        return redirect(`/${locale}/signup?message=${encodeURIComponent(signUpError.message)}`);
     }
 
     return redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }
-// --- Acció per a OAuth (Google, etc.) ---
-export async function googleAuthAction(inviteToken?: string | null) {
-    const supabase = createClient(cookies());
-    const origin = (await headers()).get('origin');
 
-    // ✅ LÒGICA ANTI-CONFLICTE: Si hi ha un token d'invitació, primer tanquem qualsevol sessió existent.
+export async function logoutAction() {
+    const { supabase, locale } = await createActionContext();
+    await supabase.auth.signOut();
+    redirect(`/${locale}/login`);
+}
+
+export async function googleAuthAction(inviteToken?: string | null) {
+    const { supabase, origin } = await createActionContext();
     if (inviteToken) {
         await supabase.auth.signOut();
     }
-
     let redirectTo = `${origin}/auth/callback`;
     if (inviteToken) {
-        redirectTo += `?next=/accept-invite?token=${inviteToken}`;
+        redirectTo += `?next=/dashboard?token=${inviteToken}`;
     }
-
     const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo },
@@ -109,25 +114,18 @@ export async function googleAuthAction(inviteToken?: string | null) {
     if (error) {
         return redirect(`/login?message=${encodeURIComponent("No s'ha pogut iniciar sessió amb Google.")}`);
     }
-
     return redirect(data.url);
 }
 
-/**
- * Inicia el flux de restabliment de contrasenya.
- * Ara retorna un objecte de resultat en lloc de fer una redirecció.
- */
 export async function forgotPasswordAction(formData: FormData): Promise<{ success: boolean; message: string }> {
-    const email = formData.get('email') as string;
-    const supabase = createClient(cookies());
-    const origin = (await headers()).get('origin');
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
-    
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return { success: false, message: "Si us plau, introdueix una adreça d'email vàlida." };
+    const { supabase, origin, locale } = await createActionContext();
+    const result = ForgotPasswordSchema.safeParse(Object.fromEntries(formData));
+
+    if (!result.success) {
+        return { success: false, message: result.error.issues[0].message };
     }
     
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
         redirectTo: `${origin}/${locale}/auth/reset-password`,
     });
 
@@ -137,4 +135,28 @@ export async function forgotPasswordAction(formData: FormData): Promise<{ succes
     }
 
     return { success: true, message: "Si l'email existeix, rebràs un enllaç per a restablir la teva contrasenya." };
+}
+
+// ✅ Aquesta és la nova acció que hem mogut des del component de pàgina
+export async function updatePasswordAction(formData: FormData) {
+    const { supabase, locale } = await createActionContext();
+    const result = UpdatePasswordSchema.safeParse(Object.fromEntries(formData));
+
+    if (!result.success) {
+        return redirect(`/${locale}/auth/reset-password?message=${encodeURIComponent(result.error.issues[0].message)}`);
+    }
+    
+    const { code, password } = result.data;
+
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    if (exchangeError) {
+        return redirect(`/${locale}/auth/reset-password?message=L'enllaç de restabliment és invàlid o ha caducat.`);
+    }
+
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
+        return redirect(`/${locale}/auth/reset-password?message=${encodeURIComponent(updateError.message)}`);
+    }
+    
+    return redirect(`/${locale}/login?message=La teva contrasenya s'ha actualitzat correctament.`);
 }
