@@ -1,39 +1,54 @@
 "use server";
 
+import { z } from 'zod';
+// ✅ CORRECCIÓ: Importem les teves funcions de client
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { cookies, headers } from "next/headers";
-
-
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-// Aquesta és la forma de les dades que el client enviarà
-type OnboardingFormData = {
-    full_name: string;
-    company_name: string;
-    tax_id: string;
-    website: string;
-    summary: string;
-    sector: string;
-    services: string[];
-    phone: string;
-    street: string;
-    city: string;
-    postal_code: string;
-    region: string;
-    country: string;
-    latitude?: number;
-    longitude?: number;
-};
+// L'esquema de Zod i el tipus es queden igual
+const OnboardingSchema = z.object({
+    full_name: z.string().min(3, "El nom complet és obligatori."),
+    company_name: z.string().min(2, "El nom de l'empresa és obligatori."),
+    tax_id: z.string().optional(),
+    website: z.string().url("Introdueix una URL vàlida.").optional().or(z.literal('')),
+    summary: z.string().optional(),
+    sector: z.string().optional(),
+    services: z.array(z.string()).min(1, "Has de seleccionar almenys un servei."),
+    phone: z.string().optional(),
+    street: z.string().min(1, "El carrer és obligatori."),
+    city: z.string().min(1, "La ciutat és obligatòria."),
+    postal_code: z.string().min(1, "El codi postal és obligatori."),
+    region: z.string().min(1, "La regió és obligatòria."),
+    country: z.string().min(1, "El país és obligatori."),
+    latitude: z.number().optional(),
+    longitude: z.number().optional(),
+});
+
+type OnboardingFormData = z.infer<typeof OnboardingSchema>;
+
 
 export async function submitOnboardingAction(formData: OnboardingFormData) {
-    const supabase = createClient(cookies());
+    // --- PAS 1: INICIALITZACIÓ I AUTENTICACIÓ ---
+    // ✅ CORRECCIÓ: Cridem les teves funcions sense arguments
+    const supabase = createClient();
     const supabaseAdmin = createAdminClient();
+    
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
         return { success: false, message: "Usuari no autenticat." };
     }
 
+    // --- PAS 2: VALIDACIÓ DE DADES AMB ZOD ---
+    const validationResult = OnboardingSchema.safeParse(formData);
+
+    if (!validationResult.success) {
+        return { success: false, message: validationResult.error.issues[0].message };
+    }
+    
+    const validData = validationResult.data;
+    
     try {
         // --- 1. PREPAREM LES DADES PER A LA INSERCIÓ ---
         const profileUpdateData = {
@@ -66,46 +81,41 @@ export async function submitOnboardingAction(formData: OnboardingFormData) {
 
         // Actualitzem el perfil personal de l'usuari
         await supabase.from('profiles').update(profileUpdateData).eq('id', user.id).throwOnError();
-
-        // Creem el nou equip
+        
         const { data: newTeam } = await supabase.from('teams').insert(teamInsertData).select('id').single().throwOnError();
-
-        // Afegim l'usuari com a propietari a la taula de membres
+        
         await supabase.from('team_members').insert({ team_id: newTeam.id, user_id: user.id, role: 'owner' }).throwOnError();
-
-        // ✅ NOU PAS: Creem una subscripció 'free' per defecte per al nou equip
+        
         await supabaseAdmin.from('subscriptions').insert({
             team_id: newTeam.id,
             plan_id: 'free',
             status: 'active'
         }).throwOnError();
 
-        // ✅ CORRECCIÓ CLAU: Actualitzem TOTES les dades de l'usuari a 'auth.users'
         await supabaseAdmin.auth.admin.updateUserById(
             user.id,
             {
-                // Dades de la sessió de l'aplicació
                 app_metadata: {
                     ...user.app_metadata,
                     active_team_id: newTeam.id,
                     active_team_plan: 'free'
                 },
-                // Dades públiques de l'usuari
                 user_metadata: {
                     ...user.user_metadata,
-                    full_name: formData.full_name // Assegurem que el nom es desa aquí també
+                    full_name: validData.full_name
                 }
             }
         );
-        await supabase.auth.refreshSession();
-
+        
     } catch (error) {
         const message = error instanceof Error ? error.message : "Hi ha hagut un error desconegut.";
-        console.error("Error a l'Onboarding:", message);
-        return { success: false, message };
+        console.error("Error durant l'acció d'Onboarding:", message);
+        return { success: false, message: "No s'ha pogut completar el registre. Intenta-ho de nou." };
     }
 
-    // ✅ PAS FINAL: Ara que l'acció ha acabat, redirigim l'usuari al dashboard.
+    // --- PAS 4: REDIRECCIÓ SI TOT HA ANAT BÉ ---
+    await supabase.auth.refreshSession();
+
     const locale = (await headers()).get('x-next-intl-locale') || 'ca';
     redirect(`/${locale}/dashboard`);
 }

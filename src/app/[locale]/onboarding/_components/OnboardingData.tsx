@@ -1,44 +1,40 @@
 // /app/[locale]/onboarding/_components/OnboardingData.tsx
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { OnboardingClient } from './OnboardingClient';
 
 export async function OnboardingData() {
-    const supabase = createClient(cookies());
+    const supabase = createClient(); // La teva funció ja gestiona les cookies
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         return redirect('/login');
     }
     
-    // ✅ NOVA COMPROVACIÓ DE SEGURETAT
-    // Si l'usuari ja ha completat l'onboarding, no el deixem tornar a entrar aquí.
-    // El redirigim al dashboard, on la lògica principal decidirà què fer.
-    const { data: profile } = await supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single();
-    if (profile?.onboarding_completed) {
+    // ✅ Executem les dues consultes alhora per més rapidesa
+    const [profileRes, servicesRes] = await Promise.all([
+        supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single(),
+        supabase.from('services').select('id, name').order('name')
+    ]);
+
+    // Comprovem el resultat del perfil
+    if (profileRes.data?.onboarding_completed) {
         return redirect('/dashboard');
     }
 
-    // La teva lògica original per a obtenir el nom es queda igual
-    const initialFullName = user.user_metadata?.full_name || '';
-
-    // ✅ Cargamos la lista de servicios desde la tabla 'services'
-    const { data: services, error } = await supabase
-        .from('services')
-        .select('id, name') // Pedimos también el ID para el 'key' en React
-        .order('name');
-
-    if (error) {
-        console.error("Error al cargar los servicios:", error);
+    // Comprovem si hi ha hagut un error en carregar els serveis
+    if (servicesRes.error) {
+        console.error("Error al carregar els serveis:", servicesRes.error);
     }
+    
+    const initialFullName = user.user_metadata?.full_name || '';
+    const availableServices = servicesRes.data || [];
 
-    // Pasamos la lista de servicios al componente cliente
     return (
         <OnboardingClient 
             initialFullName={initialFullName} 
-            availableServices={services || []}
+            availableServices={availableServices}
         />
     );
 }
