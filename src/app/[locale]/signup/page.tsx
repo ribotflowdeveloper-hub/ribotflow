@@ -1,29 +1,25 @@
 import { Suspense } from 'react';
-import { SignupForm } from './_components/SignupForm';
+import { SignupClient } from './_components/SignupClient';
 
 interface SignupPageProps {
   searchParams: {
-    errorKey?: string; // ✅ Rebem la clau de l'error
+    errorKey?: string;
     message?: string;
     email?: string;
     invite_token?: string;
   };
 }
 
-export default async function SignupPage(props: SignupPageProps) {
-  // ✅ CORRECCIÓ: Fem 'await' per a obtenir els paràmetres de la URL
-  const searchParams = await props.searchParams;
-
-  const inviteToken = typeof searchParams.invite_token === 'string' ? searchParams.invite_token : undefined;
-  const message = typeof searchParams.message === 'string' ? searchParams.message : undefined;
-  const invitedEmail = typeof searchParams.email === 'string' ? searchParams.email : undefined;
+export default async function SignupPage({ searchParams }: SignupPageProps) {
+  // Les dades es preparen aquí al servidor i es passen al component de client.
+  const inviteToken = searchParams.invite_token;
+  const invitedEmail = searchParams.email;
 
   return (
+    // Suspense és necessari perquè el nostre hook 'useSignupForm' utilitza 'useSearchParams'.
     <Suspense>
-      <SignupForm
-        errorKey={searchParams.errorKey}
+      <SignupClient
         inviteToken={inviteToken}
-        message={message}
         invitedEmail={invitedEmail}
       />
     </Suspense>
