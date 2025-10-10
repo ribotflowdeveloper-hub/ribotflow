@@ -48,7 +48,7 @@ export async function GET(
         return NextResponse.redirect(new URL("/settings/integrations?error=auth_failed", request.url));
     }
 
-    const supabase = createClient(cookieStore);
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.redirect(new URL('/login', request.url));
 

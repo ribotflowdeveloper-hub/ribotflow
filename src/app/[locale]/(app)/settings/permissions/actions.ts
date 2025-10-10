@@ -1,9 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-
+import { validateUserSession } from '@/lib/supabase/session'; // Importem la nova funció
 // El tipus de dades que rebrem del client
 type Permission = {
     grantee_user_id: string; // Qui rep el permís
@@ -14,12 +12,12 @@ type Permission = {
  * Actualitza tots els permisos d'inbox per a l'equip actiu.
  */
 export async function updateInboxPermissionsAction(permissions: Permission[]) {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { success: false, message: "No autenticat." };
-
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) return { success: false, message: "No hi ha cap equip actiu seleccionat." };
+    // ✅ 2. Validació centralitzada
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase, user, activeTeamId } = session;
 
     // Comprovació de rol: només owners/admins poden canviar permisos
     const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();

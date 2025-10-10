@@ -23,9 +23,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { logoutAction } from '@/app/[locale]/(auth)/auth/actions';
 
 // Imatges i tipus
-import logoRibot from '@/../public/icon1.png';
-
-
 export function AppClientLayout({ children }: { children: ReactNode, locale: string }) {
     const t = useTranslations('Navigation');
     const { isChatbotOpen } = useNavigationStore();
@@ -80,7 +77,7 @@ export function AppClientLayout({ children }: { children: ReactNode, locale: str
                         handleNavigation={handleNavigation}
                     />
                     <span className="font-bold text-lg">Ribotflow</span>
-                    <Image src={logoRibot} alt={t('logoAlt')} className="object-cover" priority height={40} />
+                    <Image src={"/icon1.png"} alt={t('logoAlt')} className="object-cover" priority height={40} />
                 </header>
                 <main className="flex-1 overflow-y-auto">
                     <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>

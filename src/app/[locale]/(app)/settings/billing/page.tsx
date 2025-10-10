@@ -8,7 +8,6 @@ import { getTranslations } from 'next-intl/server';
 import { BillingData } from './_components/BillingData';
 import { BillingSkeleton } from './_components/BillingSkeleton';
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import { AccessDenied } from '@/components/shared/AccessDenied'; // Un component que mostra un missatge d'error
@@ -38,7 +37,7 @@ export async function generateMetadata(props: BillingPageProps): Promise<Metadat
  * La pàgina principal de Facturació.
  */
 export default async function BillingPage() {
-  const supabase = createClient(cookies());
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 

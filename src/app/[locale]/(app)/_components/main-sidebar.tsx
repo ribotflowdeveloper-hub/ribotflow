@@ -12,7 +12,6 @@ import { navModules, bottomItems } from '@/config/navigation';
 import type { NavItem as NavItemType } from '@/types/app/navigation';
 
 import { NavItem } from './NavItem';
-import logoRibot from '@/../public/icon1.png';
 
 interface MainSidebarProps {
     onModuleSelect: (module: NavItemType) => void;
@@ -62,7 +61,7 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
                         />
                     ) : (
                         <Image
-                            src={logoRibot}
+                            src={"/icon1.png"}
                             alt={t('logoAlt')}
                             className="object-cover"
                             priority

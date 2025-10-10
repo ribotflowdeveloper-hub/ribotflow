@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useDebounce } from 'use-debounce';
 import { Input } from '@/components/ui/input';
 import { Loader2, MapPin } from 'lucide-react';
-import type { DetailedAddress } from '@/types/DetailedAddress';
+import type { DetailedAddress } from '@/types/shared/address';
 
 interface AddressSearchProps {
   onAddressSelect: (address: DetailedAddress) => void;

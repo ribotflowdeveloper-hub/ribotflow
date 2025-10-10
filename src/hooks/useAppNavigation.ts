@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useUser } from '@/hooks/useUser';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { navModules } from '@/config/navigation';
-import type { NavItem } from '@/types/navigation';
+import type { NavItem } from '@/types/app/navigation';
 
 export function useAppNavigation() {
     const pathname = usePathname();

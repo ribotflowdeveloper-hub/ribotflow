@@ -21,7 +21,7 @@ import {
 
 
 // ✅ PAS 1: Importem la interfície des del nostre nou fitxer de tipus.
-import type { NavItem } from '@/types/navigation';
+import type { NavItem } from '@/types/app/navigation';
 
 export const navModules: NavItem[] = [
   { 

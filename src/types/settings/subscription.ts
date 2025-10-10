@@ -29,4 +29,19 @@ export type Subscription = {
     // ... altres camps de Stripe si els tens
 };
 
-// ... la resta dels teus tipus com Contact, Invoice, etc.
+// ✅ Defineix i exporta el tipus PlanConfig
+export type PlanConfig = {
+    id: string;
+    name: string;
+    iconName: string;
+    priceMonthly: number | null;
+    priceYearly: number | null;
+    isPopular?: boolean; // Opcional, ja que no tots els plans ho tenen
+    colors: {
+        border: string;
+        text: string;
+        bg: string;
+        hoverBg: string;
+    };
+};
+

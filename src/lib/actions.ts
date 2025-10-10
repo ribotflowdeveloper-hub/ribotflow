@@ -1,39 +1,45 @@
-import { createClient } from "./supabase/server";
+"use server";
+
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { validateUserSession } from "@/lib/supabase/session";
+import { type ActionResult } from "@/types/shared"; // O la teva definició de ServerActionResult
 
-export interface ServerActionResult<T = unknown> {
-    success: boolean;
-    message?: string;
-    data?: T;
-    newId?: string;
-}
-
-export async function withUser<T>(
-    action: (
-        supabase: ReturnType<typeof createClient>,
-        userId: string
-    ) => Promise<ServerActionResult<T>>,
-    pathsToRevalidate?: string[]
-): Promise<ServerActionResult<T>> {
-    // Obtenim les cookies resolent la promesa
-   
-    // Creem el client passant les cookies ja resoltes
-    const supabase = createClient(cookies())
-;
+// Exemple: Acció per esborrar un element
+export async function deleteItemAction(itemId: string): Promise<ActionResult> {
     
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) return { success: false, message: "Usuari no autenticat." };
+    // ✅ 1. Validació de la sessió a l'inici.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    // Desestructurem el que necessitem per a aquesta acció.
+    const { supabase, activeTeamId } = session;
 
     try {
-        const result = await action(supabase, user.id);
-        if (result.success && pathsToRevalidate) {
-            pathsToRevalidate.forEach((p) => revalidatePath(p));
+        // ✅ 2. Lògica de negoci.
+        // La consulta inclou el filtre de seguretat amb 'activeTeamId'.
+        const { error } = await supabase
+            .from('items')
+            .delete()
+            .eq('id', itemId)
+            .eq('team_id', activeTeamId);
+
+        if (error) {
+            // Si hi ha un error de BBDD, el llancem per ser capturat pel catch.
+            throw error;
         }
-        return result;
-    } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Error desconegut";
+
+        // ✅ 3. Revalidació de la memòria cau en cas d'èxit.
+        revalidatePath('/items');
+        revalidatePath(`/items/${itemId}`);
+
+        // ✅ 4. Retornem una resposta d'èxit.
+        return { success: true, message: "Element esborrat correctament." };
+
+    } catch (error: unknown) {
+        // ✅ 5. Gestió centralitzada d'errors.
+        const message = error instanceof Error ? error.message : "Error desconegut.";
+        console.error("Error a deleteItemAction:", message);
         return { success: false, message };
     }
 }
