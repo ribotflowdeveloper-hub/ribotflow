@@ -3,7 +3,7 @@ import { join, extname } from "path";
 
 // --- Configuració ---
 const rootFolder = "./src";
-const outputFile = "codi_i_estrucutra_ribotflow.txt";
+const outputFile = "codi_i_estructura_ribotflow.txt";
 const extensionsToInclude = [".ts", ".tsx", ".js", ".jsx", ".css", ".json", ".sql"];
 
 const ignoreList = [

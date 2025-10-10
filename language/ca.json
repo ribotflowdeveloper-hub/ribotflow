@@ -1405,5 +1405,28 @@
     "toastErrorTitle": "Error en desar el perfil",
     "toastErrorValidation": "Si us plau, omple tots els camps obligatoris.",
     "toastErrorUser": "No s'ha trobat l'usuari"
+  },
+  "excel": {
+    "template": "Plantilla",
+    "successexport": "L'exportació s'ha completat amb èxit.",
+    "errorexport": "Hi ha hagut un error en exportar les dades.",
+    "unexpectederror": "S'ha produït un error inesperat.",
+    "couldnotcomplete": "No s'ha pogut completar l'acció.",
+    "nofileselected": "No s'ha seleccionat cap fitxer.",
+    "processingfile": "Processant el fitxer Excel...",
+    "errorloadingdata":"Error en carregar les dades.",
+    "unexpectederrorloadingfile":"S'ha produït un error inesperat en carregar el fitxer.",
+    "contacts": {
+      "create": "Crear plantilla",
+      "load": "Carregar contactes",
+      "download": "Descarregar contactes",
+      "startingexport": "Iniciant l'exportació de contactes..."
+    },
+    "products": {
+      "create": "Crear plantilla",
+      "load": "Carregar conceptes",
+      "download": "Descarregar conceptes",
+      "startingexport": "Iniciant l'exportació de conceptes..."
+    }
   }
 }
