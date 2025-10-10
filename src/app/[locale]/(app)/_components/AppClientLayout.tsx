@@ -77,7 +77,15 @@ export function AppClientLayout({ children }: { children: ReactNode, locale: str
                         handleNavigation={handleNavigation}
                     />
                     <span className="font-bold text-lg">Ribotflow</span>
-                    <Image src={"/icon1.png"} alt={t('logoAlt')} className="object-cover" priority height={40} />
+                    <Image
+                        src="/icon0.svg"
+                        alt={t('logoAlt')}
+                        className="object-cover"
+                        priority height={40}
+                        width={64}   // Substitueix per l'amplada real de la teva imatge
+
+                    />
+
                 </header>
                 <main className="flex-1 overflow-y-auto">
                     <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>

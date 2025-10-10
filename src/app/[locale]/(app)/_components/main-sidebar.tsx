@@ -47,7 +47,7 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
         // Finalment, notifiquem al component pare que s'ha fet un clic.
         onModuleSelect(item);
     };
-    
+
     return (
         <aside className="hidden lg:flex w-24 h-full glass-effect border-r border-border p-4 flex-col items-center z-20">
             {/* Logo a la part superior */}
@@ -61,10 +61,12 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
                         />
                     ) : (
                         <Image
-                            src={"/icon1.png"}
+                            src="/icon0.svg"
                             alt={t('logoAlt')}
                             className="object-cover"
                             priority
+                            width={64}   // Substitueix per l'amplada real de la teva imatge
+                            height={64}  // Substitueix per l'alçada real de la teva imatge
                         />
                     )}
                 </div>
@@ -84,8 +86,8 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
                 ))}
 
                 {/* Botó de tancar sessió */}
-                <div 
-                    onClick={onOpenSignOutDialog} 
+                <div
+                    onClick={onOpenSignOutDialog}
                     className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer group relative"
                     role="button"
                     aria-label={t('signOut')}
