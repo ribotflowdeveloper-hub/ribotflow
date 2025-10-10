@@ -113,7 +113,7 @@ export async function inviteUserAction(formData: FormData) {
         if (existingUserId) {
             // --- Cas A: L'usuari JA EXISTEIX ---
             await resend.emails.send({
-                from: `Notificació de "${teamName}" <notificacions@elteudomini.com>`,
+                from: `Notificació de "${teamName}" <invitacions@ribotflow.com>`,
                 to: email,
                 subject: `Has estat convidat a unir-te a l'equip ${teamName}`,
                 html: `<p>Hola de nou, <strong>${inviterName}</strong> t'ha convidat a l'equip <strong>${teamName}</strong>. Com que ja tens un compte, pots acceptar-la des del teu panell d'equips.</p><div style="text-align: center; margin: 25px 0;"><a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings/team" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Anar al meu panell</a></div>`
@@ -138,7 +138,7 @@ export async function inviteUserAction(formData: FormData) {
                                     <strong>${inviterName}</strong> t'ha convidat a unir-te al seu equip <strong>${teamName}</strong>.
                                 </p>
                                 <div style="text-align: center; margin: 25px 0;">
-                                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/invitation/accept?token=${invitation.token}" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/invitation/accept?token=${invitation.token}&email=${encodeURIComponent(email)}" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                                         Uneix-te a l'equip
                                     </a>
                                 </div>
@@ -351,6 +351,7 @@ export async function switchActiveTeamAction(teamId: string) {
         }
         return { success: false, message: errorMessage };
     }
+    await supabase.auth.refreshSession();
 
     // 5. Revalidació i èxit
     // Revalidem tot el layout perquè components com la barra de navegació o el menú
@@ -455,7 +456,6 @@ export async function clearActiveTeamAction() {
     revalidatePath('/settings/team', 'page');
     return { success: true };
 }
-// A /app/[locale]/(app)/settings/team/actions.ts
 
 /**
  * Permet a un usuari autenticat acceptar una invitació personal des del "lobby".
