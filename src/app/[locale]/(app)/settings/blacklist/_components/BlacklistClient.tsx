@@ -12,11 +12,11 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/shared/EmptyState'; // ✅ REFACTORITZACIÓ: Component per a estat buit
 import { addRuleAction, deleteRuleAction } from '../action';
 import type { BlacklistRule } from '@/types/settings';
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions.config'; // Importa des de .config!
 
 interface BlacklistClientProps {
   initialRules: BlacklistRule[];
-  currentUserRole: string | null;
+  currentUserRole: Role | null; // ✅ Tipus correcte
 }
 
 /**
@@ -69,7 +69,7 @@ export function BlacklistClient({ initialRules, currentUserRole }: BlacklistClie
         {initialRules.length > 0 ? initialRules.map(rule => (
           <div key={rule.id} className="flex justify-between items-center p-2 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge variant={rule.rule_type === 'domain' ? 'default' : 'secondary'}>{rule.rule_type}</Badge>
+              <Badge variant={rule.rule_type === 'domain' ? 'default' : 'secondary'} className={undefined}>{rule.rule_type}</Badge>
               <span className="break-all">{rule.value}</span>
             </div>
             {/* ✅ REFACTORITZACIÓ: El botó d'eliminar es mostra/oculta segons els permisos. */}
@@ -80,7 +80,7 @@ export function BlacklistClient({ initialRules, currentUserRole }: BlacklistClie
             )}
           </div>
         )) : (
-          !isPending && <EmptyState title={t('emptyTitle')} description={t('emptyDescription')} />
+          !isPending && <EmptyState message={`${t('emptyTitle')} - ${t('emptyDescription')}`} />
         )}
       </div>
     </motion.div>
