@@ -1,3 +1,3 @@
-export * from './despeses';
-export * from './factures';
+export * from './invoices';
+export * from './expenses';
 export * from './scheams';

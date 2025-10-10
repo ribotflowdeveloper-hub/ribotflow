@@ -111,7 +111,7 @@ export async function issueInvoiceAction(draftInvoiceId: string) {
     // abans de cridar l'acció, per la qual cosa no cal una doble comprovació aquí.
     try {
         const { data, error } = await supabase.functions.invoke('issue-verifactu-invoice', {
-            body: { draft_invoice_id: draftInvoiceId, user_id: user.id },
+            body: { draft_invoice_id: draftInvoiceId },
         });
 
         if (error) throw (error);

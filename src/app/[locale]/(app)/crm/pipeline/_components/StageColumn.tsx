@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/utils';
 import { Plus } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import type { Stage, Opportunity } from '../page';
+import type { Stage, Opportunity } from '@/types/crm';
 import { PIPELINE_STAGES_MAP } from '@/types/crm';
 import { OpportunityCard } from './OportunityCard';
 

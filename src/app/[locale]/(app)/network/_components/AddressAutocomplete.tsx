@@ -16,7 +16,7 @@ import type { MapboxRetrieveResponse, MapboxContext } from '@mapbox/search-js-re
 // Importació d'icones per a la interfície d'usuari.
 import { MapPin } from 'lucide-react';
 // Importació del nostre tipus personalitzat per a l'objecte d'adreça detallada.
-import type { DetailedAddress } from '@/types/DetailedAddress';
+import type { DetailedAddress } from '@/types/shared/index';
 
 /**
  * @interface AddressAutocompleteProps

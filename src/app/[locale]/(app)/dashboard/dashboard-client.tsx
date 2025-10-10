@@ -38,9 +38,10 @@ export function DashboardClient({
   const [isTaskDialogOpen, setTaskDialogOpen] = React.useState(false);
 
   // 🔁 Handler per canviar estat d'una tasca
+  // A DashboardClient.tsx
   const handleToggleTask = React.useCallback(
-    (task: { id: string; is_completed: boolean }) => {
-      toggleTask(task.id, task.is_completed);
+    (id: string, is_completed: boolean) => { // Rep dos arguments separats
+      toggleTask(id, is_completed);
     },
     [toggleTask]
   );
@@ -74,7 +75,7 @@ export function DashboardClient({
       {/* 🗓️ Secció inferior: agenda + radar + oracle IA (streaming des del servidor) */}
       <DashboardBottomGrid
         pendingTasks={pendingTasks}
-        onTaskClick={handleToggleTask} // ✅ NOM CORREGIT
+        onToggleTask={handleToggleTask} // <-- Nom correcte
         onOpenNewTask={() => setTaskDialogOpen(true)}
         attentionContacts={initialData.attentionContacts}
         overdueInvoices={initialData.overdueInvoices}

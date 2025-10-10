@@ -1,169 +1,107 @@
 /**
- * @file actions.ts (Integrations)
- * @summary Versió final i definitiva per a la gestió d'integracions.
- */
+ * @file actions.ts (Integrations)
+ * @summary Versió refactoritzada amb lògica centralitzada.
+ */
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { v4 as uuidv4 } from 'uuid';
+// ✅ 1. Importem les dues utilitats de sessió.
+import { validatePageSession, validateUserSession } from "@/lib/supabase/session";
 
-// --- ACCIONS DE CONNEXIÓ (FLUX D'AUTORITZACIÓ DIRECTE) ---
+// --- LÒGICA DE CONNEXIÓ CENTRALITZADA ---
 
-export async function connectGoogleAction() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
+/**
+ * ✅ 2. Nova funció interna que gestiona tota la lògica de connexió OAuth.
+ * Això elimina la repetició de codi a les quatre accions públiques.
+*/
+async function createOAuthRedirectAction(provider: 'google' | 'microsoft' | 'linkedin' | 'facebook') {
+  // Utilitzem validatePageSession perquè l'acció principal és una redirecció.
+  // Aquesta funció ja s'encarrega de redirigir a /login si l'usuari no està autenticat.
+  await validatePageSession();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
+  const cookieStore = cookies();
+  const state = uuidv4();
+  (await cookieStore).set('oauth_state', state, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
 
-  const state = uuidv4();
-  (await cookieStore).set('oauth_state', state, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
+  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/${provider}`;
+  let authUrl = '';
+  const params = new URLSearchParams({ state, redirect_uri: redirectUri });
 
-  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/google`;
-  const googleParams = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID!,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
-    access_type: 'offline',
-    prompt: 'consent',
-    state: state,
-  });
+  // Configurem els paràmetres específics per a cada proveïdor
+  switch (provider) {
+    case 'google':
+      params.set('client_id', process.env.GOOGLE_CLIENT_ID!);
+      params.set('response_type', 'code');
+      params.set('scope', 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send');
+      params.set('access_type', 'offline');
+      params.set('prompt', 'consent');
+      authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      break;
+    case 'microsoft':
+      params.set('client_id', process.env.AZURE_CLIENT_ID!);
+      params.set('response_type', 'code');
+      params.set('scope', 'openid email offline_access User.Read Mail.Read Mail.Send');
+      authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params.toString()}`;
+      break;
+    case 'linkedin':
+      params.set('client_id', process.env.LINKEDIN_CLIENT_ID!);
+      params.set('response_type', 'code');
+      params.set('scope', 'openid profile email w_member_social');
+      params.set('prompt', 'consent');
+      authUrl = `https://www.linkedin.com/oauth/v2/authorization?${params.toString()}`;
+      break;
+    case 'facebook':
+      const scopes = 'pages_show_list,pages_manage_posts,business_management,instagram_basic,instagram_content_publish';
+      params.set('client_id', process.env.FACEBOOK_CLIENT_ID!);
+      params.set('response_type', 'code');
+      params.set('scope', scopes);
+      authUrl = `https://www.facebook.com/v19.0/dialog/oauth?${params.toString()}`;
+      break;
+  }
 
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${googleParams.toString()}`;
-  redirect(authUrl);
+  redirect(authUrl);
 }
 
-export async function connectMicrosoftAction() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
+// ✅ 3. Les accions públiques ara són simples crides a la nostra funció central.
+export async function connectGoogleAction() { return createOAuthRedirectAction('google'); }
+export async function connectMicrosoftAction() { return createOAuthRedirectAction('microsoft'); }
+export async function connectLinkedInAction() { return createOAuthRedirectAction('linkedin'); }
+export async function connectFacebookAction() { return createOAuthRedirectAction('facebook'); }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
 
-  const state = uuidv4();
-  (await cookieStore).set('oauth_state', state, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-
-  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/microsoft`;
-  const microsoftParams = new URLSearchParams({
-    client_id: process.env.AZURE_CLIENT_ID!,
-    response_type: 'code',
-    redirect_uri: redirectUri,
-    scope: 'openid email offline_access User.Read Mail.Read Mail.Send',
-    state: state,
-  });
-
-  const authUrl = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${microsoftParams.toString()}`;
-  redirect(authUrl);
-}
-
-// Acció per iniciar OAuth amb LinkedIn
-export async function connectLinkedInAction() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const state = uuidv4();
-  (await cookieStore).set('oauth_state', state, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-
-  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/linkedin`;
-  const linkedinParams = new URLSearchParams({
-    response_type: 'code',
-    client_id: process.env.LINKEDIN_CLIENT_ID!,
-    redirect_uri: redirectUri,
-    state: state,
-    scope: 'openid profile email w_member_social',
-    prompt: 'consent', // ajuda a forçar el consentiment de nou si escau
-  });
-
-  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?${linkedinParams.toString()}`;
-  redirect(authUrl);
-}
-// ✅ CORRECCIÓ: La funció de Facebook ara segueix el mateix patró que les altres.
-export async function connectFacebookAction() {
-  const cookieStore = cookies();
-  const supabase = createClient(cookies())
-;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const state = uuidv4();
-  (await cookieStore).set('oauth_state', state, { path: '/', httpOnly: true, secure: process.env.NODE_ENV === 'production' });
-
-  const redirectUri = `${process.env.NEXT_PUBLIC_SITE_URL}/api/oauth/callback/facebook`;
-  
-  // ✅ CORRECCIÓ DEFINITIVA: Demanem tots els permisos necessaris des del principi.
-  const scopes = [
-    'pages_show_list',
-    'pages_manage_posts',
-    'business_management', // Aquest és el permís clau que ens faltava
-    'instagram_basic',
-    'instagram_content_publish'
-  ].join(',');
-
-  const facebookParams = new URLSearchParams({
-    client_id: process.env.FACEBOOK_CLIENT_ID!,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: scopes,
-    state: state,
-  });
-
-  const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?${facebookParams.toString()}`;
-  redirect(authUrl);
-}
-// --- FUNCIONS DE DESCONNEXIÓ ---
-
-// --- ACCIONS DE DESCONNEXIÓ (ACTUALITZADES) ---
+// --- ACCIONS DE DESCONNEXIÓ (REFATORITZADES) ---
 
 async function handleDisconnect(provider: string) {
-  const supabase = createClient(cookies());
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuari no trobat." };
+  // ✅ 4. Utilitzem validateUserSession perquè aquesta funció retorna un objecte de resultat.
+  const session = await validateUserSession();
+  if ("error" in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
-  try {
-      // Definim quines integracions són d'equip i quines són personals
-      const isTeamIntegration = ['linkedin', 'facebook', 'instagram'].includes(provider);
-      
-      let query;
+  try {
+    const isTeamIntegration = ['linkedin', 'facebook', 'instagram'].includes(provider);
+    let query;
 
-      if (isTeamIntegration) {
-          const activeTeamId = user.app_metadata?.active_team_id;
-          if (!activeTeamId) return { success: false, message: "No hi ha cap equip actiu seleccionat." };
-          
-          // Si és d'equip, esborrem de 'team_credentials'
-          query = supabase.from('team_credentials').delete().match({ team_id: activeTeamId, provider: provider });
-      } else {
-          // Si és personal, esborrem de 'user_credentials'
-          query = supabase.from('user_credentials').delete().match({ user_id: user.id, provider: provider });
-      }
+    if (isTeamIntegration) {
+      // La nostra funció ja valida que activeTeamId existeix.
+      query = supabase.from('team_credentials').delete().match({ team_id: activeTeamId, provider });
+    } else {
+      query = supabase.from('user_credentials').delete().match({ user_id: user.id, provider });
+    }
 
-      const { error } = await query;
-      if (error) throw error;
+    const { error } = await query;
+    if (error) throw error;
 
-      // Opcional: Crida a una Edge Function per a revocar el token a la plataforma externa
-      // try {
-      //     await supabase.functions.invoke(`${provider}-revoke-token`);
-      // } catch (e) {
-      //     console.warn(`No s'ha pogut revocar el token per a ${provider}.`);
-      // }
-
-      revalidatePath('/settings/integrations');
-      return { success: true, message: `Integració desconnectada correctament.` };
-
-  } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Error desconegut";
-      return { success: false, message: `No s'ha pogut desconnectar: ${errorMessage}` };
-  }
+    revalidatePath('/settings/integrations');
+    return { success: true, message: `Integració desconnectada correctament.` };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Error desconegut";
+    return { success: false, message: `No s'ha pogut desconnectar: ${errorMessage}` };
+  }
 }
 
 export async function disconnectGoogleAction() { return await handleDisconnect('google'); }

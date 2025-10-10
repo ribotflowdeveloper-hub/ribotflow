@@ -11,8 +11,8 @@ import type { Task, Contact, Invoice, CrmNotification } from "@/types/crm";
  */
 
 interface DashboardBottomGridProps {
+  onToggleTask: (taskId: string, currentStatus: boolean) => void;
   pendingTasks: Task[];
-  onTaskClick: (task: Task) => void; // <-- La regla diu que la prop s'ha de dir 'onTaskClick'
   onOpenNewTask: () => void;
   attentionContacts: Contact[];
   overdueInvoices: Invoice[];
@@ -27,7 +27,7 @@ interface DashboardBottomGridProps {
 export const DashboardBottomGrid = memo(
   ({
     pendingTasks,
-    onTaskClick, // ✅ 2. Rebem la nova prop
+    onToggleTask,
     onOpenNewTask,
     attentionContacts,
     overdueInvoices,
@@ -39,7 +39,7 @@ export const DashboardBottomGrid = memo(
         {/* 🗓️ Agenda de tasques */}
         <Agenda
           pendingTasks={pendingTasks}
-          onTaskClick={onTaskClick} // ✅ 3. Passem la prop correcta a l'Agenda
+          onToggleTask={onToggleTask}
           onOpenNewTask={onOpenNewTask}
         />
 

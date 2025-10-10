@@ -1,12 +1,12 @@
 // /app/finances/despeses/_components/ExpensesData.tsx
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+
 import { redirect } from 'next/navigation';
 import { ExpensesClient } from './expenses-client';
 
 export async function ExpensesData() {
-    const supabase = createClient(cookies());
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 

@@ -5,7 +5,7 @@
 "use client";
 
 import React from 'react';
-import type { Stage } from '../page';
+import type { Stage } from '@/types/crm';
 
 interface PipelineSkeletonProps {
   stages: Stage[];

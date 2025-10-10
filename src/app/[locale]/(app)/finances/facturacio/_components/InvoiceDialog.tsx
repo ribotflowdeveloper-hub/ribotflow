@@ -13,7 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Loader2, Plus, Trash2, Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale"; import { cn } from "@/lib/utils/utils";
-import { type Invoice, type Contact, type InvoiceItem } from '../types';
+import { type Invoice, type Contact, InvoiceItem} from '@/types/finances/index';
 import { createOrUpdateInvoiceAction, type InvoiceFormData } from '../actions';
 import { useTranslations, useLocale } from 'next-intl';
 import type { Product } from '@/types/crm/products';

@@ -1,9 +1,7 @@
 import { BillingClient } from './BillingClient';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { getTranslations } from 'next-intl/server';
-import { redirect } from 'next/navigation';
 import type { Subscription, Plan } from '@/types/settings';
+import { validatePageSession } from '@/lib/supabase/session'; // ✅ 1. Importem l'assistent de sessió
 
 const plansStructure = [
     { id: 'free', name: 'Free', iconName: 'Gift', priceMonthly: 0, priceYearly: 0, colors: { border: "border-muted", text: "text-muted-foreground", bg: "bg-muted", hoverBg: "hover:bg-muted/80" } },
@@ -14,15 +12,8 @@ const plansStructure = [
 
 export async function BillingData() {
     const t = await getTranslations('SettingsPage.billing');
-    const supabase = createClient(cookies());
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return redirect('/login');
-    
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return redirect('/settings/team');
-    }
+       // ✅ 1. Validació de sessió neta i centralitzada
+    const { supabase, user, activeTeamId } = await validatePageSession();
 
     const [subscriptionRes, memberRes] = await Promise.all([
         supabase.from('subscriptions').select('*').eq('team_id', activeTeamId).maybeSingle(),

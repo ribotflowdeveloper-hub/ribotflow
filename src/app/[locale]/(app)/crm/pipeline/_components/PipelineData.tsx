@@ -1,5 +1,5 @@
 import { PipelineClient } from '../pipeline-client';
-import type { Stage, Contact, Opportunity } from '../page';
+import type { Stage, Contact, Opportunity } from '@/types/crm';
 import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció d'ajuda per a pàgines
 
 export async function PipelineData() {

@@ -1,14 +1,13 @@
 // /app/[locale]/network/_components/NetworkData.tsx
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { NetworkClient } from './NetworkClient';
 import { getTranslations } from 'next-intl/server';
 import type { PublicProfileListItem } from '../types';
 
 export async function NetworkData() {
     const t = await getTranslations('NetworkPage');
-    const supabase = createClient(cookies());
+    const supabase = createClient();
 
     // Consulta simple per a la llista inicial. Només les dades bàsiques.
     const { data, error } = await supabase

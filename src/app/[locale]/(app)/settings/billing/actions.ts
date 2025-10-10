@@ -1,7 +1,6 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from '@/lib/supabase/session'; // Importem la nova funció
 
@@ -67,7 +66,7 @@ export async function cancelSubscriptionAction() {
     }
 
     try {
-        await createClient(cookies())
+        await createClient()
             .from('subscriptions')
             .update({ status: 'canceled' })
             .eq('team_id', activeTeamId)

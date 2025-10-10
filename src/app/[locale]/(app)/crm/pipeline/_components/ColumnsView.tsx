@@ -5,7 +5,7 @@
 "use client";
 
 import React from 'react';
-import type { Stage, Opportunity } from '../page';
+import type { Stage, Opportunity } from '@/types/crm';
 import { StageColumn } from './StageColumn';
 
 interface ColumnsViewProps {

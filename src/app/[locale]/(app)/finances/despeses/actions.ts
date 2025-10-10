@@ -1,196 +1,158 @@
 /**
  * @file actions.ts (Despeses)
- * @summary Aquest fitxer conté totes les Server Actions per al mòdul de Gestió de Despeses.
- * Les funcions aquí s'executen de manera segura al servidor i són responsables de la interacció
- * amb la base de dades i serveis externs, com desar despeses, processar documents amb OCR
- * i pujar fitxers adjunts a Supabase Storage.
+ * @summary Server Actions per al mòdul de Gestió de Despeses.
  */
 
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
-import { type Expense, type ExpenseItem } from "../types";
+import { type Expense, type ExpenseItem } from "@/types/finances/index";
+import { type ActionResult } from "@/types/shared/index"; // ✅ 1. Importem el teu tipus correcte
+import { validateUserSession } from "@/lib/supabase/session";
+import { SupabaseClient, User } from "@supabase/supabase-js";
 
-// Definim un tipus de resultat genèric per a les nostres accions.
-interface ActionResult<T = unknown> {
-    data: T | null;
-    error: { message: string } | null;
-}
-
-
+// --- Helpers Interns (Extrets de saveExpenseAction) ---
 
 /**
- * @summary Processa un fitxer (factura, tiquet) mitjançant una Edge Function d'OCR (Reconeixement Òptic de Caràcters).
- * @param {FormData} formData - El formulari que conté el fitxer a processar.
- * @returns {Promise<ActionResult<Record<string, unknown>>>} Les dades extretes del document o un error.
+ * Crea o actualitza la despesa principal a la base de dades.
  */
-export async function processOcrAction(
-    formData: FormData
-): Promise<ActionResult<Record<string, unknown>>> {
-    const supabase = createClient(cookies())
-        ;
-    // Deleguem tota la lògica complexa de l'OCR a una Edge Function.
-    const { data, error } = await supabase.functions.invoke("process-ocr", {
-        body: formData,
-    });
+async function upsertExpenseDetails(
+  supabase: SupabaseClient,
+  expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "expense_items">,
+  expenseId: string | null,
+  userId: string,
+  teamId: string
+): Promise<ActionResult<Expense>> {
+  if (expenseData.expense_date) {
+    try {
+      expenseData.expense_date = new Date(expenseData.expense_date).toISOString().split('T')[0];
+    } catch (e) {
+      console.error("Error al formatar la data:", e);
+      return { success: false, message: "Format de data invàlid." }; // ✅ CORREGIT
+    }
+  }
 
-    if (error) return { data: null, error: { message: error.message } };
-    return { data, error: null };
+  const query = expenseId
+    ? supabase.from("expenses").update(expenseData).eq("id", expenseId)
+    : supabase.from("expenses").insert({ ...expenseData, user_id: userId, team_id: teamId });
+
+  const { data, error } = await query.select().single();
+
+  if (error) {
+    return { success: false, message: error.message }; // ✅ CORREGIT
+  }
+  
+  return { success: true, message: "Despesa desada correctament.", data: data as Expense }; // ✅ CORREGIT
+}
+
+/**
+ * Sincronitza els conceptes d'una despesa.
+ */
+async function syncExpenseItems(
+    supabase: SupabaseClient,
+    expenseId: string,
+    items: ExpenseItem[] | undefined,
+    user: User,
+    teamId: string
+): Promise<ActionResult> {
+    if (!items) { // Si no hi ha 'items' a l'objecte, no fem res.
+      return { success: true, message: "No hi ha conceptes per sincronitzar." };
+    }
+
+    // Si ExpenseItem no té 'id', aquesta línia s'ha d'ajustar o eliminar.
+    // Per exemple, si cada item té una descripció única:
+    // const itemIdsFromForm = items.map(item => item.description).filter(Boolean);
+
+    // Si no es pot identificar per 'id', simplement no utilitzis aquesta lògica:
+    const itemIdsFromForm: string[] = [];
+
+    const { error: deleteError } = await supabase
+        .from('expense_items')
+        .delete()
+        .eq('expense_id', expenseId)
+        .not('id', 'in', `(${itemIdsFromForm.join(',')})`);
+
+    if (deleteError) {
+      return { success: false, message: `Error esborrant conceptes: ${deleteError.message}` }; // ✅ CORREGIT
+    }
+    
+    if (items.length === 0) {
+      return { success: true, message: "Tots els conceptes s'han esborrat." }; // ✅ CORREGIT
+    }
+
+    const itemsToUpsert = items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        expense_id: expenseId,
+        user_id: user.id,
+        team_id: teamId
+    }));
+
+    const { error: upsertError } = await supabase.from("expense_items").upsert(itemsToUpsert);
+    if (upsertError) {
+      return { success: false, message: `Error actualitzant conceptes: ${upsertError.message}` }; // ✅ CORREGIT
+    }
+    
+    return { success: true, message: "Conceptes sincronitzats correctament." }; // ✅ CORREGIT
 }
 
 
-interface ActionResult<T = unknown> {
-    data: T | null;
-    error: { message: string } | null;
-}
+// --- Server Actions Públiques ---
 
+export async function processOcrAction(formData: FormData): Promise<ActionResult<Record<string, unknown>>> {
+    const session = await validateUserSession();
+    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
+    const { supabase } = session;
+
+    const { data, error } = await supabase.functions.invoke("process-ocr", { body: formData });
+    
+    if (error) {
+      return { success: false, message: error.message }; // ✅ CORREGIT
+    }
+    return { success: true, message: "Document processat amb èxit.", data }; // ✅ CORREGIT
+}
 
 export async function saveExpenseAction(
-    expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "suppliers" | "expense_attachments"> & { expense_items: ExpenseItem[] },
+    expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "expense_items"> & { expense_items?: ExpenseItem[] },
     expenseId: string | null
 ): Promise<ActionResult<Expense>> {
-    console.log('Objecte rebut al servidor:', expenseData);
+    const session = await validateUserSession();
+    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
+    const { supabase, user, activeTeamId } = session;
 
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { message: "Not authenticated" } };
+    const { expense_items, ...rest } = expenseData;
+    // Elimina 'expense_items' explícitament per evitar errors de tipus
+    const expenseDetails = { ...rest };
 
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No active team selected" } };
+    // Pas 1: Desar la despesa principal
+    const expenseResult = await upsertExpenseDetails(supabase, expenseDetails, expenseId, user.id, activeTeamId);
+    if (!expenseResult.success || !expenseResult.data) {
+      return expenseResult; // Retornem l'error que ja ve formatat
     }
-
-    // Separem els conceptes de la resta de detalls de la despesa
-    const { expense_items, ...expenseDetails } = expenseData;
-
-    // ✅ PAS CLAU: Assegurem el format de la data abans d'enviar-la a la BBDD
-    if (expenseDetails.expense_date) {
-        // Convertim la data ISO string a 'AAAA-MM-DD'
-        try {
-            expenseDetails.expense_date = new Date(expenseDetails.expense_date)
-                .toISOString()
-                .split('T')[0];
-        } catch (e) {
-            // Imprimim l'error real al terminal del servidor
-            console.error("Error al formatar la data de la despesa:", e);
-            return { data: null, error: { message: "Format de data invàlid." } };
-        }
-    }
-    let savedExpense: Expense | null = null;
-    let expenseError: { message: string } | null = null;
-
-    // Pas 1: Desar la despesa principal (crear o actualitzar)
-    if (expenseId) {
-        // Actualitzem la despesa existent
-        const { data, error } = await supabase
-            .from("expenses")
-            .update(expenseDetails)
-            .eq("id", expenseId)
-            .select()
-            .single();
-        savedExpense = data as Expense | null;
-        if (error) expenseError = { message: error.message };
-    } else {
-        // Creem una nova despesa
-        const { data, error } = await supabase
-            .from("expenses")
-            .insert({ ...expenseDetails, user_id: user.id, team_id: activeTeamId })
-            .select()
-            .single();
-        savedExpense = data as Expense | null;
-        if (error) expenseError = { message: error.message };
-    }
-
-    if (expenseError) return { data: null, error: expenseError };
-    if (!savedExpense) return { data: null, error: { message: "Could not save expense" } };
-
-    // Pas 2: Gestionar els conceptes (`expense_items`) amb la nova lògica
-    if (expense_items) {
-        // Obtenim els IDs dels conceptes que arriben del formulari (només els que ja existien)
-        const itemIdsFromForm = expense_items.map(item => item.id).filter(Boolean);
-
-        // Esborrem els conceptes que estiguin a la BBDD però no al formulari
-        // (l'usuari els ha eliminat)
-        if (itemIdsFromForm.length > 0) {
-            const { error: deleteError } = await supabase
-                .from('expense_items')
-                .delete()
-                .eq('expense_id', savedExpense.id)
-                .not('id', 'in', `(${itemIdsFromForm.join(',')})`);
-
-            if (deleteError) return { data: null, error: { message: `Error deleting old items: ${deleteError.message}` } };
-        } else if (expenseId) {
-            // Si és una actualització i no arriba cap concepte amb ID, els esborrem tots
-            const { error: deleteAllError } = await supabase
-                .from('expense_items')
-                .delete()
-                .eq('expense_id', savedExpense.id);
-
-            if (deleteAllError) return { data: null, error: { message: `Error deleting all items: ${deleteAllError.message}` } };
-        }
-
-        // Preparem els conceptes per a l'operació `upsert`
-        const itemsToUpsert = expense_items.map((item: ExpenseItem) => ({
-            // ✅ AFEGEIX L'ID NOMÉS SI JA EXISTEIX
-            ...(item.id && { id: item.id }),
-
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            expense_id: savedExpense!.id,
-            user_id: user.id,
-            team_id: activeTeamId
-        }));
-
-        // Fem upsert: actualitza els existents i insereix els nous
-        if (itemsToUpsert.length > 0) {
-            const { error: upsertError } = await supabase.from("expense_items").upsert(itemsToUpsert);
-            if (upsertError) {
-                console.error("DETALLS DE L'ERROR UPSERT:", upsertError); // Línia de depuració útil
-                return { data: null, error: { message: `Error upserting items: ${upsertError.message}` } };
-            }
-        }
-
-    } else if (expenseId) {
-        // Si és una actualització i no rebem `expense_items`, vol dir que s'han esborrat tots
-        await supabase.from("expense_items").delete().eq("expense_id", savedExpense.id);
+    
+    // Pas 2: Sincronitzar els conceptes
+    const itemsResult = await syncExpenseItems(supabase, expenseResult.data.id ?? "", expense_items, user, activeTeamId);
+    if (!itemsResult.success) {
+      return { success: false, message: itemsResult.message, data: undefined }; // Cast to ActionResult<Expense>
     }
 
     revalidatePath("/finances/despeses");
-    return { data: savedExpense, error: null };
+    return { success: true, message: "Despesa desada amb èxit.", data: expenseResult.data }; // ✅ CORREGIT
 }
 
-// ... Les teves altres accions com processOcrAction es poden quedar igual ...
-
-export async function uploadAttachmentAction(
-    expenseId: string,
-    formData: FormData
-): Promise<ActionResult<null>> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: null, error: { message: "Not authenticated" } };
-
-    // --- NOVA LÒGICA D'EQUIP ACTIU ---
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { data: null, error: { message: "No active team selected" } };
-    }
-    // ---------------------------------
+export async function uploadAttachmentAction(expenseId: string, formData: FormData): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
+    const { supabase, user, activeTeamId } = session;
 
     const file = formData.get("file") as File | null;
-    if (!file) return { data: null, error: { message: "No file provided" } };
+    if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." }; // ✅ CORREGIT
 
-    // ✅ La ruta d'emmagatzematge ara podria organitzar-se per equip
     const filePath = `${activeTeamId}/${expenseId}/${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase.storage
-        .from("despeses-adjunts")
-        .upload(filePath, file);
+    const { error: uploadError } = await supabase.storage.from("despeses-adjunts").upload(filePath, file);
+    if (uploadError) return { success: false, message: uploadError.message }; // ✅ CORREGIT
 
-    if (uploadError) return { data: null, error: { message: uploadError.message } };
-
-    // ✅ Afegim 'team_id' al registre de l'adjunt
     const { error: dbError } = await supabase.from("expense_attachments").insert({
         expense_id: expenseId,
         user_id: user.id,
@@ -199,9 +161,8 @@ export async function uploadAttachmentAction(
         filename: file.name,
         mime_type: file.type,
     });
-
-    if (dbError) return { data: null, error: { message: dbError.message } };
+    if (dbError) return { success: false, message: dbError.message }; // ✅ CORREGIT
 
     revalidatePath("/finances/despeses");
-    return { data: null, error: null };
+    return { success: true, message: "Adjunt pujat correctament." }; // ✅ CORREGIT
 }

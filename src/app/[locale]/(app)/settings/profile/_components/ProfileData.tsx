@@ -13,7 +13,9 @@ export async function ProfileData() {
   ]);
   
   const profile = profileRes.data;
-  const team = memberRes.data?.teams as Team | null;
+  const team = Array.isArray(memberRes.data?.teams) && memberRes.data.teams.length > 0
+    ? memberRes.data.teams[0] as Team
+    : null;
   const role = memberRes.data?.role as 'owner' | 'admin' | 'member' | null;
 
   if (user.app_metadata.active_team_id && !memberRes.data) {

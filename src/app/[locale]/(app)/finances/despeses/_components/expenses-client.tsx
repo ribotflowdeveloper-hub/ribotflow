@@ -81,12 +81,7 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
     setSelectedExpense(expense);
     setIsFormDialogOpen(true);
   };
-  // ✅ NOU: AFEGEIX AQUESTA FUNCIÓ
-  // Aquesta funció s'executarà quan el diàleg ens notifiqui que ha desat amb èxit.
-  const handleSaveSuccess = () => {
-    setIsFormDialogOpen(false); // Simplement tanquem el diàleg
-    // La taula s'actualitzarà sola gràcies a 'revalidatePath' de la Server Action
-  };
+
   /**
     * NOU: Funció que s'executa quan el diàleg de formulari desa les dades.
     * Aquesta funció serà passada com a prop a `ExpenseDialog`.
@@ -122,7 +117,6 @@ export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesCl
         setIsOpen={setIsFormDialogOpen}
         initialData={selectedExpense}
         suppliers={initialSuppliers}
-        onSaveSuccess={handleSaveSuccess} // <-- Passem la nova funció
 
       />
     </>
