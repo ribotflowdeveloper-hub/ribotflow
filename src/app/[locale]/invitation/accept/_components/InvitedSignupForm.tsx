@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from 'react';
-import { signupAction } from '@/app/[locale]/auth/actions';
+import { signupAction } from '@/app/[locale]/(auth)/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

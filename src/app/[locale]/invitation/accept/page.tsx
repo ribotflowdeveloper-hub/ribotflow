@@ -1,33 +1,30 @@
-// /app/[locale]/invitation/accept/page.tsx
+// /app/[locale]/invitation/accept/page.tsx (VERSIÓ FINAL)
 
-import { Suspense } from 'react';
 import { InvitedSignupForm } from './_components/InvitedSignupForm';
 import { createClient } from '@/lib/supabase/server';
 
-// Assegura que els paràmetres de cerca estiguin sempre disponibles
+// Assegura que la pàgina sempre es renderitza dinàmicament per a llegir els searchParams.
 export const dynamic = 'force-dynamic';
 
 type InvitedSignupPageProps = {
     searchParams: { 
-        invite_token?: string; 
+        // ✅ CORRECCIÓ: El paràmetre es diu 'token', no 'invite_token'.
+        token?: string; 
         email?: string;
     };
 };
 
 export default async function InvitedSignupPage({ searchParams }: InvitedSignupPageProps) {
-      // Afegeix 'await' per a resoldre els paràmetres de manera segura
-  const resolvedSearchParams = await searchParams;
-  const { invite_token, email } = resolvedSearchParams;
-    let teamName = 'un equip'; // Nom de l'equip per defecte
+    // ✅ MILLORA: Ja no necessitem 'await searchParams' aquí.
+    const { token, email } = searchParams;
+    let teamName: string | null = null; // Ho inicialitzem a null per a més claredat.
 
-    // Encara podem intentar obtenir el nom de l'equip per a una millor experiència d'usuari.
-    // Aquesta consulta es fa des del servidor i pot utilitzar RLS si està ben configurada.
-    if (invite_token) {
+    if (token) {
         const supabase = createClient();
         const { data: invitationData } = await supabase
             .from('invitations')
             .select('team_name')
-            .eq('token', invite_token)
+            .eq('token', token)
             .single();
         
         if (invitationData?.team_name) {
@@ -37,13 +34,12 @@ export default async function InvitedSignupPage({ searchParams }: InvitedSignupP
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-muted/40 p-4">
-            <Suspense>
-                <InvitedSignupForm 
-                    inviteToken={invite_token}
-                    invitedEmail={email}
-                    teamName={teamName}
-                />
-            </Suspense>
+            {/* ✅ MILLORA: Suspense no és necessari aquí. */}
+            <InvitedSignupForm 
+                inviteToken={token}
+                invitedEmail={email}
+                teamName={teamName}
+            />
         </div>
     );
 }

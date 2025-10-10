@@ -17,7 +17,7 @@ import { updateUserProfileAction, updateTeamAction } from '../actions';
 import type { Profile, Team } from '@/types/settings';
 
 // ✅ CORRECCIÓ: Importacions que faltaven per a la gestió de permisos.
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { hasPermission, PERMISSIONS } from '@/lib/permissions.config'; 
 
 interface ProfileFormProps {
     email: string;

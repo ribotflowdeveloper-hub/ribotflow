@@ -20,7 +20,7 @@ import { Chatbot } from '@/components/chatbot/Chatbot';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Accions
-import { logoutAction } from '@/app/[locale]/auth/actions';
+import { logoutAction } from '@/app/[locale]/(auth)/auth/actions';
 
 // Imatges i tipus
 import logoRibot from '@/../public/icon1.png';

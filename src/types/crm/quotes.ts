@@ -52,6 +52,7 @@ export type Quote = {
   contact_id: string | null;
   opportunity_id?: number | null;
   quote_number: string;
+  sequence_number: number; // ✅ Nova propietat per al número seqüencial
   issue_date: string;
   expiry_date?: string | null;
   status: QuoteStatus;

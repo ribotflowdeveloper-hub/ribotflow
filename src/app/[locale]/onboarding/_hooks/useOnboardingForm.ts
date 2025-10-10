@@ -96,6 +96,17 @@ export function useOnboardingForm(initialFullName: string) {
             }
         });
     };
+    // ✅ NOU GESTOR PER A L'EDICIÓ MANUAL DELS CAMPS DE L'ADREÇA
+    const handleAddressChange = (field: keyof DetailedAddress, value: string) => {
+        setFormData(prev => ({
+            ...prev,
+            address: {
+                // Si l'adreça no existeix, creem un objecte base per evitar errors
+                ...(prev.address || { street: '', city: '', postcode: '', region: '', country: '', latitude: null, longitude: null }),
+                [field]: value
+            }
+        }));
+    };
 
     // ✅ Assegura't que l'objecte que retornes inclou TOTES aquestes funcions
     return {
@@ -104,6 +115,7 @@ export function useOnboardingForm(initialFullName: string) {
         isPending,
         handleInputChange,
         handleAddressSelect,
+        handleAddressChange, // ✅ EXPORTEM LA NOVA FUNCIÓ
         handleToggleService,
         goToNextStep,
         goToPrevStep,

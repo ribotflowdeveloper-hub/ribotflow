@@ -53,7 +53,7 @@ export async function validatePageSession() {
     }
     if (!activeTeamId) {
         // Redirigim a un lloc on pugui crear o seleccionar un equip
-        redirect('/team-selection'); 
+        redirect('/settings/team');
     }
 
     // El redirect atura l'execució, així que sabem que aquí tot és vàlid
