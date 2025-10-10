@@ -1,4 +1,4 @@
-/* eslint-disable react/jsx-no-undef */
+//* eslint-disable react/jsx-no-undef */
 // Ubicació: /app/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx
 "use client";
 
@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Image from 'next/image';
-import { Link, Loader2, Trash2 } from 'lucide-react';
+import { Link, Loader2, PlayCircle, Trash2 } from 'lucide-react';
 
 import { useCreatePost } from '../_hooks/useCreatePost';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
@@ -25,7 +25,8 @@ interface CreatePostDialogProps {
 export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionStatuses, t }: CreatePostDialogProps) {
     const {
         content, setContent, previewUrls, selectedProviders, isPending,
-        handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState
+        handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState,
+        mediaFiles // <-- Add this line to destructure mediaFiles from the hook
     } = useCreatePost({
         isOpen,
         connectionStatuses,

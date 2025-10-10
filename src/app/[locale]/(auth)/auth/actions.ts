@@ -24,6 +24,7 @@ const LoginSchema = z.object({
 
 const SignupSchema = z.object({
     email: z.string().email("L'adreça d'email no és vàlida."),
+    fullName: z.string().min(1, "El nom complet és obligatori.").optional(), 
     password: z.string().min(8, "La contrasenya ha de tenir almenys 8 caràcters."),
     invite_token: z.string().optional(),
 });
@@ -47,12 +48,12 @@ export async function loginAction(formData: FormData) {
     if (!result.success) {
         return redirect(`/${locale}/login?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-    
+
     const { error } = await supabase.auth.signInWithPassword(result.data);
     if (error) {
         return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
     }
-    
+
     redirect(`/${locale}/dashboard`);
 }
 
@@ -64,27 +65,32 @@ export async function signupAction(formData: FormData) {
     if (!result.success) {
         return redirect(`/${locale}/signup?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-    
-    const { email, password, invite_token } = result.data;
-    
-    // La teva lògica per comprovar si l'usuari existeix és bona, la mantenim
+
+    const { email, password, fullName, invite_token } = result.data;
+
     const { data: existingUser } = await supabaseAdmin.from('users').select('id').eq('email', email).single();
     if (existingUser) {
         return redirect(`/${locale}/login?message=${encodeURIComponent("Ja existeix un compte amb aquest correu.")}`);
     }
 
     const nextUrl = invite_token ? `/dashboard?token=${invite_token}` : `/onboarding`;
-    const { error: signUpError } = await supabase.auth.signUp({
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
             emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
+            ...(fullName && { data: { full_name: fullName } })
         },
     });
 
     if (signUpError) {
         return redirect(`/${locale}/signup?message=${encodeURIComponent(signUpError.message)}`);
     }
+    if (!signUpData.user) {
+        return redirect(`/${locale}/signup?message=No s'ha pogut crear l'usuari.`);
+    }
+
 
     return redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }
@@ -122,7 +128,7 @@ export async function forgotPasswordAction(formData: FormData): Promise<{ succes
     if (!result.success) {
         return { success: false, message: result.error.issues[0].message };
     }
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
         redirectTo: `${origin}/${locale}/auth/reset-password`,
     });
@@ -143,7 +149,7 @@ export async function updatePasswordAction(formData: FormData) {
     if (!result.success) {
         return redirect(`/${locale}/auth/reset-password?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-    
+
     const { code, password } = result.data;
 
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -155,6 +161,6 @@ export async function updatePasswordAction(formData: FormData) {
     if (updateError) {
         return redirect(`/${locale}/auth/reset-password?message=${encodeURIComponent(updateError.message)}`);
     }
-    
+
     return redirect(`/${locale}/login?message=La teva contrasenya s'ha actualitzat correctament.`);
 }

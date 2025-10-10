@@ -1070,13 +1070,17 @@
       }
     },
     "blacklist": {
-      "description": "Afegeix dominis (ex: `exemple.com`) o adreces de correu completes per evitar que apareguin a la teva bústia d'entrada.",
+      "metaTitle": "Llista Negra",
+      "pageTitle": "Gestiona la Llista Negra",
+      "pageDescription": "Afegeix dominis (ex: `exemple.com`) o adreces de correu completes per evitar que apareguin a la teva bústia d'entrada.", 
       "placeholder": "exemple.com o spammer@exemple.com",
       "addButton": "Afegir",
-      "empty": "La teva blacklist està buida.",
+      "emptyTitle": "La llista negra és buida",
+      "emptyDescription": "Quan afegeixis regles, apareixeran aquí.",
       "toast": {
-        "success": "Èxit!",
-        "error": "Error"
+        "error": "Error",
+        "addSuccess": "Regla Afegida",
+        "deleteSuccess": "Regla Eliminada"
       }
     },
     "integrations": {
@@ -1201,6 +1205,10 @@
         "admin": "Administrador",
         "member": "Membre"
       }
+    },
+    "Errors": {
+      "permissionDenied": "No tens permisos per a realitzar aquesta acció.", 
+      "accessDeniedTitle": "Accés Denegat" 
     }
   },
   "ThemeSwitcher": {
@@ -1389,7 +1397,6 @@
       "cityLabel": "Població",
       "postcodeLabel": "Codi Postal",
       "regionLabel": "Província"
-      
     },
     "step3": {
       "title": "Últims detalls",
@@ -1414,8 +1421,8 @@
     "couldnotcomplete": "No s'ha pogut completar l'acció.",
     "nofileselected": "No s'ha seleccionat cap fitxer.",
     "processingfile": "Processant el fitxer Excel...",
-    "errorloadingdata":"Error en carregar les dades.",
-    "unexpectederrorloadingfile":"S'ha produït un error inesperat en carregar el fitxer.",
+    "errorloadingdata": "Error en carregar les dades.",
+    "unexpectederrorloadingfile": "S'ha produït un error inesperat en carregar el fitxer.",
     "contacts": {
       "create": "Crear plantilla",
       "load": "Carregar contactes",

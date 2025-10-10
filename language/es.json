@@ -1052,13 +1052,17 @@
       }
     },
     "blacklist": {
-      "description": "Agrega dominios (ej: `ejemplo.com`) o direcciones de correo completas para evitar que aparezcan en tu bandeja de entrada.",
+      "metaTitle": "Lista Negra",
+      "pageTitle": "Gestiona la Lista Negra",
+      "pageDescription": "Agrega dominios (ej: `ejemplo.com`) o direcciones de correo completas para evitar que aparezcan en tu bandeja de entrada.",
       "placeholder": "ejemplo.com o spammer@ejemplo.com",
       "addButton": "Agregar",
-      "empty": "Tu lista negra está vacía.",
+      "emptyTitle": "La lista negra está vacía",
+      "emptyDescription": "Cuando agregues reglas, aparecerán aquí.",
       "toast": {
-        "success": "¡Éxito!",
-        "error": "Error"
+        "error": "Error",
+        "addSuccess": "Regla Agregada",
+        "deleteSuccess": "Regla Eliminada"
       }
     },
     "integrations": {
@@ -1138,6 +1142,10 @@
       "youOwner": "Tú (Propietario)",
       "exampleEmail": "email@ejemplo.com",
       "adminRole": "Administrador"
+    },
+    "Errors": {
+      "permissionDenied": "No tienes permisos para realizar esta acción.",
+      "accessDeniedTitle": "Acceso Denegado"
     }
   },
   "ThemeSwitcher": {

@@ -1060,13 +1060,17 @@
       }
     },
     "blacklist": {
-      "description": "Add domains (e.g., `example.com`) or full email addresses to prevent them from appearing in your inbox.",
+      "metaTitle": "Blacklist",
+      "pageTitle": "Manage Blacklist",
+      "pageDescription": "Add domains (e.g. `example.com`) or full email addresses to prevent them from appearing in your inbox.",
       "placeholder": "example.com or spammer@example.com",
       "addButton": "Add",
-      "empty": "Your blacklist is empty.",
+      "emptyTitle": "The blacklist is empty",
+      "emptyDescription": "When you add rules, they will appear here.",
       "toast": {
-        "success": "Success!",
-        "error": "Error"
+        "error": "Error",
+        "addSuccess": "Rule Added",
+        "deleteSuccess": "Rule Deleted"
       }
     },
     "integrations": {
@@ -1146,6 +1150,10 @@
       "youOwner": "You (Owner)",
       "exampleEmail": "email@example.com",
       "adminRole": "Admin"
+    },
+    "Errors": {
+      "permissionDenied": "You don’t have permission to perform this action.",
+      "accessDeniedTitle": "Access Denied"
     }
   },
   "ThemeSwitcher": {
@@ -1358,10 +1366,8 @@
     "couldnotcomplete": "The action could not be completed.",
     "nofileselected": "No file selected.",
     "processingfile": "Processing excel file...",
-        "errorloadingdata": "Error loading data from the file.",
+    "errorloadingdata": "Error loading data from the file.",
     "unexpectederrorloadingfile": "An unexpected error has occurred while loading the file.",
-
-
     "contacts": {
       "create": "Create template",
       "load": "Load contacts",

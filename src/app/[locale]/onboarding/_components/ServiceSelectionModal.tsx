@@ -11,13 +11,18 @@ const ServiceCard: FC<{ serviceName: string; isSelected: boolean; onClick: () =>
     <motion.button
         type="button"
         onClick={onClick}
-        className={`relative w-full h-24 p-4 rounded-lg border-2 flex items-center justify-center text-center font-semibold transition-all duration-200 ease-in-out ${
-            isSelected ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-transparent hover:border-primary/50'
+        // 👇 PAS 1: Reduïm l'alçada i el padding per fer-la més petita
+        // 👇 PAS 2: Canviem les classes 'primary' per les 'green' quan està seleccionada
+        className={`relative w-full h-16 p-2 rounded-lg border-2 flex items-center justify-center text-center font-semibold transition-all duration-200 ease-in-out ${ // -> h-24 p-4 a h-20 p-3
+            isSelected 
+                ? 'bg-green-100 border-green-600 text-green-700' // -> Canviat de 'primary' a 'green'
+                : 'bg-muted/50 border-transparent hover:border-green-500/50' // -> BONUS: Canviat el hover a verd també
         }`}
         whileTap={{ scale: 0.95 }}
     >
         {isSelected && (
-            <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+            // 👇 PAS 3: Canviem el fons de la icona de 'check' a verd
+            <div className="absolute top-2 right-2 bg-green-600 text-primary-foreground rounded-full p-1"> {/* // -> Canviat de 'bg-primary' a 'bg-green-600' */}
                 <Check className="w-3 h-3" />
             </div>
         )}

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
 import { getTranslations } from "next-intl/server";
 import { validateUserSession } from "@/lib/supabase/session";
-import { checkUserPermission, PERMISSIONS } from "@/lib/permissions";
+import { validateSessionAndPermission, PERMISSIONS } from "@/lib/permissions";
 
 // Aquest tipus de retorn es pot moure a un fitxer de tipus globals si el fas servir a més llocs.
 
@@ -19,23 +19,23 @@ type ActionResult<T = unknown> = {
  * Funció d'ajuda interna per a validar la sessió i els permisos específics del planificador.
  * Evita repetir el mateix codi a cada acció.
  */
+/**
+ * Funció d'ajuda interna per a validar la sessió i els permisos específics del planificador.
+ * Ara fa servir el nostre validador centralitzat.
+ */
 async function validateSocialPlannerPermissions() {
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { error: session.error.message };
-    }
-    const { supabase, user, activeTeamId } = session;
+    // Cridem directament a la nostra nova funció guardiana!
+    const validationResult = await validateSessionAndPermission(PERMISSIONS.MANAGE_INTEGRATIONS);
 
-    // Comprovem si l'usuari té permís per a gestionar integracions/planificador.
-    const hasAccess = await checkUserPermission(supabase, user.id, activeTeamId, PERMISSIONS.MANAGE_INTEGRATIONS);
-    if (!hasAccess) {
+    if ('error' in validationResult) {
         const t = await getTranslations('Errors');
+        // Pots retornar un missatge d'error genèric o el de la validació
         return { error: t('permissionDenied') };
     }
 
-    return { supabase, user, activeTeamId };
+    // Si la validació és correcta, retornem les dades necessàries.
+    return validationResult;
 }
-
 // ----------------------------------------------------------------------------------
 
 /**

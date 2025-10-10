@@ -15,8 +15,9 @@ type InvitedSignupPageProps = {
 };
 
 export default async function InvitedSignupPage({ searchParams }: InvitedSignupPageProps) {
+    console.log("Search params a la pàgina d'acceptació d'invitació:", searchParams);
     // ✅ MILLORA: Ja no necessitem 'await searchParams' aquí.
-    const { token, email } = searchParams;
+    const { token, email } = await searchParams;
     let teamName: string | null = null; // Ho inicialitzem a null per a més claredat.
 
     if (token) {

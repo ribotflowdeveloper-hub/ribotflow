@@ -42,8 +42,16 @@ export function useOnboardingForm(initialFullName: string) {
     const validateStep = (currentStep: number): boolean => {
         switch (currentStep) {
             case 1: return !!formData.full_name && !!formData.company_name;
-            case 2: return !!formData.address;
-            case 3: return formData.services.length > 0;
+            case 2:
+                // ✅ Comprovem que l'objecte 'address' existeix I que els seus camps obligatoris tenen valor.
+                return (
+                    !!formData.address &&
+                    !!formData.address.street &&
+                    !!formData.address.city &&
+                    !!formData.address.postcode &&
+                    !!formData.address.region && // <-- LA COMPROVACIÓ CLAU QUE FALTAVA
+                    !!formData.address.country
+                ); case 3: return formData.services.length > 0;
             default: return true;
         }
     };
