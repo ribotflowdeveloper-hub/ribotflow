@@ -2,8 +2,8 @@ import { useState, useMemo, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { type DropResult } from '@hello-pangea/dnd';
-import { updateOpportunityStageAction } from '../actions.ts';
-import type { Opportunity, Stage } from '../app/[locale]/(app)/crm/pipeline/page';
+import { updateOpportunityStageAction } from '../actions';
+import type { Opportunity, Stage } from '@/types/crm';
 
 // ✅ El hook ara rep l'estat i la funció per modificar-lo
 interface UsePipelineProps {

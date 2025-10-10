@@ -1,5 +1,5 @@
 import { FC } from 'react';
-import { format } from 'date-fns';
+import { format, Locale } from 'date-fns';
 import { useTranslations } from 'next-intl';
 import { type Contact } from '@/types/crm';
 import { EditableField } from '../EditableField';

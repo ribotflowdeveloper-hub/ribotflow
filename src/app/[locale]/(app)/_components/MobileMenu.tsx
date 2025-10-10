@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Menu, LogOut } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { navModules, bottomItems } from '@/config/navigation';
-import type { NavItem } from '@/types/navigation';
+import type { NavItem } from '@/types/app/navigation';
 
 export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleNavigation }: {
     onOpenSignOutDialog: () => void;
@@ -47,7 +47,7 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
                                     </AccordionTrigger>
                                     <AccordionContent className="pl-8 pt-2 pb-1">
                                         <div className="flex flex-col gap-1">
-                                            {module.children?.map(item => (
+                                            {module.children?.map((item: NavItem) => (
                                                 <Button key={item.id} variant="ghost" className="w-full justify-start gap-3 px-4 py-2 text-muted-foreground hover:text-foreground" onClick={createClickHandler(item)}>
                                                     <item.icon className="w-4 h-4" />{t(item.labelKey)}
                                                 </Button>
@@ -60,7 +60,7 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
                     ))}
                 </nav>
                 <div className="p-4 border-t mt-auto space-y-1">
-                    {bottomItems.map(item => 
+                    {bottomItems.map(item =>
                         item.notImplemented ? (
                             <Button key={item.id} variant="ghost" className="w-full justify-start ..." onClick={onNotImplementedClick}>{/* ... */}</Button>
                         ) : (

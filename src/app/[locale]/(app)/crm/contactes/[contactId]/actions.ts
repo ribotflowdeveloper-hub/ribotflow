@@ -2,8 +2,6 @@
 
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { type Contact } from '@/types/crm';
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nostra funció
@@ -64,34 +62,30 @@ export async function updateContactAction(
  * @summary Deletes a contact from the database.
  */
 export async function deleteContactAction(
-    contactId: string
+  contactId: string
 ): Promise<{ success: boolean; message: string }> {
-    const supabase = createClient(cookies());
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        return { success: false, message: "User not authenticated." };
-    }
+  // ✅ 1. Reutilitzem la nostra funció de validació.
+  const session = await validateUserSession();
 
-    const activeTeamId = user.app_metadata?.active_team_id;
-    if (!activeTeamId) {
-        return { success: false, message: "No active team found." };
-    }
+  // ✅ 2. Comprovem si hi ha un error de sessió i el retornem.
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  
+  // ✅ 3. Obtenim el client de supabase i l'ID de l'equip de la sessió validada.
+  const { supabase, activeTeamId } = session;
 
-    // You might want to delete related items first (optional)
-    // await supabase.from('invoices').delete().eq('contact_id', contactId).eq('team_id', activeTeamId);
+  const { error } = await supabase
+    .from('contacts')
+    .delete()
+    .eq('id', contactId)
+    .eq('team_id', activeTeamId); // <-- Filtre de seguretat crucial
 
-    // ✅ SECURE DELETE: We delete the contact by its ID AND the active team ID.
-    const { error } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', contactId)
-        .eq('team_id', activeTeamId); // <-- CRUCIAL SECURITY FILTER
+  if (error) {
+    console.error("Error deleting contact:", error);
+    return { success: false, message: "No s'ha pogut eliminar el contacte." };
+  }
 
-    if (error) {
-        console.error("Error deleting contact:", error);
-        return { success: false, message: "Failed to delete contact." };
-    }
-
-    revalidatePath('/crm/contactes');
-    return { success: true, message: "Contact deleted successfully." };
+  revalidatePath('/crm/contactes');
+  return { success: true, message: "Contacte eliminat correctament." };
 }

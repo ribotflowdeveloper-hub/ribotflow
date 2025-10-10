@@ -5,6 +5,7 @@ import { type Contact } from '@/types/crm';
 import { GeneralInfoSection } from './GeneralInfoSection';
 import { PersonalInfoSection } from './PersonalInfoSection';
 import { NotesSection } from './NotesSection';
+import { Locale } from 'react-day-picker';
 
 interface Props {
     contact: Contact;

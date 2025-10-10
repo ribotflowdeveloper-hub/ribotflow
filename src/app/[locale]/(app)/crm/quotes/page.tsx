@@ -16,12 +16,20 @@ export type QuoteWithContact = Quote & {
     contacts: { nom: string; empresa: string | null; } | null;
 };
 
-// La funció ha de ser 'async' per poder fer 'await' a searchParams.
-export default async function QuotesPage({ searchParams }: { 
-    searchParams: { [key: string]: string | string[] | undefined } 
-}) {
-    // Resolem la promesa dels paràmetres una sola vegada.
-    const resolvedSearchParams = await searchParams;
+// ✅ 1. Definició de tipus corregida: searchParams ÉS una Promise.
+// Això compleix amb la restricció de Next.js quan s'utilitza 'await' [4, 5].
+interface QuotesPageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>; 
+}
+
+/**
+ * La funció del component de pàgina del servidor (Server Component)
+ * que orquestra la càrrega de dades.
+ */
+export default async function QuotesPage({ searchParams }: QuotesPageProps) {
+    
+    // ✅ 2. Aquest 'await' és ara semànticament correcte i satisfà el tipatge.
+    const resolvedSearchParams = await searchParams; 
 
     // La clau de Suspense depèn de tots els paràmetres per a una recàrrega segura.
     const suspenseKey = JSON.stringify(resolvedSearchParams);
@@ -37,6 +45,11 @@ export default async function QuotesPage({ searchParams }: {
                 </Button>
             </div>
             
+            {/* 
+              L'ús de Suspense (importat de 'react' [6]) amb una clau dinàmica 
+              permet que la UI es mantingui reactiva mentre QuotesData torna a carregar 
+              les dades basant-se en els nous filtres [7, 8].
+            */}
             <Suspense key={suspenseKey} fallback={<QuotesSkeleton />}>
                 <QuotesData searchParams={resolvedSearchParams} />
             </Suspense>

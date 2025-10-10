@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { format } from 'date-fns';
+import { type Locale } from 'date-fns';
 import { type Activity } from '@/types/crm';
 import { EmptyState } from '@/components/shared/EmptyState';   
 

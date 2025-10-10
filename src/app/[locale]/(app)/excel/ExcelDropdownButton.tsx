@@ -20,6 +20,9 @@ interface DropdownButtonProps {
   options: DropdownOption[];
   /** Funció que s'executa quan l'usuari selecciona una opció. */
   onSelect: (selectedOption: DropdownOption) => void;
+
+  disabled?: boolean; // ⬅️ AFEGEIX AQUESTA LÍNIA
+
 }
 
 /**
@@ -28,7 +31,7 @@ interface DropdownButtonProps {
 const DropdownButton: React.FC<DropdownButtonProps> = ({ options, onSelect }) => {
   // Estat per controlar si el menú està obert o tancat.
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // Ref per al contenidor principal del desplegable.
   const dropdownRef = useRef<HTMLDivElement>(null);
 

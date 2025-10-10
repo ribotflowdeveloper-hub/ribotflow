@@ -381,6 +381,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │       ├── page.tsx
 │       │       ├── _components
 │       │       │   ├── PublicQuoteClient.tsx
+│       │       │   ├── PublicQuoteData.tsx
 │       │       │   ├── PublicQuoteView.tsx
 │       │       │   ├── QuoteStatusScreeen.tsx
 │       │       │   └── RejectionDialog.tsx
@@ -479,7 +480,6 @@ ESTRUCTURA DEL PROJECTE (./src)
     │   ├── products.ts
     │   └── quotes.ts
     ├── declarations
-    │   ├── index.ts
     │   ├── mapbox.d.ts
     │   └── prism.d.ts
     ├── finances
@@ -499,6 +499,7 @@ ESTRUCTURA DEL PROJECTE (./src)
     │   ├── actionResult.ts
     │   ├── address.ts
     │   ├── index.ts
+    │   ├── next-page-props.ts
     │   └── notification.ts
     └── socialPost
 
@@ -4499,7 +4500,7 @@ import { revalidatePath } from "next/cache";
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
 import { getTranslations } from "next-intl/server";
 import { validateUserSession } from "@/lib/supabase/session";
-import { checkUserPermission, PERMISSIONS } from "@/lib/permissions";
+import { validateSessionAndPermission, PERMISSIONS } from "@/lib/permissions";
 
 // Aquest tipus de retorn es pot moure a un fitxer de tipus globals si el fas servir a més llocs.
 
@@ -4514,23 +4515,23 @@ type ActionResult<T = unknown> = {
  * Funció d'ajuda interna per a validar la sessió i els permisos específics del planificador.
  * Evita repetir el mateix codi a cada acció.
  */
+/**
+ * Funció d'ajuda interna per a validar la sessió i els permisos específics del planificador.
+ * Ara fa servir el nostre validador centralitzat.
+ */
 async function validateSocialPlannerPermissions() {
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { error: session.error.message };
-    }
-    const { supabase, user, activeTeamId } = session;
+    // Cridem directament a la nostra nova funció guardiana!
+    const validationResult = await validateSessionAndPermission(PERMISSIONS.MANAGE_INTEGRATIONS);
 
-    // Comprovem si l'usuari té permís per a gestionar integracions/planificador.
-    const hasAccess = await checkUserPermission(supabase, user.id, activeTeamId, PERMISSIONS.MANAGE_INTEGRATIONS);
-    if (!hasAccess) {
+    if ('error' in validationResult) {
         const t = await getTranslations('Errors');
+        // Pots retornar un missatge d'error genèric o el de la validació
         return { error: t('permissionDenied') };
     }
 
-    return { supabase, user, activeTeamId };
+    // Si la validació és correcta, retornem les dades necessàries.
+    return validationResult;
 }
-
 // ----------------------------------------------------------------------------------
 
 /**
@@ -4785,7 +4786,7 @@ export interface ConnectionStatuses {
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx ===================
 
-/* eslint-disable react/jsx-no-undef */
+//* eslint-disable react/jsx-no-undef */
 // Ubicació: /app/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx
 "use client";
 
@@ -4795,7 +4796,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Image from 'next/image';
-import { Link, Loader2, Trash2 } from 'lucide-react';
+import { Link, Loader2, PlayCircle, Trash2 } from 'lucide-react';
 
 import { useCreatePost } from '../_hooks/useCreatePost';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
@@ -4812,7 +4813,8 @@ interface CreatePostDialogProps {
 export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionStatuses, t }: CreatePostDialogProps) {
     const {
         content, setContent, previewUrls, selectedProviders, isPending,
-        handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState
+        handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState,
+        mediaFiles // <-- Add this line to destructure mediaFiles from the hook
     } = useCreatePost({
         isOpen,
         connectionStatuses,
@@ -5339,6 +5341,7 @@ import { toast } from 'sonner';
 import { getPresignedUploadUrlAction, createSocialPostAction } from '../actions';
 import type { SocialPost } from '@/types/comunicacio/SocialPost';
 import { type ConnectionStatuses } from '../types';
+import { generateVideoThumbnail } from '@/lib/utils/media';
 
 interface UseCreatePostProps {
     isOpen: boolean;
@@ -7590,7 +7593,6 @@ import ContactCard from './ContactCard';
 import ContactTable from './ContactTable';
 import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
 import { exportToExcel,importFromExcel } from '@/app/[locale]/(app)/excel/actions';
-import { TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST } from 'next/dist/shared/lib/constants';
 
 interface ContactsClientProps {
     initialContacts: Contact[];
@@ -7765,6 +7767,7 @@ export function ContactsClient({
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
+                        disabled={isExporting}
                     />
 
                     <ContactDialog
@@ -10454,14 +10457,19 @@ export type QuoteWithContact = Quote & {
     contacts: { nom: string; empresa: string | null; } | null;
 };
 
-// La funció ha de ser 'async' per poder fer 'await' a searchParams.
-export default async function QuotesPage({ searchParams }: { 
-    searchParams: { [key: string]: string | string[] | undefined } 
-}) {
-    // Resolem la promesa dels paràmetres una sola vegada.
-    const resolvedSearchParams = await searchParams;
+// ✅ 1. Definició corregida de les propietats: searchParams ÉS una Promise.
+interface QuotesPageProps {
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+// ✅ 2. La funció principal rep l'objecte de propietats complet.
+export default async function QuotesPage(props: QuotesPageProps) {
+
+    // ✅ 3. Resolem la promesa dels paràmetres (això satisfà el tipatge intern de Next.js).
+    const resolvedSearchParams = await props.searchParams;
 
     // La clau de Suspense depèn de tots els paràmetres per a una recàrrega segura.
+    // L'ús de Suspense aquí és una bona pràctica per a la càrrega de dades [4, 5].
     const suspenseKey = JSON.stringify(resolvedSearchParams);
 
     return (
@@ -10474,7 +10482,7 @@ export default async function QuotesPage({ searchParams }: {
                     </Link>
                 </Button>
             </div>
-            
+
             <Suspense key={suspenseKey} fallback={<QuotesSkeleton />}>
                 <QuotesData searchParams={resolvedSearchParams} />
             </Suspense>
@@ -13891,7 +13899,7 @@ export async function exportToExcel<T extends Record<string, unknown>>(tableName
     if ('error' in session) {
       return { success: false, message: session.error.message };
     }
-    const { supabase, user, activeTeamId } = session;
+    const { supabase, activeTeamId } = session;
 
     // 2. Cridem a la funció per obtenir les columnes
     const { columns, selectString } = await getTableColumns(supabase, tableName);
@@ -13985,7 +13993,7 @@ export async function importFromExcel<T extends Record<string, unknown>>(tableNa
     const { supabase, user, activeTeamId } = session;
 
     // 2. Cridem a la funció per obtenir les columnes
-    const { columns, selectString } = await getTableColumns(supabase, tableName);
+    const { columns } = await getTableColumns(supabase, tableName);
 
     // 3. Obtenim el fitxer de FormData
     const file = formData.get('file');
@@ -14083,6 +14091,9 @@ interface DropdownButtonProps {
   options: DropdownOption[];
   /** Funció que s'executa quan l'usuari selecciona una opció. */
   onSelect: (selectedOption: DropdownOption) => void;
+
+  disabled?: boolean; // ⬅️ AFEGEIX AQUESTA LÍNIA
+
 }
 
 /**
@@ -14091,7 +14102,7 @@ interface DropdownButtonProps {
 const DropdownButton: React.FC<DropdownButtonProps> = ({ options, onSelect }) => {
   // Estat per controlar si el menú està obert o tancat.
   const [isOpen, setIsOpen] = useState(false);
-  
+
   // Ref per al contenidor principal del desplegable.
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -15777,9 +15788,8 @@ export function FacturacioClient({ initialInvoices, initialContacts, initialProd
 // /app/[locale]/finances/facturacio/_components/FacturacioData.tsx
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { FacturacioClient } from './FacturacioClient';
-import type { Invoice, Contact } from '../types'; 
+import type { Contact } from '@/types/crm'; 
 import type { Product } from '@/types/crm/products'; 
 
 
@@ -15788,7 +15798,7 @@ export async function FacturacioData() {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`\n--- [SERVER] INICI FacturacioData @ ${timestamp} ---`);
 
-    const supabase = createClient(cookies());
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -17803,26 +17813,25 @@ export async function deleteRuleAction(id: string) {
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
-
 import { validatePageSession } from '@/lib/supabase/session';
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
-
+import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions.config';
 import { BlacklistData } from './_components/BlacklistData';
 import { BlacklistSkeleton } from './_components/BlacklistSkeleton';
 import { AccessDenied } from '@/components/shared/AccessDenied';
 
 export const dynamic = 'force-dynamic';
 
-// ✅ REFACTORITZACIÓ: Metadades dinàmiques per a la internacionalització.
-export async function generateMetadata({ params: { locale } }: { params: { locale: string } }): Promise<Metadata> {
+type BlacklistPageProps = {
+  params: { locale: string };
+};
+
+export async function generateMetadata({ params }: BlacklistPageProps): Promise<Metadata> {
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'SettingsPage.blacklist' });
   return { title: `${t('metaTitle')} | Ribot` };
 }
 
-/**
- * Pàgina de la Blacklist.
- * Valida la sessió i els permisos de l'usuari abans de renderitzar el contingut.
- */
+
 export default async function BlacklistPage() {
   const { supabase, user, activeTeamId } = await validatePageSession();
 
@@ -17832,20 +17841,18 @@ export default async function BlacklistPage() {
     .match({ user_id: user.id, team_id: activeTeamId })
     .single();
 
-  // ✅ REFACTORITZACIÓ: Comprovació de permís per a VEURE la pàgina.
-  if (!hasPermission(member?.role, PERMISSIONS.VIEW_BLACKLIST)) {
+  if (!hasPermission(member?.role as Role, PERMISSIONS.VIEW_BLACKLIST)) {
     return <AccessDenied message="No tens permisos per a veure aquesta secció." />;
   }
 
   return (
     <div className="space-y-6">
       <Suspense fallback={<BlacklistSkeleton />}>
-        <BlacklistData currentUserRole={member?.role || null} />
+        <BlacklistData currentUserRole={(member?.role as Role) || null} />
       </Suspense>
     </div>
   );
 }
-
 
 // =================== FILE: src/app/[locale]/(app)/settings/blacklist/_components/BlacklistClient.tsx ===================
 
@@ -17863,11 +17870,11 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/shared/EmptyState'; // ✅ REFACTORITZACIÓ: Component per a estat buit
 import { addRuleAction, deleteRuleAction } from '../action';
 import type { BlacklistRule } from '@/types/settings';
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions.config'; // Importa des de .config!
 
 interface BlacklistClientProps {
   initialRules: BlacklistRule[];
-  currentUserRole: string | null;
+  currentUserRole: Role | null; // ✅ Tipus correcte
 }
 
 /**
@@ -17920,7 +17927,7 @@ export function BlacklistClient({ initialRules, currentUserRole }: BlacklistClie
         {initialRules.length > 0 ? initialRules.map(rule => (
           <div key={rule.id} className="flex justify-between items-center p-2 bg-muted rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge variant={rule.rule_type === 'domain' ? 'default' : 'secondary'}>{rule.rule_type}</Badge>
+              <Badge variant={rule.rule_type === 'domain' ? 'default' : 'secondary'} className={undefined}>{rule.rule_type}</Badge>
               <span className="break-all">{rule.value}</span>
             </div>
             {/* ✅ REFACTORITZACIÓ: El botó d'eliminar es mostra/oculta segons els permisos. */}
@@ -17931,7 +17938,7 @@ export function BlacklistClient({ initialRules, currentUserRole }: BlacklistClie
             )}
           </div>
         )) : (
-          !isPending && <EmptyState title={t('emptyTitle')} description={t('emptyDescription')} />
+          !isPending && <EmptyState message={`${t('emptyTitle')} - ${t('emptyDescription')}`} />
         )}
       </div>
     </motion.div>
@@ -17945,23 +17952,16 @@ import { getTranslations } from 'next-intl/server';
 import { BlacklistClient } from './BlacklistClient';
 import { validatePageSession } from '@/lib/supabase/session';
 import type { BlacklistRule } from '@/types/settings';
+import type { Role } from '@/lib/permissions.config'; // Importa Role
 
 interface BlacklistDataProps {
-  currentUserRole: string | null;
+  currentUserRole: Role | null; // Fes servir el tipus Role
 }
 
-/**
- * Aquest Server Component obté les dades de la blacklist i les passa
- * al Client Component que gestionarà la interactivitat.
- */
 export async function BlacklistData({ currentUserRole }: BlacklistDataProps) {
   const t = await getTranslations('SettingsPage.blacklist');
-  
-  // ✅ REFACTORITZACIÓ: Utilitzem el nostre helper per simplificar la validació.
   const { supabase } = await validatePageSession();
 
-  // La consulta és simple perquè la seguretat (filtrar per equip actiu)
-  // es delega a les Polítiques de Row Level Security (RLS) de Supabase.
   const { data: rules, error } = await supabase
     .from('blacklist_rules')
     .select('*')
@@ -17969,21 +17969,19 @@ export async function BlacklistData({ currentUserRole }: BlacklistDataProps) {
 
   if (error) {
     console.error("Error en carregar les regles de la blacklist:", error.message);
-    // Podríem mostrar un missatge d'error aquí si fos necessari.
   }
 
   return (
     <div>
-       <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>
-       <p className="text-muted-foreground mb-8">{t('pageDescription')}</p>
-       <BlacklistClient 
-          initialRules={(rules as BlacklistRule[]) || []} 
-          currentUserRole={currentUserRole}
-       />
+      <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>
+      <p className="text-muted-foreground mb-8">{t('pageDescription')}</p>
+      <BlacklistClient 
+        initialRules={(rules as BlacklistRule[]) || []} 
+        currentUserRole={currentUserRole}
+      />
     </div>
   );
 }
-
 
 // =================== FILE: src/app/[locale]/(app)/settings/blacklist/_components/BlacklistSkeleton.tsx ===================
 
@@ -19370,7 +19368,7 @@ export async function inviteUserAction(formData: FormData) {
         if (existingUserId) {
             // --- Cas A: L'usuari JA EXISTEIX ---
             await resend.emails.send({
-                from: `Notificació de "${teamName}" <notificacions@elteudomini.com>`,
+                from: `Notificació de "${teamName}" <invitacions@ribotflow.com>`,
                 to: email,
                 subject: `Has estat convidat a unir-te a l'equip ${teamName}`,
                 html: `<p>Hola de nou, <strong>${inviterName}</strong> t'ha convidat a l'equip <strong>${teamName}</strong>. Com que ja tens un compte, pots acceptar-la des del teu panell d'equips.</p><div style="text-align: center; margin: 25px 0;"><a href="${process.env.NEXT_PUBLIC_SITE_URL}/settings/team" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Anar al meu panell</a></div>`
@@ -19395,7 +19393,7 @@ export async function inviteUserAction(formData: FormData) {
                                     <strong>${inviterName}</strong> t'ha convidat a unir-te al seu equip <strong>${teamName}</strong>.
                                 </p>
                                 <div style="text-align: center; margin: 25px 0;">
-                                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/invitation/accept?token=${invitation.token}" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                    <a href="${process.env.NEXT_PUBLIC_SITE_URL}/invitation/accept?token=${invitation.token}&email=${encodeURIComponent(email)}" target="_blank" style="background-color: #007bff; color: #ffffff; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                                         Uneix-te a l'equip
                                     </a>
                                 </div>
@@ -19608,6 +19606,7 @@ export async function switchActiveTeamAction(teamId: string) {
         }
         return { success: false, message: errorMessage };
     }
+    await supabase.auth.refreshSession();
 
     // 5. Revalidació i èxit
     // Revalidem tot el layout perquè components com la barra de navegació o el menú
@@ -19712,7 +19711,6 @@ export async function clearActiveTeamAction() {
     revalidatePath('/settings/team', 'page');
     return { success: true };
 }
-// A /app/[locale]/(app)/settings/team/actions.ts
 
 /**
  * Permet a un usuari autenticat acceptar una invitació personal des del "lobby".
@@ -20009,10 +20007,8 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
 
     // ✅ Este efecto corrige automáticamente un estado de equipo inválido.
     useEffect(() => {
-        if (invalidTeamState) {
-            console.log("[CLIENT] Estado inválido detectado. Ejecutando limpieza de equipo activo...");
-            handleClearTeam();
-        }
+        if (invalidTeamState) handleClearTeam();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invalidTeamState]);
 
     // ✅ Noves funcions per gestionar les invitacions personals
@@ -20246,9 +20242,9 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
                 <CardHeader><CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle></CardHeader>
                 <CardContent className="divide-y">
                     {teamMembers.map(member => {
-                         if (!member.profiles) return null;
-                         const isOwner = member.role === 'owner';
-                         const isSelf = user.id === member.profiles.id;
+                        if (!member.profiles) return null;
+                        const isOwner = member.role === 'owner';
+                        const isSelf = user.id === member.profiles.id;
                         if (!member.profiles) return null;
 
                         // Comprovem si l'usuari actual té permís per a veure la bústia d'aquest membre
@@ -20268,10 +20264,10 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 sm:gap-4">
-                                     {/* ✅ LÒGICA DELS ROLS */}
-                                     {isOwner ? (
+                                    {/* ✅ LÒGICA DELS ROLS */}
+                                    {isOwner ? (
                                         <Badge variant="default" className="capitalize">{member.role}</Badge>
-                                        ) : (
+                                    ) : (
                                         <Select
                                             value={member.role}
                                             onValueChange={(newRole) => handleRoleChange(member.profiles!.id, newRole as 'admin' | 'member')}
@@ -21521,6 +21517,7 @@ const LoginSchema = z.object({
 
 const SignupSchema = z.object({
     email: z.string().email("L'adreça d'email no és vàlida."),
+    fullName: z.string().min(1, "El nom complet és obligatori.").optional(), 
     password: z.string().min(8, "La contrasenya ha de tenir almenys 8 caràcters."),
     invite_token: z.string().optional(),
 });
@@ -21544,12 +21541,12 @@ export async function loginAction(formData: FormData) {
     if (!result.success) {
         return redirect(`/${locale}/login?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-    
+
     const { error } = await supabase.auth.signInWithPassword(result.data);
     if (error) {
         return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
     }
-    
+
     redirect(`/${locale}/dashboard`);
 }
 
@@ -21561,27 +21558,32 @@ export async function signupAction(formData: FormData) {
     if (!result.success) {
         return redirect(`/${locale}/signup?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-    
-    const { email, password, invite_token } = result.data;
-    
-    // La teva lògica per comprovar si l'usuari existeix és bona, la mantenim
+
+    const { email, password, fullName, invite_token } = result.data;
+
     const { data: existingUser } = await supabaseAdmin.from('users').select('id').eq('email', email).single();
     if (existingUser) {
         return redirect(`/${locale}/login?message=${encodeURIComponent("Ja existeix un compte amb aquest correu.")}`);
     }
 
     const nextUrl = invite_token ? `/dashboard?token=${invite_token}` : `/onboarding`;
-    const { error: signUpError } = await supabase.auth.signUp({
+
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
             emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
+            ...(fullName && { data: { full_name: fullName } })
         },
     });
 
     if (signUpError) {
         return redirect(`/${locale}/signup?message=${encodeURIComponent(signUpError.message)}`);
     }
+    if (!signUpData.user) {
+        return redirect(`/${locale}/signup?message=No s'ha pogut crear l'usuari.`);
+    }
+
 
     return redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }
@@ -21619,7 +21621,7 @@ export async function forgotPasswordAction(formData: FormData): Promise<{ succes
     if (!result.success) {
         return { success: false, message: result.error.issues[0].message };
     }
-    
+
     const { error } = await supabase.auth.resetPasswordForEmail(result.data.email, {
         redirectTo: `${origin}/${locale}/auth/reset-password`,
     });
@@ -21640,7 +21642,7 @@ export async function updatePasswordAction(formData: FormData) {
     if (!result.success) {
         return redirect(`/${locale}/auth/reset-password?message=${encodeURIComponent(result.error.issues[0].message)}`);
     }
-    
+
     const { code, password } = result.data;
 
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -21652,7 +21654,7 @@ export async function updatePasswordAction(formData: FormData) {
     if (updateError) {
         return redirect(`/${locale}/auth/reset-password?message=${encodeURIComponent(updateError.message)}`);
     }
-    
+
     return redirect(`/${locale}/login?message=La teva contrasenya s'ha actualitzat correctament.`);
 }
 
@@ -22092,34 +22094,20 @@ export function useLoginForm() {
 
 // =================== FILE: src/app/[locale]/(auth)/signup/page.tsx ===================
 
+// /app/[locale]/(auth)/signup/page.tsx (VERSIÓ FINAL)
+
 import { Suspense } from 'react';
 import { SignupClient } from './_components/SignupClient';
 
-interface SignupPageProps {
-  searchParams: {
-    errorKey?: string;
-    message?: string;
-    email?: string;
-    invite_token?: string;
-  };
+// Ja no necessitem definir 'SignupPageProps' si no hi ha props.
+// La pàgina ja no necessita rebre 'searchParams'.
+export default async function SignupPage() {
+  return (
+    <Suspense>
+      <SignupClient />
+    </Suspense>
+  );
 }
-
-export default async function SignupPage({ searchParams }: SignupPageProps) {
-  // Les dades es preparen aquí al servidor i es passen al component de client.
-  const inviteToken = searchParams.invite_token;
-  const invitedEmail = searchParams.email;
-
-  return (
-    // Suspense és necessari perquè el nostre hook 'useSignupForm' utilitza 'useSearchParams'.
-    <Suspense>
-      <SignupClient
-        inviteToken={inviteToken}
-        invitedEmail={invitedEmail}
-      />
-    </Suspense>
-  );
-}
-
 
 // =================== FILE: src/app/[locale]/(auth)/signup/_components/SignupClient.tsx ===================
 
@@ -22356,8 +22344,9 @@ type InvitedSignupPageProps = {
 };
 
 export default async function InvitedSignupPage({ searchParams }: InvitedSignupPageProps) {
+    console.log("Search params a la pàgina d'acceptació d'invitació:", searchParams);
     // ✅ MILLORA: Ja no necessitem 'await searchParams' aquí.
-    const { token, email } = searchParams;
+    const { token, email } = await searchParams;
     let teamName: string | null = null; // Ho inicialitzem a null per a més claredat.
 
     if (token) {
@@ -22398,99 +22387,98 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Loader2, Mail, Lock, User as UserIcon } from 'lucide-react';
 
 type InvitedSignupFormProps = {
-    inviteToken?: string;
-    invitedEmail?: string;
-    teamName?: string | null;
+  inviteToken?: string;
+  invitedEmail?: string;
+  teamName?: string | null;
 };
 
 export function InvitedSignupForm({ inviteToken, invitedEmail, teamName }: InvitedSignupFormProps) {
-    const [isPending, startTransition] = useTransition();
-    console.log("Props rebudes al formulari:", { inviteToken, invitedEmail, teamName });
+  const [isPending, startTransition] = useTransition();
+  console.log("Props rebudes al formulari:", { inviteToken, invitedEmail, teamName });
 
-    const handleSubmit = (formData: FormData) => {
-        startTransition(() => {
-            signupAction(formData);
-        });
-    };
-    console.log({ invitedEmail });  
-    return (
-        <Card className="w-full max-w-md shadow-lg">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Benvingut/da a Bord!</CardTitle>
-                <CardDescription>
-                    Estàs a punt d'unir-te a <strong>{teamName || "l'equip"}</strong>. Només has de completar el teu perfil.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form action={handleSubmit} className="space-y-4">
-                    
-                    {/* Aquest input ocult és per al token, està perfecte. */}
-                    <input type="hidden" name="invite_token" value={inviteToken} />
-                    
-                    {/* El camp de l'email ja està configurat per a enviar-se amb el formulari
+  const handleSubmit = (formData: FormData) => {
+    startTransition(() => {
+      signupAction(formData);
+    });
+  };
+  return (
+    <Card className="w-full max-w-md shadow-lg">
+      <CardHeader className="text-center">
+        <CardTitle className="text-2xl">Benvingut/da a Bord!</CardTitle>
+        <CardDescription>
+          Estàs a punt d'unir-te a <strong>{teamName || "l'equip"}</strong>. Només has de completar el teu perfil.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form action={handleSubmit} className="space-y-4">
+
+          {/* Aquest input ocult és per al token, està perfecte. */}
+          <input type="hidden" name="invite_token" value={inviteToken} />
+
+          {/* El camp de l'email ja està configurat per a enviar-se amb el formulari
                         gràcies al 'name="email"'. És visible però no editable. Perfecte! */}
-                    <div className="space-y-2">
-                        <Label htmlFor="email">El teu correu electrònic</Label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                            <Input
-                                id="email"
-                                name="email" // Aquesta línia l'envia amb el formulari
-                                type="email"
-                                required
-                                defaultValue={invitedEmail || ''}
-                                readOnly={true} // Aquesta línia evita que es pugui editar
-                                className="pl-10 bg-muted/60 cursor-not-allowed focus-visible:ring-transparent"
-                            />
-                        </div>
-                    </div>
-                    
-                    {/* La resta del formulari es queda igual */}
-                    <div className="space-y-2">
-                        <Label htmlFor="fullName">Nom i cognoms</Label>
-                        <div className="relative">
-                            <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                            <Input
-                                id="fullName"
-                                name="fullName"
-                                placeholder="El teu nom complet"
-                                required
-                                className="pl-10"
-                                disabled={isPending}
-                            />
-                        </div>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Crea una contrasenya</Label>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                            <Input
-                                id="password"
-                                name="password"
-                                type="password"
-                                placeholder="Mínim 6 caràcters"
-                                required
-                                minLength={6}
-                                className="pl-10"
-                                disabled={isPending}
-                            />
-                        </div>
-                    </div>
-                    
-                    <Button type="submit" disabled={isPending} className="w-full">
-                        {isPending ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Creant compte...
-                            </>
-                        ) : (
-                            `Unir-se a ${teamName || "l'equip"}`
-                        )}
-                    </Button>
-                </form>
-            </CardContent>
-        </Card>
-    );
+          <div className="space-y-2">
+            <Label htmlFor="email">El teu correu electrònic</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                id="email"
+                name="email" // Aquesta línia l'envia amb el formulari
+                type="email"
+                required
+                defaultValue={invitedEmail || ''}
+                readOnly={true} // Aquesta línia evita que es pugui editar
+                className="pl-10 bg-muted/60 cursor-not-allowed focus-visible:ring-transparent"
+              />
+            </div>
+          </div>
+
+          {/* La resta del formulari es queda igual */}
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Nom i cognoms</Label>
+            <div className="relative">
+              <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                id="fullName"
+                name="fullName"
+                placeholder="El teu nom complet"
+                required
+                className="pl-10"
+                disabled={isPending}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Crea una contrasenya</Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Mínim 8 caràcters" // <-- Canvi aquí
+                required
+                minLength={8} // <-- Canvi aquí
+                className="pl-10"
+                disabled={isPending}
+              />
+            </div>
+          </div>
+
+          <Button type="submit" disabled={isPending} className="w-full">
+            {isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creant compte...
+              </>
+            ) : (
+              `Unir-se a ${teamName || "l'equip"}`
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }
 
 // =================== FILE: src/app/[locale]/layout.tsx ===================
@@ -22910,13 +22898,18 @@ const ServiceCard: FC<{ serviceName: string; isSelected: boolean; onClick: () =>
     <motion.button
         type="button"
         onClick={onClick}
-        className={`relative w-full h-24 p-4 rounded-lg border-2 flex items-center justify-center text-center font-semibold transition-all duration-200 ease-in-out ${
-            isSelected ? 'bg-primary/10 border-primary text-primary' : 'bg-muted/50 border-transparent hover:border-primary/50'
+        // 👇 PAS 1: Reduïm l'alçada i el padding per fer-la més petita
+        // 👇 PAS 2: Canviem les classes 'primary' per les 'green' quan està seleccionada
+        className={`relative w-full h-16 p-2 rounded-lg border-2 flex items-center justify-center text-center font-semibold transition-all duration-200 ease-in-out ${ // -> h-24 p-4 a h-20 p-3
+            isSelected 
+                ? 'bg-green-100 border-green-600 text-green-700' // -> Canviat de 'primary' a 'green'
+                : 'bg-muted/50 border-transparent hover:border-green-500/50' // -> BONUS: Canviat el hover a verd també
         }`}
         whileTap={{ scale: 0.95 }}
     >
         {isSelected && (
-            <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+            // 👇 PAS 3: Canviem el fons de la icona de 'check' a verd
+            <div className="absolute top-2 right-2 bg-green-600 text-primary-foreground rounded-full p-1"> {/* // -> Canviat de 'bg-primary' a 'bg-green-600' */}
                 <Check className="w-3 h-3" />
             </div>
         )}
@@ -23237,8 +23230,16 @@ export function useOnboardingForm(initialFullName: string) {
     const validateStep = (currentStep: number): boolean => {
         switch (currentStep) {
             case 1: return !!formData.full_name && !!formData.company_name;
-            case 2: return !!formData.address;
-            case 3: return formData.services.length > 0;
+            case 2:
+                // ✅ Comprovem que l'objecte 'address' existeix I que els seus camps obligatoris tenen valor.
+                return (
+                    !!formData.address &&
+                    !!formData.address.street &&
+                    !!formData.address.city &&
+                    !!formData.address.postcode &&
+                    !!formData.address.region && // <-- LA COMPROVACIÓ CLAU QUE FALTAVA
+                    !!formData.address.country
+                ); case 3: return formData.services.length > 0;
             default: return true;
         }
     };
@@ -23488,47 +23489,30 @@ export async function rejectQuoteAction(secureId: string, reason: string) {
 
 // =================== FILE: src/app/[locale]/quote/[secureId]/page.tsx ===================
 
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server'; 
-import { notFound } from "next/navigation";
-import { PublicQuoteClient } from "./_components/PublicQuoteClient";
-import type { Quote, Contact, QuoteItem } from "@/types/crm";
-import type { Team as CompanyProfile} from "@/types/settings/team"; // ✅ Importem el tipus correcte
+// FITXER: app/[locale]/(app)/crm/quotes/[id]/page.ts
 
-// Definim el tipus de dades que la nostra pàgina generarà
-export type QuoteDataFromServer = Quote & {
-    contacts: Contact | null;
-    team: CompanyProfile | null; // ✅ Canviat de 'profiles' a 'team'
-    quote_items: QuoteItem[];
-    secure_id: string;
+import { notFound } from 'next/navigation';
+import { PublicQuoteClient } from './_components/PublicQuoteClient';
+import { getQuoteDataBySecureId } from './_components/PublicQuoteData';
+
+// 👇 CORRECCIÓ: 'params' és un objecte, no una Promise.
+//    El nom de la propietat ha de coincidir amb el nom del directori dinàmic, que és '[id]'.
+type PageProps = {
+  params: Promise<{ id: string }>;
 };
 
-interface PublicQuotePageProps {
-    params: { secureId: string };
-}
+export default async function PublicQuotePage({ params }: PageProps) {
+  // 👇 CORRECCIÓ: No cal fer 'await' a 'params'. Accedeix directament.
+ const { id: userId } = await params;
+  
+  // Utilitzem 'id' per a obtenir les dades.
+  const quoteData = await getQuoteDataBySecureId(userId);
 
-export default async function PublicQuotePage({ params }: PublicQuotePageProps) {
-    const supabase = createClient(cookies());
-    const { secureId } = params;
+  if (!quoteData) {
+    notFound();
+  }
 
-    // ✅ CONSULTA ACTUALITZADA: Fem JOIN amb 'contacts' i 'teams'
-    const { data: quoteData, error } = await supabase
-        .from("quotes")
-        .select(`
-            *, 
-            contacts (*), 
-            team:teams (*), 
-            quote_items (*)
-        `)
-        .eq("secure_id", secureId)
-        .single();
-
-    if (error || !quoteData) {
-        console.error("Error carregant les dades del pressupost:", error?.message || "Dades no trobades");
-        notFound();
-    }
-    
-    return <PublicQuoteClient initialQuoteData={quoteData as QuoteDataFromServer} />;
+  return <PublicQuoteClient initialQuoteData={quoteData} />;
 }
 
 // =================== FILE: src/app/[locale]/quote/[secureId]/_components/PublicQuoteClient.tsx ===================
@@ -23539,7 +23523,7 @@ import { usePublicQuote } from "../_hooks/usePublicQuote";
 import { RejectionDialog } from "./RejectionDialog";
 import { QuoteStatusScreen } from "./QuoteStatusScreeen";
 import { PublicQuoteView } from "./PublicQuoteView";
-import type { QuoteDataFromServer } from '../page';
+import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
 
 export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: QuoteDataFromServer; }) {
     // Tota la lògica complexa ara prové d'aquest hook.
@@ -23578,6 +23562,45 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
 }
 
 
+// =================== FILE: src/app/[locale]/quote/[secureId]/_components/PublicQuoteData.tsx ===================
+
+import { createClient } from '@/lib/supabase/server'; 
+import type { QuoteDataFromServer } from "@/types/crm"; 
+
+/**
+ * Funció de servidor per obtenir les dades d'un pressupost a partir del seu ID segur.
+ * Aquesta funció encapsula la lògica de Supabase.
+ * @param secureId L'ID únic del pressupost.
+ * @returns Les dades del pressupost o null si no es troba.
+ */
+export async function getQuoteDataBySecureId(secureId: string): Promise<QuoteDataFromServer | null> {
+    
+    // Utilitzem el client de Supabase del servidor
+    const supabase = createClient();
+
+    // Consulta per fer JOIN amb 'contacts', 'teams' i 'quote_items'
+    const { data: quoteData, error } = await supabase
+        .from("quotes")
+        .select(`
+            *, 
+            contacts (*), 
+            team:teams (*), 
+            quote_items (*)
+        `)
+        .eq("secure_id", secureId)
+        .single();
+
+    if (error || !quoteData) {
+        // En un entorn de producció, podríeu registrar l'error aquí sense llençar-lo
+        // per a no revelar detalls sensibles al client o a la consola pública.
+        console.error("Error carregant dades del pressupost:", error?.message || "Dades no trobades");
+        return null;
+    }
+    
+    // Assegurem que el tipus de retorn coincideix amb la interfície esperada
+    return quoteData as QuoteDataFromServer;
+}
+
 // =================== FILE: src/app/[locale]/quote/[secureId]/_components/PublicQuoteView.tsx ===================
 
 "use client";
@@ -23585,7 +23608,7 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { QuotePreview } from "@/app/[locale]/(app)/crm/quotes/[id]/_components/QuotePreview";import type { Quote } from "@/types/crm";
-import type { QuoteDataFromServer } from '../page';
+import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
 
 interface PublicQuoteViewProps {
     quoteData: QuoteDataFromServer;
@@ -23638,7 +23661,7 @@ export function PublicQuoteView({ quoteData, onAccept, onReject, isPending }: Pu
 "use client";
 
 import { CheckCircle, XCircle } from "lucide-react";
-import type { QuoteDataFromServer } from '../page';
+import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
 
 interface QuoteStatusScreenProps {
     status: 'accepted' | 'declined';
@@ -23730,7 +23753,7 @@ export function RejectionDialog({ isOpen, onOpenChange, onSubmit, isPending }: R
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { acceptQuoteAction, rejectQuoteAction } from '../actions';
-import type { QuoteDataFromServer } from '../page';
+import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
 
 /**
  * Hook que encapsula tota la lògica per a la pàgina pública d'un pressupost.
@@ -24613,35 +24636,24 @@ export function LanguageSwitcher() {
 
 // =================== FILE: src/components/shared/AccessDenied.tsx ===================
 
-// src/components/shared/AccessDenied.tsx
+// src/components/shared/AccessDenied.tsx (exemple)
+import { useTranslations } from 'next-intl';
 
-import { ShieldAlert } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+// ✅ Defineix les props que el teu component accepta
+interface AccessDeniedProps {
+  message?: string; // Fes-la opcional amb '?'
+}
 
-export function AccessDenied() {
+export function AccessDenied({ message }: AccessDeniedProps) {
+  const t = useTranslations('Errors');
+
+  // Fes servir el missatge personalitzat si existeix, si no, un per defecte.
+  const displayMessage = message || t('permissionDenied');
+
   return (
-    <div className="flex items-center justify-center h-full min-h-[calc(100vh-200px)]">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          <div className="mx-auto bg-destructive/10 p-4 rounded-full w-fit">
-            <ShieldAlert className="h-12 w-12 text-destructive" />
-          </div>
-          <CardTitle className="mt-4 text-2xl">Accés Denegat</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">
-            Sembla que no tens els permisos necessaris per a veure aquesta pàgina. 
-            Si creus que és un error, contacta amb l'administrador del teu equip.
-          </p>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <Button asChild>
-            <Link href="/dashboard">Torna al Dashboard</Link>
-          </Button>
-        </CardFooter>
-      </Card>
+    <div className="text-center p-8 glass-card">
+      <h2 className="text-xl font-bold text-destructive">Accés Denegat</h2>
+      <p className="text-muted-foreground">{displayMessage}</p>
     </div>
   );
 }
@@ -27935,7 +27947,7 @@ export const generateVideoThumbnail = (file: File): Promise<string> => {
             resolve(canvas.toDataURL('image/jpeg', 0.8));
         };
 
-        video.onerror = (e) => {
+        video.onerror = () => {
             reject(new Error('Error en carregar el vídeo.'));
         };
     });
@@ -28437,7 +28449,8 @@ export type Product = {
  */
 
 
-
+import type {Contact} from "@/types/crm";
+import type { Team as CompanyProfile } from "@/types/settings/team";
 // --- MAPES I TIPUS D'ESTATS ---
 
 export const PIPELINE_STAGES_MAP = [
@@ -28527,11 +28540,13 @@ export type Invoice = {
 };
 
 
+export type QuoteDataFromServer = Quote & {
+  contacts: Contact | null;
+  team: CompanyProfile | null;
+  quote_items: QuoteItem[];
+  secure_id: string;
+};
 
-// =================== FILE: src/types/declarations/index.ts ===================
-
-export * from './mapbox';
-export * from './prism';
 
 
 // =================== FILE: src/types/declarations/mapbox.d.ts ===================
@@ -28750,6 +28765,7 @@ export type BlacklistRule = {
 export * from './profiles';
 export * from './team';
 export * from './subscription';
+export * from './blackListRule';
 
 // =================== FILE: src/types/settings/profiles.ts ===================
 
@@ -28924,6 +28940,25 @@ export * from './address';
 export * from './notification';
 export * from './actionResult';
 
+
+
+// =================== FILE: src/types/shared/next-page-props.ts ===================
+
+/**
+ * Tipus base per a pàgines del directori App Router
+ * (compatible amb Next.js 15 i React 19 RC)
+ */
+export interface PageProps {
+  /**
+   * Paràmetres dinàmics de la URL (async a Next 15)
+   */
+  params: Promise<Record<string, string>> | Record<string, string>;
+
+  /**
+   * Paràmetres de cerca (query string)
+   */
+  searchParams?: Promise<Record<string, string>> | Record<string, string>;
+}
 
 
 // =================== FILE: src/types/shared/notification.ts ===================

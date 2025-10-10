@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle, XCircle } from "lucide-react";
-import type { QuoteDataFromServer } from '../page';
+import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
 
 interface QuoteStatusScreenProps {
     status: 'accepted' | 'declined';

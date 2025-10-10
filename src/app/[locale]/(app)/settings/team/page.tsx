@@ -21,16 +21,22 @@ export type ActiveTeamData = {
     currentUserRole: string;
     inboxPermissions: { grantee_user_id: string; target_user_id: string; }[];
 };
-
-export default async function TeamSettingsPage({ searchParams }: { searchParams: { view?: string } }) {
+// ✅ CORRECCIÓ CLAU: Definim searchParams com una Promise que conté el tipus esperat.
+interface TeamSettingsPageProps {
+    searchParams: Promise<{ view?: string }>;
+}
+export default async function TeamSettingsPage({ searchParams }: TeamSettingsPageProps) {
+    // La validació de sessió (que inclou la redirecció si no hi ha usuari/equip actiu)
     const { user, activeTeamId } = await validatePageSession();
 
-    // ✅ Desestructurem searchParams amb await
+    // ✅ Aquest 'await' és ara semànticament correcte i tipificat.
     const { view } = await searchParams;
 
     if (view === 'select' || !activeTeamId) {
+        // La vista de selecció d'equip/lobby es crida si no hi ha equip actiu o si el paràmetre 'view=select' està present.
         return <TeamSelectorData userId={user.id} />;
     }
 
+    // Si hi ha un equip actiu, mostrem el panell de gestió.
     return <ActiveTeamManagerData user={user} activeTeamId={activeTeamId} />;
 }

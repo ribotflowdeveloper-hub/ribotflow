@@ -8,7 +8,7 @@ import { useLocale } from 'next-intl';
 
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn, getCleanPathname } from '@/lib/utils/utils';
-import type { NavItem as NavItemType } from '@/types/navigation';
+import type { NavItem as NavItemType } from '@/types/app/navigation';
 
 // Definim les propietats que rebrà el nostre component
 interface NavItemProps {

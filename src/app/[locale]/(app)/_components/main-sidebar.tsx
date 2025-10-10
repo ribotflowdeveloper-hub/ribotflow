@@ -9,7 +9,7 @@ import { LogOut } from 'lucide-react';
 
 import { useNavigationStore } from '@/stores/navigationStore';
 import { navModules, bottomItems } from '@/config/navigation';
-import type { NavItem as NavItemType } from '@/types/navigation';
+import type { NavItem as NavItemType } from '@/types/app/navigation';
 
 import { NavItem } from './NavItem';
 import logoRibot from '@/../public/icon1.png';

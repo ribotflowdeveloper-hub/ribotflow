@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { ContactDetailData } from './_components/ContactDetailData';
@@ -17,7 +16,7 @@ export async function generateMetadata(props: ContactDetailPageProps): Promise<M
   // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
   const { contactId } = await props.params;
 
-  const supabase = createClient(cookies())
+  const supabase = createClient()
 ;
   
   const { data: contact } = await supabase

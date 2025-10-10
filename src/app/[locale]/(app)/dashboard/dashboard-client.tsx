@@ -23,7 +23,7 @@ export function DashboardClient({
   initialData,
   children,
 }: {
-  initialData: DashboardInitialData;
+  initialData: DashboardInitialData; // Aquest tipus ara ha de contenir CrmNotification[]
   children: React.ReactNode;
 }) {
   // 🌍 Traduccions i navegació
@@ -39,8 +39,8 @@ export function DashboardClient({
 
   // 🔁 Handler per canviar estat d'una tasca
   const handleToggleTask = React.useCallback(
-    (id: string, status: boolean) => {
-      toggleTask(id, status);
+    (task: { id: string; is_completed: boolean }) => {
+      toggleTask(task.id, task.is_completed);
     },
     [toggleTask]
   );
@@ -56,7 +56,7 @@ export function DashboardClient({
       <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
 
       {/* 📈 Targetes estadístiques resum del mes (facturació, quotes, clients...) */}
-      <StatCardsGrid stats={initialData.stats} t={t} />
+      <StatCardsGrid stats={initialData.stats} />
 
       {/* 🧭 Secció superior: rendiment de vendes + activitats recents */}
       <DashboardMainGrid
@@ -74,7 +74,7 @@ export function DashboardClient({
       {/* 🗓️ Secció inferior: agenda + radar + oracle IA (streaming des del servidor) */}
       <DashboardBottomGrid
         pendingTasks={pendingTasks}
-        onToggleTask={handleToggleTask}
+        onTaskClick={handleToggleTask} // ✅ NOM CORREGIT
         onOpenNewTask={() => setTaskDialogOpen(true)}
         attentionContacts={initialData.attentionContacts}
         overdueInvoices={initialData.overdueInvoices}

@@ -1,8 +1,8 @@
 import { useState, useEffect, useTransition } from 'react';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { saveOpportunityAction } from '../actions.ts'; // Ajusta la ruta a les teves actions
-import type { Opportunity } from '../app/[locale]/(app)/crm/pipeline/page';
+import { saveOpportunityAction } from '../actions'; // Ajusta la ruta a les teves actions
+import type { Opportunity } from '@/types/crm';
 
 interface HookProps {
     opportunityToEdit: Partial<Opportunity> | null;

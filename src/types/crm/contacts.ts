@@ -4,7 +4,7 @@
  */
 
 // Importem tipus d'altres mòduls a través del fitxer 'index.ts' per evitar errors de dependència circular.
-import type { Activity, Quote, Opportunity, Invoice, Task , Notification } from './index';
+import type { Activity, Quote, Opportunity, Invoice, Task , CrmNotification} from './index';
 
 // --- MAPA I TIPUS D'ESTAT DE CONTACTE ---
 
@@ -40,16 +40,16 @@ export type Contact = {
   social_media?: { linkedin: string | null } | null;
   ubicacio?: string | null;
   last_interaction_at?: string | null;
-  
+
 
 };
 
 // Tipus Mestre per a les dades relacionades d'un contacte
 export type ContactRelatedData = {
-    quotes: Quote[];
-    opportunities: Opportunity[];
-    invoices: Invoice[];
-    activities: Activity[];
+  quotes: Quote[];
+  opportunities: Opportunity[];
+  invoices: Invoice[];
+  activities: Activity[];
 }
 
 // Tipus mestre per a les dades del Dashboard General
@@ -105,5 +105,5 @@ export interface DashboardInitialData {
   contacts: Contact[];
   overdueInvoices: Invoice[];
   attentionContacts: Contact[];
-  notifications: Notification[]; // ✅ Afegim el nou camp de notificacions
+  notifications: CrmNotification[]; // ✅ Assegura't que aquí també s'usa el nou nom
 }

@@ -53,10 +53,8 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
 
     // ✅ Este efecto corrige automáticamente un estado de equipo inválido.
     useEffect(() => {
-        if (invalidTeamState) {
-            console.log("[CLIENT] Estado inválido detectado. Ejecutando limpieza de equipo activo...");
-            handleClearTeam();
-        }
+        if (invalidTeamState) handleClearTeam();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [invalidTeamState]);
 
     // ✅ Noves funcions per gestionar les invitacions personals
@@ -290,9 +288,9 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
                 <CardHeader><CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle></CardHeader>
                 <CardContent className="divide-y">
                     {teamMembers.map(member => {
-                         if (!member.profiles) return null;
-                         const isOwner = member.role === 'owner';
-                         const isSelf = user.id === member.profiles.id;
+                        if (!member.profiles) return null;
+                        const isOwner = member.role === 'owner';
+                        const isSelf = user.id === member.profiles.id;
                         if (!member.profiles) return null;
 
                         // Comprovem si l'usuari actual té permís per a veure la bústia d'aquest membre
@@ -312,10 +310,10 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 sm:gap-4">
-                                     {/* ✅ LÒGICA DELS ROLS */}
-                                     {isOwner ? (
+                                    {/* ✅ LÒGICA DELS ROLS */}
+                                    {isOwner ? (
                                         <Badge variant="default" className="capitalize">{member.role}</Badge>
-                                        ) : (
+                                    ) : (
                                         <Select
                                             value={member.role}
                                             onValueChange={(newRole) => handleRoleChange(member.profiles!.id, newRole as 'admin' | 'member')}

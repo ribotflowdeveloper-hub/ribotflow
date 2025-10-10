@@ -37,7 +37,7 @@ export const generateVideoThumbnail = (file: File): Promise<string> => {
             resolve(canvas.toDataURL('image/jpeg', 0.8));
         };
 
-        video.onerror = (e) => {
+        video.onerror = () => {
             reject(new Error('Error en carregar el vídeo.'));
         };
     });

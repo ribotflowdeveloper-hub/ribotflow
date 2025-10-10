@@ -4,14 +4,13 @@
  * ara amb disseny adaptable i traduccions.
  */
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { Button } from '@/components/ui/button';
 import { getTranslations } from 'next-intl/server'; // ✅ Importem la funció de traducció del servidor
 
 export async function AIOracle() {
   // ✅ Obtenim les traduccions per a aquest component
   const t = await getTranslations('DashboardClient.aiOracle');
-  const supabase = createClient(cookies())
+  const supabase = createClient()
 ;
 
   try {

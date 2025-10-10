@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { QuotePreview } from "@/app/[locale]/(app)/crm/quotes/[id]/_components/QuotePreview";import type { Quote } from "@/types/crm";
-import type { QuoteDataFromServer } from '../page';
+import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
 
 interface PublicQuoteViewProps {
     quoteData: QuoteDataFromServer;

@@ -6,9 +6,12 @@
  * * @example
  * import type { Contact, Quote, Ticket } from '@/types/crm';
  */
-
+export * from './opportunitys';
 export * from './contacts';
-export * from './quotes';
 export * from '../comunicacio/inbox';
 export * from './general';
 export * from './products';
+export * from './deals';
+export * from './quotes';
+export * from './pipelines';
+export * from '../shared/notification';

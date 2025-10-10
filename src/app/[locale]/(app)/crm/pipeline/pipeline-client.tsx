@@ -8,8 +8,8 @@ import { useTranslations } from 'next-intl';
 import { Plus, LayoutGrid, Rows, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import type { Contact, Stage, Opportunity } from './page';
-import { usePipeline } from './_hooks/usePipeline.ts';
+import type { Contact, Stage, Opportunity } from '@/types/crm';
+import { usePipeline } from './_hooks/usePipeline';
 import { OpportunityDialog } from './_components/OpportunityDialog';
 import { ColumnsView } from './_components/ColumnsView';
 import { RowsView } from './_components/RowsView';

@@ -4,7 +4,7 @@
 
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ Importem el nostre helper!
-import type { Campaign } from '../page';
+import type { Campaign } from './page';
 
 // ... (El teu tipus 'Strategy' es manté igual) ...
 interface Strategy {

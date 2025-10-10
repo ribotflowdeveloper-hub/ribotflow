@@ -13,22 +13,6 @@ import { PipelineSkeleton } from './_components/PipelineSkeleton';
 export const metadata: Metadata = {
   title: 'Pipeline | Ribot',
 };
-
-// ... (Els teus tipus de dades Stage, Opportunity, Contact aquí)
-export type Contact = { id: string; nom: string; };
-export type Stage = { id: string; name: string; position: number; };
-export type Opportunity = {
-  id: string;
-  name: string;
-  stage_name: string;
-  value: number | null;
-  close_date: string | null;
-  description: string | null;
-  contact_id: string;
-  contacts: Contact | null;
-};
-
-
 // IMPORTANT: La pàgina principal JA NO ÉS 'async'
 export default function PipelinePage() {
   // Aquest component ara es renderitza a l'instant!

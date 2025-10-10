@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { ca, es, enUS } from "date-fns/locale";
 import { useLocale, useTranslations } from 'next-intl';
-import { type Expense, type Supplier, type ExpenseItem } from '@/types/finances/index';
+import { type Expense, type Supplier, type ExpenseItem, ExpenseAttachment } from '@/types/finances/index';
 import { saveExpenseAction, processOcrAction, uploadAttachmentAction } from '@/app/[locale]/(app)/finances/despeses/actions';
 
 // Definim les propietats que el component espera rebre.
@@ -28,8 +28,11 @@ interface ExpenseDialogProps {
 }
 
 // Define a more flexible type for the form state
-type ExpenseFormState = Omit<Expense, 'id' | 'created_at' | 'user_id' | 'suppliers'> & { id?: string | null };
-
+type ExpenseFormState = Omit<Expense, 'id' | 'created_at' | 'user_id' | 'suppliers'> & { 
+    id?: string | null; 
+    expense_attachments?: ExpenseAttachment[];
+    suppliers?: Supplier[];
+};
 // Funció que retorna un objecte de despesa buit, per a inicialitzar el formulari de creació.
 const getInitialExpenseState = (): ExpenseFormState => ({
     supplier_id: null, invoice_number: '', expense_date: new Date().toISOString(),

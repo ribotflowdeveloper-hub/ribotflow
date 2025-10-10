@@ -1,12 +1,11 @@
 // /app/[locale]/crm/activitats/_components/ActivitiesData.tsx
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { ActivitatsClient } from './activitats-client';
 import type { Activity } from '@/types/crm';
 
 export async function ActivitiesData() {
-    const supabase = createClient(cookies());
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

@@ -21,7 +21,6 @@ import ContactCard from './ContactCard';
 import ContactTable from './ContactTable';
 import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
 import { exportToExcel,importFromExcel } from '@/app/[locale]/(app)/excel/actions';
-import { TURBOPACK_CLIENT_MIDDLEWARE_MANIFEST } from 'next/dist/shared/lib/constants';
 
 interface ContactsClientProps {
     initialContacts: Contact[];
@@ -196,6 +195,7 @@ export function ContactsClient({
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
+                        disabled={isExporting}
                     />
 
                     <ContactDialog

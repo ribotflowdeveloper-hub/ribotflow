@@ -5,7 +5,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { type Contact, type Quote, type Opportunity, type Invoice, type Activity } from '@/types/crm';
-import { useContactDetail } from '../_hooks/useContactDetail.ts'; // ✅ 1. IMPORTA EL NOU HOOK
+import { useContactDetail } from '../_hooks/useContactDetail'; // ✅ 1. IMPORTA EL NOU HOOK
 import { ContactDetailHeader } from './ContactDetailHeader'; // ✅ 2. IMPORTA EL NOU COMPONENT DE CAPÇALERA
 import { ContactDetailTabs } from './ContactDetailTabs'; // El component de pestanyes que ja tenies
 

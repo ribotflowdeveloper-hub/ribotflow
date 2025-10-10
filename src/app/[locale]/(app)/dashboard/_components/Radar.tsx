@@ -7,13 +7,13 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, MessageSquare, Send, AlertTriangle } from 'lucide-react';
-import type { Invoice, Contact, Notification } from '@/types/crm';
+import type { Invoice, Contact, CrmNotification } from '@/types/crm';
 import { ActivityItem } from '@/components/shared/ActivityItem';
 
 interface RadarProps {
   attentionContacts: Contact[];
   overdueInvoices: Invoice[];
-  notifications: Notification[];
+  notifications: CrmNotification[];
 }
 
 export function Radar({ attentionContacts, overdueInvoices, notifications }: RadarProps) {
@@ -42,7 +42,7 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
           // Renderitzem la llista unificada i ordenada
           allItems.map((item) => {
             if (item.itemType === 'notification') {
-              const notif = item as Notification;
+              const notif = item as CrmNotification;
               const isError = notif.type === 'post_failed' || notif.type === 'integration_expired';
               return (
                 <ActivityItem 

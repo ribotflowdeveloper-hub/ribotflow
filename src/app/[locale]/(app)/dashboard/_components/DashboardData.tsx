@@ -1,10 +1,8 @@
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+
 import { DashboardClient } from '../dashboard-client';
-import type { Contact, Invoice, Task, Notification } from '@/types/crm';
+import type { Contact, Invoice, Task, CrmNotification } from '@/types/crm';
 import React from 'react';
+import { validatePageSession } from '@/lib/supabase/session'; // ✅ 1. Importem el nostre validador per a pàgines
 
 const calculatePercentageChange = (current: number, previous: number): string => {
     if (previous === 0) return current > 0 ? '+100%' : '0%';
@@ -14,29 +12,23 @@ const calculatePercentageChange = (current: number, previous: number): string =>
 };
 
 export async function DashboardData({ children }: { children: React.ReactNode }) {
-    const supabase = createClient(cookies());
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+    // ✅ 2. Tota la lògica de sessió es redueix a aquesta única línia.
+    // La funció interna s'encarrega de crear el client i redirigir si cal.
+    const { supabase, user } = await validatePageSession();
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        // Esta redirección es correcta, por si un usuario no autenticado intenta acceder
-        return redirect(`/${locale}/login`);
-    }
-    
-    
+    // La resta del teu codi es manté gairebé igual, però ara utilitza
+    // les variables 'supabase' i 'user' que retorna la nostra funció.
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // ✅ Les consultes ara són segures. La RLS filtrarà 'tasks', 'invoices', i 'contacts'.
-    // La funció RPC 'get_dashboard_stats' ara també filtra internament.
     const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes] = await Promise.all([
-        supabase.rpc('get_dashboard_stats'), 
+        supabase.rpc('get_dashboard_stats'),
         supabase.from('tasks').select('*').order('is_completed, created_at'),
         supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
         supabase.from('contacts').select('*').order('created_at', { ascending: false }),
-        supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
+        supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false), // 'user' ja el tenim de validatePageSession
     ]);
-    
-    
+
+
     const statsData = statsRes.data?.[0] || {};
     const contactsData = (contactsRes.data as Contact[]) || [];
     const transformedOverdueInvoices = ((overdueInvoicesRes.data as Invoice[]) || []).map(invoice => ({
@@ -63,7 +55,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         attentionContacts: contactsData
             .filter((c: Contact) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
             .slice(0, 5),
-        notifications: (notificationsRes.data as Notification[]) || [],
+        notifications: (notificationsRes.data as CrmNotification[]) || [], // ✅ Tipus actualitzat
     };
 
     return (

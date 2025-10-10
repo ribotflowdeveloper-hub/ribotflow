@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { type EmailTemplate } from '../page';
+import { type EmailTemplate } from './page';
 import type { PostgrestError } from "@supabase/supabase-js";
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
 

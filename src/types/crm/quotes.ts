@@ -4,18 +4,10 @@
  */
 
 
-
+import type {Contact} from "@/types/crm";
+import type { Team as CompanyProfile } from "@/types/settings/team";
 // --- MAPES I TIPUS D'ESTATS ---
 
-export const PIPELINE_STAGES_MAP = [
-  { name: 'Prospecte', key: 'prospect' },
-  { name: 'Contactat', key: 'contacted' },
-  { name: 'Proposta Enviada', key: 'proposalSent' },
-  { name: 'Negociació', key: 'negotiation' },
-  { name: 'Guanyat', key: 'won' },
-  { name: 'Perdut', key: 'lost' },
-] as const;
-type PipelineStageName = typeof PIPELINE_STAGES_MAP[number]['name'];
 
 export const QUOTE_STATUS_MAP = [
   { dbValue: 'Draft',    key: 'draft',    colorClass: 'bg-yellow-900/50 text-yellow-300' },
@@ -71,16 +63,7 @@ export type Quote = {
 
 };
 
-export type Opportunity = { 
-  id: string; 
-  name: string; 
-  stage_name: PipelineStageName;
-  value: number | null;
-  close_date?: string | null;
-  description?: string | null;
-  contact_id: string;
-  contacts?: { id: string; nom: string | null; } | null;
-};
+
 
 export type Invoice = { 
   id: string; 
@@ -91,5 +74,13 @@ export type Invoice = {
   contacts?: { nom: string | null; } | null;
   due_date: string; // ✅ Ha de ser obligatori
 
+};
+
+
+export type QuoteDataFromServer = Quote & {
+  contacts: Contact | null;
+  team: CompanyProfile | null;
+  quote_items: QuoteItem[];
+  secure_id: string;
 };
 

@@ -1,9 +1,8 @@
 // /app/[locale]/finances/facturacio/_components/FacturacioData.tsx
 
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import { FacturacioClient } from './FacturacioClient';
-import type { Invoice, Contact } from '../types'; 
+import type { Contact } from '@/types/crm'; 
 import type { Product } from '@/types/crm/products'; 
 
 
@@ -12,7 +11,7 @@ export async function FacturacioData() {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`\n--- [SERVER] INICI FacturacioData @ ${timestamp} ---`);
 
-    const supabase = createClient(cookies());
+    const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {

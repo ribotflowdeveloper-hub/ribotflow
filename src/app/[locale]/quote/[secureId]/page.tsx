@@ -1,42 +1,25 @@
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server'; 
-import { notFound } from "next/navigation";
-import { PublicQuoteClient } from "./_components/PublicQuoteClient";
-import type { Quote, Contact, QuoteItem } from "@/types/crm";
-import type { Team as CompanyProfile} from "@/types/settings/team"; // ✅ Importem el tipus correcte
+// FITXER: app/[locale]/(app)/crm/quotes/[id]/page.ts
 
-// Definim el tipus de dades que la nostra pàgina generarà
-export type QuoteDataFromServer = Quote & {
-    contacts: Contact | null;
-    team: CompanyProfile | null; // ✅ Canviat de 'profiles' a 'team'
-    quote_items: QuoteItem[];
-    secure_id: string;
+import { notFound } from 'next/navigation';
+import { PublicQuoteClient } from './_components/PublicQuoteClient';
+import { getQuoteDataBySecureId } from './_components/PublicQuoteData';
+
+// 👇 CORRECCIÓ: 'params' és un objecte, no una Promise.
+//    El nom de la propietat ha de coincidir amb el nom del directori dinàmic, que és '[id]'.
+type PageProps = {
+  params: Promise<{ id: string }>;
 };
 
-interface PublicQuotePageProps {
-    params: { secureId: string };
-}
+export default async function PublicQuotePage({ params }: PageProps) {
+  // 👇 CORRECCIÓ: No cal fer 'await' a 'params'. Accedeix directament.
+ const { id: userId } = await params;
+  
+  // Utilitzem 'id' per a obtenir les dades.
+  const quoteData = await getQuoteDataBySecureId(userId);
 
-export default async function PublicQuotePage({ params }: PublicQuotePageProps) {
-    const supabase = createClient(cookies());
-    const { secureId } = params;
+  if (!quoteData) {
+    notFound();
+  }
 
-    // ✅ CONSULTA ACTUALITZADA: Fem JOIN amb 'contacts' i 'teams'
-    const { data: quoteData, error } = await supabase
-        .from("quotes")
-        .select(`
-            *, 
-            contacts (*), 
-            team:teams (*), 
-            quote_items (*)
-        `)
-        .eq("secure_id", secureId)
-        .single();
-
-    if (error || !quoteData) {
-        console.error("Error carregant les dades del pressupost:", error?.message || "Dades no trobades");
-        notFound();
-    }
-    
-    return <PublicQuoteClient initialQuoteData={quoteData as QuoteDataFromServer} />;
+  return <PublicQuoteClient initialQuoteData={quoteData} />;
 }

@@ -79,7 +79,7 @@ export async function exportToExcel<T extends Record<string, unknown>>(tableName
     if ('error' in session) {
       return { success: false, message: session.error.message };
     }
-    const { supabase, user, activeTeamId } = session;
+    const { supabase, activeTeamId } = session;
 
     // 2. Cridem a la funció per obtenir les columnes
     const { columns, selectString } = await getTableColumns(supabase, tableName);
@@ -173,7 +173,7 @@ export async function importFromExcel<T extends Record<string, unknown>>(tableNa
     const { supabase, user, activeTeamId } = session;
 
     // 2. Cridem a la funció per obtenir les columnes
-    const { columns, selectString } = await getTableColumns(supabase, tableName);
+    const { columns } = await getTableColumns(supabase, tableName);
 
     // 3. Obtenim el fitxer de FormData
     const file = formData.get('file');
