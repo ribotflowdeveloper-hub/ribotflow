@@ -1,108 +1,89 @@
+// src/app/[locale]/(app)/comunicacio/inbox/_components/ContactPanel.tsx
 "use client";
 
 import React, { useMemo, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { User, Building, UserPlus, Mail, Phone, MapPin, ExternalLink, Euro, Ban, Loader2 } from 'lucide-react';
-import type { Ticket } from '../page';
 import Link from 'next/link';
-import { ContactDialog } from '@/app/[locale]/(app)/crm/contactes/_components/ContactDialog';
-import type { Contact } from '@/types/crm';
-import { addToBlacklistAction } from '../actions';
 import { toast } from 'sonner';
 
+import { ContactDialog } from '@/app/[locale]/(app)/crm/contactes/_components/ContactDialog';
+import { addToBlacklistAction } from '../actions';
+
+// ✨ CANVI: Importem els tipus directament des de la nostra única font de la veritat.
+import type { Contact, EnrichedTicket } from '@/types/db';
+
 interface ContactPanelProps {
-    ticket: Ticket | null;
+    ticket: EnrichedTicket | null;
     isPendingSave: boolean;
-    // ✅ CORRECCIÓ 1: Actualitzem la signatura de la funció que esperem rebre.
-    // Ara accepta el contacte nou i el tiquet original.
-    onSaveContact: (newlyCreatedContact: Contact, originalTicket: Ticket) => void;
+    onSaveContact: (newlyCreatedContact: Contact, originalTicket: EnrichedTicket) => void;
     allTeamContacts: Contact[];
 }
 
 export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSave, onSaveContact, allTeamContacts }) => {
-
     const [isPending, startTransition] = useTransition();
-    // La teva funció de traduccions (la deixo aquí per si la vols ampliar)
-    const t = (key: string) => {
-        const translations: { [key: string]: string } = {
-            'noContactAssociated': "Selecciona un tiquet per veure'n els detalls.",
-            'contactDetailsTitle': "Detalls del Contacte",
-            'viewFullProfile': "Veure fitxa completa",
-            'emailLabel': "Correu",
-            'phoneLabel': "Telèfon",
-            'locationLabel': "Ubicació",
-            'valueLabel': "Valor",
-            'statusLabel': "Estat",
-            'notSpecified': "No especificat",
-            'saveContactButton': "Desa com a contacte"
-        };
-        return translations[key] || key;
-    };
+
+    // Simplifiquem la lògica per trobar el contacte a mostrar.
+    const contactToShow: Contact | null = useMemo(() => {
+        if (!ticket) return null;
+
+        // Cas 1: El tiquet ja té un contact_id vinculat.
+        // Construïm un objecte 'Contact' a partir de les dades planes de 'EnrichedTicket'.
+        if (ticket.contact_id && ticket.contact_nom) {
+            return {
+                id: ticket.contact_id,
+                nom: ticket.contact_nom,
+                email: ticket.contact_email || '',
+                // Afegim la resta de camps com a null o valors per defecte, ja que no els tenim a la vista.
+                // Això és suficient per a la visualització.
+                empresa: null,
+                telefon: null,
+                ubicacio: null,
+                valor: null,
+                estat: null,
+                created_at: null,
+                address: null,
+                birthday: null,
+                children_count: null,
+                hobbies: null,
+                industry: null,
+                job_title: null,
+                last_interaction_at: null,
+                lead_source: null,
+                marital_status: null,
+                notes: null,
+                partner_name: null,
+                social_media: null,
+                team_id: null,
+                ultim_contacte: null,
+                user_id: null,
+            };
+        }
+
+        // Cas 2: El tiquet no té contacte vinculat, busquem si existeix un contacte amb el mateix email.
+        if (!ticket.sender_email) return null;
+        const ticketEmail = ticket.sender_email.trim().toLowerCase();
+        return allTeamContacts.find(c => c.email?.trim().toLowerCase() === ticketEmail) || null;
+
+    }, [ticket, allTeamContacts]);
 
     const handleBlacklist = () => {
         if (!ticket || !ticket.sender_email) return;
         if (confirm(`Estàs segur que vols bloquejar ${ticket.sender_email}? Tots els seus correus no es descarregaran de nous.`)) {
             startTransition(async () => {
-                const result = await addToBlacklistAction(ticket.sender_email);
-                if (result.success) {
-                    toast.success(result.message);
-                } else {
-                    toast.error("Error", { description: result.message });
-                }
+                const result = await addToBlacklistAction(ticket.sender_email!);
+                toast[result.success ? 'success' : 'error'](result.message);
             });
         }
     };
-    // ✅ LÒGICA CLAU: Utilitzem 'useMemo' per a determinar si el contacte existeix.
-    // Aquesta comprovació només es re-executa si el 'ticket' o la llista de contactes canvien.
-    const contactToShow = useMemo(() => {
-        if (!ticket) return null;
-
-        // Prioritat 1: El tiquet ja està vinculat a un contacte.
-        if (ticket.contacts) {
-            console.log("%c[DEBUG] Cas 1: El tiquet ja estava vinculat.", "color: green", ticket.contacts);
-
-            return ticket.contacts;
-        }
-
-        // --- INICI DE LA ZONA DE DEPURACIÓ ---
-        console.group(`[DEBUG] Buscant contacte per a: "${ticket.sender_email}"`);
-        console.log("Llista de contactes de l'equip:", allTeamContacts);
-
-        const existingContact = allTeamContacts.find(contact => {
-            // Comprovem que ambdós emails existeixen abans de comparar
-            if (!contact.email || !ticket.sender_email) return false;
-
-            const contactEmail = contact.email.trim().toLowerCase();
-            const ticketEmail = ticket.sender_email.trim().toLowerCase();
-
-            // Log de cada comparació per veure exactament què passa
-            console.log(`Comparant: "${ticketEmail}" === "${contactEmail}" -> ${contactEmail === ticketEmail}`);
-
-            return contactEmail === ticketEmail;
-        });
-
-        if (existingContact) {
-            console.log("%c[DEBUG] Cas 2: S'ha trobat un contacte existent per email.", "color: blue", existingContact);
-        } else {
-            console.log("%c[DEBUG] Cas 3: No s'ha trobat cap contacte. S'hauria de mostrar el botó de desar.", "color: orange");
-        }
-        console.groupEnd();
-        // --- FI DE LA ZONA DE DEPURACIÓ ---
-
-
-
-        return existingContact || null;
-    }, [ticket, allTeamContacts]);
     return (
         <div className="flex flex-col h-full border-l border-border bg-background/95">
             {!ticket ? (
-                // --- VISTA INICIAL QUAN NO HI HA CAP TIQUET SELECCIONAT ---
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
                     <User className="w-16 h-16 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">{t('noContactAssociated')}</p>
+                    <p className="text-muted-foreground">Selecciona un tiquet per veure'n els detalls.</p>
                 </div>
-            ) : contactToShow ? ( // ✅ ARA LA CONDICIÓ ÉS 'contactToShow'
-                // --- VISTA MILLORADA QUAN EL CONTACTE JA EXISTEIX ---
+            ) : contactToShow ? (
                 <>
                     <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
                         <h2 className="text-xl font-bold">Detalls del Contacte</h2>
@@ -175,11 +156,11 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
             )}
             {ticket && (
                 <div className="p-4 border-t mt-auto flex-shrink-0">
-                    <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        className="w-full" 
-                        onClick={handleBlacklist} 
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        className="w-full"
+                        onClick={handleBlacklist}
                         // ✅ CORRECCIÓ 2: Utilitzem 'isPending' per a desactivar el botó
                         disabled={isPendingSave || isPending}
                     >

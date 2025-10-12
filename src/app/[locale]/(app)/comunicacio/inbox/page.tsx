@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import { InboxData } from './_components/InboxData';
 import { InboxSkeleton } from './_components/InboxSkeleton';
 import type { Ticket, Template } from '@/types/comunicacio/inbox';
-import type { Contact } from '@/types/crm/contacts';
+import type { Contact } from '@/types/db';
 export const metadata: Metadata = {
   title: 'Bandeja de Entrada | Ribot',
 };

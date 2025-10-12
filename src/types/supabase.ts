@@ -1,4 +1,3 @@
-
 export type Json =
   | string
   | number
@@ -1807,6 +1806,13 @@ export type Database = {
             foreignKeyName: "ticket_assignments_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
+            referencedRelation: "enriched_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_assignments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
             referencedRelation: "tickets"
             referencedColumns: ["id"]
           },
@@ -1926,6 +1932,38 @@ export type Database = {
       }
     }
     Views: {
+      enriched_tickets: {
+        Row: {
+          attachments: Json | null
+          body: string | null
+          contact_email: string | null
+          contact_id: number | null
+          contact_nom: string | null
+          created_at: string | null
+          id: number | null
+          preview: string | null
+          profile_avatar_url: string | null
+          profile_full_name: string | null
+          provider: string | null
+          provider_message_id: string | null
+          sender_email: string | null
+          sender_name: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string | null
+          type: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tickets_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geography_columns: {
         Row: {
           coord_dimension: number | null

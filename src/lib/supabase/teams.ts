@@ -26,10 +26,10 @@ export async function getTeamMembersWithProfiles(
     // La funció només ha de fer la consulta i retornar la resposta.
     // Aquesta resposta SEMPRE serà un objecte amb format { data, error }.
     const response = await supabase
-        .from('team_members_with_profiles') 
-        .select('role, user_id, full_name, email, avatar_url')
+        .from('team_members_with_profiles')
+        .select('*')
         .eq('team_id', teamId);
-    
+
     // Si hi ha un error, 'response.error' tindrà valor.
     // Si no, 'response.data' tindrà valor. Però el format és el mateix.
     return response;

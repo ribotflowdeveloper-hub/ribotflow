@@ -9,7 +9,10 @@ import { Loader2 } from 'lucide-react';
 import { createContactAction } from '../actions';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
-import { CONTACT_STATUS_MAP } from '@/types/crm';
+//import { CONTACT_STATUS_MAP } from '@/types/crm';
+
+import { CONTACT_STATUS_MAP } from '@/config/contacts';
+
 
 // Props que el nostre diàleg acceptarà
 interface ContactDialogProps {

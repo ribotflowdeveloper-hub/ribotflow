@@ -1,24 +1,26 @@
-
+// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx
 import { redirect } from 'next/navigation';
+import { headers } from "next/headers";
 import { InboxClient } from "./InboxClient";
-import { transformRpcToTicket, type Ticket, type Template, type TicketFromRpc } from "@/types/comunicacio/inbox";
 import { getTicketBodyAction } from "../actions";
 import { getTeamMembersWithProfiles } from "@/lib/supabase/teams";
 import { validateUserSession } from "@/lib/supabase/session";
-import { headers } from "next/headers";
-import { type Contact } from '@/types/crm';
+
+// ✨ CANVI: Importem tots els tipus necessaris directament des de la nostra font de veritat.
+import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template } from '@/types/db';
 
 export async function InboxData({ searchTerm }: { searchTerm: string }) {
     const session = await validateUserSession();
-    const locale = (await headers()).get('x-next-intl-locale') || 'ca';
+    const locale = (await (headers())).get('x-next-intl-locale') || 'ca';
     if ('error' in session) {
         redirect(`/${locale}/login`);
     }
     const { supabase, user, activeTeamId } = session;
 
+    // ✨ CORRECCIÓ: Seleccionem totes les columnes ('*') per satisfer el tipus 'InboxPermission'.
     const { data: permissions, error: permissionsError } = await supabase
         .from('inbox_permissions')
-        .select('target_user_id')
+        .select('*')
         .eq('team_id', activeTeamId)
         .eq('grantee_user_id', user.id);
 
@@ -27,24 +29,15 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
     const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id).filter(Boolean) || [])];
 
     const [
-        teamMembers,
-        allTeamContactsRes, // El resultat de la promesa dels contactes
+        teamMembersRes,
+        allTeamContactsRes,
         templatesRes,
         receivedCountRes,
         sentCountRes,
         ticketsRes
     ] = await Promise.all([
-        getTeamMembersWithProfiles(supabase, activeTeamId).then(response =>
-            // Accedeix a l'array dins de .data i posa un valor per defecte ([])
-            (response.data || []).map(member => ({
-                ...member,
-                profiles: {
-                    id: member.user_id,
-                    full_name: member.full_name || null,
-                    avatar_url: member.avatar_url || null,
-                },
-            }))
-        ),
+        // ✨ CORRECCIÓ: No cal transformar les dades. La funció ja retorna el tipus correcte.
+        getTeamMembersWithProfiles(supabase, activeTeamId),
         supabase.from('contacts').select('*').eq('team_id', activeTeamId),
         supabase.from("email_templates").select("*").eq('team_id', activeTeamId),
         supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds }),
@@ -61,15 +54,19 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
 
     if (ticketsRes.error) console.error("Error RPC (get_inbox_tickets):", ticketsRes.error);
 
-    // ✅ CORRECCIÓ: Declarem 'allTeamContacts' aquí, a partir del resultat de la promesa.
+    // Assignem les dades als tipus correctes, amb valors per defecte segurs.
+    const teamMembers: TeamMemberWithProfile[] = teamMembersRes.data || [];
+
     const allTeamContacts: Contact[] = allTeamContactsRes.data || [];
-    const tickets: Ticket[] = ((ticketsRes.data as TicketFromRpc[]) || []).map(transformRpcToTicket);
     const templates: Template[] = templatesRes.data || [];
     const receivedCount = receivedCountRes.data || 0;
     const sentCount = sentCountRes.data || 0;
 
+    // ✨ CORRECCIÓ: Eliminem la transformació manual. El tipus retornat per la RPC és compatible.
+    const tickets: EnrichedTicket[] = (ticketsRes.data as EnrichedTicket[] || []);
+
     let initialSelectedTicketBody: string | null = null;
-    if (tickets.length > 0) {
+    if (tickets.length > 0 && tickets[0].id) {
         const { body } = await getTicketBodyAction(tickets[0].id);
         initialSelectedTicketBody = body;
     }
@@ -85,7 +82,7 @@ export async function InboxData({ searchTerm }: { searchTerm: string }) {
             initialSelectedTicketBody={initialSelectedTicketBody}
             teamMembers={teamMembers}
             permissions={permissions || []}
-            allTeamContacts={allTeamContacts} // ✅ Ara la variable existeix i té el valor correcte.
+            allTeamContacts={allTeamContacts}
         />
     );
 }

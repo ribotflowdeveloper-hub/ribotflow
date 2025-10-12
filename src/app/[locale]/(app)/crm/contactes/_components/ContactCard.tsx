@@ -5,11 +5,16 @@ import React from 'react';
 import { motion } from 'framer-motion';
 // Icones de Lucide React.
 import { User, Building, Mail, Phone} from 'lucide-react';
-// Importem el tipus de dades 'Contact' i el nostre mapa d'estats.
-import type { Contact } from '@/types/crm';
-import { CONTACT_STATUS_MAP } from '@/types/crm';
-// Importem el hook de traduccions.
+// Hook de traduccions.
 import { useTranslations } from 'next-intl';
+
+// 👇 PAS 1: Importem la definició de la nostra base de dades
+import { type Database } from '@/types/supabase';
+// 👇 PAS 2: Importem la constant des de la seva nova llar a /config
+import { CONTACT_STATUS_MAP } from '@/config/contacts';
+
+// 👇 PAS 3: Definim el tipus 'Contact' a partir de l'esquema de la base de dades
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
 // Definim les propietats (props) que el nostre component espera rebre.
 interface ContactCardProps {
@@ -23,8 +28,7 @@ interface ContactCardProps {
  * Rep tota la lògica i les dades del seu component pare.
  */
 const ContactCard: React.FC<ContactCardProps> = ({ contact, onClick }) => {
-    // Inicialitzem el hook de traduccions per al namespace que correspongui.
-    // Canvia 'ContactsClient' si has organitzat les teves traduccions de manera diferent.
+    // Inicialitzem el hook de traduccions.
     const t = useTranslations('ContactsClient');
 
     /**
@@ -32,9 +36,8 @@ const ContactCard: React.FC<ContactCardProps> = ({ contact, onClick }) => {
      * @param statusCode El codi de l'estat (ex: 'L', 'P', 'C').
      * @returns El text complet i traduït (ex: "Lead", "Cliente", "Proveedor").
      */
-    const getStatusLabel = (statusCode?: string) => {
+    const getStatusLabel = (statusCode?: string | null) => {
         if (!statusCode) return ''; // Si no hi ha estat, no retornem res.
-        // Busquem l'objecte corresponent al codi dins del nostre mapa central.
         const statusObject = CONTACT_STATUS_MAP.find(s => s.code === statusCode);
         // Si el trobem, utilitzem la seva 'key' per obtenir la traducció.
         // Si no, retornem el codi original com a fallback.
@@ -58,29 +61,22 @@ const ContactCard: React.FC<ContactCardProps> = ({ contact, onClick }) => {
                             <User className="w-6 h-6 text-white" />
                         </div>
                         <div className="min-w-0">
-                            {/* 📛 Nom — Truncat normalment, desplegat en hover */}
+                            {/* 📛 Nom — Corregit a 'contact.name' per coincidir amb la base de dades */}
                             <h3
-                                className="
-              font-bold text-lg text-foreground truncate max-w-[200px]
-              group-hover:max-w-[500px] group-hover:whitespace-normal transition-all duration-300
-            "
+                                className="font-bold text-lg text-foreground truncate max-w-[200px] group-hover:max-w-[500px] group-hover:whitespace-normal transition-all duration-300"
                             >
-                                {contact.nom}
+                                {contact.nom} 
                             </h3>
-                            {/* Empresa */}
+                            {/* Empresa — Corregit a 'contact.company' */}
                             <p className="text-sm text-muted-foreground flex items-center gap-1.5 truncate max-w-[200px]">
                                 <Building className="w-4 h-4 shrink-0" />
                                 <span className="truncate">{contact.empresa || t('noCompany')}</span>
                             </p>
                         </div>
                     </div>
-                    {/* 🏷 Estat — Badge que es fa petit en hover */}
+                    {/* 🏷 Estat — Corregit a 'contact.status' */}
                     <span
-                        className={`
-          status-badge status-${contact.estat?.toLowerCase()}
-          shrink-0 transition-transform duration-300
-          group-hover:scale-75 group-hover:opacity-80
-        `}
+                        className={`status-badge status-${contact.estat?.toLowerCase()} shrink-0 transition-transform duration-300 group-hover:scale-75 group-hover:opacity-80`}
                     >
                         {getStatusLabel(contact.estat)}
                     </span>
@@ -94,24 +90,12 @@ const ContactCard: React.FC<ContactCardProps> = ({ contact, onClick }) => {
                     </p>
                     <p className="flex items-center gap-2 text-muted-foreground truncate max-w-[200px]">
                         <Phone className="w-4 h-4 text-primary/70 shrink-0" />
+                        {/* Corregit a 'contact.phone' */}
                         <span className="truncate">{contact.telefon || t('notSpecified')}</span>
                     </p>
                 </div>
             </div>
-
-            {/* Secció inferior 
-            <div className="flex items-center justify-between pt-4 mt-4 border-t border-white/10">
-                <div className="text-lg font-semibold text-green-400 flex items-center">
-                    <Euro className="w-4 h-4 mr-1" />
-                    {contact.valor?.toLocaleString() || '0'}
-                </div>
-                <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm text-gray-400">4.5</span>
-                </div>
-            </div>*/}
         </motion.div>
-
     );
 }
 
