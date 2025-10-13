@@ -145,7 +145,7 @@ export function TeamDashboard({ user, activeTeamData }: TeamDashboardProps) {
                                              </Tooltip>
                                          </TooltipProvider>
                                      )}
-                                     {canManage && !isOwner && !isSelf && (
+                                     {canManage && !isSelf && (
                                          <TooltipProvider>
                                              <Tooltip>
                                                  <TooltipTrigger asChild>

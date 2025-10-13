@@ -1615,6 +1615,7 @@ export type Database = {
           team_id?: string | null
           title: string
           user_id: string
+         
         }
         Update: {
           contact_id?: number | null

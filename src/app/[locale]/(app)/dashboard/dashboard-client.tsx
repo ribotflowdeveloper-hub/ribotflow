@@ -50,11 +50,12 @@ interface DashboardClientProps {
   };
   children: React.ReactNode;
 }
-
 export function DashboardClient({
   initialData,
   children,
 }: DashboardClientProps) {
+  
+
   const t = useTranslations('DashboardClient');
   const router = useRouter();
 
