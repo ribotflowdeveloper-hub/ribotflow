@@ -808,6 +808,13 @@
       "deleteButton": "Eliminar",
       "markAsPendingButton": "Marcar com a pendent",
       "markAsCompletedButton": "Marcar com a completada"
+    },
+    "time": {
+      "now": "Ara mateix",
+      "minutesAgo": "Fa {count, plural, =1 {1 minut} other {# minuts}}",
+      "hoursAgo": "Fa {count, plural, =1 {1 hora} other {# hores}}",
+      "yesterday": "Ahir",
+      "daysAgo": "Fa {count} dies"
     }
   },
   "Expenses": {

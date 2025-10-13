@@ -3,12 +3,14 @@
 import React, { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, CheckCircle2, Clock3, Users } from 'lucide-react';
-import type { Invoice, Task, Contact } from '@/types/crm';
 import { ActivityItem } from '@/components/shared/ActivityItem';
+import { Tables } from '@/types/supabase'; // ✅ CORRECCIÓ: Importem el nostre helper
+
+// ✅ CORRECCIÓ: Actualitzem les propietats amb els nous tipus
 interface RecentActivitiesProps {
-  overdueInvoices: Invoice[];
-  tasks: Task[];
-  contacts: Contact[];
+  overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
+  tasks: Tables<'tasks'>[];
+  contacts: Tables<'contacts'>[];
 }
 
 export function RecentActivities({ overdueInvoices, tasks, contacts }: RecentActivitiesProps) {
@@ -21,7 +23,7 @@ export function RecentActivities({ overdueInvoices, tasks, contacts }: RecentAct
       icon: FileWarning, 
       tone: { bg: 'bg-red-500/15', text: 'text-red-300' }, 
       title: t('overdueInvoice', { clientName: inv.contacts?.nom ?? 'client' }), 
-      meta: t('dueDate', { dueDate: new Date(inv.due_date).toLocaleDateString() }), 
+      meta: inv.due_date ? t('dueDate', { dueDate: new Date(inv.due_date).toLocaleDateString() }) : '',
       href: '/finances/facturacio' 
     }));
     
@@ -29,7 +31,6 @@ export function RecentActivities({ overdueInvoices, tasks, contacts }: RecentAct
       icon: task.is_completed ? CheckCircle2 : Clock3, 
       tone: { bg: task.is_completed ? 'bg-emerald-500/15' : 'bg-yellow-500/15', text: task.is_completed ? 'text-emerald-300' : 'text-yellow-300' }, 
       title: task.is_completed ? t('taskCompleted', { taskTitle: task.title }) : t('taskCreated', { taskTitle: task.title }), 
-      // ✅ CORRECCIÓ: Comprovem si la data existeix abans de formatejar-la
       meta: task.created_at ? new Date(task.created_at).toLocaleString() : '', 
       href: '/dashboard' 
     }));
@@ -38,12 +39,10 @@ export function RecentActivities({ overdueInvoices, tasks, contacts }: RecentAct
       icon: Users, 
       tone: { bg: 'bg-blue-500/15', text: 'text-blue-300' }, 
       title: t('newContact', { contactName: c.nom }), 
-      // ✅ CORRECCIÓ: Comprovem si la data existeix abans de formatejar-la
       meta: c.created_at ? new Date(c.created_at).toLocaleDateString() : '', 
       href: '/crm/contactes' 
     }));
 
-    // Pots ordenar l'array per data aquí si vols que el feed estigui cronològicament ordenat
     return a.slice(0, 6);
   }, [overdueInvoices, tasks, contacts, t]);
 

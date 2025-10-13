@@ -798,6 +798,13 @@
       "deleteButton": "Delete",
       "markAsPendingButton": "Mark as pending",
       "markAsCompletedButton": "Mark as completed"
+    },
+    "time": {
+      "now": "Just now",
+      "minutesAgo": "{count, plural, =1 {1 minute ago} other {# minutes ago}}",
+      "hoursAgo": "{count, plural, =1 {1 hour ago} other {# hours ago}}",
+      "yesterday": "Yesterday",
+      "daysAgo": "{count} days ago"
     }
   },
   "Expenses": {

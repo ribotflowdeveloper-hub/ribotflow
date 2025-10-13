@@ -3,26 +3,30 @@
 import React, { memo } from "react";
 import { Agenda } from "./Agenda";
 import { Radar } from "./Radar";
-import type { Task, Contact, Invoice, CrmNotification } from "@/types/crm";
+// ✅ CORRECCIÓ #1: Eliminem els imports dels tipus antics
+// import type { Task, Contact, Invoice, CrmNotification } from "@/types/crm";
+import { Tables } from "@/types/supabase"; // I importem el nostre helper de Supabase
 
 /**
  * @file DashboardBottomGrid.tsx
  * @description Renderitza la secció inferior del dashboard: Agenda, Radar i Oracle d’IA.
  */
 
+// ✅ CORRECCIÓ #2: Actualitzem TOTES les propietats amb els nous tipus de Supabase
 interface DashboardBottomGridProps {
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
-  pendingTasks: Task[];
+  // onToggleTask ara rep un 'string' per compatibilitat amb AgendaProps
+  onToggleTask: (taskId: number, currentStatus: boolean) => void;
+  pendingTasks: Tables<"tasks">[];
   onOpenNewTask: () => void;
-  attentionContacts: Contact[];
-  overdueInvoices: Invoice[];
-  notifications: CrmNotification[]; // ✅ Prop per a les notificacions CRM  
+  attentionContacts: Tables<"contacts">[];
+  // Per a les factures, fem servir el tipus que ja vam definir al component pare
+  overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
+  notifications: Tables<"notifications">[];
   children: React.ReactNode; // Oracle d'IA injectat via streaming
 }
 
 /**
  * ✅ Component memoitzat per millorar rendiment.
- * Manté la coherència del layout inferior i suporta streaming dinàmic.
  */
 export const DashboardBottomGrid = memo(
   ({

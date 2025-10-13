@@ -4,20 +4,27 @@ import React, { memo } from "react";
 import { useTranslations } from "next-intl";
 import { StatCard } from "@/components/shared/StatCard";
 import { Users, Target, Euro, BadgePercent } from "lucide-react";
-import type { DashboardInitialData } from "@/types/crm";
+// ✅ CORRECCIÓ #1: Eliminem l'import del tipus antic i innecessari
+// import type { DashboardInitialData } from "@/types/crm";
 
 /**
  * @file StatCardsGrid.tsx
  * @description Mostra la graella de targetes de KPI principals del Dashboard.
  */
 
+// ✅ CORRECCIÓ #2: Definim el tipus de 'stats' amb les propietats que realment rep
 interface StatCardsGridProps {
-  stats: DashboardInitialData["stats"];
+  stats: {
+    totalContacts: number;
+    opportunities: number;
+    invoiced: number;
+    pending: number;
+    // Podríem afegir més si fossin necessàries
+  };
 }
 
 /**
  * ✅ Component memoitzat per evitar re-render innecessaris.
- * S’encarrega només de representar les targetes de mètriques principals.
  */
 export const StatCardsGrid = memo(({ stats }: StatCardsGridProps) => {
   const t = useTranslations("DashboardClient");
@@ -51,7 +58,7 @@ export const StatCardsGrid = memo(({ stats }: StatCardsGridProps) => {
       <StatCard
         href="/finances/facturacio"
         icon={BadgePercent}
-        title={t("pendingVAT")}
+        title={t("pendingVAT")} // Aquest títol potser hauria de ser "Pendent de Cobrament"
         value={`€${stats.pending.toLocaleString()}`}
         color="bg-[#f27917]"
         openText={t("openLink")}

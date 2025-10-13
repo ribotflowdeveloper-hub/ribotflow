@@ -1,27 +1,34 @@
 "use client";
 
 import React, { memo } from "react";
-import type { DashboardInitialData } from "@/types/crm";
 import { SalesPerformance } from "./SalesPerformance";
 import { RecentActivities } from "./RecentActivities";
+import { Tables } from "@/types/supabase";
 
 /**
  * @file DashboardMainGrid.tsx
  * @description Conté el bloc principal del dashboard: rendiment de vendes + activitats recents.
  */
 
+// ✅ CORRECCIÓ: Actualitzem les propietats per a què coincideixin amb les dades reals
 interface DashboardMainGridProps {
-  stats: DashboardInitialData["stats"];
+  stats: {
+    invoiced: number;
+    expenses: number;
+    invoicedChange: string;
+    expensesChange: string;
+    invoicedIsPositive: boolean;
+    expensesIsPositive: boolean;
+  };
   percentGoal: number;
   monthlyGoal: number;
-  overdueInvoices: DashboardInitialData["overdueInvoices"];
-  tasks: DashboardInitialData["tasks"];
-  contacts: DashboardInitialData["contacts"];
+  overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
+  tasks: Tables<'tasks'>[];
+  contacts: Tables<'contacts'>[];
 }
 
 /**
  * ✅ Component memoitzat per optimitzar rendiment.
- * Manté el layout consistent i responsive.
  */
 export const DashboardMainGrid = memo(
   ({

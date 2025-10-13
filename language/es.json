@@ -793,6 +793,13 @@
       "deleteButton": "Eliminar",
       "markAsPendingButton": "Marcar como pendiente",
       "markAsCompletedButton": "Marcar como completada"
+    },
+    "time": {
+      "now": "Ahora mismo",
+      "minutesAgo": "Hace {count, plural, =1 {1 minuto} other {# minutos}}",
+      "hoursAgo": "Hace {count, plural, =1 {1 hora} other {# horas}}",
+      "yesterday": "Ayer",
+      "daysAgo": "Hace {count} días"
     }
   },
   "Expenses": {

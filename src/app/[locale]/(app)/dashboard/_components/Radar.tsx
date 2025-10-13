@@ -1,32 +1,57 @@
-/**
- * @file Radar.tsx
- * @summary Renderitza la secció "Radar" amb elements que requereixen atenció.
- */
 "use client";
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, MessageSquare, Send, AlertTriangle } from 'lucide-react';
-import type { Invoice, Contact, CrmNotification } from '@/types/crm';
 import { ActivityItem } from '@/components/shared/ActivityItem';
+import { Tables } from "@/types/supabase";
 
 interface RadarProps {
-  attentionContacts: Contact[];
-  overdueInvoices: Invoice[];
-  notifications: CrmNotification[];
+  attentionContacts: Tables<"contacts">[];
+  overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
+  notifications: Tables<"notifications">[];
+}
+type TranslationFunction = (key: string, values?: Record<string, string | number>) => string;
+
+// ✅ MILLORA #1: Creem una funció 'helper' per formatar el temps relatiu
+function formatRelativeTime(dateString: string | null, t: TranslationFunction): string {
+  if (!dateString) return '';
+
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return t('time.now');
+  }
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return t('time.minutesAgo', { count: diffInMinutes });
+  }
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return t('time.hoursAgo', { count: diffInHours });
+  }
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) {
+    return t('time.yesterday');
+  }
+  if (diffInDays < 7) {
+    return t('time.daysAgo', { count: diffInDays });
+  }
+
+  return date.toLocaleDateString();
 }
 
 export function Radar({ attentionContacts, overdueInvoices, notifications }: RadarProps) {
   const t = useTranslations('DashboardClient');
   
-  // ✅ MILLORA: Unifiquem tots els elements en una sola llista
   const allItems = [
     ...notifications.map(item => ({ ...item, itemType: 'notification', date: new Date(item.created_at) })),
-    ...overdueInvoices.map(item => ({ ...item, itemType: 'invoice', date: new Date(item.due_date) })),
+    ...overdueInvoices.map(item => ({ ...item, itemType: 'invoice', date: new Date(item.due_date ?? 0) })),
     ...attentionContacts.map(item => ({ ...item, itemType: 'contact', date: new Date(item.last_interaction_at || 0) }))
   ];
 
-  // ✅ MILLORA: Ordenem la llista per data, de més recent a més antiga.
   allItems.sort((a, b) => b.date.getTime() - a.date.getTime());
 
   const hasItems = allItems.length > 0;
@@ -39,10 +64,9 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
         {!hasItems ? (
           <p className="text-sm text-muted-foreground h-full flex items-center justify-center">{t('allInOrder')}</p>
         ) : (
-          // Renderitzem la llista unificada i ordenada
           allItems.map((item) => {
             if (item.itemType === 'notification') {
-              const notif = item as CrmNotification;
+              const notif = item as Tables<"notifications">;
               const isError = notif.type === 'post_failed' || notif.type === 'integration_expired';
               return (
                 <ActivityItem 
@@ -51,12 +75,13 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
                   icon={isError ? AlertTriangle : Send} 
                   tone={isError ? {bg: 'bg-destructive/10', text: 'text-destructive'} : {bg: 'bg-green-500/10', text: 'text-green-500'}} 
                   title={notif.message} 
-                  meta={isError ? t('actionRequired') : t('publishedSuccess')}
+                  // ✅ MILLORA #2: Utilitzem la nostra nova funció per a la propietat 'meta'
+                  meta={formatRelativeTime(notif.created_at, t)}
                 />
               );
             }
             if (item.itemType === 'invoice') {
-              const inv = item as Invoice;
+              const inv = item as Tables<'invoices'> & { contacts: { nom: string } | null };
               return (
                 <ActivityItem 
                   key={`inv-${inv.id}`} 
@@ -64,12 +89,12 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
                   icon={FileWarning} 
                   tone={{bg: 'bg-destructive/10', text: 'text-destructive'}} 
                   title={t('overdueInvoice', { clientName: inv.contacts?.nom ?? 'client' })} 
-                  meta={t('dueDate', { dueDate: new Date(inv.due_date).toLocaleDateString() })}
+                  meta={t('dueDate', { dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString() : t('unknownDueDate') })}
                 />
               );
             }
             if (item.itemType === 'contact') {
-              const c = item as Contact;
+              const c = item as Tables<"contacts">;
               return (
                 <ActivityItem 
                   key={`contact-${c.id}`} 

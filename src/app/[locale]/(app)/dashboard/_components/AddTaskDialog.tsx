@@ -11,13 +11,16 @@ import { Check, ChevronsUpDown, ListTodo, User } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { useTranslations } from "next-intl";
 import { useAddTask } from "../_hooks/useAddTask";
+import { Tables } from "@/types/supabase"; // ✅ CORRECCIÓ #1: Importem el tipus de Supabase
 
-type Contact = { id: string; nom: string };
+// ✅ CORRECCIÓ #2: Eliminem el tipus local 'Contact'
+// type Contact = { id: string; nom: string };
 
 interface AddTaskDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  contacts: Contact[];
+  // ✅ CORRECCIÓ #3: Utilitzem el tipus correcte per als contactes
+  contacts: Tables<"contacts">[];
   onTaskCreated?: () => void;
 }
 
@@ -30,6 +33,8 @@ export default function AddTaskDialog({
   const t = useTranslations("DashboardClient.addTaskDialog");
   const [title, setTitle] = useState("");
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  
+  // Assegurem-nos que el hook 'useAddTask' també entén el nou tipus
   const { addTask, isPending, selectedContact, setSelectedContact } = useAddTask({ onTaskCreated });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -91,17 +96,17 @@ export default function AddTaskDialog({
                     <CommandGroup>
                       {contacts.map((contact) => (
                         <CommandItem
-                          key={contact.id}
-                          value={contact.nom}
+                          key={contact.id} // React accepta 'number' com a key sense problemes
+                          value={contact.nom} // 'value' ha de ser un string, 'nom' ho és
                           onSelect={() => {
-                            setSelectedContact(contact);
+                            setSelectedContact({ ...contact, id: String(contact.id) });
                             setComboboxOpen(false);
                           }}
                         >
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              selectedContact?.id === contact.id
+                              selectedContact?.id === String(contact.id)
                                 ? "opacity-100"
                                 : "opacity-0"
                             )}

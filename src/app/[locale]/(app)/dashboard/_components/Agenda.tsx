@@ -9,11 +9,11 @@ import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Plus } from 'lucide-react';
-import type { Task } from '@/types/crm';
+import { Tables } from "@/types/supabase"; // ✅ CORRECCIÓ #1: Importem el tipus de Supabase
 
 interface AgendaProps {
-  pendingTasks: Task[];
-  onToggleTask: (taskId: string, currentStatus: boolean) => void;
+  pendingTasks: Tables<"tasks">[]; // ✅ CORRECCIÓ #2: Utilitzem el tipus correcte per a les tasques
+  onToggleTask: (taskId: number, currentStatus: boolean) => void;
   onOpenNewTask: () => void;
 }
 
@@ -34,8 +34,12 @@ export function Agenda({ pendingTasks, onToggleTask, onOpenNewTask }: AgendaProp
           pendingTasks.map((task) => (
             // ✅ CORRECCIÓ: Usem 'bg-muted/50' i 'hover:bg-muted'.
             <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition">
-              <Checkbox id={`task-${task.id}`} checked={task.is_completed} onCheckedChange={() => onToggleTask(task.id, task.is_completed)} />
-              <label htmlFor={`task-${task.id}`} className={`flex-1 cursor-pointer ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
+              <Checkbox
+                id={`task-${task.id}`}
+                checked={task.is_completed}
+                // ✅ CORRECCIÓ: Passem task.id directament, que és un 'number'.
+                onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
+              />              <label htmlFor={`task-${task.id}`} className={`flex-1 cursor-pointer ${task.is_completed ? 'line-through text-muted-foreground' : ''}`}>
                 {task.title}
               </label>
             </div>

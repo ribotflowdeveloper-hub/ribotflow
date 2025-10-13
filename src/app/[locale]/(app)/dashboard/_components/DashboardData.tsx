@@ -1,8 +1,10 @@
-
 import { DashboardClient } from '../dashboard-client';
-import type { Contact, Invoice, Task, CrmNotification } from '@/types/crm';
 import React from 'react';
-import { validatePageSession } from '@/lib/supabase/session'; // ✅ 1. Importem el nostre validador per a pàgines
+import { validatePageSession } from '@/lib/supabase/session';
+import { getActiveTeam } from '@/lib/supabase/teams'; // Correció #2: Importem la funció per obtenir l'equip
+import { Database } from '@/types/supabase';
+import { Tables } from '@/types/supabase';
+import { SupabaseClient } from '@supabase/supabase-js'; // Correció #1: Importem el tipus SupabaseClient
 
 const calculatePercentageChange = (current: number, previous: number): string => {
     if (previous === 0) return current > 0 ? '+100%' : '0%';
@@ -11,51 +13,86 @@ const calculatePercentageChange = (current: number, previous: number): string =>
     return `${change >= 0 ? '+' : ''}${change.toFixed(0)}% vs mes anterior`;
 };
 
-export async function DashboardData({ children }: { children: React.ReactNode }) {
-    // ✅ 2. Tota la lògica de sessió es redueix a aquesta única línia.
-    // La funció interna s'encarrega de crear el client i redirigir si cal.
-    const { supabase, user } = await validatePageSession();
+type DashboardStats = {
+    total_contacts: number;
+    active_clients: number;
+    opportunities: number;
+    invoiced_current_month: number;
+    invoiced_previous_month: number;
+    pending_total: number;
+    expenses_current_month: number;
+    expenses_previous_month: number;
+};
 
-    // La resta del teu codi es manté gairebé igual, però ara utilitza
-    // les variables 'supabase' i 'user' que retorna la nostra funció.
+
+export async function DashboardData({ children }: { children: React.ReactNode }) {
+    // La validació de sessió retorna supabase i user
+    const { supabase, user } = await validatePageSession();
+    
+    // Obtenim l'equip actiu per separat
+    const team = await getActiveTeam(user.id);
+
+    if (!team) {
+        return <div>No s'ha trobat un equip actiu.</div>;
+    }
+
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    // Tipem el client de Supabase (ara funciona perquè hem importat SupabaseClient)
+    const typedSupabase = supabase as SupabaseClient<Database>;
+
     const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes] = await Promise.all([
-        supabase.rpc('get_dashboard_stats'),
-        supabase.from('tasks').select('*').order('is_completed, created_at'),
-        supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
-        supabase.from('contacts').select('*').order('created_at', { ascending: false }),
-        supabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false), // 'user' ja el tenim de validatePageSession
+        typedSupabase.rpc('get_dashboard_stats'),
+        // Fem les consultes utilitzant l'ID de l'equip que hem obtingut
+        typedSupabase.from('tasks').select('*').eq('team_id', team.id).order('is_completed, created_at'),
+        typedSupabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
+        typedSupabase.from('contacts').select('*').eq('team_id', team.id).order('created_at', { ascending: false }),
+        typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
     ]);
 
 
-    const statsData = statsRes.data?.[0] || {};
-    const contactsData = (contactsRes.data as Contact[]) || [];
-    const transformedOverdueInvoices = ((overdueInvoicesRes.data as Invoice[]) || []).map(invoice => ({
+    const statsData: DashboardStats = statsRes.data?.[0] || {
+        total_contacts: 0,
+        active_clients: 0,
+        opportunities: 0,
+        invoiced_current_month: 0,
+        invoiced_previous_month: 0,
+        pending_total: 0,
+        expenses_current_month: 0,
+        expenses_previous_month: 0,
+    };
+    
+    const tasksData: Tables<'tasks'>[] = tasksRes.data ?? [];
+    const contactsData: Tables<'contacts'>[] = contactsRes.data ?? [];
+    const notificationsData: Tables<'notifications'>[] = notificationsRes.data ?? [];
+    
+    const overdueInvoicesData: (Tables<'invoices'> & { contacts: { nom: string } | null })[] = overdueInvoicesRes.data ?? [];
+
+    const transformedOverdueInvoices = overdueInvoicesData.map(invoice => ({
         ...invoice,
-        contacts: Array.isArray(invoice.contacts) ? invoice.contacts[0] : invoice.contacts
+        contacts: invoice.contacts
     }));
 
     const initialData = {
         stats: {
-            totalContacts: statsData.total_contacts || 0,
-            activeClients: statsData.active_clients || 0,
-            opportunities: statsData.opportunities || 0,
-            invoiced: statsData.invoiced_current_month || 0,
-            pending: statsData.pending_total || 0,
-            expenses: statsData.expenses_current_month || 0,
-            invoicedChange: calculatePercentageChange(statsData.invoiced_current_month || 0, statsData.invoiced_previous_month || 0),
-            expensesChange: calculatePercentageChange(statsData.expenses_current_month || 0, statsData.expenses_previous_month || 0),
-            invoicedIsPositive: (statsData.invoiced_current_month || 0) >= (statsData.invoiced_previous_month || 0),
-            expensesIsPositive: (statsData.expenses_current_month || 0) <= (statsData.expenses_previous_month || 0),
+            totalContacts: statsData.total_contacts,
+            activeClients: statsData.active_clients,
+            opportunities: statsData.opportunities,
+            invoiced: statsData.invoiced_current_month,
+            pending: statsData.pending_total,
+            expenses: statsData.expenses_current_month,
+            invoicedChange: calculatePercentageChange(statsData.invoiced_current_month, statsData.invoiced_previous_month),
+            expensesChange: calculatePercentageChange(statsData.expenses_current_month, statsData.expenses_previous_month),
+            invoicedIsPositive: statsData.invoiced_current_month >= statsData.invoiced_previous_month,
+            expensesIsPositive: statsData.expenses_current_month <= statsData.expenses_previous_month,
         },
-        tasks: (tasksRes.data as Task[]) || [],
+        tasks: tasksData,
         contacts: contactsData,
         overdueInvoices: transformedOverdueInvoices,
         attentionContacts: contactsData
-            .filter((c: Contact) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
+            .filter((c) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
             .slice(0, 5),
-        notifications: (notificationsRes.data as CrmNotification[]) || [], // ✅ Tipus actualitzat
+        notifications: notificationsData,
     };
 
     return (
