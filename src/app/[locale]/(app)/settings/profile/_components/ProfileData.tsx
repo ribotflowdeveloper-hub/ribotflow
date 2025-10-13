@@ -1,26 +1,38 @@
 import { validatePageSession } from '@/lib/supabase/session';
+import { getActiveTeam } from '@/lib/supabase/teams'; // ✅ 1. Importem la nostra funció robusta
 import { ProfileForm } from "./ProfileForm";
 import type { Profile, Team } from "@/types/settings";
+import { Role } from '@/lib/permissions.config';
 
 export async function ProfileData() {
-  // ✅ MILLORA: Usem el helper per validar la sessió i obtenir les dades en una sola línia.
   const { supabase, user } = await validatePageSession();
 
-  // Obtenim el perfil de l'usuari i les dades del seu equip/rol alhora.
-  const [profileRes, memberRes] = await Promise.all([
+  // Obtenim l'ID de l'equip actiu des del token, que és la font més fiable
+  const activeTeamId = user.app_metadata.active_team_id;
+
+  // Si no hi ha equip actiu, només carreguem el perfil
+  if (!activeTeamId) {
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+    return (
+      <ProfileForm 
+        email={user.email || ''}
+        profile={profile as Profile} 
+        team={null}
+        role={null}
+      />
+    );
+  }
+
+  // ✅ 2. Fem les consultes en paral·lel per a màxima eficiència
+  const [profileRes, teamRes, memberRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('team_members').select('role, teams(*)').eq('user_id', user.id).eq('team_id', user.app_metadata.active_team_id).single()
+    getActiveTeam(), // Reutilitzem la nostra funció! Ja sap quin equip obtenir.
+    supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single()
   ]);
   
-  const profile = profileRes.data;
-  const team = Array.isArray(memberRes.data?.teams) && memberRes.data.teams.length > 0
-    ? memberRes.data.teams[0] as Team
-    : null;
-  const role = memberRes.data?.role as 'owner' | 'admin' | 'member' | null;
-
-  if (user.app_metadata.active_team_id && !memberRes.data) {
-    console.warn(`[SERVER] AVÍS: Inconsistència de dades. L'usuari té un active_team_id però no és membre.`);
-  }
+  const profile = profileRes.data as Profile | null;
+  const team = teamRes as Team | null; // getActiveTeam ja retorna l'objecte correcte
+  const role = memberRes.data?.role as Role | null;
 
   return (
     <ProfileForm 

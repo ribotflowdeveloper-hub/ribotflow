@@ -25,7 +25,7 @@ export async function TeamData({ user, member, activeTeamId }: TeamDataProps) {
 
     // La transformació de dades també es simplifica, ja que la vista retorna un format pla.
     const finalTeamMembers: TeamMember[] = (membersRes.data || []).map(m => ({
-        role: m.role,
+        role: m.role ?? "", // Ensure role is always a string
         profiles: m.user_id ? { // Només creem el perfil si hi ha dades
             id: m.user_id,
             full_name: m.full_name,
