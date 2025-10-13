@@ -4,10 +4,11 @@ import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { TaskWithContact } from '@/types/dashboard/types'; // Importem el nostre tipus centralitzat 
+import { deleteTask as deleteTaskAction } from '../actions'; // Importem l'acció de supressió 
 
 export function useDashboardTasks (initialTasks: TaskWithContact[]) { // ✅ Utilitzem el nostre tipus
   const [tasks, setTasks] = useState(initialTasks); // ✅ L'estat ara és del tipus correcte
-  const t = useTranslations('DashboardClient.agenda');
+  const t = useTranslations('DashboardClient');
   const [isPending, startTransition] = useTransition();
   const supabase = createClient();
 
@@ -34,5 +35,26 @@ export function useDashboardTasks (initialTasks: TaskWithContact[]) { // ✅ Uti
     });
   }, [tasks, supabase, t]);
 
-  return { tasks, toggleTask, isPending };
+   // ✅ NOVA FUNCIÓ: Lògica per eliminar una tasca amb actualització optimista
+  const deleteTask = useCallback((taskId: number) => {
+    startTransition(async () => {
+      const previousTasks = tasks;
+      // Actualització optimista: eliminem la tasca de la UI a l'instant
+      setTasks(prev => prev.filter(t => t.id !== taskId));
+
+      const { error } = await deleteTaskAction(taskId);
+      
+      if (error) {
+        toast.error(t('taskActions.toast.deleteErrorTitle'), { description: error.message });
+        setTasks(previousTasks); // Si falla, revertim els canvis
+      } else {
+        toast.success(t('taskActions.toast.deleteSuccessTitle'));
+      }
+    });
+  }, [tasks, t]);
+
+  // ✅ Retornem la nova funció
+  return { tasks, toggleTask, deleteTask, isPending };
+
+
 }

@@ -1,18 +1,19 @@
 import { Database, Tables } from "@/types/supabase";
 
-// ✅ Accedim al tipus de l'enum 'task_priority' directament des dels tipus generats
 export type TaskPriority = Database['public']['Enums']['task_priority'];
 
-// Aquest serà el nostre tipus centralitzat per a la creació de tasques
+// Aquest tipus és per a la CREACIÓ. Enviem només els IDs.
 export type NewTaskPayload = {
   title: string;
   description: string | null;
-  due_date: string | null; // La data s'envia al servidor com a string ISO
+  due_date: string | null;
   priority: TaskPriority | null;
   contact_id: number | null;
+  department_id: number | null; // ✅ CORRECCIÓ: Afegeix el camp per a l'ID del departament
 };
 
-// ✅ NOU TIPUS: Aquest serà el nostre tipus de tasca per a TOTA l'aplicació
+// Aquest tipus és per a la VISUALITZACIÓ. Rebem els objectes niuats.
 export type TaskWithContact = Tables<'tasks'> & {
   contacts: { id: number; nom: string; } | null;
+  departments: { id: number; name: string; } | null; // ✅ CORRECCIÓ: Afegeix l'objecte department
 };

@@ -762,7 +762,23 @@
       "pending": "Pending",
       "completed": "Completed",
       "noPendingTasks": "No pending tasks. Great job!",
-      "noCompletedTasks": "You haven’t completed any tasks yet."
+      "noCompletedTasks": "You haven’t completed any tasks yet.",
+      "filter": {
+        "pendingAria": "View pending",
+        "completedAria": "View completed",
+        "departmentPlaceholder": "Department",
+        "allDepartments": "All departments"
+      }
+    },
+    "taskActions": {
+      "deleteButton": "Delete Task",
+      "deleteConfirmTitle": "Are you sure?",
+      "deleteConfirmDescription": "This action cannot be undone. The task will be permanently deleted.",
+      "deleteConfirmAction": "Yes, delete",
+      "toast": {
+        "deleteSuccessTitle": "Task Deleted",
+        "deleteErrorTitle": "Error deleting task"
+      }
     },
     "addTaskDialog": {
       "title": "Create New Task",
@@ -787,6 +803,7 @@
       "cancelButton": "Cancel",
       "saveButton": "Save Task",
       "savingButton": "Saving...",
+      "crearNewDepartment": "Create new department",
       "toast": {
         "errorTitle": "Error",
         "unauthenticated": "User not authenticated.",

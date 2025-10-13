@@ -62,8 +62,12 @@ export function TaskCard({ task, onToggleTask, onViewTask }: TaskCardProps) {
           )}
         </div>
       </div>
+
       {task.description && (
         <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+      )}
+      {task.departments && (
+        <Badge variant="secondary" className={undefined}>{task.departments.name}</Badge>
       )}
       {task.priority && (
         <Badge variant="outline" className={cn("text-xs", priorityStyles[task.priority])}>

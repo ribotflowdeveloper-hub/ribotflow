@@ -753,11 +753,27 @@
     "publishedSuccess": "Publicado con éxito",
     "agenda": {
       "title": "Agenda",
-      "newTask": "Nueva tarea",
+      "newTask": "Nueva Tarea",
       "pending": "Pendientes",
       "completed": "Completadas",
       "noPendingTasks": "No hay tareas pendientes. ¡Buen trabajo!",
-      "noCompletedTasks": "Aún no has completado ninguna tarea."
+      "noCompletedTasks": "Aún no has completado ninguna tarea.",
+      "filter": {
+        "pendingAria": "Ver pendientes",
+        "completedAria": "Ver completadas",
+        "departmentPlaceholder": "Departamento",
+        "allDepartments": "Todos los departamentos"
+      }
+    },
+    "taskActions": {
+      "deleteButton": "Eliminar Tarea",
+      "deleteConfirmTitle": "¿Estás seguro?",
+      "deleteConfirmDescription": "Esta acción no se puede deshacer. La tarea se eliminará permanentemente.",
+      "deleteConfirmAction": "Sí, eliminar",
+      "toast": {
+        "deleteSuccessTitle": "Tarea Eliminada",
+        "deleteErrorTitle": "Error al eliminar la tarea"
+      }
     },
     "addTaskDialog": {
       "title": "Crear Nueva Tarea",
@@ -782,6 +798,7 @@
       "cancelButton": "Cancelar",
       "saveButton": "Guardar Tarea",
       "savingButton": "Guardando...",
+      "crearNewDepartment": "Crear nuevo departamento",
       "toast": {
         "errorTitle": "Error",
         "unauthenticated": "Usuario no autenticado.",

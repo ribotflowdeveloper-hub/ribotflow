@@ -358,6 +358,35 @@ export type Database = {
           },
         ]
       }
+      departments: {
+        Row: {
+          created_at: string | null
+          id: number
+          name: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: never
+          name: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: never
+          name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "departments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       documents: {
         Row: {
           content: string | null
@@ -1564,6 +1593,7 @@ export type Database = {
         Row: {
           contact_id: number | null
           created_at: string
+          department_id: number | null
           description: string | null
           due_date: string | null
           id: number
@@ -1576,6 +1606,7 @@ export type Database = {
         Insert: {
           contact_id?: number | null
           created_at?: string
+          department_id?: number | null
           description?: string | null
           due_date?: string | null
           id?: number
@@ -1588,6 +1619,7 @@ export type Database = {
         Update: {
           contact_id?: number | null
           created_at?: string
+          department_id?: number | null
           description?: string | null
           due_date?: string | null
           id?: number
@@ -1603,6 +1635,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {
@@ -2569,14 +2608,24 @@ export type Database = {
         Returns: number
       }
       get_inbox_tickets: {
-        Args: {
-          p_limit: number
-          p_offset: number
-          p_search_term: string
-          p_team_id: string
-          p_user_id: string
-          p_visible_user_ids: string[]
-        }
+        Args:
+          | {
+              p_active_filter: string
+              p_limit: number
+              p_offset: number
+              p_search_term: string
+              p_team_id: string
+              p_user_id: string
+              p_visible_user_ids: string[]
+            }
+          | {
+              p_limit: number
+              p_offset: number
+              p_search_term: string
+              p_team_id: string
+              p_user_id: string
+              p_visible_user_ids: string[]
+            }
         Returns: {
           assignment: Json
           attachments: Json

@@ -9,6 +9,9 @@ import { es } from "date-fns/locale";
 import { Calendar, Flag, User, CheckCircle2 } from "lucide-react";
 import { Tables } from "@/types/supabase";
 import { TaskPriority } from "@/types/dashboard/types";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Trash2, RotateCcw } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 type TaskWithContact = Tables<'tasks'> & { contacts: { id: number; nom: string; } | null };
 
@@ -17,6 +20,8 @@ interface TaskDetailDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onToggleTask: (taskId: number, currentStatus: boolean) => void;
+    onDeleteTask: (taskId: number) => void; // ✅ Prop per a l'eliminació
+
 }
 
 const priorityStyles: Record<TaskPriority, string> = {
@@ -25,16 +30,17 @@ const priorityStyles: Record<TaskPriority, string> = {
     Alta: "border-red-500/50 text-red-500",
 };
 
-export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask }: TaskDetailDialogProps) {
+export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask, onDeleteTask }: TaskDetailDialogProps) {
+    const t = useTranslations('DashboardClient.taskActions');
     if (!task) return null;
 
-    const handleComplete = () => {
+   const handleToggle = () => {
         onToggleTask(task.id, task.is_completed);
         onOpenChange(false);
     }
 
-    const handleIncomplete = () => {
-        onToggleTask(task.id, task.is_completed);
+    const handleDelete = () => {
+        onDeleteTask(task.id);
         onOpenChange(false);
     }
 
@@ -42,9 +48,9 @@ export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask }: Tas
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle className="text-2xl pr-12">{task.title}</DialogTitle>
+                    <DialogTitle className="text-2xl pr-12 py-2">{task.title}</DialogTitle>
                     {task.priority && (
-                        <Badge variant="outline" className={cn("absolute top-4 right-10 text-sm", priorityStyles[task.priority])}>
+                        <Badge variant="outline" className={cn("absolute top-8 right-2 text-sm", priorityStyles[task.priority])}>
                             <Flag className="w-3.5 h-3.5 mr-1.5" />
                             {task.priority}
                         </Badge>
@@ -69,17 +75,41 @@ export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask }: Tas
                         )}
                     </div>
                 </div>
-                <DialogFooter>
-                    {!task.is_completed && (
-                        <Button onClick={handleComplete} className="w-full">
+                 <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
+                    {/* ✅ NOU BOTÓ D'ELIMINAR AMB CONFIRMACIÓ */}
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full sm:w-auto justify-center">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                {t('deleteButton')}
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
+                                <AlertDialogDescription>{t('deleteConfirmDescription')}</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                    {t('deleteConfirmAction')}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Botons de completar/descompletar */}
+                    {task.is_completed ? (
+                        <Button variant="outline" onClick={handleToggle} className="w-full sm:w-auto">
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Marcar com a Pendent
+                        </Button>
+                    ) : (
+                        <Button onClick={handleToggle} className="w-full sm:w-auto">
                             <CheckCircle2 className="w-4 h-4 mr-2" />
                             Marcar com a Completada
                         </Button>
-                    )} {task.is_completed && (
-                        <Button variant="outline" onClick={handleIncomplete} className="w-full">
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Marcar com a Incompletada
-                        </Button>)}
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

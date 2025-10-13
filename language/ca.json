@@ -763,7 +763,23 @@
       "pending": "Pendents",
       "completed": "Completes",
       "noPendingTasks": "No hi ha tasques pendents. Bona feina!",
-      "noCompletedTasks": "Encara no has completat cap tasca."
+      "noCompletedTasks": "Encara no has completat cap tasca.",
+      "filter": {
+        "pendingAria": "Veure pendents",
+        "completedAria": "Veure completes",
+        "departmentPlaceholder": "Departament",
+        "allDepartments": "Tots els departaments"
+      }
+    },
+    "taskActions": {
+      "deleteButton": "Eliminar Tasca",
+      "deleteConfirmTitle": "Estàs segur?",
+      "deleteConfirmDescription": "Aquesta acció no es pot desfer. La tasca s'eliminarà permanentment.",
+      "deleteConfirmAction": "Sí, eliminar",
+      "toast": {
+        "deleteSuccessTitle": "Tasca Eliminada",
+        "deleteErrorTitle": "Error en eliminar la tasca"
+      }
     },
     "addTaskDialog": {
       "title": "Crear Nova Tasca",
@@ -788,6 +804,7 @@
       "cancelButton": "Cancel·lar",
       "saveButton": "Desar Tasca",
       "savingButton": "Desant...",
+      "crearNewDepartment": "Crear nou departament",
       "toast": {
         "errorTitle": "Error",
         "unauthenticated": "Usuari no autenticat.",

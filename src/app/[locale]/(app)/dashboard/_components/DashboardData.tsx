@@ -42,17 +42,20 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     // Tipem el client de Supabase (ara funciona perquè hem importat SupabaseClient)
     const typedSupabase = supabase as SupabaseClient<Database>;
 
-    const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes] = await Promise.all([
+    const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes,  departmentsRes] = await Promise.all([
         typedSupabase.rpc('get_dashboard_stats'),
         // Fem les consultes utilitzant l'ID de l'equip que hem obtingut
         // ✅ CORRECCIÓ: Fem un "join" per obtenir el nom del contacte associat a cada tasca
-        typedSupabase.from('tasks').select('*, contacts(id, nom)')
+        typedSupabase.from('tasks').select('*, contacts(id, nom), departments(id, name)')
             .eq('team_id', team.id)
             .order('is_completed, created_at'), typedSupabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
         typedSupabase.from('contacts').select('*').eq('team_id', team.id).order('created_at', { ascending: false }),
         typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
+        typedSupabase.from('departments').select('*').eq('team_id', team.id)
+
     ]);
 
+    const departmentsData: Tables<'departments'>[] = departmentsRes.data ?? [];
 
     const statsData: DashboardStats = statsRes.data?.[0] || {
         total_contacts: 0,
@@ -90,6 +93,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             expensesIsPositive: statsData.expenses_current_month <= statsData.expenses_previous_month,
         },
         tasks: tasksData,
+        departments: departmentsData, // Passem els departaments al client
         contacts: contactsData,
         overdueInvoices: transformedOverdueInvoices,
         attentionContacts: contactsData

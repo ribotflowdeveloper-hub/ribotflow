@@ -24,6 +24,9 @@ interface DashboardBottomGridProps {
   overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
   notifications: Tables<"notifications">[];
   children: React.ReactNode;
+  departments: Tables<'departments'>[];
+  departmentFilter: number | 'all';
+  onDepartmentFilterChange: (filter: number | 'all') => void;
 }
 
 /**
@@ -43,6 +46,9 @@ export const DashboardBottomGrid = memo(
     overdueInvoices,
     notifications,
     children,
+    departments,
+    departmentFilter,
+    onDepartmentFilterChange,
   }: DashboardBottomGridProps) => {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -56,6 +62,9 @@ export const DashboardBottomGrid = memo(
           onViewTask={onViewTask} // ✅ 4. La passem al component fill 'Agenda'
           pendingCount={pendingCount}
           completedCount={completedCount}
+          departments={departments}
+          departmentFilter={departmentFilter}
+          onDepartmentFilterChange={onDepartmentFilterChange}
         />
 
         {/* 🎯 Radar + Oracle IA */}
