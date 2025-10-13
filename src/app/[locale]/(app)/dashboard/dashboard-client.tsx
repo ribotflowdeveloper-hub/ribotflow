@@ -1,9 +1,7 @@
 "use client";
 
-import React from "react";
-import { useTranslations } from "next-intl";
+import React, { useState, useMemo } from "react"; // ✅ AFEGIM useMemo
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { useDashboardTasks } from "./_hooks/useDashboardTasks";
 
@@ -12,9 +10,10 @@ import { StatCardsGrid } from "./_components/StatCardsGrid";
 import { DashboardMainGrid } from "./_components/DashboardMainGrid";
 import { QuickAccess } from "./_components/QuickAccess";
 import { DashboardBottomGrid } from "./_components/DashboardBottomGrid";
-import AddTaskDialog from "./_components/AddTaskDialog";
-
+import AddTaskDialog from "./_components/agenda/AddTaskDialog";
+import { TaskDetailDialog } from "./_components/agenda/TaskDetailDialog";
 import { Tables } from "@/types/supabase"; // Pas 1: Importar l'helper de tipus
+import { TaskWithContact } from '@/types/dashboard/types'; // Importem el nostre tipus centralitzat  
 
 // 🎯 Objectiu mensual
 const MONTHLY_GOAL = 50_000;
@@ -35,7 +34,7 @@ interface DashboardClientProps {
       invoicedIsPositive: boolean;
       expensesIsPositive: boolean;
     };
-    tasks: Tables<'tasks'>[];
+    tasks: TaskWithContact[]; // ✅ Utilitzem el nostre tipus centralitzat
     contacts: Tables<'contacts'>[];
     overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
     attentionContacts: Tables<'contacts'>[];
@@ -49,18 +48,32 @@ export function DashboardClient({
   children,
 }: DashboardClientProps) {
   // 🌍 Traduccions i navegació
-  const t = useTranslations("DashboardClient");
   const router = useRouter();
 
   // ✅ Estat per gestionar les tasques
   const { tasks, toggleTask } = useDashboardTasks(initialData.tasks);
-  const pendingTasks = tasks.filter((t) => !t.is_completed);
+  const [viewingTask, setViewingTask] = useState<(Tables<'tasks'> & { contacts: { id: number; nom: string; } | null }) | null>(null);
+
+  // ✅ NOU ESTAT: Estat per gestionar el filtre actiu
+  const [taskFilter, setTaskFilter] = useState<'pendents' | 'completes'>('pendents');
+  // ✅ CÀLCUL DELS COMPTADORS
+  const pendingCount = useMemo(() => tasks.filter(t => !t.is_completed).length, [tasks]);
+  const completedCount = useMemo(() => tasks.filter(t => t.is_completed).length, [tasks]);
+
+  // ✅ NOVA LÒGICA: Memoitzem la llista de tasques filtrades per optimitzar el rendiment
+  const filteredTasks = useMemo(() => {
+    if (taskFilter === 'pendents') {
+      return tasks.filter((t) => !t.is_completed);
+    }
+    return tasks.filter((t) => t.is_completed);
+  }, [tasks, taskFilter]); // Es recalcula només si 'tasks' o 'taskFilter' canvien
+
 
   // ⚙️ Estat per al diàleg de creació de tasques
   const [isTaskDialogOpen, setTaskDialogOpen] = React.useState(false);
 
   // 🔁 Handler per canviar estat d'una tasca
- // 🔁 Handler per canviar estat d'una tasca
+  // 🔁 Handler per canviar estat d'una tasca
   // A DashboardClient.tsx
   const handleToggleTask = React.useCallback(
     // ✅ CORRECCIÓ: Canvia 'string' per 'number' aquí
@@ -98,7 +111,13 @@ export function DashboardClient({
 
       {/* 🗓️ Secció inferior */}
       <DashboardBottomGrid
-        pendingTasks={pendingTasks}
+        // ✅ PASSEM LES NOVES PROPS
+        tasks={filteredTasks} // Passem la llista ja filtrada
+        activeFilter={taskFilter} // Passem el filtre actiu
+        onFilterChange={setTaskFilter} // Passem la funció per canviar el filtre
+        onViewTask={setViewingTask} // Passem la funció per obrir el diàleg
+        pendingCount={pendingCount}   // ✅ Passem el comptador
+        completedCount={completedCount} // ✅ Passem el comptador
         onToggleTask={handleToggleTask}
         onOpenNewTask={() => setTaskDialogOpen(true)}
         attentionContacts={initialData.attentionContacts}
@@ -107,7 +126,13 @@ export function DashboardClient({
       >
         {children}
       </DashboardBottomGrid>
-
+      
+      <TaskDetailDialog
+        task={viewingTask}
+        open={!!viewingTask}
+        onOpenChange={(isOpen) => !isOpen && setViewingTask(null)}
+        onToggleTask={handleToggleTask}
+      />
       {/* 🧩 Diàleg per crear noves tasques */}
       <AddTaskDialog
         open={isTaskDialogOpen}
@@ -115,7 +140,6 @@ export function DashboardClient({
         contacts={initialData.contacts}
         onTaskCreated={() => {
           router.refresh();
-          toast.success(t("taskCreationSuccess"));
         }}
       />
     </div>

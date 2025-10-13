@@ -742,7 +742,6 @@
     "inbox": "Inbox",
     "communication": "Comunicació",
     "quotes": "Pressupostos",
-    "agenda": "Agenda",
     "newTask": "Nova Tasca",
     "noPendingTasks": "No tens tasques pendents.",
     "radar": "Radar",
@@ -758,11 +757,30 @@
     "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca.",
     "actionRequired": "Acció requerida",
     "publishedSuccess": "Publicat amb èxit",
+    "agenda": {
+      "title": "Agenda",
+      "newTask": "Nova Tasca",
+      "pending": "Pendents",
+      "completed": "Completes",
+      "noPendingTasks": "No hi ha tasques pendents. Bona feina!",
+      "noCompletedTasks": "Encara no has completat cap tasca."
+    },
     "addTaskDialog": {
       "title": "Crear Nova Tasca",
       "description": "Afegeix una nova tasca al teu dia a dia. Pots assignar-la a un contacte si vols.",
       "taskTitleLabel": "Títol de la Tasca",
-      "taskTitlePlaceholder": "Ex: Fer seguiment...",
+      "taskTitlePlaceholder": "Ex: Fer seguiment de la proposta amb...",
+      "descriptionLabel": "Descripció",
+      "descriptionPlaceholder": "Afegeix més detalls sobre la tasca...",
+      "dueDateLabel": "Data Límit",
+      "dueDatePlaceholder": "Tria una data",
+      "priorityLabel": "Prioritat",
+      "priorityPlaceholder": "Selecciona una prioritat",
+      "priority": {
+        "baixa": "Baixa",
+        "mitjana": "Mitjana",
+        "alta": "Alta"
+      },
       "assignContactLabel": "Assignar a Contacte (Opcional)",
       "selectContactPlaceholder": "Selecciona un contacte...",
       "searchContactPlaceholder": "Buscar contacte...",
@@ -770,15 +788,6 @@
       "cancelButton": "Cancel·lar",
       "saveButton": "Desar Tasca",
       "savingButton": "Desant...",
-      "taskDescriptionLabel": "Descripció",
-      "taskDescriptionPlaceholder": "Afegeix més detalls sobre la tasca...",
-      "priorityLabel": "Prioritat",
-      "priority": {
-        "low": "Baixa",
-        "medium": "Mitjana",
-        "high": "Alta"
-      },
-      "dueDateLabel": "Data de venciment",
       "toast": {
         "errorTitle": "Error",
         "unauthenticated": "Usuari no autenticat.",
@@ -1079,7 +1088,7 @@
     "blacklist": {
       "metaTitle": "Llista Negra",
       "pageTitle": "Gestiona la Llista Negra",
-      "pageDescription": "Afegeix dominis (ex: `exemple.com`) o adreces de correu completes per evitar que apareguin a la teva bústia d'entrada.", 
+      "pageDescription": "Afegeix dominis (ex: `exemple.com`) o adreces de correu completes per evitar que apareguin a la teva bústia d'entrada.",
       "placeholder": "exemple.com o spammer@exemple.com",
       "addButton": "Afegir",
       "emptyTitle": "La llista negra és buida",
@@ -1214,8 +1223,8 @@
       }
     },
     "Errors": {
-      "permissionDenied": "No tens permisos per a realitzar aquesta acció.", 
-      "accessDeniedTitle": "Accés Denegat" 
+      "permissionDenied": "No tens permisos per a realitzar aquesta acció.",
+      "accessDeniedTitle": "Accés Denegat"
     }
   },
   "ThemeSwitcher": {

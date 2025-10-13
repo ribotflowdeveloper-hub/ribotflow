@@ -1,60 +1,37 @@
-"use client";
+import { useState, useTransition } from 'react';
+import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
+import { Tables } from '@/types/supabase';
+import { addTask as addTaskAction } from '../actions';
+import { NewTaskPayload } from '@/types/dashboard/types'; // ✅ Importem el nostre tipus centralitzat
 
-import { useState, useTransition, useCallback } from "react";
-import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
-import { useTranslations } from "next-intl";
 
-type Contact = { id: string; nom: string };
 
-interface UseAddTaskProps {
-  onTaskCreated?: () => void;
-}
-
-export function useAddTask({ onTaskCreated }: UseAddTaskProps = {}) {
-  const t = useTranslations("DashboardClient.addTaskDialog");
-  const supabase = createClient();
+export function useAddTask({ onTaskCreated }: { onTaskCreated?: () => void }) {
+  // ✅ IMPORTANT: Assegura't que el 'useTranslations' apunta al lloc correcte.
+  const t = useTranslations('DashboardClient.addTaskDialog');
   const [isPending, startTransition] = useTransition();
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Tables<'contacts'> | null>(null);
 
-  const addTask = useCallback(
-    async (title: string) => {
-      if (!title.trim()) {
-        toast.error(t("toast.errorTitle"), { description: t("toast.emptyTitle") });
-        return;
+  const addTask = (taskData: Omit<NewTaskPayload, 'contact_id'>) => {
+    startTransition(async () => {
+      const payload: NewTaskPayload = {
+        ...taskData,
+        contact_id: selectedContact?.id ?? null,
+      };
+      
+      const result = await addTaskAction(payload);
+      
+      if (result.error) {
+        // Mostrem l'error des del hook
+        toast.error(t('toast.errorTitle'), { description: result.error.message });
+      } else {
+        // ✅ CORRECCIÓ: Mostrem l'èxit des del hook amb la clau correcta.
+        toast.success(t('toast.successTitle'));
+        onTaskCreated?.(); // Cridem al callback per a que el client faci el router.refresh()
       }
-
-      startTransition(async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          toast.error(t("toast.errorTitle"), { description: t("toast.unauthenticated") });
-          return;
-        }
-
-        const { error } = await supabase.from("tasks").insert({
-          title,
-          contact_id: selectedContact?.id || null,
-          user_id: user.id,
-        });
-
-        if (error) {
-          toast.error(t("toast.saveError"), { description: error.message });
-          return;
-        }
-
-        toast.success(t("toast.successTitle"), {
-          description: t("toast.successDescription"),
-        });
-        onTaskCreated?.();
-      });
-    },
-    [supabase, selectedContact, onTaskCreated, t]
-  );
-
-  return {
-    addTask,
-    isPending,
-    selectedContact,
-    setSelectedContact,
+    });
   };
+
+  return { addTask, isPending, selectedContact, setSelectedContact };
 }
