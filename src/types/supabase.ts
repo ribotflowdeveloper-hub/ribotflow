@@ -1591,43 +1591,51 @@ export type Database = {
       }
       tasks: {
         Row: {
+          asigned_date: string | null
           contact_id: number | null
           created_at: string
           department_id: number | null
           description: string | null
           due_date: string | null
+          duration: number | null
           id: number
           is_completed: boolean
           priority: Database["public"]["Enums"]["task_priority"] | null
           team_id: string | null
           title: string
+          user_asign_id: string | null
           user_id: string
         }
         Insert: {
+          asigned_date?: string | null
           contact_id?: number | null
           created_at?: string
           department_id?: number | null
           description?: string | null
           due_date?: string | null
+          duration?: number | null
           id?: number
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
           title: string
+          user_asign_id?: string | null
           user_id: string
-         
         }
         Update: {
+          asigned_date?: string | null
           contact_id?: number | null
           created_at?: string
           department_id?: number | null
           description?: string | null
           due_date?: string | null
+          duration?: number | null
           id?: number
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
           title?: string
+          user_asign_id?: string | null
           user_id?: string
         }
         Relationships: [
