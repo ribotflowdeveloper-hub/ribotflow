@@ -31,7 +31,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     const { supabase, user } = await validatePageSession();
 
     // Obtenim l'equip actiu per separat
-    const team = await getActiveTeam(user.id);
+    const team = await getActiveTeam();
 
     if (!team) {
         return <div>No s'ha trobat un equip actiu.</div>;

@@ -45,7 +45,9 @@ export function TaskCard({ task, onToggleTask, onViewTask }: TaskCardProps) {
           {task.title}
         </p>
         {/* Mostrem la descripció si existeix */}
-
+        {task.description && (
+          <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
+        )}
         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
           {hasDueDate && dueDate && (
             <div className={cn("flex items-center gap-1.5", dueDateColor)}>
@@ -63,9 +65,7 @@ export function TaskCard({ task, onToggleTask, onViewTask }: TaskCardProps) {
         </div>
       </div>
 
-      {task.description && (
-        <p className="text-sm text-muted-foreground mt-1">{task.description}</p>
-      )}
+  
       {task.departments && (
         <Badge variant="secondary" className={undefined}>{task.departments.name}</Badge>
       )}

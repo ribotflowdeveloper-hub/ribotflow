@@ -4,12 +4,12 @@ import React, { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { FileWarning, CheckCircle2, Clock3, Users } from 'lucide-react';
 import { ActivityItem } from '@/components/shared/ActivityItem';
-import { Tables } from '@/types/supabase'; // ✅ CORRECCIÓ: Importem el nostre helper
+import { Tables } from '@/types/supabase';
+import { TaskWithContact } from '@/types/dashboard/types';
 
-// ✅ CORRECCIÓ: Actualitzem les propietats amb els nous tipus
 interface RecentActivitiesProps {
   overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
-  tasks: Tables<'tasks'>[];
+  tasks: TaskWithContact[]; // Utilitzem el tipus enriquit
   contacts: Tables<'contacts'>[];
 }
 
@@ -21,40 +21,40 @@ export function RecentActivities({ overdueInvoices, tasks, contacts }: RecentAct
     
     overdueInvoices.forEach((inv) => a.push({ 
       icon: FileWarning, 
-      tone: { bg: 'bg-red-500/15', text: 'text-red-300' }, 
+      tone: { bg: 'bg-destructive/10', text: 'text-destructive' }, 
       title: t('overdueInvoice', { clientName: inv.contacts?.nom ?? 'client' }), 
       meta: inv.due_date ? t('dueDate', { dueDate: new Date(inv.due_date).toLocaleDateString() }) : '',
       href: '/finances/facturacio' 
     }));
     
-    tasks.slice(0, 4).forEach((task) => a.push({ 
+    // Mostrem les tasques més recents, independentment del seu estat
+    tasks.slice(0, 2).forEach((task) => a.push({ 
       icon: task.is_completed ? CheckCircle2 : Clock3, 
-      tone: { bg: task.is_completed ? 'bg-emerald-500/15' : 'bg-yellow-500/15', text: task.is_completed ? 'text-emerald-300' : 'text-yellow-300' }, 
-      title: task.is_completed ? t('taskCompleted', { taskTitle: task.title }) : t('taskCreated', { taskTitle: task.title }), 
+      tone: { bg: task.is_completed ? 'bg-success/10' : 'bg-yellow-500/10', text: task.is_completed ? 'text-success' : 'text-yellow-600' }, 
+      title: task.title, 
       meta: task.created_at ? new Date(task.created_at).toLocaleString() : '', 
       href: '/dashboard' 
     }));
 
-    contacts.slice(0, 3).forEach((c) => a.push({ 
+    contacts.slice(0, 2).forEach((c) => a.push({ 
       icon: Users, 
-      tone: { bg: 'bg-blue-500/15', text: 'text-blue-300' }, 
+      tone: { bg: 'bg-primary/10', text: 'text-primary' }, 
       title: t('newContact', { contactName: c.nom }), 
       meta: c.created_at ? new Date(c.created_at).toLocaleDateString() : '', 
       href: '/crm/contactes' 
     }));
 
-    return a.slice(0, 6);
+    // Ordenem per data si tenim una manera consistent de fer-ho
+    return a.slice(0, 5);
   }, [overdueInvoices, tasks, contacts, t]);
 
+  // ✅ HEM ELIMINAT EL 'div' contenidor i el 'h2'. Retornem directament la llista.
   return (
-    <div className="rounded-2xl p-6 ring-1 ring-border bg-card">
-      <h2 className="text-xl font-bold text-foreground mb-4">{t('recentActivities')}</h2>
-      <div className="space-y-4">
-        {activities.length > 0 
-          ? activities.map((act, idx) => <ActivityItem key={idx} {...act} />) 
-          : <p className="text-sm text-muted-foreground">{t('noActivities')}</p>
-        }
-      </div>
+    <div className="space-y-4">
+      {activities.length > 0 
+        ? activities.map((act, idx) => <ActivityItem key={idx} {...act} />) 
+        : <p className="text-sm text-muted-foreground">{t('noActivities')}</p>
+      }
     </div>
   );
 }

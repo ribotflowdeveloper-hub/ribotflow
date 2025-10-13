@@ -36,34 +36,49 @@ export async function getTeamMembersWithProfiles(
     return response;
 }
 
-// 👇 AFEGEIX AQUESTA NOVA FUNCIÓ 👇
 
 /**
  * Obté les dades completes de l'equip actiu d'un usuari des d'un Server Component.
- * Primer busca l'ID de l'equip actiu al perfil de l'usuari i després
- * recupera les dades de la taula 'teams'.
- * @param userId L'ID de l'usuari autenticat.
- * @returns Una promesa que resol a les dades de l'equip o null si no en té cap d'actiu.
+ * Aquesta versió és robusta i soluciona la 'race condition' del registre.
+ *
+ * ESTRATÈGIA:
+ * 1. (FONT PRIMÀRIA) Intenta obtenir l'ID de l'equip des del token de l'usuari (app_metadata).
+ * Això és instantani i fiable després de l'autenticació.
+ * 2. (FALLBACK) Si no existeix al token, el busca a la taula de perfils.
+ * Això garanteix compatibilitat amb usuaris antics.
+ *
+ * @returns Una promesa que resol a les dades de l'equip o null si no se'n troba cap.
  */
-export async function getActiveTeam(userId: string) {
-  // Creem un client de Supabase específic per a operacions de servidor
+export async function getActiveTeam() {
+  // ✅ CORRECCIÓ: Cridem a la funció sense passar-li el tipus. Ja el porta per defecte.
   const supabase = createClient();
 
-  // 1. Obtenim l'ID de l'equip actiu des del perfil de l'usuari
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('active_team_id')
-    .eq('id', userId)
-    .single();
-
-  if (profileError || !profile || !profile.active_team_id) {
-    console.error("Error en obtenir l'ID de l'equip actiu del perfil:", profileError?.message);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
     return null;
   }
 
-  const activeTeamId = profile.active_team_id;
+  let activeTeamId: string | null | undefined = user.app_metadata?.active_team_id;
 
-  // 2. Amb l'ID, obtenim les dades completes de l'equip
+  // Fallback...
+  if (!activeTeamId) {
+    console.warn("active_team_id no trobat a app_metadata. Fent fallback a la taula de perfils.");
+    // Ara 'supabase.from('profiles')' tindrà autocompletat i seguretat de tipus!
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_team_id')
+      .eq('id', user.id)
+      .single();
+    
+    activeTeamId = profile?.active_team_id;
+  }
+
+  // Si després de tot no tenim un ID, no podem continuar
+   if (!activeTeamId) {
+    console.error("No s'ha pogut determinar l'equip actiu ni des del token ni des del perfil.");
+    return null;
+  }
+
   const { data: team, error: teamError } = await supabase
     .from('teams')
     .select('*')

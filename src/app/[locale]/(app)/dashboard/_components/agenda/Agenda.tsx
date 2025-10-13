@@ -2,12 +2,11 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { Button } from '@/components/ui/button';
-import { Plus, LayoutGrid } from 'lucide-react'; // Importem nova icona
+import { LayoutGrid } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Importem Select
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskCard } from './TaskCard';
-import { TaskWithContact } from '@/types/dashboard/types'; // ✅ Importem el nostre tipus 
+import { TaskWithContact } from '@/types/dashboard/types';
 import { Tables } from '@/types/supabase';
 
 interface AgendaProps {
@@ -29,7 +28,6 @@ export function Agenda({
   activeFilter,
   onFilterChange,
   onToggleTask,
-  onOpenNewTask,
   onViewTask,
   pendingCount,
   completedCount,
@@ -39,15 +37,9 @@ export function Agenda({
 }: AgendaProps) {
   const t = useTranslations('DashboardClient.agenda');
 
+  // ✅ CORRECCIÓ: Embolcallem tot en un sol 'div'.
   return (
-    <div className="rounded-2xl p-6 ring-1 ring-border bg-card lg:col-span-2 flex flex-col">
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h2 className="text-xl font-bold text-foreground">{t('title')}</h2>
-        <Button variant="ghost" size="sm" onClick={onOpenNewTask}>
-          <Plus className="w-4 h-4 mr-2" /> {t('newTask')}
-        </Button>
-      </div>
-
+    <div>
       {/* Contenidor per als filtres */}
       <div className="flex gap-2 mb-4 flex-shrink-0">
         <ToggleGroup
@@ -64,13 +56,12 @@ export function Agenda({
           </ToggleGroupItem>
         </ToggleGroup>
 
-        {/* ✅ NOU FILTRE DE DEPARTAMENTS */}
         <Select
           value={String(departmentFilter)}
           onValueChange={(value) => onDepartmentFilterChange(value === 'all' ? 'all' : Number(value))}
         >
-          <SelectTrigger className="w-[180px]">
-            <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground" />
+          <SelectTrigger className="w-auto sm:w-[180px]">
+            <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground hidden sm:block" />
             <SelectValue placeholder={t('filter.departmentPlaceholder')} />
           </SelectTrigger>
           <SelectContent>
@@ -81,8 +72,9 @@ export function Agenda({
           </SelectContent>
         </Select>
       </div>
-      {/* ✅ CORRECCIÓ: Hem eliminat 'flex-1' i hem afegit una alçada màxima fixa */}
-      <div className="space-y-3 overflow-y-auto pr-1 max-h-[580px]">
+      
+      {/* Llista de tasques */}
+      <div className="space-y-3 overflow-y-auto pr-2 max-h-[480px]">
         {tasks.length > 0 ? (
           tasks.map((task) => (
             <TaskCard
@@ -93,8 +85,8 @@ export function Agenda({
             />
           ))
         ) : (
-          <div className="flex items-center justify-center h-full min-h-[100px]">
-            <p className="text-sm text-muted-foreground text-center py-4">
+          <div className="flex items-center justify-center h-48">
+            <p className="text-sm text-muted-foreground text-center">
               {activeFilter === 'pendents' ? t('noPendingTasks') : t('noCompletedTasks')}
             </p>
           </div>

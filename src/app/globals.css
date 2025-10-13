@@ -52,6 +52,7 @@
       --input: 220 15% 88%;
       --ring: 262 83% 58%;
       --radius: 0.75rem;
+      
     }
 
   /* La classe '.dark' s'aplica a l'etiqueta <html> quan el tema fosc està actiu.

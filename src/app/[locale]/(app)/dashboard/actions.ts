@@ -14,7 +14,7 @@ export async function addTask(taskData: NewTaskPayload) {
   }
 
   // ✅ 2. Obtenim l'equip actiu de l'usuari
-  const team = await getActiveTeam(user.id);
+  const team = await getActiveTeam();
   if (!team) {
     return { error: { message: "Active team not found" } };
   }
@@ -68,7 +68,7 @@ export async function addDepartment(name: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: { message: "No autenticat" } };
 
-  const team = await getActiveTeam(user.id);
+  const team = await getActiveTeam();
   if (!team) return { error: { message: "Equip actiu no trobat" } };
 
   // Intentem inserir el nou departament i retornem la fila creada

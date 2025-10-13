@@ -52,6 +52,14 @@ const config = {
                     cyan: '#22A7F4',
                     pink: '#F42289',
                 },
+                success: {
+                    DEFAULT: "hsl(var(--success))",
+                    foreground: "hsl(var(--success-foreground))",
+                },
+                destructive: {
+                    DEFAULT: "hsl(var(--destructive))",
+                    foreground: "hsl(var(--destructive-foreground))",
+                },
             },
             borderRadius: {
                 lg: 'var(--radius)',
