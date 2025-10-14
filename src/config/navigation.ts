@@ -24,14 +24,14 @@ import {
 import type { NavItem } from '@/types/app/navigation';
 
 export const navModules: NavItem[] = [
-  { 
-    id: 'dashboard', 
+  {
+    id: 'dashboard',
     labelKey: 'dashboard', // ✅ Canviat
-    icon: LayoutDashboard, 
-    path: '/dashboard', 
-    isSingle: true 
+    icon: LayoutDashboard,
+    path: '/dashboard',
+    isSingle: true
   },
-  { 
+  {
     id: 'crm',
     labelKey: 'crm', // ✅ Canviat
     icon: Briefcase,
@@ -44,10 +44,12 @@ export const navModules: NavItem[] = [
       { id: 'pipeline', labelKey: 'pipeline', icon: Columns, path: '/crm/pipeline', isSingle: true },
       { id: 'pressupostos', labelKey: 'quotes', icon: FileText, path: '/crm/quotes', isSingle: true },
       { id: 'conceptes', labelKey: 'concepts', icon: BookPlus, path: '/crm/products', isSingle: true },
-      { id: 'activitats', labelKey: 'activities', icon: Activity, path: '/crm/activitats', isSingle: true }
+      { id: 'activitats', labelKey: 'activities', icon: Activity, path: '/crm/activitats', isSingle: true },
+      { id: 'calendari', labelKey: 'calendar', icon: CalendarDays, path: '/crm/calendari', isSingle: true }
+
     ]
   },
-  { 
+  {
     id: 'finances',
     labelKey: 'finances', // ✅ Canviat
     icon: Landmark,
@@ -56,10 +58,10 @@ export const navModules: NavItem[] = [
     isSingle: false,
     children: [
       { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/facturacio', isSingle: true },
-      { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/despeses', isSingle: true }, 
+      { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/despeses', isSingle: true },
     ]
   },
-  { 
+  {
     id: 'comunicacio',
     labelKey: 'communication', // ✅ Canviat
     icon: Headphones,
@@ -100,5 +102,5 @@ export const navModules: NavItem[] = [
 
 export const bottomItems: NavItem[] = [
   { id: 'ai', labelKey: 'ai', icon: Bot, path: '#', isSingle: true, notImplemented: true },
-  { id: 'settings', labelKey: 'settings', icon: Settings, path: '/settings/profile', isSingle: true }, 
+  { id: 'settings', labelKey: 'settings', icon: Settings, path: '/settings/profile', isSingle: true },
 ];

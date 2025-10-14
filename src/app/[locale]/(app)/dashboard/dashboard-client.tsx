@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useDashboardTasks } from "./_hooks/useDashboardTasks";
 
 // ✅ Importem el nostre nou component contenidor
 import { DashboardCard } from "./_components/DashboardCard";
@@ -13,15 +12,13 @@ import { SalesPerformance } from "./_components/SalesPerformance";
 import { RecentActivities } from "./_components/RecentActivities";
 import { Agenda } from "./_components/agenda/Agenda";
 import { Radar } from "./_components/Radar";
-import AddTaskDialog from "./_components/agenda/AddTaskDialog";
-import { TaskDetailDialog } from "./_components/agenda/TaskDetailDialog";
+import { TaskDialogManager, EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 
 // ✅ Importem les icones
 import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus } from "lucide-react";
 
 // ... (els teus imports de tipus es mantenen iguals)
 import { Tables } from "@/types/supabase";
-import { TaskWithContact } from '@/types/dashboard/types';
 // import { Button } from "react-day-picker";
 import { Button } from "@/components/ui/button"; // Update this import to your UI library's Button
 
@@ -41,7 +38,7 @@ interface DashboardClientProps {
       invoicedIsPositive: boolean;
       expensesIsPositive: boolean;
     };
-    tasks: TaskWithContact[];
+    tasks: EnrichedTask[]; // ✅ El tipus de les tasques ara és l'enriquit
     departments: Tables<'departments'>[]; // ✅ Assegurem que departments està aquí
     contacts: Tables<'contacts'>[];
     overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
@@ -53,25 +50,26 @@ interface DashboardClientProps {
 }
 export function DashboardClient({
   initialData,
-  teamMembers = [], // ✅ Afegim un valor per defecte per evitar errors
+  teamMembers,
   children,
 }: DashboardClientProps) {
-  
-
   const t = useTranslations('DashboardClient');
   const router = useRouter();
 
   // Tota la lògica de dades i estats es manté aquí, la qual cosa és correcte.
   // Aquesta és la responsabilitat d'aquest component "cervell".
-  const { tasks, toggleTask, deleteTask } = useDashboardTasks(initialData.tasks);
-  const [viewingTask, setViewingTask] = useState<TaskWithContact | null>(null);
+  // // Eliminem 'useDashboardTasks', 'viewingTask', i 'isTaskDialogOpen'.
+  const [tasks] = useState(initialData.tasks);
+  const [taskToManage, setTaskToManage] = useState<EnrichedTask | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  // Lògica de filtres (no canvia)
   const [taskFilter, setTaskFilter] = useState<'pendents' | 'completes'>('pendents');
   const [departmentFilter, setDepartmentFilter] = useState<number | 'all'>('all');
-  const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
 
+  // useMemo per a comptadors i filtres (no canvia)
   const pendingCount = useMemo(() => tasks.filter(t => !t.is_completed).length, [tasks]);
   const completedCount = useMemo(() => tasks.filter(t => t.is_completed).length, [tasks]);
-
   const filteredTasks = useMemo(() => {
     let result = tasks;
     result = result.filter(t => taskFilter === 'pendents' ? !t.is_completed : t.is_completed);
@@ -80,12 +78,23 @@ export function DashboardClient({
     }
     return result;
   }, [tasks, taskFilter, departmentFilter]);
+  
+  // Funció per refrescar les dades després d'una mutació.
+  const handleTaskMutation = useCallback(() => {
+    router.refresh();
+  }, [router]);
+  
+  const openNewTaskDialog = () => {
+    setTaskToManage(null);
+    setIsDialogOpen(true);
+  };
 
-  const handleToggleTask = useCallback((id: number, is_completed: boolean) => {
-    toggleTask(id, is_completed);
-  }, [toggleTask]);
+  const openViewTaskDialog = (task: EnrichedTask) => {
+    setTaskToManage(task);
+    setIsDialogOpen(true);
+  };
 
-  const percentGoal = Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100);
+
 
   return (
     <div className="relative space-y-6">
@@ -95,22 +104,19 @@ export function DashboardClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <DashboardCard title={t('salesPerformance')} icon={BarChart2} className="lg:col-span-2">
-          <SalesPerformance stats={initialData.stats} percentGoal={percentGoal} monthlyGoal={MONTHLY_GOAL} />
+            <SalesPerformance stats={initialData.stats} percentGoal={Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)} monthlyGoal={MONTHLY_GOAL} />
         </DashboardCard>
-
         <DashboardCard title={t('recentActivities')} icon={Activity}>
-          <RecentActivities overdueInvoices={initialData.overdueInvoices} tasks={initialData.tasks} contacts={initialData.contacts} />
+            <RecentActivities overdueInvoices={initialData.overdueInvoices} tasks={initialData.tasks} contacts={initialData.contacts} />
         </DashboardCard>
-      </div>
-
+        </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <DashboardCard
           title={t('agenda.title')}
           icon={ListChecks}
           className="lg:col-span-2"
-          // ✅ AQUÍ LA MÀGIA: Passem el botó com a 'action'
           actions={
-            <Button variant="ghost" size="sm" onClick={() => setTaskDialogOpen(true)}>
+            <Button variant="ghost" size="sm" onClick={openNewTaskDialog}>
               <Plus className="w-4 h-4 mr-2" />
               {t('agenda.newTask')}
             </Button>
@@ -123,11 +129,10 @@ export function DashboardClient({
             departmentFilter={departmentFilter}
             onDepartmentFilterChange={setDepartmentFilter}
             departments={initialData.departments}
-            onViewTask={setViewingTask}
+            onViewTask={openViewTaskDialog} // Ara el tipus és correcte
             pendingCount={pendingCount}
             completedCount={completedCount}
-            onToggleTask={handleToggleTask}
-            onOpenNewTask={() => setTaskDialogOpen(true)} // Mantenim per si és útil en altres llocs
+            onOpenNewTask={openNewTaskDialog}
           />
         </DashboardCard>
         <div className="space-y-6">
@@ -138,19 +143,18 @@ export function DashboardClient({
         </div>
       </div>
 
-      <TaskDetailDialog 
-        task={viewingTask} 
-        open={!!viewingTask} 
-        onOpenChange={(isOpen) => !isOpen && setViewingTask(null)} 
-        onToggleTask={handleToggleTask} 
-        onDeleteTask={deleteTask}
+      <TaskDialogManager
+        task={taskToManage}
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
         contacts={initialData.contacts}
         departments={initialData.departments}
-        teamMembers={teamMembers}
+        teamMembers={teamMembers
+            .filter(m => m.user_id)
+            .map(m => ({ id: m.user_id!, full_name: m.full_name }))
+        }
+        onTaskMutation={handleTaskMutation}
       />
-      <AddTaskDialog open={isTaskDialogOpen} onOpenChange={setTaskDialogOpen} contacts={initialData.contacts} teamMembers={teamMembers} departments={initialData.departments} onTaskCreated={() => {
-        router.refresh();
-      }} />
     </div>
   );
 }

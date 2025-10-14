@@ -6,28 +6,27 @@ import { LayoutGrid } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskCard } from './TaskCard';
-import { TaskWithContact } from '@/types/dashboard/types';
+// ✅ Pas 1: Importem el nou tipus unificat
+import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 import { Tables } from '@/types/supabase';
 
 interface AgendaProps {
-  tasks: TaskWithContact[];
+  tasks: EnrichedTask[]; // ✅ Canviat
   activeFilter: 'pendents' | 'completes';
   onFilterChange: (filter: 'pendents' | 'completes') => void;
-  onToggleTask: (taskId: number, currentStatus: boolean) => void;
-  onOpenNewTask: () => void;
-  onViewTask: (task: TaskWithContact) => void;
+  onViewTask: (task: EnrichedTask) => void; // ✅ Canviat
   pendingCount: number;
   completedCount: number;
   departments: Tables<'departments'>[];
   departmentFilter: number | 'all';
   onDepartmentFilterChange: (filter: number | 'all') => void;
+  onOpenNewTask: () => void; // Aquesta prop ja no es fa servir aquí, però la mantenim per si de cas
 }
 
 export function Agenda({
   tasks,
   activeFilter,
   onFilterChange,
-  onToggleTask,
   onViewTask,
   pendingCount,
   completedCount,
@@ -37,10 +36,9 @@ export function Agenda({
 }: AgendaProps) {
   const t = useTranslations('DashboardClient.agenda');
 
-  // ✅ CORRECCIÓ: Embolcallem tot en un sol 'div'.
   return (
     <div>
-      {/* Contenidor per als filtres */}
+      {/* ... (els filtres no canvien) ... */}
       <div className="flex gap-2 mb-4 flex-shrink-0">
         <ToggleGroup
           type="single"
@@ -55,7 +53,6 @@ export function Agenda({
             {t('completed')} <span className="ml-2 text-xs text-muted-foreground">({completedCount})</span>
           </ToggleGroupItem>
         </ToggleGroup>
-
         <Select
           value={String(departmentFilter)}
           onValueChange={(value) => onDepartmentFilterChange(value === 'all' ? 'all' : Number(value))}
@@ -80,7 +77,6 @@ export function Agenda({
             <TaskCard
               key={task.id}
               task={task}
-              onToggleTask={onToggleTask}
               onViewTask={onViewTask}
             />
           ))

@@ -15,3 +15,4 @@ export * from './deals';
 export * from './quotes';
 export * from './pipelines';
 export * from '../shared/notification';
+export * from './calendar';

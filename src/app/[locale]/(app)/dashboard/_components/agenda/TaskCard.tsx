@@ -7,12 +7,11 @@ import { format, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { TaskPriority } from "@/types/dashboard/types";
 import { Calendar, User } from "lucide-react"; // ✅ 'Flag' eliminat
-import { TaskWithContact } from "@/types/dashboard/types"; // ✅ Importem el nostre tipus
+import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 
 interface TaskCardProps {
-  task: TaskWithContact; // ✅ Utilitzem el nostre tipus centralitzat
-  onToggleTask: (taskId: number, currentStatus: boolean) => void;
-  onViewTask: (task: TaskCardProps['task']) => void; // Per al Pas 4
+  task: EnrichedTask; // ✅ Canviat
+  onViewTask: (task: EnrichedTask) => void; // ✅ Canviat
 }
 
 const priorityStyles: Record<TaskPriority, string> = {
@@ -21,7 +20,7 @@ const priorityStyles: Record<TaskPriority, string> = {
   Alta: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
-export function TaskCard({ task, onToggleTask, onViewTask }: TaskCardProps) {
+export function TaskCard({ task, onViewTask }: TaskCardProps) {
   const hasDueDate = task.due_date;
   const dueDate = hasDueDate ? new Date(task.due_date!) : null;
   const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
@@ -37,7 +36,7 @@ export function TaskCard({ task, onToggleTask, onViewTask }: TaskCardProps) {
       <Checkbox
         id={`task-${task.id}`}
         checked={task.is_completed}
-        onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
+        onCheckedChange={() => onViewTask(task)}
         className="mt-1"
       />
       <div className="flex-1 cursor-pointer" onClick={() => onViewTask(task)}>
