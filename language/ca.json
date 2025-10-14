@@ -792,6 +792,13 @@
       "dueDatePlaceholder": "Tria una data",
       "priorityLabel": "Prioritat",
       "priorityPlaceholder": "Selecciona una prioritat",
+      "durationLabel": "Duració",
+      "assignedUserLabel": "Usuari assignat",
+      "assignmentDateLabel": "Data d'assignació",
+      "selectTeamMemberPlaceholder": "Selecciona un membre de l'equip",
+      "noTeamMembersFound": "No s'han trobat membres a l'equip",
+      "durationPlaceholder": "Hores (ex: 1.5)",
+      "dptPlaceholder" : "Selecciona un departament",
       "priority": {
         "baixa": "Baixa",
         "mitjana": "Mitjana",
@@ -833,7 +840,9 @@
       "assignedTo": "Assignada a:",
       "deleteButton": "Eliminar",
       "markAsPendingButton": "Marcar com a pendent",
-      "markAsCompletedButton": "Marcar com a completada"
+      "markAsCompletedButton": "Marcar com a completada",
+      "limitDay": "Data límit: ",
+      "cancelButton": "Cancel·lar"
     },
     "time": {
       "now": "Ara mateix",

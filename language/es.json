@@ -786,6 +786,13 @@
       "dueDatePlaceholder": "Elige una fecha",
       "priorityLabel": "Prioridad",
       "priorityPlaceholder": "Selecciona una prioridad",
+      "durationLabel": "Duración",
+      "assignedUserLabel": "Usuario asignado",
+      "assignmentDateLabel": "Fecha de asignación",
+      "selectTeamMemberPlaceholder": "Selecciona un miembro del equipo",
+      "noTeamMembersFound": "No se han encontrado miembros en el equipo",
+      "durationPlaceholder": "Horas (ex: 1.5)",
+      "dptPlaceholder" : "Selecciona un departamento",
       "priority": {
         "baixa": "Baja",
         "mitjana": "Media",
@@ -827,7 +834,9 @@
       "assignedTo": "Asignada a:",
       "deleteButton": "Eliminar",
       "markAsPendingButton": "Marcar como pendiente",
-      "markAsCompletedButton": "Marcar como completada"
+      "markAsCompletedButton": "Marcar como completada",
+      "limitDay": "Fecha límite: ",
+      "cancelButton": "Cancelar"
     },
     "time": {
       "now": "Ahora mismo",
