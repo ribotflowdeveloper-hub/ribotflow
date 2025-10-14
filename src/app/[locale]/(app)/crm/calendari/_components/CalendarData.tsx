@@ -1,3 +1,4 @@
+//test comentari
 import CalendarClient from './CalendarClient';
 import { validatePageSession } from '@/lib/supabase/session';
 import { TaskWithAssignee } from '@/types/crm'; // He corregit la ruta a la teva
