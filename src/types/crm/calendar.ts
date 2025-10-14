@@ -6,6 +6,8 @@ export type TaskWithAssignee = Omit<Tables<'tasks'>, 'user_id'> & {
   profiles: {
     id: string;
     full_name: string | null;
+    avatar_url: string | null; // ✅ SOLUCIÓ: Afegim la propietat que faltava.
+
   } | null;
   user_id: string | null; // Mantenim user_id per al diàleg d'edició
 };

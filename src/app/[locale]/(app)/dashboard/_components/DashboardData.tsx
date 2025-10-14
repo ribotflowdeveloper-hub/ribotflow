@@ -46,7 +46,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         typedSupabase.rpc('get_dashboard_stats'),
         // Fem les consultes utilitzant l'ID de l'equip que hem obtingut
         // ✅ CORRECCIÓ: Fem un "join" per obtenir el nom del contacte associat a cada tasca
-        typedSupabase.from('tasks').select('*, contacts(id, nom), departments(id, name), profiles:user_asign_id (id, full_name)')
+        typedSupabase.from('tasks').select('*, contacts(id, nom), departments(id, name), profiles:user_asign_id (id, full_name, avatar_url)')
             .eq('team_id', team.id)
             .order('is_completed, created_at'), typedSupabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
         typedSupabase.from('contacts').select('*').eq('team_id', team.id).order('created_at', { ascending: false }),
@@ -105,7 +105,11 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     };
 
     return (
-        <DashboardClient initialData={initialData} teamMembers={teamMembersData}>
+        <DashboardClient
+            initialData={initialData}
+            teamMembers={teamMembersData}
+            userId={user.id} // ✅ Passem l'ID de l'usuari al client
+        >
             {children}
         </DashboardClient>
     );

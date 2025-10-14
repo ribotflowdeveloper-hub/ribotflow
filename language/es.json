@@ -775,7 +775,12 @@
       "completed": "Completadas",
       "noPendingTasks": "No hay tareas pendientes. ¡Buen trabajo!",
       "noCompletedTasks": "Aún no has completado ninguna tarea.",
+      "assigned": "Asignadas",
+      "searchPlaceholder": "Busca tareas por título...",
+      "noTasksFound": "No se han encontrado tareas con los filtros actuales.",
+      "viewAll": "Ver Todo",
       "filter": {
+        "assignedAria": "Filtrar por tareas asignadas",
         "pendingAria": "Ver pendientes",
         "completedAria": "Ver completadas",
         "departmentPlaceholder": "Departamento",
@@ -1134,30 +1139,46 @@
       }
     },
     "integrations": {
-      "title": "Integraciones de Correo",
-      "googleTitle": "Google / Gmail",
-      "googleDescription": "Sincroniza tu correo de Gmail.",
-      "microsoftTitle": "Microsoft / Outlook",
-      "microsoftDescription": "Sincroniza tu correo de Outlook.",
+      "pageTitle": "Integraciones",
+      "title": "Conecta tus herramientas",
       "statusConnected": "Conectado",
+      "statusDisconnected": "Desconectado",
       "connectButton": "Conectar",
       "disconnectButton": "Desconectar",
-      "pageTitle": "Integraciones",
-      "pageDescription": "Conecta tus herramientas favoritas.",
-      "instagramTitle": "Instagram",
-      "instagramDescription": "Conecta tu cuenta de Instagram para publicar automáticamente y gestionar mensajes.",
-      "linkedinTitle": "LinkedIn",
-      "linkedinDescription": "Conecta tu perfil o página de empresa de LinkedIn para programar publicaciones y gestionar interacciones.",
-      "metaTitle": "Facebook",
-      "metaDescription": "Conecta tu cuenta o página de Facebook y Instagram para publicar contenido y gestionar comentarios.",
-      "success": "¡Éxito!",
-      "error": "Error",
       "toast": {
-        "success": "Éxito",
         "error": "Error",
-        "connectedSuccess": "Cuenta vinculada correctamente.",
-        "identityExists": "Esta cuenta social ya está vinculada a otro usuario.",
-        "genericError": "Ha ocurrido un error durante la conexión."
+        "success": "Éxito",
+        "genericError": "Ha habido un problema. Por favor, inténtalo de nuevo.",
+        "connectedSuccess": "La cuenta se ha conectado correctamente."
+      },
+      "googleTitle": "Google",
+      "googleDescription": "Conecta tu Gmail para la gestión de correos.",
+      "microsoftTitle": "Microsoft",
+      "microsoftDescription": "Conecta tu Outlook para la gestión de correos.",
+      "linkedinTitle": "LinkedIn",
+      "linkedinDescription": "Programa publicaciones en tu perfil o página de empresa.",
+      "metaTitle": "Meta (Facebook & Instagram)",
+      "metaDescription": "Gestiona y programa publicaciones en tus páginas.",
+      "customEmail": {
+        "title": "Correo Personalizado (IMAP/SMTP)",
+        "description": "Conecta tu cuenta de correo empresarial o personal."
+      },
+      "customEmailDialog": {
+        "title": "Configura tu cuenta de correo",
+        "description": "Introduce los datos de conexión. Esta información se almacenará de forma segura.",
+        "emailLabel": "Correo",
+        "passwordLabel": "Contraseña",
+        "imapHostLabel": "Servidor IMAP",
+        "imapPortLabel": "Puerto IMAP",
+        "smtpHostLabel": "Servidor SMTP",
+        "smtpPortLabel": "Puerto SMTP",
+        "cancelButton": "Cancelar",
+        "connectButton": "Verificar y Conectar",
+        "toast": {
+          "success": "Éxito",
+          "error": "Error",
+          "genericError": "Ha habido un problema en la conexión."
+        }
       }
     },
     "SettingsProfile": {

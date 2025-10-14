@@ -46,12 +46,12 @@ export async function acceptInviteAction(token: string) {
     }
 
     await supabase.from('team_members').insert({ 
-      team_id: invitation.team_id, 
+      team_id: invitation.team_id ?? '', 
       user_id: user.id, 
       role: invitation.role 
     }).throwOnError();
     
-    const { data: subscription } = await supabase.from('subscriptions').select('plan_id, status').eq('team_id', invitation.team_id).single();
+    const { data: subscription } = await supabase.from('subscriptions').select('plan_id, status').eq('team_id', invitation.team_id ?? '').single();
     const teamPlan = (subscription?.status === 'active') ? subscription.plan_id : 'free';
 
     await supabaseAdmin.auth.admin.updateUserById(
