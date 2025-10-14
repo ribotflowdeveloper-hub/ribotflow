@@ -10,6 +10,9 @@ export type NewTaskPayload = {
   priority: TaskPriority | null;
   contact_id: number | null;
   department_id: number | null; // ✅ CORRECCIÓ: Afegeix el camp per a l'ID del departament
+  duration: number | null; // ✅ CORRECCIÓ: Afegeix el camp per a la durada
+  user_asign_id: string | null; // ✅ CORRECCIÓ: Nom de columna correcte
+  asigned_date: string | null; // ✅ CORRECCIÓ: Nom de columna correcte
 };
 
 // Aquest tipus és per a la VISUALITZACIÓ. Rebem els objectes niuats.
