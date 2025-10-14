@@ -5,7 +5,7 @@ import { getActiveTeam } from '@/lib/supabase/teams'; // Correció #2: Importem 
 import { Database } from '@/types/supabase';
 import { Tables } from '@/types/supabase';
 import { SupabaseClient } from '@supabase/supabase-js'; // Correció #1: Importem el tipus SupabaseClient
-import { TaskWithContact } from '@/types/dashboard/types'; // Importem el nou tipus
+import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager'; // Importem el tipus unificat
 
 const calculatePercentageChange = (current: number, previous: number): string => {
     if (previous === 0) return current > 0 ? '+100%' : '0%';
@@ -46,7 +46,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         typedSupabase.rpc('get_dashboard_stats'),
         // Fem les consultes utilitzant l'ID de l'equip que hem obtingut
         // ✅ CORRECCIÓ: Fem un "join" per obtenir el nom del contacte associat a cada tasca
-        typedSupabase.from('tasks').select('*, contacts(id, nom), departments(id, name)')
+        typedSupabase.from('tasks').select('*, contacts(id, nom), departments(id, name), profiles:user_asign_id (id, full_name)')
             .eq('team_id', team.id)
             .order('is_completed, created_at'), typedSupabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
         typedSupabase.from('contacts').select('*').eq('team_id', team.id).order('created_at', { ascending: false }),
@@ -69,7 +69,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         expenses_previous_month: 0,
     };
 
-    const tasksData: TaskWithContact[] = tasksRes.data ?? [];
+    const tasksData: EnrichedTask[] = tasksRes.data as unknown as EnrichedTask[];
     const contactsData: Tables<'contacts'>[] = contactsRes.data ?? [];
     const notificationsData: Tables<'notifications'>[] = notificationsRes.data ?? [];
     const teamMembersData: Tables<'team_members_with_profiles'>[] = teamMembersRes.data ?? []; // ✅ PROCESSEM LES DADES DELS MEMBRES
