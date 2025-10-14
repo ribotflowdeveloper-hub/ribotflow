@@ -10,6 +10,11 @@ import { cookies } from "next/headers";
 import { v4 as uuidv4 } from 'uuid';
 // ✅ 1. Importem les dues utilitats de sessió.
 import { validatePageSession, validateUserSession } from "@/lib/supabase/session";
+import { type TransportOptions } from 'nodemailer';
+import nodemailer from 'nodemailer';
+import imaps from 'imap-simple';
+
+import { ImapSmtpSchema, type ImapSmtpFormData } from './schemas';
 
 // --- LÒGICA DE CONNEXIÓ CENTRALITZADA ---
 
@@ -72,6 +77,129 @@ export async function connectLinkedInAction() { return createOAuthRedirectAction
 export async function connectFacebookAction() { return createOAuthRedirectAction('facebook'); }
 
 
+// --- LÒGICA PER A IMAP/SMTP (AMB CORRECCIONS FINALS) ---
+
+// --- LÒGICA PER A IMAP/SMTP (CORREGIDA) ---
+
+type ImapConfig = {
+    imap: {
+        user: string;
+        password: string;
+        host: string;
+        port: number;
+        tls: boolean;
+        authTimeout: number;
+    }
+}
+
+async function verifyImap(config: ImapConfig): Promise<void> {
+    let connection;
+    try {
+        connection = await imaps.connect(config);
+        await connection.end();
+    } catch (err) {
+        throw new Error(`Error de connexió IMAP: ${(err as Error).message}`);
+    }
+}
+
+async function verifySmtp(config: TransportOptions): Promise<void> {
+    const transporter = nodemailer.createTransport(config);
+    try {
+        await transporter.verify();
+    } catch (err) {
+        throw new Error(`Error de connexió SMTP: ${(err as Error).message}`);
+    }
+}
+
+export async function connectImapSmtpAction(formData: ImapSmtpFormData) {
+    const session = await validateUserSession();
+    if ("error" in session) {
+        return { success: false, message: "Sessió no vàlida." };
+    }
+    const { supabase, user } = session;
+
+    // ✅ CORRECCIÓ: L'esquema s'importa, ja no es defineix aquí.
+    const validation = ImapSmtpSchema.safeParse(formData);
+    if (!validation.success) {
+        return { success: false, message: "Dades del formulari invàlides.", errors: validation.error.flatten().fieldErrors };
+    }
+    const { email, password, imapHost, imapPort, smtpHost, smtpPort } = validation.data;
+
+    const imapConfig: ImapConfig = {
+        imap: { user: email, password, host: imapHost, port: imapPort, tls: true, authTimeout: 5000 },
+    };
+    const smtpConfig = {
+        host: smtpHost, port: smtpPort, secure: smtpPort === 465, auth: { user: email, pass: password },
+    };
+
+    try {
+        await Promise.all([
+            verifyImap(imapConfig),
+            verifySmtp(smtpConfig as TransportOptions) 
+        ]);
+    } catch (error) {
+        return { success: false, message: `No s'ha pogut verificar la connexió: ${(error as Error).message}` };
+    }
+
+    try {
+        const { data: keyData, error: keyError } = await supabase.rpc('get_pgsodium_key');
+        if (keyError || !keyData) throw new Error("No s'ha pogut obtenir la clau d'encriptació.");
+        const keyId = keyData.id;
+        
+        const { data: encryptedData, error: encryptError } = await supabase.rpc('pgsodium_crypto_aead_det_encrypt', {
+            message: password,
+            key_id: keyId
+        });
+
+        if (encryptError || !encryptedData) {
+            throw new Error("No s'ha pogut encriptar la contrasenya.");
+        }
+        
+        const configPayload = {
+            imap: {
+                user: imapConfig.imap.user,
+                host: imapConfig.imap.host,
+                port: imapConfig.imap.port,
+                tls: imapConfig.imap.tls,
+                authTimeout: imapConfig.imap.authTimeout,
+            },
+            smtp: {
+                host: smtpConfig.host,
+                port: smtpConfig.port,
+                secure: smtpConfig.secure,
+                auth: {
+                    user: smtpConfig.auth.user,
+                },
+            },
+        };
+
+        const { error: dbError } = await supabase
+            .from('user_credentials')
+            .upsert({
+                user_id: user.id,
+                provider: 'custom_email',
+                config: configPayload,
+                encrypted_password: encryptedData,
+                access_token: null, 
+                refresh_token: null,
+                expires_at: null,
+            }, {
+                onConflict: 'user_id, provider'
+            });
+
+        if (dbError) throw dbError;
+
+        revalidatePath('/settings/integrations');
+        return { success: true, message: "Compte de correu connectat correctament!" };
+
+    } catch (error) {
+        return { success: false, message: `Error en el procés de connexió: ${(error as Error).message}` };
+    }
+}
+
+
+
+
 // --- ACCIONS DE DESCONNEXIÓ (REFATORITZADES) ---
 
 async function handleDisconnect(provider: string) {
@@ -108,3 +236,8 @@ export async function disconnectGoogleAction() { return await handleDisconnect('
 export async function disconnectMicrosoftAction() { return await handleDisconnect('microsoft'); }
 export async function disconnectLinkedInAction() { return await handleDisconnect('linkedin'); }
 export async function disconnectFacebookAction() { return await handleDisconnect('facebook'); }
+// Actualitzem handleDisconnect per incloure 'custom_email'
+export async function disconnectCustomEmailAction() {
+    return await handleDisconnect('custom_email');
+}
+
