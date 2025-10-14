@@ -23,6 +23,8 @@ import { updateSimpleTask } from '@/app/actions/tasks/actions'; // Assegura't qu
 import { Tables } from "@/types/supabase";
 // import { Button } from "react-day-picker";
 import { Button } from "@/components/ui/button"; // Update this import to your UI library's Button
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const MONTHLY_GOAL = 50_000;
 
@@ -73,6 +75,7 @@ export function DashboardClient({
   const [taskFilter, setTaskFilter] = useState<TaskFilterStatus>('pendents');
   const [departmentFilter, setDepartmentFilter] = useState<number | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState(''); // Estat per a la cerca
+  const [showAllTeamTasks, setShowAllTeamTasks] = useState(false); // ✅ NOU ESTAT per veure totes les tasques
 
   // ✅ Pas 2: Afegim aquest useEffect.
   // Aquest hook s'executarà cada cop que les dades del servidor (initialData) canviïn.
@@ -83,9 +86,17 @@ export function DashboardClient({
 
   // useMemo per a comptadors i filtres (no canvia)
   // ✅ Comptadors per a cada estat, incloent "assignades"
-  const pendingCount = useMemo(() => tasks.filter(t => !t.is_completed).length, [tasks]);
-  const assignedCount = useMemo(() => tasks.filter(t => t.user_asign_id === userId && !t.is_completed).length, [tasks, userId]);
-  const completedCount = useMemo(() => tasks.filter(t => t.is_completed).length, [tasks]);
+  const pendingCount = useMemo(() => tasks.filter(t => !t.is_completed && !t.user_asign_id).length, [tasks]);
+  const assignedCount = useMemo(() => {
+    const baseFilter = (t: EnrichedTask) => t.user_asign_id !== null && !t.is_completed;
+    if (showAllTeamTasks) return tasks.filter(baseFilter).length;
+    return tasks.filter(t => baseFilter(t) && t.user_asign_id === userId).length;
+  }, [tasks, userId, showAllTeamTasks]);
+  const completedCount = useMemo(() => {
+    const baseFilter = (t: EnrichedTask) => t.is_completed;
+    if (showAllTeamTasks) return tasks.filter(baseFilter).length;
+    return tasks.filter(t => baseFilter(t) && t.user_asign_id === userId).length;
+  }, [tasks, userId, showAllTeamTasks]);
 
   // ✅ NOVA FUNCIÓ per a gestionar el canvi d'estat amb actualització optimista
   const handleToggleTask = useCallback((taskId: number, currentStatus: boolean) => {
@@ -109,11 +120,17 @@ export function DashboardClient({
 
     // 1. Filtre per estat (pendents, assignades, completes)
     if (taskFilter === 'pendents') {
-      result = result.filter(t => !t.is_completed);
+      result = result.filter(t => !t.is_completed && !t.user_asign_id);
     } else if (taskFilter === 'assignades') {
-      result = result.filter(t => t.user_asign_id === userId && !t.is_completed);
+      result = result.filter(t => t.user_asign_id !== null && !t.is_completed);
+      if (!showAllTeamTasks) {
+        result = result.filter(t => t.user_asign_id === userId);
+      }
     } else { // completes
       result = result.filter(t => t.is_completed);
+      if (!showAllTeamTasks) {
+        result = result.filter(t => t.user_asign_id === userId);
+      }
     }
 
     // 2. Filtre per departament
@@ -129,7 +146,7 @@ export function DashboardClient({
     }
 
     return result;
-  }, [tasks, taskFilter, departmentFilter, searchTerm, userId]);
+  }, [tasks, taskFilter, departmentFilter, searchTerm, userId, showAllTeamTasks]);
 
   // ✅ SOLUCIÓ: Aquí centralitzem tota la lògica post-mutació.
   const handleTaskMutation = useCallback(() => {
@@ -172,10 +189,16 @@ export function DashboardClient({
           // i que el seu contingut es pugui organitzar verticalment.
           className="lg:col-span-2 h-full flex flex-col"
           actions={
-            <Button variant="ghost" size="sm" onClick={openNewTaskDialog}>
-              <Plus className="w-4 h-4 mr-2" />
-              {t('agenda.newTask')}
-            </Button>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
+                <Label htmlFor="show-all-tasks" className="text-xs font-normal cursor-pointer">{t('agenda.viewAll')}</Label>
+              </div>
+              <Button variant="ghost" size="sm" onClick={openNewTaskDialog}>
+                <Plus className="w-4 h-4 mr-2" />
+                {t('agenda.newTask')}
+              </Button>
+            </div>
           }
         >
           <Agenda
