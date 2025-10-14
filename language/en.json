@@ -24,6 +24,7 @@
     "quotes": "Quotes",
     "concepts": "Concepts",
     "activities": "Activities",
+    "calendar": "Calendar",
     "invoicing": "Invoicing",
     "expenses": "Expenses",
     "inbox": "Inbox",
@@ -271,6 +272,22 @@
     "deletedContact": "Contact deleted",
     "noActivities": "No activities have been recorded yet.",
     "dateFormat": "d MMM yyyy 'at' HH:mm"
+  },
+  "Calendar": {
+    "allDay": "All day",
+    "previous": "Back",
+    "next": "Next",
+    "today": "Today",
+    "month": "Month",
+    "week": "Week",
+    "day": "Day",
+    "agenda": "Agenda",
+    "date": "Date",
+    "time": "Time",
+    "event": "Event",
+    "noEventsInRange": "There are no events in this range.",
+    "more": "more",
+    "newTask": "New Task"
   },
   "ContactsClient": {
     "contactStatuses": {
@@ -797,7 +814,7 @@
       "selectTeamMemberPlaceholder": "Select a team member",
       "noTeamMembersFound": "No team members found",
       "durationPlaceholder": "Hours (ex: 1.5)",
-      "dptPlaceholder" : "Select a department",
+      "dptPlaceholder": "Select a department",
       "priority": {
         "baixa": "Low",
         "mitjana": "Medium",
