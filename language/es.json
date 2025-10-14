@@ -24,6 +24,7 @@
     "quotes": "Presupuestos",
     "concepts": "Conceptos",
     "activities": "Actividades",
+    "calendar": "Calendario",
     "invoicing": "Facturación",
     "expenses": "Gastos",
     "inbox": "Bandeja de Entrada",
@@ -266,6 +267,22 @@
     "deletedContact": "Contacto eliminado",
     "noActivities": "No hay ninguna actividad registrada todavía.",
     "dateFormat": "d MMM yyyy 'a las' HH:mm"
+  },
+  "Calendar": {
+    "allDay": "Todo el día",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "today": "Hoy",
+    "month": "Mes",
+    "week": "Semana",
+    "day": "Día",
+    "agenda": "Agenda",
+    "date": "Fecha",
+    "time": "Hora",
+    "event": "Evento",
+    "noEventsInRange": "No hay eventos en este rango.",
+    "more": "más",
+    "newTask": "Nueva Tarea"
   },
   "ContactsClient": {
     "contactStatuses": {
@@ -792,7 +809,7 @@
       "selectTeamMemberPlaceholder": "Selecciona un miembro del equipo",
       "noTeamMembersFound": "No se han encontrado miembros en el equipo",
       "durationPlaceholder": "Horas (ex: 1.5)",
-      "dptPlaceholder" : "Selecciona un departamento",
+      "dptPlaceholder": "Selecciona un departamento",
       "priority": {
         "baixa": "Baja",
         "mitjana": "Media",

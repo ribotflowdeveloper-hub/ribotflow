@@ -24,6 +24,7 @@
     "quotes": "Pressupostos",
     "concepts": "Conceptes",
     "activities": "Activitats",
+    "calendar": "Calendari",
     "invoicing": "Facturació",
     "expenses": "Despeses",
     "inbox": "Safata d'Entrada",
@@ -272,6 +273,22 @@
     "deletedContact": "Contacte esborrat",
     "noActivities": "No hi ha cap activitat registrada encara.",
     "dateFormat": "d MMM yyyy 'a les' HH:mm"
+  },
+  "Calendar": {
+    "allDay": "Tot el dia",
+    "previous": "Anterior",
+    "next": "Següent",
+    "today": "Avui",
+    "month": "Mes",
+    "week": "Setmana",
+    "day": "Dia",
+    "agenda": "Agenda",
+    "date": "Data",
+    "time": "Hora",
+    "event": "Esdeveniment",
+    "noEventsInRange": "No hi ha esdeveniments en aquest rang.",
+    "more": "més",
+    "newTask": "Nova Tasca"
   },
   "ContactsClient": {
     "contactStatuses": {
@@ -798,7 +815,7 @@
       "selectTeamMemberPlaceholder": "Selecciona un membre de l'equip",
       "noTeamMembersFound": "No s'han trobat membres a l'equip",
       "durationPlaceholder": "Hores (ex: 1.5)",
-      "dptPlaceholder" : "Selecciona un departament",
+      "dptPlaceholder": "Selecciona un departament",
       "priority": {
         "baixa": "Baixa",
         "mitjana": "Mitjana",
