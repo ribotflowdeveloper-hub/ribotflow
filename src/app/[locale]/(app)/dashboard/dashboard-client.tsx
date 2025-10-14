@@ -48,10 +48,12 @@ interface DashboardClientProps {
     attentionContacts: Tables<'contacts'>[];
     notifications: Tables<'notifications'>[];
   };
+  teamMembers: Tables<'team_members_with_profiles'>[]; // ✅ NOU: Llista de membres de l'equip des de la vista
   children: React.ReactNode;
 }
 export function DashboardClient({
   initialData,
+  teamMembers = [], // ✅ Afegim un valor per defecte per evitar errors
   children,
 }: DashboardClientProps) {
   
@@ -136,8 +138,19 @@ export function DashboardClient({
         </div>
       </div>
 
-      <TaskDetailDialog task={viewingTask} open={!!viewingTask} onOpenChange={(isOpen) => !isOpen && setViewingTask(null)} onToggleTask={handleToggleTask} onDeleteTask={deleteTask} />
-      <AddTaskDialog open={isTaskDialogOpen} onOpenChange={setTaskDialogOpen} contacts={initialData.contacts} departments={initialData.departments} onTaskCreated={() => router.refresh()} />
+      <TaskDetailDialog 
+        task={viewingTask} 
+        open={!!viewingTask} 
+        onOpenChange={(isOpen) => !isOpen && setViewingTask(null)} 
+        onToggleTask={handleToggleTask} 
+        onDeleteTask={deleteTask}
+        contacts={initialData.contacts}
+        departments={initialData.departments}
+        teamMembers={teamMembers}
+      />
+      <AddTaskDialog open={isTaskDialogOpen} onOpenChange={setTaskDialogOpen} contacts={initialData.contacts} teamMembers={teamMembers} departments={initialData.departments} onTaskCreated={() => {
+        router.refresh();
+      }} />
     </div>
   );
 }

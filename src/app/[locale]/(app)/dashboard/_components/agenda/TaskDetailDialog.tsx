@@ -20,8 +20,10 @@ interface TaskDetailDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onToggleTask: (taskId: number, currentStatus: boolean) => void;
-    onDeleteTask: (taskId: number) => void; // ✅ Prop per a l'eliminació
-
+    onDeleteTask: (taskId: number) => void;
+    contacts: Tables<'contacts'>[];
+    departments: Tables<'departments'>[];
+    teamMembers: Tables<'team_members_with_profiles'>[];
 }
 
 const priorityStyles: Record<TaskPriority, string> = {
@@ -32,6 +34,8 @@ const priorityStyles: Record<TaskPriority, string> = {
 
 export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask, onDeleteTask }: TaskDetailDialogProps) {
     const t = useTranslations('DashboardClient.taskActions');
+    const t2 = useTranslations('DashboardClient.taskDetails');
+    
     if (!task) return null;
 
    const handleToggle = () => {
@@ -64,13 +68,13 @@ export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask, onDel
                         {task.due_date && (
                             <div className="flex items-center gap-3">
                                 <Calendar className="w-4 h-4 text-muted-foreground" />
-                                <span>Data límit: <strong>{format(new Date(task.due_date), "d 'de' MMMM 'de' yyyy", { locale: es })}</strong></span>
+                                <span>{t2('limitDay')} <strong>{format(new Date(task.due_date), "d 'de' MMMM 'de' yyyy", { locale: es })}</strong></span>
                             </div>
                         )}
                         {task.contacts && (
                             <div className="flex items-center gap-3">
                                 <User className="w-4 h-4 text-muted-foreground" />
-                                <span>Assignada a: <strong>{task.contacts.nom}</strong></span>
+                                <span>{t2('assignedTo')} <strong>{task.contacts.nom}</strong></span>
                             </div>
                         )}
                     </div>
@@ -90,7 +94,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask, onDel
                                 <AlertDialogDescription>{t('deleteConfirmDescription')}</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
+                                <AlertDialogCancel>{t2('cancelButton')}</AlertDialogCancel>
                                 <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                     {t('deleteConfirmAction')}
                                 </AlertDialogAction>
@@ -102,12 +106,12 @@ export function TaskDetailDialog({ task, open, onOpenChange, onToggleTask, onDel
                     {task.is_completed ? (
                         <Button variant="outline" onClick={handleToggle} className="w-full sm:w-auto">
                             <RotateCcw className="w-4 h-4 mr-2" />
-                            Marcar com a Pendent
+                            {t2('markAsPendingButton')}
                         </Button>
                     ) : (
                         <Button onClick={handleToggle} className="w-full sm:w-auto">
                             <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Marcar com a Completada
+                            {t2('markAsCompletedButton')}
                         </Button>
                     )}
                 </DialogFooter>

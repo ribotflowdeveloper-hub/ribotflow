@@ -1,9 +1,10 @@
 'use server';
 
 import { createClient } from "@/lib/supabase/server";
-import { getActiveTeam } from "@/lib/supabase/teams"; // ✅ 1. Importem la nostra funció per obtenir l'equip
+import { validateUserSession } from "@/lib/supabase/session";
 import { revalidatePath } from "next/cache";
 import { NewTaskPayload } from "@/types/dashboard/types"; // ✅ Importem el nostre tipus centralitzat   
+import { Tables } from "@/types/supabase";
 
 export async function addTask(taskData: NewTaskPayload) {
   const supabase = createClient();
@@ -13,18 +14,16 @@ export async function addTask(taskData: NewTaskPayload) {
     return { error: { message: "Not authenticated" } };
   }
 
-  // ✅ 2. Obtenim l'equip actiu de l'usuari
-  const team = await getActiveTeam();
-  if (!team) {
-    return { error: { message: "Active team not found" } };
-  }
+  const session = await validateUserSession();
+  if ('error' in session) return { error: session.error };
+  const { activeTeamId } = session;
 
   const { error } = await supabase
     .from('tasks')
     .insert([{ 
         ...taskData,
         user_id: user.id,
-        team_id: team.id, // ✅ 3. Afegim l'ID de l'equip a l'objecte que inserim
+        team_id: activeTeamId,
     }]);
 
   if (error) {
@@ -65,23 +64,21 @@ export async function deleteTask(taskId: number) {
 export async function addDepartment(name: string) {
   const supabase = createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: { message: "No autenticat" } };
-
-  const team = await getActiveTeam();
-  if (!team) return { error: { message: "Equip actiu no trobat" } };
+  const session = await validateUserSession();
+  if ('error' in session) return { error: session.error };
+  const { activeTeamId } = session;
 
   // Intentem inserir el nou departament i retornem la fila creada
   const { data, error } = await supabase
     .from('departments')
-    .insert({ name, team_id: team.id })
+    .insert({ name, team_id: activeTeamId })
     .select()
     .single(); // .single() és clau per obtenir l'objecte creat
 
   if (error) {
     console.error('Error en crear el departament:', error);
     // Gestionem errors de duplicitat d'una manera més amigable
-    if (error.code === '23505') { // Codi d'error per a violació de clau única
+    if (error.code === '23505') {
       return { error: { message: `El departament "${name}" ja existeix.` } };
     }
     return { error };
@@ -89,4 +86,21 @@ export async function addDepartment(name: string) {
 
   revalidatePath('/dashboard'); // Assegurem que les dades del servidor es refresquin
   return { data };
+}
+
+// ✅ NOVA ACCIÓ PER ACTUALITZAR UNA TASCA
+export async function updateTaskAction(taskId: number, updatedData: Partial<Tables<'tasks'>>) {
+    const session = await validateUserSession();
+    if ('error' in session) return { error: session.error };
+    const { supabase } = session;
+
+    const { error } = await supabase
+        .from('tasks')
+        .update(updatedData)
+        .eq('id', taskId);
+
+    if (error) return { error };
+
+    revalidatePath('/dashboard');
+    return { error: null };
 }

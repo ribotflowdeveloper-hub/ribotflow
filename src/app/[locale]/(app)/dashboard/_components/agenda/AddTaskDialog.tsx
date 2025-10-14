@@ -12,7 +12,7 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList, CommandE
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
-import { Check, ChevronsUpDown, ListTodo, User, Calendar as CalendarIcon, Flag, AlignLeft, PlusCircle } from "lucide-react";
+import { Check, ChevronsUpDown, ListTodo, User, Calendar as CalendarIcon, Flag, AlignLeft, PlusCircle, Clock, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils/utils";
 import { useTranslations } from "next-intl";
 import { useAddTask } from "../../_hooks/useAddTask";
@@ -29,6 +29,7 @@ interface AddTaskDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   contacts: Tables<"contacts">[];
+  teamMembers: Tables<"team_members_with_profiles">[]; // ✅ CORRECCIÓ: Utilitzem la vista de la BBDD
   onTaskCreated?: () => void;
   departments: Tables<'departments'>[];
 
@@ -38,6 +39,7 @@ export default function AddTaskDialog({
   open,
   onOpenChange,
   contacts,
+  teamMembers, // ✅ NOU
   onTaskCreated,
   departments, // ✅ CORRECCIÓ: Afegeix 'departments' aquí
 
@@ -50,8 +52,12 @@ export default function AddTaskDialog({
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [priority, setPriority] = useState<TaskPriority | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [duration, setDuration] = useState<string>(""); // Estat per a la duració
   const [departmentId, setDepartmentId] = useState<number | null>(null);
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(null); // Estat per a l'usuari assignat
 
+  // Estats per al nou cercador de membres d'equip
+  const [teamMemberComboboxOpen, setTeamMemberComboboxOpen] = useState(false);
 
   // ✅ NOU: Estat local per a la llista de departaments (per a actualització optimista)
   const [localDepartments, setLocalDepartments] = useState(departments);
@@ -67,7 +73,7 @@ export default function AddTaskDialog({
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      setTitle(""); setDescription(""); setDueDate(undefined); setPriority(null); setSelectedContact(null);
+      setTitle(""); setDescription(""); setDueDate(undefined); setPriority(null); setSelectedContact(null); setDuration(""); setAssignedUserId(null);
     }
     onOpenChange?.(isOpen);
   };
@@ -80,7 +86,12 @@ export default function AddTaskDialog({
       due_date: dueDate ? dueDate.toISOString() : null,
       priority,
       department_id: departmentId,
-
+      duration: duration ? parseFloat(duration) : null,
+      user_asign_id: assignedUserId, // ✅ CORRECCIÓ: Nom de columna correcte
+      asigned_date: assignedUserId ? new Date().toISOString() : null, // ✅ CORRECCIÓ: Nom de columna correcte
+      // assigned_user_id: assignedUserId,
+      // assignment_date: assignmentDate ? assignmentDate.toISOString() : null,
+      // duration_hours: duration ? parseFloat(duration) : null, // Descomentar quan el camp existeixi a la BBDD
     };
     addTask(taskData);
     handleOpenChange(false);
@@ -106,7 +117,7 @@ export default function AddTaskDialog({
   };
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">{t("title")}</DialogTitle>
           <DialogDescription>{t("description")}</DialogDescription>
@@ -124,7 +135,7 @@ export default function AddTaskDialog({
             <Label>Departament</Label>
             <Select onValueChange={(value) => setDepartmentId(Number(value))}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecciona un departament" />
+                <SelectValue placeholder={t("dptPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {localDepartments.map(dep => (
@@ -142,7 +153,7 @@ export default function AddTaskDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label className="flex items-center gap-2"><CalendarIcon className="w-4 h-4" />{t("dueDateLabel")}</Label>
               <Popover>
@@ -165,6 +176,10 @@ export default function AddTaskDialog({
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2 text-sm font-normal"><Clock className="w-4 h-4" />{t("durationLabel")}</Label>
+              <Input id="duration" type="number" placeholder={t("durationPlaceholder")} value={duration} onChange={(e) => setDuration(e.target.value)} />
+            </div>
           </div>
           <div className="space-y-2">
             <Label className="flex items-center gap-2"><User className="w-4 h-4" /> {t("assignContactLabel")}</Label>
@@ -185,6 +200,33 @@ export default function AddTaskDialog({
                         <CommandItem key={contact.id} value={contact.nom} onSelect={() => { setSelectedContact(contact); setComboboxOpen(false); }}>
                           <Check className={cn("mr-2 h-4 w-4", selectedContact?.id === contact.id ? "opacity-100" : "opacity-0")} />
                           {contact.nom}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2 text-sm font-normal text-muted-foreground"><UserCheck className="w-4 h-4" />{t("assignedUserLabel")}</Label>
+            <Popover open={teamMemberComboboxOpen} onOpenChange={setTeamMemberComboboxOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                  {assignedUserId ? teamMembers.find(member => member.user_id === assignedUserId)?.full_name : t("selectTeamMemberPlaceholder")}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                  <CommandInput placeholder={t("searchContactPlaceholder")} />
+                  <CommandList>
+                    <CommandEmpty>{t("noTeamMembersFound")}</CommandEmpty>
+                    <CommandGroup>
+                      {teamMembers.map((member) => (member.user_id && member.full_name &&
+                        <CommandItem key={member.user_id} value={member.full_name} onSelect={() => { setAssignedUserId(member.user_id); setTeamMemberComboboxOpen(false); }}>
+                          <Check className={cn("mr-2 h-4 w-4", member.user_id === assignedUserId ? "opacity-100" : "opacity-0")} />
+                          {member.full_name}
                         </CommandItem>
                       ))}
                     </CommandGroup>

@@ -42,7 +42,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     // Tipem el client de Supabase (ara funciona perquè hem importat SupabaseClient)
     const typedSupabase = supabase as SupabaseClient<Database>;
 
-    const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes,  departmentsRes] = await Promise.all([
+    const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes, departmentsRes, teamMembersRes] = await Promise.all([
         typedSupabase.rpc('get_dashboard_stats'),
         // Fem les consultes utilitzant l'ID de l'equip que hem obtingut
         // ✅ CORRECCIÓ: Fem un "join" per obtenir el nom del contacte associat a cada tasca
@@ -51,7 +51,8 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             .order('is_completed, created_at'), typedSupabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
         typedSupabase.from('contacts').select('*').eq('team_id', team.id).order('created_at', { ascending: false }),
         typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
-        typedSupabase.from('departments').select('*').eq('team_id', team.id)
+        typedSupabase.from('departments').select('*').eq('team_id', team.id),
+        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id) // ✅ AFEGIM LA CONSULTA DELS MEMBRES DE L'EQUIP
 
     ]);
 
@@ -71,6 +72,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     const tasksData: TaskWithContact[] = tasksRes.data ?? [];
     const contactsData: Tables<'contacts'>[] = contactsRes.data ?? [];
     const notificationsData: Tables<'notifications'>[] = notificationsRes.data ?? [];
+    const teamMembersData: Tables<'team_members_with_profiles'>[] = teamMembersRes.data ?? []; // ✅ PROCESSEM LES DADES DELS MEMBRES
 
     const overdueInvoicesData: (Tables<'invoices'> & { contacts: { nom: string } | null })[] = overdueInvoicesRes.data ?? [];
 
@@ -103,7 +105,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     };
 
     return (
-        <DashboardClient initialData={initialData}>
+        <DashboardClient initialData={initialData} teamMembers={teamMembersData}>
             {children}
         </DashboardClient>
     );
