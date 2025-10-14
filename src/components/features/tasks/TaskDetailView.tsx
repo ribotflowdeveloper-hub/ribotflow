@@ -10,7 +10,6 @@ import { es } from "date-fns/locale";
 import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Contact, Building } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTranslations } from "next-intl";
-// ✅ CORRECCIÓ: Importem 'deleteTask' i la nova 'updateSimpleTask' des del lloc correcte.
 import { deleteTask, updateSimpleTask } from '@/app/actions/tasks/actions';
 import { toast } from 'sonner';
 import { priorityStyles, TaskPriority } from '@/config/styles/task';
@@ -42,8 +41,13 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
     const t2 = useTranslations('DashboardClient.taskDetails');
 
     const handleToggle = async () => {
-        // ✅ CORRECCIÓ: Cridem a la nova funció 'updateSimpleTask'.
-        const { error } = await updateSimpleTask(task.id, { is_completed: !task.is_completed });
+        const isCompleting = !task.is_completed;
+        const updateData = {
+            is_completed: isCompleting,
+            finish_date: isCompleting ? new Date().toISOString() : null,
+        };
+
+        const { error } = await updateSimpleTask(task.id, updateData);
         if (error) {
             toast.error(t('toast.errorTitle'), { description: "No s'ha pogut actualitzar la tasca." });
         } else {

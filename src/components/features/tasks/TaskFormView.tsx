@@ -1,18 +1,24 @@
 'use client';
 
-import { useActionState, useEffect, useRef, useTransition } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import { DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Calendar } from '@/components/ui/calendar';
 import { useFormStatus } from 'react-dom';
 import { createTask, updateTask } from '@/app/actions/tasks/actions';
 import { EnrichedTask } from './TaskDialogManager';
 import { toast } from 'sonner';
 import { Tables } from '@/types/supabase';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, AlignLeft, Calendar as CalendarIcon, Flag, ListTodo, User, Check, ChevronsUpDown, Building, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils/utils'; // Assegura't que la ruta a 'cn' és correcta
 
 interface TaskFormViewProps {
     task: EnrichedTask | null;
@@ -24,14 +30,13 @@ interface TaskFormViewProps {
     initialDate?: Date;
 }
 
+// El component dels botons del peu de pàgina es manté igual,
+// ja que utilitza 'useFormStatus' correctament.
 function FormActions({ isEditing, onSetViewMode }: { isEditing: boolean, onSetViewMode: () => void }) {
     const { pending } = useFormStatus();
 
-    // DEBUG: Mostrem l'estat de 'pending' a cada renderització dels botons
-    console.log(`[TaskFormView - FormActions] Renderitzant botons. Pendent: ${pending}`);
-
     return (
-        <DialogFooter className="sm:justify-between mt-4">
+        <DialogFooter className="sm:justify-between mt-4 pt-4 border-t">
             <div>
                 {isEditing && (
                     <Button type="button" variant="ghost" onClick={onSetViewMode} disabled={pending}>
@@ -54,108 +59,197 @@ function FormActions({ isEditing, onSetViewMode }: { isEditing: boolean, onSetVi
     );
 }
 
-
+// Component principal del formulari amb el nou disseny
 export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, departments, teamMembers, initialDate }: TaskFormViewProps) {
-    const formRef = useRef<HTMLFormElement>(null);
     const action = task ? updateTask : createTask;
     const [state, formAction] = useActionState(action, { success: undefined, error: undefined });
-    const [, startTransition] = useTransition();
+    
+    // --- Estats locals per als components interactius de la UI ---
+    
+    // Estat per al calendari
+    const getInitialDate = () => {
+        return initialDate || (task?.due_date ? new Date(task.due_date) : new Date());
+    };
+    const [dueDate, setDueDate] = useState<Date | undefined>(getInitialDate());
 
-    // DEBUG: Mostrem l'estat que rebem de la Server Action
-    console.log("[TaskFormView] Estat actual de l'acció:", state);
+    // Estat per al combobox de contactes
+    const [contactComboboxOpen, setContactComboboxOpen] = useState(false);
+    const [selectedContactId, setSelectedContactId] = useState<string | null>(task?.contact_id?.toString() ?? null);
 
+    // Estat per al combobox de membres d'equip
+    const [teamMemberComboboxOpen, setTeamMemberComboboxOpen] = useState(false);
+    const [assignedUserId, setAssignedUserId] = useState<string | null>(task?.user_asign_id ?? null);
+    
+    // --- Efecte per gestionar la resposta de la Server Action ---
     useEffect(() => {
         if (state?.success) {
             toast.success(task ? 'Tasca actualitzada!' : 'Tasca creada!');
-            // ✅ SOLUCIÓ: Ara només cridem a 'onTaskMutation'.
-            // El pare s'encarregarà de refrescar I de tancar.
-            startTransition(() => {
-                onTaskMutation();
-            });
+            onTaskMutation(); // El component pare tancarà el diàleg i refrescarà les dades
         }
         if (state?.error) {
-            console.error("❌ [TaskFormView] ERROR DETECTAT:", state.error);
             const errorValues = Object.values(state.error).flat().join('\n');
             toast.error('Hi ha hagut un error', { description: errorValues });
         }
-    }, [state, task, onTaskMutation, startTransition]);
-
-    const getInitialDateValue = () => {
-        const dateToFormat = initialDate || (task?.due_date ? new Date(task.due_date) : new Date());
-        const offset = dateToFormat.getTimezoneOffset();
-        const localDate = new Date(dateToFormat.getTime() - (offset * 60 * 1000));
-        return localDate.toISOString().slice(0, 16);
-    };
-
+    }, [state, task, onTaskMutation]);
+    
     return (
         <>
             <DialogHeader>
-                <DialogTitle>{task ? 'Editar Tasca' : 'Crear Nova Tasca'}</DialogTitle>
+                <DialogTitle className="text-2xl">{task ? 'Editar Tasca' : 'Crear Nova Tasca'}</DialogTitle>
             </DialogHeader>
 
-            <form ref={formRef} action={formAction}>
+            <form action={formAction}>
                 {task && <input type="hidden" name="taskId" value={task.id} />}
+                
+                {/* Inputs ocults per enviar els valors dels components de UI a la Server Action */}
 
-                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
-                    {/* ... Tots els camps del formulari (Inputs, Selects, etc.) es mantenen igual ... */}
+                <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
+                    {/* Títol */}
                     <div className="space-y-2">
-                        <Label htmlFor="title">Títol</Label>
-                        <Input id="title" name="title" defaultValue={task?.title ?? ''} required />
+                        <Label htmlFor="title" className="flex items-center gap-2"><ListTodo className="w-4 h-4" />Títol</Label>
+                        <Input id="title" name="title" defaultValue={task?.title ?? ''} placeholder="Ex: Preparar informe trimestral" required />
                     </div>
+
+                    {/* Descripció */}
                     <div className="space-y-2">
-                        <Label htmlFor="description">Descripció</Label>
-                        <Textarea id="description" name="description" defaultValue={task?.description ?? ''} />
+                        <Label htmlFor="description" className="flex items-center gap-2"><AlignLeft className="w-4 h-4" />Descripció</Label>
+                        <Textarea id="description" name="description" defaultValue={task?.description ?? ''} placeholder="Afegeix més detalls sobre la tasca..." rows={4} />
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="due_date">Data de venciment</Label>
-                        <Input id="due_date" name="due_date" type="datetime-local" defaultValue={getInitialDateValue()} required />
+                    
+                    {/* Fields in a grid - NOW 3 COLUMNS */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {/* Data de venciment */}
+                        <div className="space-y-2">
+                            <input type="hidden" name="due_date" value={dueDate ? dueDate.toISOString() : ''} />
+                            <Label className="flex items-center gap-2"><CalendarIcon className="w-4 h-4" />Data de venciment</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>
+                                        {dueDate ? format(dueDate, "PPP", { locale: es }) : <span>Selecciona una data</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus /></PopoverContent>
+                            </Popover>
+                        </div>
+
+                        {/* Prioritat */}
+                        <div className="space-y-2">
+                            <Label htmlFor="priority" className="flex items-center gap-2"><Flag className="w-4 h-4" />Prioritat</Label>
+                            <Select name="priority" defaultValue={task?.priority ?? 'Mitjana'}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona una prioritat" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Baixa">Baixa</SelectItem>
+                                    <SelectItem value="Mitjana">Mitjana</SelectItem>
+                                    <SelectItem value="Alta">Alta</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* Duració */}
+                        <div className="space-y-2">
+                            <Label htmlFor="duration" className="flex items-center gap-2"><Clock className="w-4 h-4" />Duració</Label>
+                            <Input id="duration" name="duration" type="number" step="0.01" placeholder="Hores (ex: 1.25)" defaultValue={task?.duration ?? ''} />
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="priority">Prioritat</Label>
-                        <Select name="priority" defaultValue={task?.priority ?? 'Mitjana'}>
-                            <SelectTrigger><SelectValue placeholder="Selecciona una prioritat" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Baixa">Baixa</SelectItem>
-                                <SelectItem value="Mitjana">Mitjana</SelectItem>
-                                <SelectItem value="Alta">Alta</SelectItem>
-                            </SelectContent>
-                        </Select>
+
+                    {/* Assignar a & Data d'assignació - 2 Column Grid */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-2 space-y-2">
+                            <input type="hidden" name="user_asign_id" value={assignedUserId ?? 'none'} />
+                            <Label className="flex items-center gap-2"><User className="w-4 h-4" />Assignar a</Label>
+                            <Popover open={teamMemberComboboxOpen} onOpenChange={setTeamMemberComboboxOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                        {assignedUserId ? teamMembers.find(m => m.id === assignedUserId)?.full_name : "Selecciona un membre"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Cercar membre..." />
+                                        <CommandList>
+                                            <CommandEmpty>No s'ha trobat cap membre.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setAssignedUserId(null); setTeamMemberComboboxOpen(false); }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", !assignedUserId ? "opacity-100" : "opacity-0")} />
+                                                    Sense assignar
+                                                </CommandItem>
+                                                {teamMembers.map((user) => (
+                                                    <CommandItem key={user.id} value={user.full_name ?? ''} onSelect={() => { setAssignedUserId(user.id); setTeamMemberComboboxOpen(false); }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", assignedUserId === user.id ? "opacity-100" : "opacity-0")} />
+                                                        {user.full_name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+                        <div className="col-span-1 space-y-2">
+                            <Label htmlFor="assignment_date" className="flex items-center gap-2"><CalendarIcon className="w-4 h-4" />Data assignació</Label>
+                            <Input
+                                id="assignment_date"
+                                name="assignment_date"
+                                type="text"
+                                value={task?.asigned_date ? format(new Date(task.asigned_date), "dd/MM/yyyy") : '-'}
+                                readOnly
+                                className="bg-muted/50 cursor-not-allowed"
+                            />
+                        </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="user_asign_id">Assignar a</Label>
-                        <Select name="user_asign_id" defaultValue={task?.user_asign_id ?? 'none'}>
-                            <SelectTrigger><SelectValue placeholder="Selecciona un membre" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Sense assignar</SelectItem>
-                                {teamMembers.map(user => (<SelectItem key={user.id} value={user.id}>{user.full_name}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="contact_id">Contacte associat</Label>
-                        <Select name="contact_id" defaultValue={task?.contact_id?.toString() ?? 'none'}>
-                            <SelectTrigger><SelectValue placeholder="Selecciona un contacte" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Cap</SelectItem>
-                                {contacts.map(contact => (<SelectItem key={contact.id} value={contact.id.toString()}>{contact.nom}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="department_id">Departament</Label>
-                        <Select name="department_id" defaultValue={task?.department_id?.toString() ?? 'none'}>
-                            <SelectTrigger><SelectValue placeholder="Selecciona un departament" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">Cap</SelectItem>
-                                {departments.map(dep => (<SelectItem key={dep.id} value={dep.id.toString()}>{dep.name}</SelectItem>))}
-                            </SelectContent>
-                        </Select>
+
+                    {/* Contacte associat & Departament - 50/50 Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Contacte associat */}
+                        <div className="space-y-2">
+                            <input type="hidden" name="contact_id" value={selectedContactId ?? 'none'} />
+                            <Label className="flex items-center gap-2"><User className="w-4 h-4" />Contacte associat</Label>
+                            <Popover open={contactComboboxOpen} onOpenChange={setContactComboboxOpen}>
+                                <PopoverTrigger asChild>
+                                    <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                        {selectedContactId ? contacts.find(c => c.id.toString() === selectedContactId)?.nom : "Selecciona un contacte"}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                    <Command>
+                                        <CommandInput placeholder="Cercar contacte..." />
+                                        <CommandList>
+                                            <CommandEmpty>No s'ha trobat cap contacte.</CommandEmpty>
+                                            <CommandGroup>
+                                                <CommandItem onSelect={() => { setSelectedContactId(null); setContactComboboxOpen(false); }}>
+                                                    <Check className={cn("mr-2 h-4 w-4", !selectedContactId ? "opacity-100" : "opacity-0")} />
+                                                    Cap
+                                                </CommandItem>
+                                                {contacts.map((contact) => (
+                                                    <CommandItem key={contact.id} value={contact.nom ?? ''} onSelect={() => { setSelectedContactId(contact.id.toString()); setContactComboboxOpen(false); }}>
+                                                        <Check className={cn("mr-2 h-4 w-4", selectedContactId === contact.id.toString() ? "opacity-100" : "opacity-0")} />
+                                                        {contact.nom}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        {/* Departament */}
+                        <div className="space-y-2">
+                            <Label htmlFor="department_id" className="flex items-center gap-2"><Building className="w-4 h-4" />Departament</Label>
+                            <Select name="department_id" defaultValue={task?.department_id?.toString() ?? 'none'}>
+                                <SelectTrigger><SelectValue placeholder="Selecciona un departament" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">Cap</SelectItem>
+                                    {departments.map(dep => (<SelectItem key={dep.id} value={dep.id.toString()}>{dep.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
 
                 <FormActions isEditing={!!task} onSetViewMode={onSetViewMode} />
-
-
             </form>
         </>
     );

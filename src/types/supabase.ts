@@ -1605,6 +1605,7 @@ export type Database = {
           title: string
           user_asign_id: string | null
           user_id: string
+          finish_date: string | null
         }
         Insert: {
           asigned_date?: string | null

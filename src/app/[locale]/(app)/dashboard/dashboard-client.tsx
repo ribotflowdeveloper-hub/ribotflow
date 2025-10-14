@@ -236,7 +236,7 @@ export function DashboardClient({
           .filter(m => m.user_id)
           .map(m => ({ id: m.user_id!, full_name: m.full_name }))
         }
-        onTaskMutation={handleTaskMutation}
+        onTaskMutation={handleTaskMutation} // ✅ CORRECCIÓ: Passem la funció de refresc al diàleg
       />
     </div>
   );
