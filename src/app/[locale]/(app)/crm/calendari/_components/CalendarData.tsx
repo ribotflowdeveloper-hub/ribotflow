@@ -12,12 +12,13 @@ export type EnrichedTaskForCalendar = TaskWithAssignee & {
 export default async function CalendarData() {
   const { supabase, activeTeamId } = await validatePageSession();
 
-  // Carreguem TOT el que necessitem en paral·lel
   const [tasksResult, usersResult, contactsResult, departmentsResult] = await Promise.all([
+    // ✅ SOLUCIÓ: Afegim 'avatar_url' a la selecció de 'profiles'.
     supabase
       .from('tasks')
-      .select('*, profiles:user_asign_id (id, full_name), contacts(*), departments(*)')
+      .select('*, profiles:user_asign_id (id, full_name, avatar_url), contacts(*), departments(*)')
       .eq('team_id', activeTeamId),
+    
     supabase
       .from('team_members_with_profiles')
       .select('user_id, full_name')
@@ -39,8 +40,6 @@ export default async function CalendarData() {
     return <CalendarClient initialTasks={[]} teamUsers={[]} contacts={[]} departments={[]} />;
   }
   
-  // ✅ SOLUCIÓ: Canviem 'as any' per 'as unknown as EnrichedTaskForCalendar[]'.
-  // Aquesta és la manera segura de fer una asserció de tipus quan sabem més que el compilador.
   const tasks: EnrichedTaskForCalendar[] = tasksResult.data as unknown as EnrichedTaskForCalendar[];
   const contacts: Tables<'contacts'>[] = contactsResult.data ?? [];
   const departments: Tables<'departments'>[] = departmentsResult.data ?? [];
