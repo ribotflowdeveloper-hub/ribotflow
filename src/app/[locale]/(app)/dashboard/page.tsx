@@ -21,7 +21,7 @@ export default function DashboardPage() {
       {/* ✅ CORRECCIÓ: Passem l'Oracle com a fill (children) de DashboardData */}
       <DashboardData>
         <Suspense fallback={<AIOracleSkeleton />}>
-          <AIOracle />
+          {/* <AIOracle /> */}
         </Suspense>
       </DashboardData>
     </Suspense>
