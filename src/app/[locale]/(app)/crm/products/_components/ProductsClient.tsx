@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/crm/products/_components/ProductsClient.tsx (Refactoritzat)
 "use client";
 
 import React from "react";
@@ -7,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle, List, LayoutGrid, Loader2, FilePlus2, Upload, Download } from "lucide-react";
-import type { Product } from "@/types/crm/products";
+// ✅ 1. Importem el tipus des del seu nou origen.
+import type { Product } from "./ProductsData";
 import { ProductForm } from "./ProductForm";
 import { ProductsTableView } from "./ProductsTableView";
 import { ProductsCardView } from "./ProductsCardView";
 import { useTranslations } from "next-intl";
-import { useProducts } from "../_hooks/useProducts"; // ✅ 1. Importem el nostre nou hook
-
+import { useProducts } from "../_hooks/useProducts";
 import { startTransition } from "react";
 import { toast } from "sonner";
 import { exportToExcel, importFromExcel } from '@/app/[locale]/(app)/excel/actions';
@@ -22,7 +23,7 @@ import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/
 export function ProductsClient({ initialProducts }: { initialProducts: Product[] }) {
     const t = useTranslations('ProductsPage');
     const t2 = useTranslations('excel');
-    // ✅ 2. Tota la lògica i estats venen del hook.
+    
     const {
         isFormOpen, setFormOpen,
         selectedProduct,
@@ -136,7 +137,6 @@ export function ProductsClient({ initialProducts }: { initialProducts: Product[]
                     <h1 className="text-2xl font-bold">{t('title')}</h1>
                     <p className="text-muted-foreground">{t('description')}</p>
                 </div>
-                {/* Contenidor per agrupar els botons d'acció */}
                 <div className="flex items-center gap-2">
                     <ExcelDropdownButton
                         options={excelOptions}
@@ -176,9 +176,9 @@ export function ProductsClient({ initialProducts }: { initialProducts: Product[]
                 {isPending ? (
                     <div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin" /></div>
                 ) : viewMode === 'list' ? (
-                    <ProductsTableView products={filteredProducts} onEdit={handleEdit} onDelete={(id) => handleDelete(Number(id))} />
+                    <ProductsTableView products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
                 ) : (
-                    <ProductsCardView products={filteredProducts} onEdit={handleEdit} onDelete={(id) => handleDelete(Number(id))} />
+                    <ProductsCardView products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
                 )}
             </div>
         </div>

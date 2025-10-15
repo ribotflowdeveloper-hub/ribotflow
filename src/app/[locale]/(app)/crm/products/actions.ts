@@ -1,11 +1,16 @@
+// /app/[locale]/(app)/crm/products/actions.ts (Refactoritzat)
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
-import type { Product } from '@/types/crm/products'; // ✅ Importa el tipus
+import { validateUserSession } from "@/lib/supabase/session";
+// ✅ 1. Importem la definició de la base de dades.
+import { type Database } from '@/types/supabase';
 
-// Esquema de Zod per a validar les dades del formulari.
+// ✅ 2. Definim el tipus Product a partir de la taula corresponent.
+type Product = Database['public']['Tables']['products']['Row'];
+
+// L'esquema de Zod es manté igual, ja que valida les dades entrants del formulari.
 const productSchema = z.object({
     name: z.string().min(3, "El nom ha de tenir almenys 3 caràcters."),
     price: z.coerce.number().positive("El preu ha de ser un número positiu."),
@@ -17,19 +22,14 @@ const productSchema = z.object({
     is_active: z.boolean().default(true),
 });
 
-// ✅ Modifiquem el tipus de retorn per incloure les dades del producte
 export type FormState = {
     success: boolean;
     message: string;
     errors?: Record<string, string[] | undefined>;
-    data?: Product | null; // ✅ AFEGEIX AIXÒ
+    data?: Product | null;
 };
 
-/**
- * Crea un nou producte.
- */
 export async function createProduct(prevState: FormState, formData: FormData): Promise<FormState> {
-    // ✅ 2. Validació centralitzada
     const session = await validateUserSession();
     if ('error' in session) {
         return { success: false, message: session.error.message };
@@ -45,12 +45,11 @@ export async function createProduct(prevState: FormState, formData: FormData): P
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
 
-     // ✅ Modifiquem la inserció per obtenir el producte creat
-     const { data: newProduct, error } = await supabase.from("products").insert({ 
+    const { data: newProduct, error } = await supabase.from("products").insert({ 
         ...validatedFields.data, 
         user_id: user.id, 
         team_id: activeTeamId 
-    }).select().single(); // ✅ AFEGEIX .select().single()
+    }).select().single();
 
     if (error) {
         return { success: false, message: `Error en crear el producte: ${error.message}` };
@@ -60,9 +59,6 @@ export async function createProduct(prevState: FormState, formData: FormData): P
     return { success: true, message: "Producte creat correctament.", data: newProduct };
 }
  
-/**
- * Actualitza un producte existent.
- */
 export async function updateProduct(id: number, prevState: FormState, formData: FormData): Promise<FormState> {
     const session = await validateUserSession();
     if ('error' in session) {
@@ -79,13 +75,12 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
         return { success: false, message: "Errors de validació.", errors: validatedFields.error.flatten().fieldErrors };
     }
     
-    // ✅ Modifiquem l'actualització per obtenir el producte actualitzat
     const { data: updatedProduct, error } = await supabase
         .from("products")
         .update(validatedFields.data)
         .eq("id", id)
-        .select() // ✅ AFEGEIX .select()
-        .single(); // ✅ AFEGEIX .single()
+        .select()
+        .single();
 
     if (error) {
         return { success: false, message: `Error en actualitzar el producte: ${error.message}` };
@@ -93,13 +88,9 @@ export async function updateProduct(id: number, prevState: FormState, formData: 
     
     revalidatePath("/crm/products");
     revalidatePath(`/crm/products/${id}`);
-    // ✅ Retornem el producte actualitzat a la propietat 'data'
     return { success: true, message: "Producte actualitzat correctament.", data: updatedProduct };
 }
 
-/**
- * Elimina un producte.
- */
 export async function deleteProduct(id: number): Promise<FormState> {
     const session = await validateUserSession();
     if ('error' in session) {

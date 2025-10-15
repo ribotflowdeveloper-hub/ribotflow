@@ -1,10 +1,10 @@
-// /app/[locale]/(app)/crm/products/_hooks/useProducts.ts (VERSIÓ FINAL CORREGIDA)
+// /app/[locale]/(app)/crm/products/_hooks/useProducts.ts (Refactoritzat)
 "use client";
 
-// ✅ Importem useCallback
 import { useState, useMemo, useTransition, useCallback } from "react";
 import { toast } from 'sonner';
-import type { Product } from "@/types/crm/products";
+// ✅ 1. Importem el nou tipus des del seu origen correcte.
+import type { Product } from "../_components/ProductsData";
 import { deleteProduct } from "../actions";
 
 type UseProductsProps = {
@@ -33,19 +33,19 @@ export function useProducts({ initialProducts, t }: UseProductsProps) {
             .filter(p => !searchTerm || p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [products, categoryFilter, searchTerm]);
 
-    // ✅ Embolcallem les funcions amb useCallback per estabilitzar-les
     const handleEdit = useCallback((product: Product) => {
         setSelectedProduct(product);
         setFormOpen(true);
-    }, []); // No té dependències, només es crea un cop.
+    }, []);
 
     const handleCreate = useCallback(() => {
         setSelectedProduct(null);
         setFormOpen(true);
-    }, []); // No té dependències, només es crea un cop.
+    }, []);
 
     const handleDelete = useCallback((id: number) => {
         startTransition(async () => {
+            const originalProducts = products;
             setProducts(currentProducts => currentProducts.filter(p => p.id !== id));
             
             const result = await deleteProduct(id);
@@ -53,10 +53,11 @@ export function useProducts({ initialProducts, t }: UseProductsProps) {
                 toast.success(t('toast.success'), { description: result.message });
             } else {
                 toast.error(t('toast.error'), { description: result.message });
-                setProducts(initialProducts); 
+                // ✅ En cas d'error, restaurem l'estat original.
+                setProducts(originalProducts); 
             }
         });
-    }, [t, initialProducts]); // Aquesta funció depèn de 't' i 'initialProducts'.
+    }, [t, products]); // ✅ Afegim 'products' a les dependències.
 
     const handleSuccess = useCallback((updatedOrNewProduct: Product) => {
         setFormOpen(false);
@@ -68,7 +69,7 @@ export function useProducts({ initialProducts, t }: UseProductsProps) {
                 return [updatedOrNewProduct, ...currentProducts];
             }
         });
-    }, []); // No té dependències externes, només les funcions de setState.
+    }, []);
     
     return {
         isFormOpen, setFormOpen,
@@ -83,6 +84,5 @@ export function useProducts({ initialProducts, t }: UseProductsProps) {
         handleCreate,
         handleDelete,
         handleSuccess,
-        t
     };
 }

@@ -1,23 +1,20 @@
+// /app/[locale]/(app)/crm/products/_components/ProductsTableView.tsx (Refactoritzat)
 "use client";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Edit, Trash2 } from "lucide-react";
-import type { Product } from "@/types/crm/products";
+// ✅ 1. Importem el tipus correcte.
+import type { Product } from "./ProductsData";
 import { useTranslations } from "next-intl";
 
-// Propietats que espera el component.
 interface ProductsTableViewProps {
     products: Product[];
     onEdit: (product: Product) => void;
-    onDelete: (id: string) => void;
+    onDelete: (id: number) => void; // ✅ 2. La funció espera un 'number'.
 }
 
-/**
- * Aquest component renderitza la llista de productes en un format de taula clàssic.
- * És un component purament presentacional.
- */
 export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableViewProps) {
     const t = useTranslations('ProductsPage');
     
@@ -52,7 +49,6 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
                                                     <Trash2 className="h-4 w-4 text-destructive" />
                                                 </Button>
                                             </AlertDialogTrigger>
-                                            {/* ✅ Contingut del diàleg de confirmació completat i traduït */}
                                             <AlertDialogContent>
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>{t('deleteDialog.title')}</AlertDialogTitle>
@@ -60,7 +56,8 @@ export function ProductsTableView({ products, onEdit, onDelete }: ProductsTableV
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
                                                     <AlertDialogCancel>{t('deleteDialog.cancelButton')}</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={() => onDelete(product.id.toString())} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                                    {/* ✅ 3. Passem l'ID numèric. */}
+                                                    <AlertDialogAction onClick={() => onDelete(product.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                                         {t('deleteDialog.confirmButton')}
                                                     </AlertDialogAction>
                                                 </AlertDialogFooter>
