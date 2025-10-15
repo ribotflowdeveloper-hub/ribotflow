@@ -13,12 +13,14 @@ export type TaskWithAssignee = Omit<Tables<'tasks'>, 'user_id'> & {
 };
 
 
-// Aquest tipus no canvia.
+// src/types/crm/index.ts (o el teu fitxer de tipus)
+
 export interface CalendarEvent {
-  id: number;
+  id: number | string; // ✅ SOLUCIÓ 1: Ara pot ser un número o un text.
   title: string;
   start: Date;
   end: Date;
   allDay?: boolean;
-  resource: TaskWithAssignee;
+  resource?: unknown; // Use 'unknown' for a safer alternative to 'any'.
+  eventType?: 'task' | 'quote' | 'email' | 'receivedEmail';
 }

@@ -1,6 +1,9 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { EnrichedEmailForCalendar } from './CalendarData';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
 
 interface Props {
   email: EnrichedEmailForCalendar | null;
@@ -11,6 +14,9 @@ interface Props {
 export function EmailDetailDialog({ email, open, onOpenChange }: Props) {
   if (!email) return null;
 
+  // Construïm una URL que l'Inbox podria utilitzar per seleccionar el correu
+  const emailUrl = `/comunicacio/inbox?ticketId=${email.id}`;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -18,12 +24,21 @@ export function EmailDetailDialog({ email, open, onOpenChange }: Props) {
           <DialogTitle>Detall del Correu</DialogTitle>
           <DialogDescription>Data: {format(new Date(email.sent_at!), 'PPP p')}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
+        <div className="space-y-2 py-4">
           <p><strong>{email.type === 'enviat' ? 'Per a:' : 'De:'}</strong> {email.contacts?.nom || email.sender_name}</p>
           <p><strong>Assumpte:</strong> {email.subject}</p>
           <hr/>
-          <div className="text-sm text-muted-foreground" dangerouslySetInnerHTML={{ __html: email.preview || '' }} />
+          <div className="text-sm text-muted-foreground max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: email.preview || '' }} />
         </div>
+        {/* ✅ NOU: Peu del diàleg amb el botó de redirecció */}
+        <DialogFooter>
+          <Button variant="outline" asChild>
+            <Link href={emailUrl}>
+              Anar al Correu
+              <ArrowUpRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

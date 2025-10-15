@@ -100,6 +100,27 @@ export function useInbox({
       };
     });
   }, [filteredTickets, teamMembers]);
+  // ✅ PAS CLAU: AFEGEIX AQUEST NOU BLOC DE CODI
+  // Aquest efecte s'executarà només una vegada quan l'inbox es carregui per primer cop.
+  useEffect(() => {
+    // 1. Llegim el 'ticketId' de la URL.
+    const ticketIdFromUrl = searchParams.get('ticketId');
+
+    // 2. Si existeix...
+    if (ticketIdFromUrl) {
+      // ...busquem el tiquet corresponent a la llista inicial de dades.
+      const ticketToSelect = initialTickets.find(
+        (ticket) => ticket.id !== null && ticket.id !== undefined && ticket.id.toString() === ticketIdFromUrl
+      );
+
+      // 3. Si l'hem trobat, el seleccionem utilitzant la teva pròpia funció.
+      //    Això és important per reutilitzar tota la teva lògica de càrrega del cos del missatge.
+      if (ticketToSelect) {
+        handleSelectTicket(ticketToSelect);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // L'array de dependències buit assegura que només s'executa un cop.
 
   // useEffect unificat per a la càrrega de dades.
   useEffect(() => {
@@ -110,7 +131,7 @@ export function useInbox({
       params.delete('q');
     }
     window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
-    
+
     // Tota la lògica de càrrega s'embolcalla en startTransition.
     // 'isPending' serà 'true' fins que l'operació asíncrona acabi.
     startTransition(async () => {
@@ -167,7 +188,7 @@ export function useInbox({
       }
     });
   }, [ticketToDelete, selectedTicket?.id, t]);
-  
+
   const handleLoadMore = useCallback(() => {
     if (!hasMore || isPending) return;
     startTransition(async () => {
