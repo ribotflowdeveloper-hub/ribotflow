@@ -1598,6 +1598,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           duration: number | null
+          finish_date: string | null
           id: number
           is_completed: boolean
           priority: Database["public"]["Enums"]["task_priority"] | null
@@ -1605,7 +1606,6 @@ export type Database = {
           title: string
           user_asign_id: string | null
           user_id: string
-          finish_date: string | null
         }
         Insert: {
           asigned_date?: string | null
@@ -1615,6 +1615,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           duration?: number | null
+          finish_date?: string | null
           id?: number
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
@@ -1631,6 +1632,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           duration?: number | null
+          finish_date?: string | null
           id?: number
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
@@ -1660,6 +1662,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_user_asign_id_fkey"
+            columns: ["user_asign_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_user_asign_id_fkey"
+            columns: ["user_asign_id"]
+            isOneToOne: false
+            referencedRelation: "team_members_with_profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -1932,7 +1948,9 @@ export type Database = {
       user_credentials: {
         Row: {
           access_token: string | null
+          config: Json | null
           created_at: string | null
+          encrypted_password: string | null
           expires_at: string | null
           id: number
           provider: string
@@ -1945,7 +1963,9 @@ export type Database = {
         }
         Insert: {
           access_token?: string | null
+          config?: Json | null
           created_at?: string | null
+          encrypted_password?: string | null
           expires_at?: string | null
           id?: number
           provider: string
@@ -1958,7 +1978,9 @@ export type Database = {
         }
         Update: {
           access_token?: string | null
+          config?: Json | null
           created_at?: string | null
+          encrypted_password?: string | null
           expires_at?: string | null
           id?: number
           provider?: string
@@ -4127,14 +4149,14 @@ export type Database = {
         | "Nou Lead"
         | "Contactat"
         | "Proposta Enviada"
-        | "Negociació"
+        | "Negociaci├│"
         | "Guanyat"
         | "Perdut"
       quote_status: "Draft" | "Sent" | "Accepted" | "Declined" | "Invoiced"
       task_priority: "Baixa" | "Mitjana" | "Alta"
       ticket_status:
         | "Obert"
-        | "En progrés"
+        | "En progr├®s"
         | "Esperant resposta"
         | "Tancat"
         | "Llegit"
@@ -4281,7 +4303,7 @@ export const Constants = {
         "Nou Lead",
         "Contactat",
         "Proposta Enviada",
-        "Negociació",
+        "Negociaci├│",
         "Guanyat",
         "Perdut",
       ],
@@ -4289,7 +4311,7 @@ export const Constants = {
       task_priority: ["Baixa", "Mitjana", "Alta"],
       ticket_status: [
         "Obert",
-        "En progrés",
+        "En progr├®s",
         "Esperant resposta",
         "Tancat",
         "Llegit",

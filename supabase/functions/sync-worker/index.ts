@@ -3,107 +3,78 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// --- TIPUS I INTERFÍCIES COMUNES ---
-// Aquestes interfícies defineixen un "contracte" per a la nostra lògica,
-// fent que sigui més fàcil afegir nous proveïdors de correu en el futur.
-
-/**
- * Representa les dades d'un correu en un format estàndard i normalitzat.
- * Independentment de si el correu ve de Google o Microsoft, el transformem
- * a aquesta estructura abans de desar-lo.
- */
+// --- TIPUS I INTERFÍCIES ---
 interface NormalizedEmail {
-  provider_message_id: string;// L'ID únic del missatge al proveïdor (Google, Microsoft).
-  subject: string;
-  body: string;
-  preview: string;
-  sent_at: string; // ISO String
-  sender_name: string;
-  sender_email: string;
-  status: 'NoLlegit' | 'Llegit';
-  type: 'rebut' | 'enviat';
+    provider_message_id: string;
+    subject: string;
+    body: string;
+    preview: string;
+    sent_at: string;
+    sender_name: string;
+    sender_email: string;
+    status: 'NoLlegit' | 'Llegit';
+    type: 'rebut' | 'enviat';
 }
-
-/**
- * Aquesta interfície defineix els mètodes que CADA proveïdor de correu
- * (Google, Microsoft, etc.) ha d'implementar. Garanteix que tots els proveïdors
- * tinguin la mateixa "forma" i siguin intercanviables.
- */
+type OAuthCredentials = string;
+type ImapCredentials = { config: any; encryptedPassword: string; };
 interface MailProvider {
-  refreshAccessToken(refreshToken: string): Promise<string>;
-  getNewMessages(accessToken: string, lastSyncDate: Date | null): Promise<NormalizedEmail[]>;
+  refreshAccessToken?(refreshToken: string): Promise<string>;
+  getNewMessages(credentials: OAuthCredentials | ImapCredentials, lastSyncDate: Date | null): Promise<NormalizedEmail[]>;
 }
-
 
 // --- CONFIGURACIÓ GLOBAL ---
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-// Inicialitzem el client de Supabase una sola vegada fora de la funció principal
-// per a una millor eficiència si la Edge Function es manté "calenta" (reutilitzada).
 const supabaseAdmin = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-
-// --- LÒGICA PER A MICROSOFT (GRAPH API) ---
-/**
- * Implementació de la interfície 'MailProvider' per a Microsoft.
- * Conté tota la lògica específica per comunicar-se amb l'API de Microsoft Graph.
- */
+// --- LÒGICA PER A MICROSOFT ---
 class MicrosoftMailProvider implements MailProvider {
   private clientId = Deno.env.get("AZURE_CLIENT_ID")!;
   private clientSecret = Deno.env.get("AZURE_CLIENT_SECRET")!;
   private tenantId = Deno.env.get("MICROSOFT_TENANT_ID") || "common";
-  // Obté un nou 'access token' de curta durada utilitzant el 'refresh token'.
 
   async refreshAccessToken(refreshToken: string): Promise<string> {
     const res = await fetch(`https://login.microsoftonline.com/${this.tenantId}/oauth2/v2.0/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
+        client_id: this.clientId, client_secret: this.clientSecret,
+        refresh_token: refreshToken, grant_type: 'refresh_token',
         scope: 'https://graph.microsoft.com/.default',
       }),
     });
-    if (!res.ok) {
-      throw new Error(`Microsoft token refresh failed: ${await res.text()}`);
-    }
+    if (!res.ok) throw new Error(`Microsoft token refresh failed: ${await res.text()}`);
     const tokens = await res.json();
     return tokens.access_token;
   }
-  // Mètode principal per obtenir nous missatges. Crida a la funció auxiliar per a
-  // la bústia d'entrada i la de sortida.
-  async getNewMessages(accessToken: string, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
-    const inboxMessages = await this.fetchMessagesFromFolder(accessToken, 'inbox', lastSyncDate, 'rebut');
-    const sentMessages = await this.fetchMessagesFromFolder(accessToken, 'sentitems', lastSyncDate, 'enviat');
-    return [...inboxMessages, ...sentMessages];
+
+  async getNewMessages(accessToken: OAuthCredentials, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
+    const inbox = this.fetchMessagesFromFolder(accessToken, 'inbox', lastSyncDate, 'rebut');
+    const sent = this.fetchMessagesFromFolder(accessToken, 'sentitems', lastSyncDate, 'enviat');
+    // Utilitzem Promise.allSettled per evitar que un error en una bústia impedeixi l'altra
+    const results = await Promise.allSettled([inbox, sent]);
+    return results
+      .filter(result => result.status === 'fulfilled')
+      .flatMap(result => (result as PromiseFulfilledResult<NormalizedEmail[]>).value);
   }
-  /**
-     * Funció privada per obtenir missatges d'una carpeta específica (entrada o sortida).
-     * Gestiona la paginació de l'API de Microsoft Graph per obtenir tots els resultats.
-     */
-  private async fetchMessagesFromFolder(accessToken: string, folder: 'inbox' | 'sentitems', lastSyncDate: Date | null, type: 'rebut' | 'enviat'): Promise<NormalizedEmail[]> {
+
+  private async fetchMessagesFromFolder(accessToken: string, folder: string, lastSyncDate: Date | null, type: 'rebut' | 'enviat'): Promise<NormalizedEmail[]> {
     let allMessages: any[] = [];
-    let filterQuery = "";
+    const params = new URLSearchParams({
+      $select: "id,subject,body,bodyPreview,sentDateTime,from,sender,isRead,attachments",
+      $top: "50",
+    });
     if (lastSyncDate) {
-      filterQuery = `$filter=sentDateTime gt ${lastSyncDate.toISOString()}`;
+      params.set('$filter', `sentDateTime gt ${lastSyncDate.toISOString()}`);
     }
-    const selectQuery = "$select=id,subject,body,bodyPreview,sentDateTime,from,sender,isRead";
-    const expandQuery = "$expand=attachments";
-
-    let url: string | null = `https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages?${filterQuery}&${selectQuery}&${expandQuery}&$top=50`;
-
+    let url: string | null = `https://graph.microsoft.com/v1.0/me/mailFolders/${folder}/messages?${params.toString()}`;
     while (url) {
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
       if (!res.ok) {
         console.error(`Error fetching from Microsoft ${folder}:`, await res.text());
         break;
@@ -112,39 +83,15 @@ class MicrosoftMailProvider implements MailProvider {
       allMessages = allMessages.concat(data.value || []);
       url = data['@odata.nextLink'] || null;
     }
-
     return allMessages.map(this.normalizeMicrosoftEmail(type));
   }
-  /**
-     * Mètode privat que transforma un objecte de missatge de l'API de Microsoft
-     * a la nostra estructura normalitzada 'NormalizedEmail'.
-     */
-  // Dins de la classe MicrosoftMailProvider
 
   private normalizeMicrosoftEmail = (type: 'rebut' | 'enviat') => (msg: any): NormalizedEmail => {
     const sender = type === 'rebut' ? msg.from : msg.sender;
-    let body = msg.body?.content || '';
-
-    // ✅ NOU: Lògica per reemplaçar les imatges CID
-    if (body && msg.attachments && msg.attachments.length > 0) {
-      const inlineAttachments = msg.attachments.filter((att: any) => att.isInline);
-      for (const attachment of inlineAttachments) {
-        const cid = attachment.contentId;
-        const contentType = attachment.contentType;
-        const base64Data = attachment.contentBytes; // Microsoft ja ens el dóna en Base64
-
-        if (cid && contentType && base64Data) {
-          const dataUri = `data:${contentType};base64,${base64Data}`;
-          const cidRegex = new RegExp(`cid:${cid}`, "g");
-          body = body.replace(cidRegex, dataUri);
-        }
-      }
-    }
-
     return {
       provider_message_id: msg.id,
       subject: msg.subject || '(Sense assumpte)',
-      body: body, // 🔄 MODIFICAT: Ara 'body' conté les imatges!
+      body: msg.body?.content || '',
       preview: msg.bodyPreview || '',
       sent_at: new Date(msg.sentDateTime).toISOString(),
       sender_name: sender?.emailAddress?.name || 'Desconegut',
@@ -152,9 +99,8 @@ class MicrosoftMailProvider implements MailProvider {
       status: msg.isRead ? 'Llegit' : 'NoLlegit',
       type: type,
     };
-  }
+  };
 }
-
 
 // --- LÒGICA PER A GOOGLE (GMAIL API) ---
 
@@ -331,92 +277,118 @@ class GoogleMailProvider implements MailProvider {
   }
 }
 
+// Aquesta és la nova classe que truca a la nostra API de Next.js
+class CustomMailProvider implements MailProvider {
+    async getNewMessages(credentials: ImapCredentials, lastSyncDate: Date | null): Promise<NormalizedEmail[]> {
+        const { config, encryptedPassword } = credentials;
 
-// --- FACTORY PER SELECCIONAR EL PROVEÏDOR ---
+        const apiUrl = Deno.env.get("NEXT_PUBLIC_SITE_URL");
+        if (!apiUrl) {
+            throw new Error("La variable NEXT_PUBLIC_SITE_URL no està configurada a la Edge Function.");
+        }
+        const functionsSecret = Deno.env.get("FUNCTIONS_SECRET");
+        if (!functionsSecret) {
+            throw new Error("La variable FUNCTIONS_SECRET no està configurada a la Edge Function.");
+        }
 
-/**
- * Aquest és un patró de disseny "Factory". Donat un nom de proveïdor ('google' o 'azure'),
- * retorna la instància de la classe correcta.
- * Això fa que la funció principal sigui més neta i fàcil d'estendre amb nous proveïdors.
- */
-function getMailProvider(provider: string): MailProvider {
-  if (provider === 'google') return new GoogleMailProvider();
-  if (provider === 'microsoft') return new MicrosoftMailProvider();
-  throw new Error(`Proveïdor desconegut: ${provider}`);
+        console.log(`[IMAP Worker] Cridant a l'API externa: ${apiUrl}/api/sync-imap`);
+
+        const response = await fetch(`${apiUrl}/api/sync-imap`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${functionsSecret}`
+            },
+            body: JSON.stringify({
+                config,
+                encryptedPassword,
+                lastSyncDate
+            })
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.json();
+            throw new Error(`Error cridant a l'API de sync-imap: ${errorBody.error || response.statusText}`);
+        }
+
+        return await response.json();
+    }
 }
 
+// FACTORY (ara amb els tres proveïdors)
+function getMailProvider(provider: string): MailProvider {
+    if (provider === 'google') return new GoogleMailProvider();
+    if (provider === 'microsoft') return new MicrosoftMailProvider();
+    if (provider === 'custom_email') return new CustomMailProvider() as unknown as MailProvider;
+    throw new Error(`Proveïdor desconegut: ${provider}`);
+}
 
-// --- FUNCIÓ PRINCIPAL DEL SERVIDOR (EDGE FUNCTION) ---
+// --- FUNCIÓ PRINCIPAL ---
+serve(async (req: Request): Promise<Response> => {
+    if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-/**
- * Versió final del worker que gestiona correctament la sincronització multi-equip.
- */
-// supabase/functions/sync-worker/index.t
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+    try {
+        const body: { userId: string; provider: string; } = await req.json();
+        const { userId, provider } = body;
+        if (!userId || !provider) throw new Error("Falten paràmetres 'userId' o 'provider'.");
 
-  try {
-    const body = await req.json();
-    const { userId, provider } = body;
+        console.log(`[WORKER] Iniciant sincronització per a: ${userId}, proveïdor: ${provider}`);
+        const mailProvider = getMailProvider(provider);
+        let credentialsForProvider: OAuthCredentials | ImapCredentials;
 
-    if (!userId || !provider) throw new Error("Falten paràmetres 'userId' o 'provider'.");
+        if (provider === 'google' || provider === 'microsoft') {
+            const { data, error } = await supabaseAdmin.from("user_credentials").select("refresh_token").eq("user_id", userId).eq("provider", provider).maybeSingle();
+            if (error) throw error;
+            if (!data?.refresh_token) return new Response(JSON.stringify({ message: `No s'han trobat credencials OAuth per a ${userId}.` }), { status: 200, headers: corsHeaders });
+            
+            if (!mailProvider.refreshAccessToken) throw new Error(`El proveïdor ${provider} no té el mètode refreshAccessToken.`);
+            credentialsForProvider = await mailProvider.refreshAccessToken(data.refresh_token);
 
-    const { data: credential, error: credsError } = await supabaseAdmin
-      .from("user_credentials")
-      .select("refresh_token")
-      .eq("user_id", userId)
-      .eq("provider", provider)
-      .maybeSingle();
+        } else if (provider === 'custom_email') {
+            const { data, error } = await supabaseAdmin.from("user_credentials").select("config, encrypted_password").eq("user_id", userId).eq("provider", "custom_email").maybeSingle();
+            if (error) throw error;
+            if (!data?.config || !data.encrypted_password) return new Response(JSON.stringify({ message: `No s'han trobat credencials IMAP per a ${userId}.` }), { status: 200, headers: corsHeaders });
+            
+            // Ja no desencriptem aquí. Passem les credencials directament a l'API Route.
+            credentialsForProvider = {
+                config: data.config,
+                encryptedPassword: data.encrypted_password,
+            };
+        } else {
+            throw new Error(`La lògica per al proveïdor ${provider} no està implementada.`);
+        }
 
-    if (credsError) throw credsError;
-    if (!credential || !credential.refresh_token) {
-      return new Response(JSON.stringify({ message: `No s'han trobat credencials per a ${userId} i ${provider}.` }), { status: 200, headers: corsHeaders });
-    }
+        const { data: lastTicket } = await supabaseAdmin.from("tickets").select("sent_at").eq("user_id", userId).eq("provider", provider).order("sent_at", { ascending: false }).limit(1).maybeSingle();
+        const lastSyncDate: Date | null = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
+        
+        const newEmails: NormalizedEmail[] = await mailProvider.getNewMessages(credentialsForProvider, lastSyncDate);
 
-    console.log(`[WORKER] Iniciant sincronització per a usuari: ${userId}`);
+        if (newEmails.length === 0) {
+            console.log(`[SYNC ${provider.toUpperCase()}] No hi ha missatges nous.`);
+            return new Response(JSON.stringify({ message: "Sincronització completada, sense missatges nous." }), { status: 200, headers: corsHeaders });
+        }
+        
+        console.log(`[SYNC ${provider.toUpperCase()}] S'han trobat ${newEmails.length} missatges nous.`);
 
-    const mailProvider = getMailProvider(provider);
-    const { refresh_token } = credential;
-
-    const { data: lastTicket } = await supabaseAdmin
-      .from("tickets")
-      .select("sent_at")
-      .eq("user_id", userId)
-      .eq("provider", provider)
-      .order("sent_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const lastSyncDate = lastTicket?.sent_at ? new Date(lastTicket.sent_at) : null;
-
-    const accessToken = await mailProvider.refreshAccessToken(refresh_token);
-    const newEmails = await mailProvider.getNewMessages(accessToken, lastSyncDate);
-
-    if (newEmails.length === 0) {
-      console.log(`[SYNC ${provider.toUpperCase()}] No hi ha missatges nous per a l'usuari ${userId}`);
-      return new Response(JSON.stringify({ message: "Sincronització completada, sense missatges nous." }), { status: 200, headers: corsHeaders });
-    }
-
-    console.log(`[SYNC ${provider.toUpperCase()}] S'han trobat ${newEmails.length} missatges nous per a ${userId}. Processant...`);
     // ✅ INICI DE LA LÒGICA DE LA BLACKLIST
 
     // 1. Obtenim tots els equips als quals pertany l'usuari
-    const { data: userTeams } = await supabaseAdmin.from('team_members').select('team_id').eq('user_id', userId);
-    const userTeamIds = userTeams?.map(t => t.team_id) || [];
+    const { data: userTeams }: { data: TeamMember[] | null } = await supabaseAdmin.from('team_members').select('team_id').eq('user_id', userId);
+    const userTeamIds: string[] = userTeams?.map((t: TeamMember) => t.team_id) || [];
 
-    let userBlacklistSet = new Set<string>();
+    let userBlacklistSet: Set<string> = new Set<string>();
     if (userTeamIds.length > 0) {
       // 2. Obtenim totes les regles de la blacklist per a aquests equips
-      const { data: blacklistRules } = await supabaseAdmin
+      const { data: blacklistRules }: { data: BlacklistRule[] | null } = await supabaseAdmin
         .from('blacklist_rules')
         .select('value')
         .in('team_id', userTeamIds);
 
-      userBlacklistSet = new Set(blacklistRules?.map(rule => rule.value));
+      userBlacklistSet = new Set(blacklistRules?.map((rule: BlacklistRule) => rule.value));
     }
 
     // 3. Filtrem els emails nous, descartant els que estan a la llista negra
-    const validEmails = newEmails.filter(email => !userBlacklistSet.has(email.sender_email));
+    const validEmails: NormalizedEmail[] = newEmails.filter((email: NormalizedEmail) => !userBlacklistSet.has(email.sender_email));
 
     if (validEmails.length === 0) {
       console.log(`[Worker] Tots els ${newEmails.length} missatges nous per a l'usuari ${userId} estaven a la llista negra.`);
@@ -425,7 +397,7 @@ serve(async (req) => {
     console.log(`[Worker] Dels ${newEmails.length} missatges, ${validEmails.length} són vàlids i seran inserits.`);
 
     // ✅ FI DE LA LÒGICA DE LA BLACKLIST
-    const ticketsToInsert = newEmails.map(email => ({
+    const ticketsToInsert: TicketsToInsert[] = newEmails.map((email: NormalizedEmail) => ({
       user_id: userId,
       provider: provider,
       provider_message_id: email.provider_message_id,
@@ -441,7 +413,7 @@ serve(async (req) => {
 
     // ✅ CANVI CLAU: Utilitzem .upsert() en lloc de .insert()
     // Això insereix les files noves i ignora les que ja existeixen (duplicats).
-    const { error: upsertError } = await supabaseAdmin
+    const { error: upsertError }: { error: unknown } = await supabaseAdmin
       .from("tickets")
       .upsert(ticketsToInsert, {
         onConflict: 'user_id,provider_message_id', // Li diem quina és la restricció UNIQUE a comprovar
@@ -456,8 +428,9 @@ serve(async (req) => {
     console.log(`[Worker] S'han processat ${newEmails.length} tiquets per a ${userId}. Els nous s'han inserit.`);
     return new Response(JSON.stringify({ message: "Sincronització completada." }), { status: 200, headers: corsHeaders });
 
-  } catch (err) {
-    console.error(`[Worker Error General]:`, err.message);
-    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
+  } catch (err: unknown) {
+    const errorMessage = typeof err === 'object' && err !== null && 'message' in err ? (err as { message: string }).message : String(err);
+    console.error(`[Worker Error General]:`, errorMessage);
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: corsHeaders });
   }
 });
