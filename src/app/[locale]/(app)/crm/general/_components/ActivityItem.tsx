@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/crm/general/_components/ActivityItem.tsx (CORREGIT)
 "use client";
 
 import React, { FC } from 'react';
@@ -8,29 +9,21 @@ import { AlertTriangle, Mail, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslations, useLocale } from 'next-intl';
-import type { CrmData } from '../page';
+// ✅ 1. Importem el tipus correcte des de CrmData.
+import { type UnreadActivity } from './CrmData';
 
-// Definim les propietats que el component espera rebre.
 interface ActivityItemProps {
-    activity: CrmData['unreadActivities'][0];
-    onMarkAsRead: (id: string) => void;
-    onReply: (activity: CrmData['unreadActivities'][0]) => void;
+    activity: UnreadActivity;
+    onMarkAsRead: (id: number) => void;
+    onReply: (activity: UnreadActivity) => void;
 }
 
-/**
- * @summary Mostra una alerta d'activitat no llegida a la secció "Recent Alerts".
- * Gestiona la navegació, el marcatge com a llegit i l'opció de respondre.
- */
 export const ActivityItem: FC<ActivityItemProps> = ({ activity, onMarkAsRead, onReply }) => {
     const t = useTranslations('CrmGeneralPage');
     const locale = useLocale();
     const router = useRouter();
     const dateLocale = { ca, es, en: enUS }[locale] || ca;
 
-    /**
-     * @summary Funció que s'executa en fer clic a l'alerta.
-     * Marca l'activitat com a llegida i navega a la pàgina del contacte si existeix.
-     */
     const handleClick = () => {
         onMarkAsRead(activity.id);
         if (activity.contact_id) {
@@ -45,14 +38,14 @@ export const ActivityItem: FC<ActivityItemProps> = ({ activity, onMarkAsRead, on
             </div>
             <div className="flex-1 min-w-0 cursor-pointer" onClick={handleClick}>
                 <p className="font-semibold truncate">
-                    {activity.type} - <span className="font-normal">{activity.contact_name}</span>
+                    {/* ✅ 2. Accedim al nom a través de la relació. */}
+                    {activity.type} - <span className="font-normal">{activity.contacts?.nom}</span>
                 </p>
                 <p className="text-sm text-muted-foreground truncate italic">"{activity.content}"</p>
             </div>
             <div className="text-xs text-muted-foreground shrink-0">
-                {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: dateLocale })}
+                {activity.created_at ? formatDistanceToNow(new Date(activity.created_at), { addSuffix: true, locale: dateLocale }) : ''}
             </div>
-            {/* Els botons d'acció apareixen en passar el ratolí per sobre */}
             <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <TooltipProvider>
                     <Tooltip>
@@ -76,6 +69,7 @@ export const ActivityItem: FC<ActivityItemProps> = ({ activity, onMarkAsRead, on
                                 variant="ghost" 
                                 size="icon" 
                                 className="w-8 h-8 rounded-full" 
+                                // ✅ 3. Passem l'ID numèric.
                                 onClick={(e) => { e.stopPropagation(); onMarkAsRead(activity.id); }}
                             >
                                 <Check className="w-4 h-4 text-green-400" />
