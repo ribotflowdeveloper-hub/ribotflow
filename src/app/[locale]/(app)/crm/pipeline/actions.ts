@@ -1,22 +1,24 @@
+// /app/[locale]/(app)/crm/pipeline/actions.ts (Refactoritzat)
+
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nostra funció d'ajuda
+import { validateUserSession } from "@/lib/supabase/session";
 
-/**
- * Desa una oportunitat (crea o actualitza).
- */
 export async function saveOpportunityAction(formData: FormData) {
-    // ✅ 2. Tota la validació de sessió es redueix a aquestes 3 línies.
     const session = await validateUserSession();
     if ('error' in session) return { error: session.error };
     const { supabase, user, activeTeamId } = session;
 
     const rawData = Object.fromEntries(formData.entries());
+    
+    // ✅ Convertim els IDs a números abans de desar.
+    const contactId = rawData.contact_id ? parseInt(rawData.contact_id as string, 10) : null;
+
     const dataToSave = {
         name: rawData.name as string,
         description: rawData.description as string,
-        contact_id: rawData.contact_id as string,
+        contact_id: contactId,
         stage_name: rawData.stage_name as string,
         value: rawData.value ? parseFloat(rawData.value as string) : null,
         close_date: rawData.close_date ? new Date(rawData.close_date as string).toISOString() : null,
@@ -26,7 +28,8 @@ export async function saveOpportunityAction(formData: FormData) {
 
     try {
         const { error } = await (rawData.id
-            ? supabase.from("opportunities").update(dataToSave).eq("id", rawData.id)
+            // Si estem actualitzant, l'ID ja és un número.
+            ? supabase.from("opportunities").update(dataToSave).eq("id", parseInt(rawData.id as string, 10))
             : supabase.from("opportunities").insert(dataToSave));
         if (error) throw error;
 
@@ -38,23 +41,18 @@ export async function saveOpportunityAction(formData: FormData) {
     }
 }
  
-/**
- * Actualitza l'etapa d'una oportunitat (per al drag-and-drop).
- */
-export async function updateOpportunityStageAction(opportunityId: string, newStage: string) {
-    // ✅ Fem el mateix aquí.
+export async function updateOpportunityStageAction(opportunityId: number, newStage: string) {
     const session = await validateUserSession();
     if ('error' in session) return { error: session.error };
     const { supabase, activeTeamId } = session;
  
     try {
-        // La RLS s'encarregarà de la seguretat a nivell de fila.
         const { error } = await supabase
             .from("opportunities")
             .update({ stage_name: newStage })
+            // ✅ L'ID que rebem ja és un número.
             .eq("id", opportunityId)
             .eq("team_id", activeTeamId);
-
  
         if (error) throw error;
  
@@ -65,4 +63,3 @@ export async function updateOpportunityStageAction(opportunityId: string, newSta
         return { error: { message } };
     }
 }
-

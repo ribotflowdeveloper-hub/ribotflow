@@ -1,11 +1,12 @@
-// @/app/[locale]/(app)/crm/pipeline/_components/OpportunityDialog.tsx (Refactoritzat)
+// /app/[locale]/(app)/crm/pipeline/_components/OpportunityDialog.tsx (Refactoritzat)
 import React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ca, es, enUS } from "date-fns/locale";
 import { format } from "date-fns";
-import { PIPELINE_STAGES_MAP, type Opportunity, type Contact, type Stage } from '@/types/crm';
+// ✅ 1. Importem els tipus correctes des del component de dades.
+import { type Stage, type Contact, type OpportunityWithContact } from './PipelineData';
+import { PIPELINE_STAGES_MAP } from '@/config/pipeline'; // ✅ Importem la constant des de /config
 
-// Components UI i Icones
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -16,11 +17,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from "@/lib/utils/utils";
-
-// Lògica i components refactoritzats
 import { useOpportunityForm } from '../_hooks/useOpportunityForm';
-import { ContactSelector }  from '@/components/features/contactes/ContactSelector';
-
+import { ContactSelector } from '@/components/features/contactes/ContactSelector';
 
 interface Props {
     open: boolean;
@@ -28,7 +26,8 @@ interface Props {
     contacts: Contact[];
     stages: Stage[];
     onSuccess: () => void;
-    opportunityToEdit: Partial<Opportunity> | null;
+    // ✅ 2. La prop ara espera el tipus enriquit.
+    opportunityToEdit: Partial<OpportunityWithContact> | null;
 }
 
 export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSuccess, opportunityToEdit }: Props) {
@@ -51,6 +50,7 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
                 <form action={handleSubmit} className="grid gap-4 pt-4">
                     <Input name="name" placeholder={t('namePlaceholder')} defaultValue={opportunityToEdit?.name || ''} required />
                     
+                    {/* El ContactSelector necessita ser adaptat per gestionar 'number | null' */}
                     <ContactSelector contacts={contacts} selectedId={selectedContactId} onSelect={setSelectedContactId} />
                     
                     <Select name="stage_name" defaultValue={opportunityToEdit?.stage_name || stages[0]?.name}>

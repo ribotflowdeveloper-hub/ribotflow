@@ -1,14 +1,15 @@
-// @/app/[locale]/(app)/crm/pipeline/page.tsx (Client component part, refactored)
+// /app/[locale]/(app)/crm/pipeline/pipeline-client.tsx (Refactoritzat)
 "use client";
 
-import React, { useState, useEffect } from 'react'; // ✅ Importem useState i useEffect
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { DragDropContext } from '@hello-pangea/dnd';
 import { useTranslations } from 'next-intl';
 import { Plus, LayoutGrid, Rows, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-import type { Contact, Stage, Opportunity } from '@/types/crm';
+// ✅ 1. Importem els nous tipus des del component de dades.
+import { type Stage, type Contact, type OpportunityWithContact } from './_components/PipelineData';
 import { usePipeline } from './_hooks/usePipeline';
 import { OpportunityDialog } from './_components/OpportunityDialog';
 import { ColumnsView } from './_components/ColumnsView';
@@ -17,21 +18,19 @@ import { RowsView } from './_components/RowsView';
 interface PipelineClientProps {
     initialStages: Stage[];
     initialContacts: Contact[];
-    initialOpportunities: Opportunity[];
+    initialOpportunities: OpportunityWithContact[];
 }
 
 export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
     const t = useTranslations('PipelinePage');
     
-    // ✅ PAS 1: L'estat ara viu aquí, al component pare. Aquesta és la nostra única font de la veritat.
+    // ✅ 2. L'estat ara gestiona el tipus enriquit 'OpportunityWithContact'.
     const [opportunities, setOpportunities] = useState(initialOpportunities);
 
-    // ✅ PAS 2: Aquest useEffect s'encarrega de sincronitzar l'estat amb noves dades del servidor (després d'un router.refresh()).
     useEffect(() => {
         setOpportunities(initialOpportunities);
     }, [initialOpportunities]);
     
-    // ✅ PAS 3: Passem l'estat i la funció set al hook.
     const {
         isPending,
         opportunitiesByStage,
@@ -84,10 +83,10 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
                         />
                     ) : (
                         <RowsView
-                           stages={initialStages}
-                           opportunitiesByStage={opportunitiesByStage}
-                           onEditOpportunity={(op) => handleOpenDialog(op)}
-                           onAddClick={(stage) => handleOpenDialog(undefined, stage)}
+                            stages={initialStages}
+                            opportunitiesByStage={opportunitiesByStage}
+                            onEditOpportunity={(op) => handleOpenDialog(op)}
+                            onAddClick={(stage) => handleOpenDialog(undefined, stage)}
                         />
                     )}
                 </DragDropContext>

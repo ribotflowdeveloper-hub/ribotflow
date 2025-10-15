@@ -1,18 +1,20 @@
-/**
- * @file PipelineSkeleton.tsx
- * @summary Mostra un esquelet de càrrega per a la pàgina del pipeline.
- */
+// /app/[locale]/(app)/crm/pipeline/_components/PipelineSkeleton.tsx (Refactoritzat)
 "use client";
 
 import React from 'react';
-import type { Stage } from '@/types/crm';
+// ✅ 1. Importem la definició de la base de dades.
+import { type Database } from '@/types/supabase';
+
+// ✅ 2. Definim el tipus Stage a partir de la taula corresponent.
+type Stage = Database['public']['Tables']['pipeline_stages']['Row'];
 
 interface PipelineSkeletonProps {
-  stages: Stage[];
-  viewMode: 'columns' | 'rows';
+    stages: Stage[];
+    viewMode: 'columns' | 'rows';
 }
 
 export const PipelineSkeleton: React.FC<PipelineSkeletonProps> = ({ stages, viewMode }) => {
+    // La resta del JSX no canvia, ja que només depèn de propietats que no han canviat de nom ('id', 'name').
     if (viewMode === 'rows') {
         return (
             <div className="flex-1 overflow-y-auto pr-2 -mr-4 space-y-4">
@@ -32,7 +34,7 @@ export const PipelineSkeleton: React.FC<PipelineSkeletonProps> = ({ stages, view
     }
 
     return (
-        <div className="flex-1 grid grid-cols-6 gap-4 min-h-0">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-h-0">
             {stages.map(stage => (
                 <div key={stage.id} className="flex flex-col h-full bg-muted/20 rounded-xl overflow-hidden">
                     <div className="p-4 border-t-4 border-gray-700">

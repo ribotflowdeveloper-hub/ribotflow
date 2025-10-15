@@ -1,20 +1,14 @@
-/**
- * @file OpportunityRowCard.tsx
- * @summary Renderitza una targeta d'oportunitat per a la vista de files (acordió).
- */
-"use client";
-
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils/utils';
 import { User, Euro, Calendar } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import type { Opportunity } from '@/types/crm';
+import { type OpportunityWithContact } from './PipelineData';
 
 interface OpportunityRowCardProps {
-  op: Opportunity;
+  op: OpportunityWithContact;
   index: number;
-  onEdit: (op: Opportunity) => void;
+  onEdit: (op: OpportunityWithContact) => void;
 }
 
 export const OpportunityRowCard: React.FC<OpportunityRowCardProps> = ({ op, index, onEdit }) => {

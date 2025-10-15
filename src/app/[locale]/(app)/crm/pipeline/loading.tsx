@@ -1,27 +1,22 @@
-/**
- * @file src/app/[locale]/(app)/crm/pipeline/loading.tsx
- * @summary Aquest fitxer s'activa automàticament durant la navegació.
- * Reutilitza el component PipelineSkeleton per a una experiència d'usuari consistent.
- */
+// /app/[locale]/(app)/crm/pipeline/loading.tsx (Refactoritzat)
 
-// 1. Importa el teu component Skeleton des d'on el tinguis guardat
 import { PipelineSkeleton } from './_components/PipelineSkeleton';
 import { createClient } from '@/lib/supabase/server';
-import type { Stage } from '@/types/crm'; // Importa el tipus Stage
+// ✅ 1. Importem la definició de la base de dades.
+import { type Database } from '@/types/supabase';
 
-// 2. Aquest és el component que Next.js renderitzarà automàticament
+// ✅ 2. Definim el tipus Stage a partir de la taula corresponent.
+type Stage = Database['public']['Tables']['pipeline_stages']['Row'];
+
 export default async function PipelineLoading() {
-  // 3. (Opcional, però recomanat) Carreguem les dades mínimes per a l'esquelet,
-  // com les etapes, per fer-lo més realista. Aquesta consulta és molt ràpida.
-  const supabase = createClient()
-;
-  
-  const { data: stagesData } = await supabase
-    .from('pipeline_stages')
-    .select('id, name, position');
+    const supabase = createClient();
+    
+    const { data: stagesData } = await supabase
+        .from('pipeline_stages')
+        .select('id, name, position');
 
-  const stages = (stagesData as Stage[]) || [];
+    // ✅ 3. El cast ara utilitza el tipus correcte.
+    const stages = (stagesData as Stage[]) || [];
 
-  // 4. Retornem el teu component Skeleton amb les dades necessàries.
-  return <PipelineSkeleton stages={stages} viewMode="columns" />;
+    return <PipelineSkeleton stages={stages} viewMode="columns" />;
 }

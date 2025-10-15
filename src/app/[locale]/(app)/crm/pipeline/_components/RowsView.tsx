@@ -1,9 +1,3 @@
-/**
- * @file RowsView.tsx
- * @summary Component que renderitza la vista de files (acordió) del pipeline.
- */
-"use client";
-
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
@@ -11,14 +5,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { useTranslations, useLocale } from 'next-intl';
-import type { Stage, Opportunity } from '@/types/crm';
-import { PIPELINE_STAGES_MAP } from '@/types/crm';
+import { type Stage, type OpportunityWithContact } from './PipelineData';
+import { PIPELINE_STAGES_MAP } from '@/config/pipeline';
 import { OpportunityRowCard } from './OportunityRowCard';
 
 interface RowsViewProps {
   stages: Stage[];
-  opportunitiesByStage: Record<string, Opportunity[]>;
-  onEditOpportunity: (opportunity: Opportunity) => void;
+  opportunitiesByStage: Record<string, OpportunityWithContact[]>;
+  onEditOpportunity: (opportunity: OpportunityWithContact) => void;
   onAddClick: (stageName: string) => void;
 }
 
@@ -29,13 +23,13 @@ export const RowsView: React.FC<RowsViewProps> = ({ stages, opportunitiesByStage
 
     return (
         <div className="flex-1 overflow-y-auto pr-2 -mr-4">
-            <Accordion type="multiple" defaultValue={stages.map(s => s.id)} className="w-full space-y-4">
+            <Accordion type="multiple" defaultValue={stages.map(s => s.id.toString())} className="w-full space-y-4">
                 {stages.map(stage => {
                     const stageKey = PIPELINE_STAGES_MAP.find(s => s.name === stage.name)?.key;
                     const opportunities = opportunitiesByStage[stage.name] || [];
                     const totalValue = opportunities.reduce((sum, op) => sum + (op.value || 0), 0);
                     return (
-                        <AccordionItem key={stage.id} value={stage.id} className={cn("bg-muted/20 rounded-xl overflow-hidden border-l-4", stageColors[stage.name] || "border-gray-500")}>
+                        <AccordionItem key={stage.id} value={stage.id.toString()} className={cn("bg-muted/20 rounded-xl overflow-hidden border-l-4", stageColors[stage.name] || "border-gray-500")}>
                             <div className="flex justify-between items-center w-full px-4">
                                 <AccordionTrigger className="flex-1 text-left py-3 hover:no-underline">
                                     <div>

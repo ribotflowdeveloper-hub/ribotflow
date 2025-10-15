@@ -1,23 +1,17 @@
-/**
- * @file StageColumn.tsx
- * @summary Renderitza una columna completa d'una etapa del pipeline, incloent la capçalera i la llista d'oportunitats.
- */
-"use client";
-
 import React from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils/utils';
 import { Plus } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import type { Stage, Opportunity } from '@/types/crm';
-import { PIPELINE_STAGES_MAP } from '@/types/crm';
+import { type Stage, type OpportunityWithContact } from './PipelineData';
+import { PIPELINE_STAGES_MAP } from '@/config/pipeline';
 import { OpportunityCard } from './OportunityCard';
 
 interface StageColumnProps {
   stage: Stage;
-  opportunities: Opportunity[];
-  onEditOpportunity: (opportunity: Opportunity) => void;
+  opportunities: OpportunityWithContact[];
+  onEditOpportunity: (opportunity: OpportunityWithContact) => void;
   onAddClick: () => void;
 }
 

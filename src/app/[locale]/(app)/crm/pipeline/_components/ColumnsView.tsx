@@ -1,17 +1,11 @@
-/**
- * @file ColumnsView.tsx
- * @summary Component que renderitza la vista de columnes del pipeline.
- */
-"use client";
-
 import React from 'react';
-import type { Stage, Opportunity } from '@/types/crm';
+import { type Stage, type OpportunityWithContact } from './PipelineData';
 import { StageColumn } from './StageColumn';
 
 interface ColumnsViewProps {
   stages: Stage[];
-  opportunitiesByStage: Record<string, Opportunity[]>;
-  onEditOpportunity: (opportunity: Opportunity) => void;
+  opportunitiesByStage: Record<string, OpportunityWithContact[]>;
+  onEditOpportunity: (opportunity: OpportunityWithContact) => void;
   onAddClick: (stageName: string) => void;
 }
 

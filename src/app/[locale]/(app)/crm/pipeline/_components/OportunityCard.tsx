@@ -1,7 +1,4 @@
-/**
- * @file OpportunityCard.tsx
- * @summary Renderitza una targeta d'oportunitat per a la vista de columnes.
- */
+// /app/[locale]/(app)/crm/pipeline/_components/OportunityCard.tsx (Refactoritzat)
 "use client";
 
 import React from 'react';
@@ -9,11 +6,12 @@ import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils/utils';
 import { User, Euro, Calendar } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-import type { Opportunity } from '@/types/crm';
+// ✅ 1. Importem el tipus correcte.
+import { type OpportunityWithContact } from './PipelineData';
 
 interface OpportunityCardProps {
-  opportunity: Opportunity;
-  index: number;
+    opportunity: OpportunityWithContact;
+    index: number;
 }
 
 export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity, index }) => {
@@ -21,6 +19,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity, i
     const locale = useLocale();
 
     return (
+        // ✅ 2. Convertim l'ID a string per al Draggable.
         <Draggable draggableId={opportunity.id.toString()} index={index}>
             {(provided, snapshot) => (
                 <div
@@ -37,6 +36,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity, i
                         <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{opportunity.description}</p>
                     )}
                     <p className="text-xs text-muted-foreground flex items-center gap-2 mb-2">
+                        {/* ✅ 3. Accedim al nom a través de la relació. */}
                         <User className="w-4 h-4 text-primary/80" /> {opportunity.contacts?.nom || t('noContact')}
                     </p>
                     <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5 text-xs">
