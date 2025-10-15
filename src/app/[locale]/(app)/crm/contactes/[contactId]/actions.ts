@@ -1,21 +1,25 @@
-// /app/[locale]/crm/contactes/[contactId]/actions.ts
+// /app/[locale]/crm/contactes/[contactId]/actions.ts (CORREGIT)
 
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { type Contact } from '@/types/crm';
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nostra funció
+// ✅ 1. Importem la definició de la base de dades.
+import { type Database } from "@/types/supabase";
+import { validateUserSession } from "@/lib/supabase/session";
+
+// ✅ 2. Definim el tipus a partir de la BD.
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
 export async function updateContactAction(
-    contactId: string,
+    // ✅ 3. L'ID del contacte és un NÚMERO.
+    contactId: number, 
     formData: FormData
 ): Promise<{ data: Contact | null; error: { message: string } | null }> {
-    // ✅ 2. Tota la validació de sessió es redueix a aquestes 3 línies.
     const session = await validateUserSession();
     if ('error' in session) return { data: null, error: session.error };
     const { supabase, activeTeamId } = session;
 
-    // ✅ CORRECCIÓ: Processem el formData per obtenir les dades a actualitzar.
+    // El processament del formulari estava correcte.
     const hobbiesValue = formData.get('hobbies') as string;
     const dataToUpdate = {
         nom: formData.get('nom') as string,
@@ -39,11 +43,10 @@ export async function updateContactAction(
         }
     };
 
-    // La consulta d'actualització ara utilitza correctament les dades del formulari.
     const { data, error } = await supabase
         .from('contacts')
         .update(dataToUpdate)
-        .eq('id', contactId)
+        .eq('id', contactId) // La comparació ara és number === number.
         .eq('team_id', activeTeamId)
         .select()
         .single();
@@ -57,35 +60,27 @@ export async function updateContactAction(
     return { data, error: null };
 }
 
-
-/**
- * @summary Deletes a contact from the database.
- */
 export async function deleteContactAction(
-  contactId: string
+    // ✅ 4. L'ID del contacte és un NÚMERO.
+    contactId: number
 ): Promise<{ success: boolean; message: string }> {
-  // ✅ 1. Reutilitzem la nostra funció de validació.
-  const session = await validateUserSession();
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase, activeTeamId } = session;
 
-  // ✅ 2. Comprovem si hi ha un error de sessió i el retornem.
-  if ('error' in session) {
-    return { success: false, message: session.error.message };
-  }
-  
-  // ✅ 3. Obtenim el client de supabase i l'ID de l'equip de la sessió validada.
-  const { supabase, activeTeamId } = session;
+    const { error } = await supabase
+        .from('contacts')
+        .delete()
+        .eq('id', contactId) // La comparació ara és number === number.
+        .eq('team_id', activeTeamId);
 
-  const { error } = await supabase
-    .from('contacts')
-    .delete()
-    .eq('id', contactId)
-    .eq('team_id', activeTeamId); // <-- Filtre de seguretat crucial
+    if (error) {
+        console.error("Error deleting contact:", error);
+        return { success: false, message: "No s'ha pogut eliminar el contacte." };
+    }
 
-  if (error) {
-    console.error("Error deleting contact:", error);
-    return { success: false, message: "No s'ha pogut eliminar el contacte." };
-  }
-
-  revalidatePath('/crm/contactes');
-  return { success: true, message: "Contacte eliminat correctament." };
+    revalidatePath('/crm/contactes');
+    return { success: true, message: "Contacte eliminat correctament." };
 }

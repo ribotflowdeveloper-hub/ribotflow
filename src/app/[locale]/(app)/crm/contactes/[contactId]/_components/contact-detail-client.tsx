@@ -1,13 +1,19 @@
-// @/app/[locale]/(app)/crm/contactes/[id]/_components/ContactDetailClient.tsx (Versió Final Refactoritzada)
+// /app/[locale]/(app)/crm/contactes/[contactId]/_components/contact-detail-client.tsx (Correcte)
 "use client";
 
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
-import { type Contact, type Quote, type Opportunity, type Invoice, type Activity } from '@/types/crm';
-import { useContactDetail } from '../_hooks/useContactDetail'; // ✅ 1. IMPORTA EL NOU HOOK
-import { ContactDetailHeader } from './ContactDetailHeader'; // ✅ 2. IMPORTA EL NOU COMPONENT DE CAPÇALERA
-import { ContactDetailTabs } from './ContactDetailTabs'; // El component de pestanyes que ja tenies
+import { type Database } from '@/types/supabase';
+import { useContactDetail } from '../_hooks/useContactDetail';
+import { ContactDetailHeader } from './ContactDetailHeader';
+import { ContactDetailTabs } from './ContactDetailTabs';
+
+type Contact = Database['public']['Tables']['contacts']['Row'];
+type Quote = Database['public']['Tables']['quotes']['Row'];
+type Opportunity = Database['public']['Tables']['opportunities']['Row'];
+type Invoice = Database['public']['Tables']['invoices']['Row'];
+type Activity = Database['public']['Tables']['activities']['Row'];
 
 interface ContactDetailClientProps {
     initialContact: Contact;
@@ -22,7 +28,6 @@ interface ContactDetailClientProps {
 export function ContactDetailClient({ initialContact, initialRelatedData }: ContactDetailClientProps) {
     const t = useTranslations('ContactDetailPage');
     
-    // ✅ 3. TOTA LA LÒGICA ESTÀ CENTRALITZADA AL HOOK
     const {
         contact,
         isEditing,
@@ -38,7 +43,6 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-full">
             <form action={handleSaveChanges} ref={formRef} className="flex flex-col h-full">
                 
-                {/* ✅ 4. RENDERITZA EL COMPONENT DE CAPÇALERA, PASSANT-LI ELS PROPS NECESSARIS */}
                 <ContactDetailHeader
                     contact={contact}
                     isEditing={isEditing}
@@ -48,7 +52,6 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                     onDelete={handleDelete}
                 />
                 
-                {/* ✅ 5. RENDERITZA LES PESTANYES. LA LÒGICA INTERNA DE LES PESTANYES JA ESTÀ SEPARADA */}
                 <ContactDetailTabs
                     contact={contact}
                     relatedData={initialRelatedData}

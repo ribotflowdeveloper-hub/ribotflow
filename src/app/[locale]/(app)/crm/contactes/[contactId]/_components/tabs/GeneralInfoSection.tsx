@@ -1,11 +1,22 @@
+// /app/[locale]/(app)/crm/contactes/[contactId]/_components/tabs/GeneralInfoSection.tsx (Refactoritzat)
+
 import { FC } from 'react';
-import { type Contact, CONTACT_STATUS_MAP } from '@/types/crm';
 import { EditableField } from '../EditableField';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslations } from 'next-intl';
+// ✅ 1. Importem els tipus i constants correctes.
+import { type Database } from '@/types/supabase';
+import { CONTACT_STATUS_MAP } from '@/config/contacts';
 
-interface Props { contact: Contact; isEditing: boolean; getStatusLabel: (code?: string) => string; }
+// ✅ 2. Definim el tipus 'Contact' localment a partir de la BD.
+type Contact = Database['public']['Tables']['contacts']['Row'];
+
+interface Props { 
+    contact: Contact; 
+    isEditing: boolean; 
+    getStatusLabel: (code?: string | null) => string; 
+}
 
 export const GeneralInfoSection: FC<Props> = ({ contact, isEditing, getStatusLabel }) => {
     const t = useTranslations('ContactDetailPage');

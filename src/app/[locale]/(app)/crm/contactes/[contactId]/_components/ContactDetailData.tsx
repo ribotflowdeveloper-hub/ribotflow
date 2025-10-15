@@ -1,35 +1,44 @@
-// /app/[locale]/crm/contactes/[contactId]/_components/ContactDetailData.tsx
+// /app/[locale]/crm/contactes/[contactId]/_components/ContactDetailData.tsx (CORREGIT)
 
-import { notFound} from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { ContactDetailClient } from './contact-detail-client';
-import type { Contact, Quote, Opportunity, Invoice, Activity } from '@/types/crm';
-import { validatePageSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció de pàgina
+import { validatePageSession } from "@/lib/supabase/session";
+import { type Database } from '@/types/supabase';
+
+type Contact = Database['public']['Tables']['contacts']['Row'];
+type Quote = Database['public']['Tables']['quotes']['Row'];
+type Opportunity = Database['public']['Tables']['opportunities']['Row'];
+type Invoice = Database['public']['Tables']['invoices']['Row'];
+type Activity = Database['public']['Tables']['activities']['Row'];
 
 export async function ContactDetailData({ contactId }: { contactId: string }) {
     const { supabase, activeTeamId } = await validatePageSession();
 
-    // ------------------------------------
+    // ✅ SOLUCIÓ: Convertim el contactId de string a number.
+    const numericContactId = parseInt(contactId, 10);
+    if (isNaN(numericContactId)) {
+        // Si l'ID no és un número vàlid, no el trobarem.
+        notFound();
+    }
 
-    // ✅ SECURE QUERY: We now fetch the contact by its ID AND the active team ID.
-    // The RLS policy on the 'contacts' table will enforce this, but being explicit here is good practice.
     const { data: contact, error } = await supabase
         .from('contacts')
         .select('*')
-        .eq('id', contactId)
-        .eq('team_id', activeTeamId) // <-- CRUCIAL SECURITY FILTER
+        // Utilitzem l'ID numèric a la consulta.
+        .eq('id', numericContactId)
+        .eq('team_id', activeTeamId)
         .single();
     
-    // If the contact is not found (either it doesn't exist or doesn't belong to the team), show a 404.
     if (error || !contact) {
         notFound(); 
     }
 
-    // ✅ SECURE PARALLEL QUERIES: All related data is also filtered by the active team ID.
     const [quotesRes, oppsRes, invoicesRes, activitiesRes] = await Promise.all([
-        supabase.from('quotes').select('*').eq('contact_id', contactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-        supabase.from('opportunities').select('*').eq('contact_id', contactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-        supabase.from('invoices').select('*').eq('contact_id', contactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-        supabase.from('activities').select('*').eq('contact_id', contactId).eq('team_id', activeTeamId).order('created_at', { ascending: false })
+        // Utilitzem l'ID numèric a totes les consultes relacionades.
+        supabase.from('quotes').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+        supabase.from('opportunities').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+        supabase.from('invoices').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
+        supabase.from('activities').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false })
     ]);
 
     const relatedData = {

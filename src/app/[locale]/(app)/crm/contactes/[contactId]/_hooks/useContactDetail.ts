@@ -1,14 +1,19 @@
-// @/hooks/useContactDetail.ts
+// /app/[locale]/(app)/crm/contactes/[contactId]/_hooks/useContactDetail.ts (CORREGIT)
 "use client";
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { type Contact } from '@/types/crm';
-import { updateContactAction, deleteContactAction } from '../actions'; // Ajusta la ruta a les teves Server Actions
+import { type Database } from '@/types/supabase';
+import { updateContactAction, deleteContactAction } from '../actions';
+// ✅ 1. Importem el tipus directament de la llibreria next-intl.
+import { type useTranslations } from 'next-intl';
 
-// Tipus per a la funció de traducció, per a més seguretat
-type TFunction = (key: string) => string;
+type Contact = Database['public']['Tables']['contacts']['Row'];
+
+// ✅ 2. Definim TFunction com el tipus de retorn del hook useTranslations.
+// Aquesta és la manera més segura i precisa de fer-ho.
+type TFunction = ReturnType<typeof useTranslations<string>>;
 
 /**
  * Hook per gestionar la lògica de la pàgina de detall d'un contacte.
@@ -43,6 +48,7 @@ export function useContactDetail(initialContact: Contact, t: TFunction) {
             } else {
                 toast.success(t('toast.successTitle'), { description: t('toast.deleteSuccess') });
                 router.push('/crm/contactes');
+                router.refresh(); 
             }
         });
     };

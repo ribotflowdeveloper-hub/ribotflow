@@ -1,4 +1,4 @@
-// @/app/[locale]/(app)/crm/contactes/[id]/_components/ContactDetailHeader.tsx
+// /app/[locale]/(app)/crm/contactes/[contactId]/_components/ContactDetailHeader.tsx (CORREGIT)
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -6,8 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogTrigger } from '@/components/ui/dialog';
 import { ArrowLeft, User, Edit, Ban, Loader2, Trash } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { type Contact } from '@/types/crm';
-import { DeleteConfirmationDialog } from './DeleteConfirmationDialog'; // Crearem aquest component a continuació
+// ✅ 1. Importem la definició de la base de dades.
+import { type Database } from '@/types/supabase';
+import { DeleteConfirmationDialog } from './DeleteConfirmationDialog';
+
+// ✅ 2. Definim el tipus per a la fila de la taula 'contacts' a partir de la BD.
+// AQUEST ERA L'ERROR: abans apuntava a un tipus incorrecte.
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
 interface Props {
     contact: Contact;
@@ -23,6 +28,7 @@ export function ContactDetailHeader({ contact, isEditing, isPending, onEdit, onC
     const router = useRouter();
 
     return (
+        // El JSX es manté igual, ara simplement rebrà el tipus correcte.
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-6">
             <div className="flex-1">
                 <Button variant="ghost" onClick={() => router.push('/crm/contactes')} type="button" className="-ml-4">
@@ -34,7 +40,7 @@ export function ContactDetailHeader({ contact, isEditing, isPending, onEdit, onC
                     </div>
                     <div>
                         {isEditing ? (
-                            <Input name="nom" defaultValue={contact.nom} className="text-2xl sm:text-3xl font-bold" />
+                            <Input name="nom" defaultValue={contact.nom || ''} className="text-2xl sm:text-3xl font-bold" />
                         ) : (
                             <h1 className="text-3xl sm:text-4xl font-bold">{contact.nom}</h1>
                         )}

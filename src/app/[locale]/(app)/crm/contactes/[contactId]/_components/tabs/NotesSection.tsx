@@ -1,7 +1,13 @@
+// /app/[locale]/(app)/crm/contactes/[contactId]/_components/tabs/NotesSection.tsx (Refactoritzat)
+
 import { FC } from 'react';
 import { useTranslations } from 'next-intl';
-import { type Contact } from '@/types/crm';
 import { Textarea } from '@/components/ui/textarea';
+// ✅ 1. Importem el tipus de la base de dades.
+import { type Database } from '@/types/supabase';
+
+// ✅ 2. Definim el tipus 'Contact' a partir de la fila de la taula.
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
 interface Props {
     contact: Contact;

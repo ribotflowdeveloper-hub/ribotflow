@@ -1,9 +1,16 @@
+// /app/[locale]/(app)/crm/contactes/[contactId]/_components/tabs/PersonalInfoSection.tsx (Refactoritzat)
+
 import { FC } from 'react';
-import { format, Locale } from 'date-fns';
+import { format } from 'date-fns';
+import { type Locale } from 'date-fns';
 import { useTranslations } from 'next-intl';
-import { type Contact } from '@/types/crm';
 import { EditableField } from '../EditableField';
 import { Input } from '@/components/ui/input';
+// ✅ 1. Importem el tipus 'Database' i 'Json' per als camps JSONB.
+import { type Database, type Json } from '@/types/supabase';
+
+// ✅ 2. Definim el tipus 'Contact' a partir de la fila de la taula.
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
 interface Props {
     contact: Contact;
@@ -18,6 +25,11 @@ export const PersonalInfoSection: FC<Props> = ({ contact, isEditing, dateLocale 
         ? format(new Date(contact.birthday), 'dd/MM/yyyy', { locale: dateLocale }) 
         : t('details.noData');
 
+    // ✅ 3. Definim funcions segures per a accedir a les dades dels camps JSONB.
+    const getAddressCity = (address: Json) => (address as { city?: string })?.city || '';
+    const getSocialMediaLinkedin = (social: Json) => (social as { linkedin?: string })?.linkedin || '';
+    const hobbiesString = Array.isArray(contact.hobbies) ? contact.hobbies.join(', ') : '';
+
     return (
         <div>
             <h3 className="text-2xl font-bold mb-6">{t('details.personalInfo')}</h3>
@@ -31,14 +43,14 @@ export const PersonalInfoSection: FC<Props> = ({ contact, isEditing, dateLocale 
                 <EditableField
                     label={t('details.labels.city')}
                     isEditing={isEditing}
-                    viewValue={contact.address?.city || t('details.noData')}
-                    editComponent={<Input name="address.city" defaultValue={contact.address?.city || ''} />}
+                    viewValue={getAddressCity(contact.address) || t('details.noData')}
+                    editComponent={<Input name="address.city" defaultValue={getAddressCity(contact.address)} />}
                 />
                 <EditableField
                     label={t('details.labels.linkedin')}
                     isEditing={isEditing}
-                    viewValue={contact.social_media?.linkedin || t('details.noData')}
-                    editComponent={<Input name="social_media.linkedin" defaultValue={contact.social_media?.linkedin || ''} />}
+                    viewValue={getSocialMediaLinkedin(contact.social_media) || t('details.noData')}
+                    editComponent={<Input name="social_media.linkedin" defaultValue={getSocialMediaLinkedin(contact.social_media)} />}
                 />
                 <EditableField
                     label={t('details.labels.children')}
@@ -55,8 +67,8 @@ export const PersonalInfoSection: FC<Props> = ({ contact, isEditing, dateLocale 
                 <EditableField
                     label={t('details.labels.hobbies')}
                     isEditing={isEditing}
-                    viewValue={contact.hobbies?.join(', ') || t('details.noData')}
-                    editComponent={<Input name="hobbies" defaultValue={contact.hobbies?.join(', ') || ''} />}
+                    viewValue={hobbiesString || t('details.noData')}
+                    editComponent={<Input name="hobbies" defaultValue={hobbiesString} />}
                 />
             </div>
         </div>

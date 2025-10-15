@@ -1,21 +1,35 @@
-// @/app/[locale]/(app)/crm/contactes/[id]/_components/ContactDetailTabs.tsx
+// @/app/[locale]/(app)/crm/contactes/[id]/_components/ContactDetailTabs.tsx (CORREGIT)
 "use client";
 
 import { useTranslations, useLocale } from 'next-intl';
 import { ca, es, enUS } from 'date-fns/locale';
-import { type Contact, type Quote, type Opportunity, type Invoice, type Activity, CONTACT_STATUS_MAP } from '@/types/crm';
+// ✅ 1. Importem la definició de la BD i la constant des de /config.
+import { type Database } from '@/types/supabase';
+import { CONTACT_STATUS_MAP } from '@/config/contacts';
 import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
 import { Briefcase, FileText, Receipt, Activity as ActivityIcon, Edit } from 'lucide-react';
 
-// Importacions dels nous components
 import { TabTriggerWithCount } from './shared/TabTriggerWithCount';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { RelatedDataTable } from './tabs/RelatedDataTable';
 import { DetailsTab } from './tabs/DetailsTab';
 
+// ✅ 2. Definim tots els tipus necessaris a partir de la BD.
+// AQUEST ERA L'ERROR: abans apuntaven a tipus incorrectes.
+type Contact = Database['public']['Tables']['contacts']['Row'];
+type Quote = Database['public']['Tables']['quotes']['Row'];
+type Opportunity = Database['public']['Tables']['opportunities']['Row'];
+type Invoice = Database['public']['Tables']['invoices']['Row'];
+type Activity = Database['public']['Tables']['activities']['Row'];
+
 interface Props {
     contact: Contact;
-    relatedData: { quotes: Quote[]; opportunities: Opportunity[]; invoices: Invoice[]; activities: Activity[]; };
+    relatedData: { 
+        quotes: Quote[]; 
+        opportunities: Opportunity[]; 
+        invoices: Invoice[]; 
+        activities: Activity[]; 
+    };
     isEditing: boolean;
 }
 
@@ -24,19 +38,18 @@ export function ContactDetailTabs({ contact, relatedData, isEditing }: Props) {
     const locale = useLocale();
     const dateLocale = { ca, es, en: enUS }[locale] || ca;
     
-    const getStatusLabel = (statusCode?: string) => {
+    const getStatusLabel = (statusCode?: string | null) => {
         if (!statusCode) return t('details.noData');
         const status = CONTACT_STATUS_MAP.find(s => s.code === statusCode);
         return status ? t(`contactStatuses.${status.key}`) : statusCode;
     };
 
     return (
+        // El JSX es manté igual, ara simplement rebrà els tipus correctes.
         <div className="glass-card p-4 md:p-6 mt-8">
             <Tabs defaultValue="activitats" className="w-full">
                 <div className="overflow-x-auto -mx-4 px-4 pb-px">
-                      {/* 👇 AQUÍ ESTÀ EL CANVI 👇 */}
-                      <TabsList className="grid w-full sm:w-auto sm:grid-cols-5">
-                        
+                    <TabsList className="grid w-full sm:w-auto sm:grid-cols-5">
                         <TabTriggerWithCount value="activitats" icon={ActivityIcon} count={relatedData.activities.length} label={t('tabs.activities')} />
                         <TabTriggerWithCount value="oportunitats" icon={Briefcase} count={relatedData.opportunities.length} label={t('tabs.opportunities')} />
                         <TabTriggerWithCount value="pressupostos" icon={FileText} count={relatedData.quotes.length} label={t('tabs.quotes')} />
@@ -56,17 +69,17 @@ export function ContactDetailTabs({ contact, relatedData, isEditing }: Props) {
                 </TabsContent>
                 
                 <TabsContent value="pressupostos" className="pt-6">
-                     <h3 className="text-2xl font-bold mb-6">{t('quotes.title')}</h3>
-                     <RelatedDataTable data={relatedData.quotes} columns={[{ key: 'number', label: t('quotes.table.number') }, { key: 'status', label: t('quotes.table.status') }, { key: 'total', label: t('quotes.table.total') }]} linkPath="/crm/quotes" emptyMessage={t('quotes.empty')} />
+                    <h3 className="text-2xl font-bold mb-6">{t('quotes.title')}</h3>
+                    <RelatedDataTable data={relatedData.quotes} columns={[{ key: 'number', label: t('quotes.table.number') }, { key: 'status', label: t('quotes.table.status') }, { key: 'total', label: t('quotes.table.total') }]} linkPath="/crm/quotes" emptyMessage={t('quotes.empty')} />
                 </TabsContent>
                 
-                 <TabsContent value="factures" className="pt-6">
-                     <h3 className="text-2xl font-bold mb-6">{t('invoices.title')}</h3>
-                     <RelatedDataTable data={relatedData.invoices} columns={[{ key: 'number', label: t('invoices.table.number') }, { key: 'status', label: t('invoices.table.status') }, { key: 'total', label: t('invoices.table.total') }]} emptyMessage={t('invoices.empty')} />
+                <TabsContent value="factures" className="pt-6">
+                    <h3 className="text-2xl font-bold mb-6">{t('invoices.title')}</h3>
+                    <RelatedDataTable data={relatedData.invoices} columns={[{ key: 'number', label: t('invoices.table.number') }, { key: 'status', label: t('invoices.table.status') }, { key: 'total', label: t('invoices.table.total') }]} emptyMessage={t('invoices.empty')} />
                 </TabsContent>
                 
                 <TabsContent value="detalls" className="pt-6">
-                     <DetailsTab contact={contact} isEditing={isEditing} dateLocale={dateLocale} getStatusLabel={getStatusLabel} />
+                    <DetailsTab contact={contact} isEditing={isEditing} dateLocale={dateLocale} getStatusLabel={getStatusLabel} />
                 </TabsContent>
             </Tabs>
         </div>
