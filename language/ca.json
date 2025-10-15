@@ -288,7 +288,14 @@
     "event": "Esdeveniment",
     "noEventsInRange": "No hi ha esdeveniments en aquest rang.",
     "more": "més",
-    "newTask": "Nova Tasca"
+    "newTask": "Nova Tasca",
+    "filters": {
+      "title": "Filtra Esdeveniments",
+      "tasks": "Tasques",
+      "quotes": "Pressupostos",
+      "emailsSent": "Correus Enviats",
+      "emailsReceived": "Correus Rebuts"
+    }
   },
   "ContactsClient": {
     "contactStatuses": {

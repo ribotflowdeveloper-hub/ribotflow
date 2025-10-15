@@ -1,49 +1,41 @@
+// src/app/[locale]/(app)/crm/calendari/_hooks/useCalendar.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
-import { updateTaskDate } from '../actions';
+import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { CalendarEvent, TaskWithAssignee } from '@/types/crm';
+import { updateTaskDate } from '../actions';
+import { CalendarEvent } from '@/types/crm';
+import { EnrichedTaskForCalendar } from '../_components/CalendarData';
 
-export default function useCalendar(initialTasks: TaskWithAssignee[]) {
-  // L'estat de les tasques es gestiona aquí per a l'actualització optimista del drag-and-drop.
-  const [tasks, setTasks] = useState<TaskWithAssignee[]>(initialTasks);
+// El hook ara rep les tasques actuals i una funció per notificar un canvi
+export default function useCalendar(
+  tasks: EnrichedTaskForCalendar[],
+  onTaskMove: (taskId: number, newDueDate: string) => void
+) {
 
-  const events: CalendarEvent[] = useMemo(() => {
-    return tasks
-      .filter(task => task.due_date)
-      .map(task => ({
-        id: Number(task.id),
-        title: `${task.title} (${task.profiles?.full_name || 'Sense assignar'})`,
-        start: new Date(task.due_date!),
-        end: new Date(task.due_date!),
-        allDay: true,
-        resource: task,
-      }));
-  }, [tasks]);
-
-  const handleMoveEvent = async ({ event, start }: { event: CalendarEvent, start: string | Date }) => {
-    const taskId = event.id;
+  const handleMoveEvent = useCallback(async ({ event, start }: { event: CalendarEvent, start: string | Date }) => {
+    // Només gestionem tasques per ara
+    if (event.eventType !== 'task') return;
+    
+    const taskId = Number(event.id);
     const newDueDate = new Date(start).toISOString();
-    const originalTasks = tasks;
+    const originalTask = tasks.find(t => t.id === taskId);
+    
+    if (!originalTask) return;
 
-    // Actualització optimista
-    setTasks(currentTasks => 
-        currentTasks.map(t => 
-            t.id === taskId ? { ...t, due_date: newDueDate } : t
-        )
-    );
+    // Notifiquem al component pare per a l'actualització optimista
+    onTaskMove(taskId, newDueDate);
 
     const result = await updateTaskDate(taskId, newDueDate);
 
     if (result.error) {
         toast.error("Error en actualitzar la data.", { description: result.error.db });
-        setTasks(originalTasks); // Revertim en cas d'error
+        // Si hi ha error, revertim a la data original
+        onTaskMove(taskId, originalTask.due_date!);
     } else {
-        toast.success("Tasca actualitzada.");
+        toast.success("Tasca actualitzada correctament.");
     }
-  };
+  }, [tasks, onTaskMove]);
 
-  // El hook ara només retorna el que és estrictament necessari per al calendari.
-  return { events, handleMoveEvent };
+  return { handleMoveEvent };
 }

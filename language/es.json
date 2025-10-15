@@ -282,7 +282,14 @@
     "event": "Evento",
     "noEventsInRange": "No hay eventos en este rango.",
     "more": "más",
-    "newTask": "Nueva Tarea"
+    "newTask": "Nueva Tarea",
+    "filters": {
+      "title": "Filtrar Eventos",
+      "tasks": "Tareas",
+      "quotes": "Presupuestos",
+      "emailsSent": "Correos Enviados",
+      "emailsReceived": "Correos Recibidos"
+    }
   },
   "ContactsClient": {
     "contactStatuses": {

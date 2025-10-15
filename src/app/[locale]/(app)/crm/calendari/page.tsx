@@ -1,25 +1,14 @@
 import { Suspense } from 'react';
 import CalendarData from './_components/CalendarData';
 import CalendarSkeleton from './_components/CalendarSkeleton';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 export default function CalendarPage() {
   return (
-    <div className="p-4 md:p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Calendari de l'Equip</CardTitle>
-          <CardDescription>
-            Gestiona les tasques del teu equip amb una vista de calendari interactiva.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<CalendarSkeleton />}>
-            {/* Ja no passem cap prop a CalendarData */}
-            <CalendarData />
-          </Suspense>
-        </CardContent>
-      </Card>
+    // Utilitzem un contenidor que no afegeix marges o paddings verticals innecessaris
+    <div className="h-full w-full">
+      <Suspense fallback={<CalendarSkeleton />}>
+        <CalendarData />
+      </Suspense>
     </div>
   );
 }

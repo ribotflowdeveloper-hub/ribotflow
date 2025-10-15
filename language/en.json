@@ -287,7 +287,14 @@
     "event": "Event",
     "noEventsInRange": "There are no events in this range.",
     "more": "more",
-    "newTask": "New Task"
+    "newTask": "New Task",
+    "filters": {
+      "title": "Filter Events",
+      "tasks": "Tasks",
+      "quotes": "Quotes",
+      "emailsSent": "Sent Emails",
+      "emailsReceived": "Received Emails"
+    }
   },
   "ContactsClient": {
     "contactStatuses": {
