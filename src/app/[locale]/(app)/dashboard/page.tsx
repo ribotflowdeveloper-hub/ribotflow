@@ -2,7 +2,6 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { DashboardData } from './_components/DashboardData';
 import { DashboardSkeleton } from './_components/DashboardSkeleton';
-import { AIOracle } from './_components/AIOracle';
 import { AIOracleSkeleton } from './_components/AIOracleSkeleton';
 
 

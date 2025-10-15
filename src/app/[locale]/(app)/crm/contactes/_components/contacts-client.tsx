@@ -1,4 +1,4 @@
-// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Corregida)
+// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Refactoritzada)
 "use client";
 
 import React, { useState, useMemo, useTransition } from 'react';
@@ -12,7 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { type Contact, CONTACT_STATUS_MAP } from '@/types/crm';
+// ✅ 1. Importem el nou tipus des del seu origen i la definició de la BD.
+import { Database } from '@/types/supabase';
+import { type ContactWithOpportunities } from './ContactsData';
+// ✅ 2. El mapa d'estats s'importa de /config, la qual cosa és correcta.
+import { CONTACT_STATUS_MAP } from '@/config/contacts';
 
 import { useContactFilters } from '../_hooks/useContactFilters';
 
@@ -22,8 +26,12 @@ import ContactTable from './ContactTable';
 import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
 import { exportToExcel,importFromExcel } from '@/app/[locale]/(app)/excel/actions';
 
+// Definim el tipus base per a un contacte nou, que no tindrà la relació 'opportunities'
+type Contact = Database['public']['Tables']['contacts']['Row'];
+
 interface ContactsClientProps {
-    initialContacts: Contact[];
+    // ✅ 3. Actualitzem la prop per a utilitzar el nou tipus enriquit.
+    initialContacts: ContactWithOpportunities[];
     totalPages: number;
     currentPage: number;
     initialViewMode: 'cards' | 'list';
@@ -43,16 +51,19 @@ export function ContactsClient({
 
     const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
 
-    const [contacts, setContacts] = useState<Contact[]>(initialContacts);
+    // ✅ 4. L'estat ara és del tipus correcte.
+    const [contacts, setContacts] = useState<ContactWithOpportunities[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
 
+    // Aquesta lògica continua funcionant sense canvis, ja que les propietats són les mateixes.
     const filteredContacts = useMemo(() => contacts.filter(c =>
         (c.nom?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (c.empresa?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (c.email?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     ), [contacts, searchTerm]);
 
-    const handleContactClick = (contact: Contact) => {
+    const handleContactClick = (contact: ContactWithOpportunities) => {
+        // 'contact.id' és un number, que és vàlid per a les URLs.
         router.push(`/crm/contactes/${contact.id}`);
     };
 
@@ -93,9 +104,6 @@ export function ContactsClient({
         }
     }
 
-    /* Funció del costat del client per iniciar el procés d'importació.
-    * Crea un input de fitxers i el llança.
-     */
     function handleImport() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -135,10 +143,10 @@ export function ContactsClient({
     const handleExcelAction = (option: DropdownOption) => {
         switch (option.value) {
             case 'download':
-                startTransition(() => handleExportAndDownload(true)); // ➡️ ARA ES CRIDA startTransition
+                startTransition(() => handleExportAndDownload(true));
                 break;
             case 'create':
-                startTransition(() => handleExportAndDownload(false)); // ➡️ I AQUÍ TAMBÉ
+                startTransition(() => handleExportAndDownload(false));
                 break;
             case 'load':
                 handleImport();
@@ -160,7 +168,6 @@ export function ContactsClient({
                         <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                     </div>
 
-                    {/* ✅ 3. ELS COMPONENTS DE FILTRE ARA SÓN MÉS SIMPLES */}
                     <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
                         <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.sortBy')} /></SelectTrigger>
                         <SelectContent>
@@ -191,7 +198,6 @@ export function ContactsClient({
                         </Button>
                     </div>
 
-                    {/* ✅ AQUÍ AFEGIM EL NOU BOTÓ */}
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
@@ -205,12 +211,17 @@ export function ContactsClient({
                                 <span className="hidden md:inline">{t('newContactButton')}</span>
                             </Button>
                         }
-                        onContactSaved={(newContact) => setContacts(prev => [newContact as Contact, ...prev])}
+                        // ✅ 5. Quan guardem un contacte nou, el convertim al tipus enriquit
+                        // per a què coincideixi amb la resta de l'estat.
+                        onContactSaved={(newContact) => setContacts(prev => [
+                            { ...(newContact as Contact), opportunities: [] }, 
+                            ...prev
+                        ])}
                     />
                 </div>
             </div>
 
-            {/* LLISTA DE CONTACTES (Això no canvia) */}
+            {/* LLISTA DE CONTACTES */}
             <div className="flex-1 overflow-y-auto -mr-4 pr-4">
                 <AnimatePresence mode="wait">
                     <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -226,7 +237,7 @@ export function ContactsClient({
                     </motion.div>
                 </AnimatePresence>
             </div>
-            {/* ✅ PAGINACIÓ AMB DISSENY ADAPTABLE */}
+            {/* PAGINACIÓ */}
             {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 md:gap-4 mt-8 flex-shrink-0">
                     <Button asChild disabled={currentPage <= 1} size="sm" className="px-3">

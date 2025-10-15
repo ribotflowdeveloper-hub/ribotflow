@@ -17,8 +17,13 @@ export async function MarketingData() {
         return <MarketingClient initialKpis={{ totalLeads: 0, conversionRate: 0 }} initialCampaigns={[]} />;
     }
     
-    const kpis: Kpis = data?.kpis || { totalLeads: 0, conversionRate: 0 };
-    const campaigns: Campaign[] = data?.campaigns || [];
+    const isObject = typeof data === 'object' && data !== null && !Array.isArray(data);
+
+    type MarketingPageData = { kpis: Kpis; campaigns: Campaign[] };
+    const typedData = isObject ? (data as MarketingPageData) : undefined;
+
+    const kpis: Kpis = typedData && typedData.kpis ? typedData.kpis : { totalLeads: 0, conversionRate: 0 };
+    const campaigns: Campaign[] = typedData && typedData.campaigns ? typedData.campaigns : [];
 
     return <MarketingClient initialKpis={kpis} initialCampaigns={campaigns} />;
 }

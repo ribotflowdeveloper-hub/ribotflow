@@ -18,5 +18,16 @@ export async function TemplatesData() {
         return <TemplatesClient initialTemplates={[]} />;
     }
 
-    return <TemplatesClient initialTemplates={(templates as EmailTemplate[]) || []} />;
+    return (
+        <TemplatesClient
+            initialTemplates={
+                templates
+                    ? templates.map((t) => ({
+                        ...t,
+                        id: String(t.id),
+                    })) as EmailTemplate[]
+                    : []
+            }
+        />
+    );
 }

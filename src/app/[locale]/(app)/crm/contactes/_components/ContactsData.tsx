@@ -1,7 +1,9 @@
-// /app/[locale]/crm/contactes/_components/ContactsData.tsx
+// /app/[locale]/crm/contactes/_components/ContactsData.tsx (Versió Refactoritzada)
+
 import { ContactsClient } from './contacts-client';
-import type { Contact } from '@/types/crm';
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nova funció
+// ✅ 1. Importem la definició completa de la base de dades
+import { Database } from "@/types/supabase";
+import { validateUserSession } from "@/lib/supabase/session";
 
 const ITEMS_PER_PAGE = 50;
 
@@ -13,20 +15,22 @@ interface ContactsDataProps {
     viewMode: 'cards' | 'list';
 }
 
+// ✅ 2. Definim el tipus que representa el resultat EXACTE de la consulta.
+// És una fila de 'contacts' enriquida amb un array d'objectes (o null) d' 'opportunities'.
+export type ContactWithOpportunities = Database['public']['Tables']['contacts']['Row'] & {
+  opportunities: Pick<Database['public']['Tables']['opportunities']['Row'], 'id' | 'value'>[] | null;
+};
+
+
 export async function ContactsData({ page, sortBy, status, searchTerm, viewMode }: ContactsDataProps) {
-    // ✅ 2. Cridem a la nostra funció centralitzada.
     const session = await validateUserSession();
 
-    // Si la sessió no és vàlida (usuari no logat o sense equip actiu),
-    // mostrem el component client amb dades buides.
     if ('error' in session) {
         console.error("ContactsData: Sessió invàlida.", session.error.message);
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialViewMode={viewMode} />;
     }
 
-    // A partir d'aquí, sabem que tenim una sessió vàlida.
     const { supabase } = session;
-
     const currentPage = Number(page) || 1;
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
@@ -34,9 +38,6 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
     let query = supabase
         .from('contacts')
         .select('*, opportunities(id, value)', { count: 'exact' });
-
-    // ✅ FILTRE OBLIGATORI: Ja no cal afegir .eq('team_id', teamId) manualment!
-    // La política RLS que crearàs per a la taula 'contacts' ho farà automàticament.
 
     if (searchTerm) {
         query = query.or(`nom.ilike.%${searchTerm}%,empresa.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
@@ -58,7 +59,8 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
 
     return (
         <ContactsClient 
-            initialContacts={contacts as Contact[] || []} 
+            // ✅ 3. Passem les dades amb el nou tipus. L'ús de 'as' aquí és segur perquè hem definit el tipus per a aquesta consulta.
+            initialContacts={contacts as ContactWithOpportunities[] || []} 
             totalPages={totalPages} 
             currentPage={currentPage}
             initialViewMode={viewMode}
