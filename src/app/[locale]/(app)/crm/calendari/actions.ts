@@ -20,7 +20,13 @@ type FormState = {
   };
   success?: boolean;
 };
-
+// 🧠 NOU: Tipus per al filtre de fonts de dades (ha de coincidir amb EventSourcesState)
+interface ActiveSources {
+    tasks: boolean;
+    quotes: boolean;
+    emails: boolean; // Correu enviat
+    receivedEmails: boolean; // Correu rebut
+}
 // Zod Schema per a la validació de les dades de la tasca
 const taskSchema = z.object({
   title: z.string().min(1, 'El títol és obligatori.'),
@@ -129,121 +135,128 @@ export async function deleteTask(taskId: number) {
 }
 
 
-// ✅ Funció corregida i ampliada per obtenir dades del calendari amb filtre de rang de dates.
-export async function getCalendarData(startDate: string, endDate: string) {
-    const sessionResult = await validatePageSession();
-    if ('error' in sessionResult) {
-        // CORRECCIÓ 1: Retorna l'estructura COMPLETA en cas d'error de sessió.
-        return { 
-            tasks: null, 
-            quotes: null, 
-            sentEmails: null, 
-            receivedEmails: null, 
-            error: typeof sessionResult.error === 'object' && sessionResult.error !== null && 'message' in sessionResult.error
-                ? (sessionResult.error as { message: string }).message
-                : String(sessionResult.error)
-        };
-    }
-    const { supabase, activeTeamId } = sessionResult;
+// ✅ Funció optimitzada i amb correcció de seguretat per 'activeSources'
+export async function getCalendarData(startDate: string, endDate: string, activeSources?: ActiveSources) {
+    const sessionResult = await validatePageSession();
+    if ('error' in sessionResult) {
+        return { tasks: null, quotes: null, sentEmails: null, receivedEmails: null, error: 'Error de sessió. Torna a iniciar la sessió.' };
+    }
+    const { supabase, activeTeamId } = sessionResult;
 
-
-    // Validació de dades d'entrada
-    const dateSchema = z.string().datetime({ message: 'La data ha de ser una ISO 8601 string vàlida.' });
-    if (!dateSchema.safeParse(startDate).success || !dateSchema.safeParse(endDate).success) {
-        // CORRECCIÓ 2: Retorna l'estructura COMPLETA en cas de validació fallida.
-        return { 
-            tasks: null, 
-            quotes: null, 
-            sentEmails: null, 
-            receivedEmails: null, 
-            error: 'Rang de dates invàlid.' 
-        };
-    }
-
-    // Pas 1: Obtenim la llista d'IDs dels usuaris de l'equip actiu.
-    const { data: teamMembers, error: membersError } = await supabase
-      .from('team_members')
-      .select('user_id')
-      .eq('team_id', activeTeamId);
-
-    if (membersError) {
-        console.error("Error fetching team members for calendar:", membersError);
-        // CORRECCIÓ 3: Retorna l'estructura COMPLETA en cas d'error de membres de l'equip.
-        return { 
-            tasks: null, 
-            quotes: null, 
-            sentEmails: null, 
-            receivedEmails: null, 
-            error: membersError.message 
-        };
-    }
-
-    const userIdsInTeam = teamMembers.map(member => member.user_id);
-    
-    // Pas 2: Executem totes les consultes en paral·lel, APLICANT ELS FILTRES DE RANG.
-    const [tasksResult, quotesResult, sentEmailsResult, receivedEmailsResult] = await Promise.all([ 
-        // 1. Tasques
-        supabase
-            .from('tasks')
-            .select('*, profiles:user_asign_id (id, full_name, avatar_url), contacts(*), departments(*)')
-            .eq('team_id', activeTeamId)
-            .gte('due_date', startDate) 
-            .lte('due_date', endDate),
-
-        // 2. Pressupostos
-        supabase
-            .from('quotes')
-            .select('*, contacts (id, nom)')
-            .eq('team_id', activeTeamId)
-            .not('expiry_date', 'is', null)
-            .gte('expiry_date', startDate) 
-            .lte('expiry_date', endDate),
-
-        // 3. Correus Enviats
-        supabase
-            .from('tickets')
-            .select('*, contacts (id, nom)')
-            .in('user_id', userIdsInTeam) 
-            .eq('type', 'enviat')
-            .not('sent_at', 'is', null)
-            .gte('sent_at', startDate) 
-            .lte('sent_at', endDate),
-
-        // 4. Correus Rebuts
-        supabase
-            .from('tickets')
-            .select('*, contacts (id, nom)')
-            .in('user_id', userIdsInTeam)
-            .eq('type', 'rebut')
-            .not('sent_at', 'is', null)
-            .gte('sent_at', startDate) 
-            .lte('sent_at', endDate),
-
-    ]);
-
-    const error = tasksResult.error || quotesResult.error || sentEmailsResult.error || receivedEmailsResult.error;
-
-    if (error) {
-        console.error("Error fetching calendar data:", {
-            tasksError: tasksResult.error,
-            quotesError: quotesResult.error,
-            sentEmailsError: sentEmailsResult.error,
-            receivedEmailsError: receivedEmailsResult.error,  
-        });
-        // CORRECCIÓ 4: Retorna l'estructura COMPLETA en cas d'error de consulta.
-        return { 
-            tasks: null, 
-            quotes: null, 
-            sentEmails: null, 
-            receivedEmails: null, 
-            error: error ? error.message : 'Error desconegut' 
-        };
-    }
-
-    return {
-        tasks: tasksResult.data as EnrichedTaskForCalendar[],
-        quotes: quotesResult.data as EnrichedQuoteForCalendar[],
-        sentEmails: sentEmailsResult.data as EnrichedEmailForCalendar[], 
-        receivedEmails: receivedEmailsResult.data as EnrichedEmailForCalendar[], 
+    // 🧠 FIX CLAU: Si activeSources és undefined (càrrega inicial del Server Component),
+    // utilitzem el filtre per defecte (només tasques).
+    const filters: ActiveSources = activeSources || {
+        tasks: true,
+        quotes: false,
+        emails: false,
+        receivedEmails: false,
     };
+
+
+    // Validació de dades d'entrada (unchanged)
+    const dateSchema = z.string().datetime({ message: 'La data ha de ser una ISO 8601 string vàlida.' });
+    if (!dateSchema.safeParse(startDate).success || !dateSchema.safeParse(endDate).success) {
+        return { tasks: null, quotes: null, sentEmails: null, receivedEmails: null, error: 'Rang de dates invàlid.' };
+    }
+
+    // Pas 1: Obtenim la llista d'IDs dels usuaris de l'equip actiu (Condicionalment).
+    let userIdsInTeam: string[] = [];
+    // ✅ Utilitzem 'filters' per a la verificació
+    if (filters.emails || filters.receivedEmails) {
+        const { data: teamMembers, error: membersError } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .eq('team_id', activeTeamId);
+
+        if (membersError) {
+            console.error("Error fetching team members for calendar:", membersError);
+            return { tasks: null, quotes: null, sentEmails: null, receivedEmails: null, error: membersError.message };
+        }
+        userIdsInTeam = teamMembers.map(member => member.user_id);
+    }
+    
+    // Pas 2: Executem consultes condicionalment
+    const promises = [];
+
+    // 1. Tasques
+    if (filters.tasks) {
+        promises.push(
+            supabase
+                .from('tasks')
+                .select('*, profiles:user_asign_id (id, full_name, avatar_url), contacts(id, nom), departments(id, name)')
+                .eq('team_id', activeTeamId)
+                .gte('due_date', startDate) 
+                .lte('due_date', endDate)
+        );
+    } else {
+        promises.push(Promise.resolve({ data: [] as EnrichedTaskForCalendar[], error: null }));
+    }
+
+    // 2. Pressupostos
+    if (filters.quotes) {
+        promises.push(
+            supabase
+                .from('quotes')
+                .select('*, contacts (id, nom)')
+                .eq('team_id', activeTeamId)
+                .not('expiry_date', 'is', null)
+                .gte('expiry_date', startDate) 
+                .lte('expiry_date', endDate)
+        );
+    } else {
+        promises.push(Promise.resolve({ data: [] as EnrichedQuoteForCalendar[], error: null }));
+    }
+
+    // 3. Correus Enviats
+    if (filters.emails && userIdsInTeam.length > 0) {
+        promises.push(
+            supabase
+                .from('tickets')
+                .select('*, contacts (id, nom)')
+                .in('user_id', userIdsInTeam) 
+                .eq('type', 'enviat')
+                .not('sent_at', 'is', null)
+                .gte('sent_at', startDate) 
+                .lte('sent_at', endDate)
+        );
+    } else {
+        promises.push(Promise.resolve({ data: [] as EnrichedEmailForCalendar[], error: null }));
+    }
+
+    // 4. Correus Rebuts
+    if (filters.receivedEmails && userIdsInTeam.length > 0) {
+        promises.push(
+            supabase
+                .from('tickets')
+                .select('*, contacts (id, nom)')
+                .in('user_id', userIdsInTeam)
+                .eq('type', 'rebut')
+                .not('sent_at', 'is', null)
+                .gte('sent_at', startDate) 
+                .lte('sent_at', endDate)
+        );
+    } else {
+        promises.push(Promise.resolve({ data: [] as EnrichedEmailForCalendar[], error: null }));
+    }
+    
+    const [tasksResult, quotesResult, sentEmailsResult, receivedEmailsResult] = await Promise.all(promises);
+
+    const error = tasksResult.error || quotesResult.error || sentEmailsResult.error || receivedEmailsResult.error;
+
+    if (error) {
+        console.error("Error fetching calendar data:", {
+            tasksError: tasksResult.error,
+            quotesError: quotesResult.error,
+            sentEmailsError: sentEmailsResult.error,
+            receivedEmailsError: receivedEmailsResult.error,  
+        });
+        return { tasks: null, quotes: null, sentEmails: null, receivedEmails: null, error: error ? error.message : 'Error desconegut' };
+    }
+
+    return {
+        tasks: tasksResult.data as unknown as EnrichedTaskForCalendar[],
+        quotes: quotesResult.data as unknown as EnrichedQuoteForCalendar[],
+        sentEmails: sentEmailsResult.data as unknown as EnrichedEmailForCalendar[], 
+        receivedEmails: receivedEmailsResult.data as unknown as EnrichedEmailForCalendar[], 
+    };
 }
