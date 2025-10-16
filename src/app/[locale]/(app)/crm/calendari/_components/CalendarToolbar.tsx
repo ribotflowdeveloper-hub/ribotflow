@@ -40,20 +40,19 @@ export default function CalendarToolbar({
   const tFilters = useTranslations('Calendar.filters');
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 p-2 mb-4">
-
+    <div className={cn("flex flex-wrap items-center justify-between gap-4 p-2 mb-4 bg-white shadow-sm rounded-lg", "light")}>
       {/* --- Grup 1: Navegació i Data Actual --- */}
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="icon" onClick={() => onNavigate('PREV')} aria-label={t('previous')}>
+        <Button variant="secondary" size="icon" onClick={() => onNavigate('PREV')} aria-label={t('previous')}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <Button variant="outline" className="font-semibold" onClick={() => onNavigate('TODAY')}>
+        <Button variant="secondary" className="font-semibold" onClick={() => onNavigate('TODAY')}>
           {t('today')}
         </Button>
-        <Button variant="outline" size="icon" onClick={() => onNavigate('NEXT')} aria-label={t('next')}>
+        <Button variant="secondary" size="icon" onClick={() => onNavigate('NEXT')} aria-label={t('next')}>
           <ChevronRight className="h-4 w-4" />
         </Button>
-        <h2 className="text-xl font-bold text-foreground ml-4">{label}</h2>
+        <h2 className="text-xl font-bold text-black ml-4">{label}</h2>
       </div>
 
       {/* --- Grup 2: Vistes i Accions --- */}
@@ -84,7 +83,7 @@ export default function CalendarToolbar({
         {/* Accions: Filtres i Crear */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" aria-label={tFilters('title')}>
+            <Button variant="secondary" size="icon" aria-label={tFilters('title')}>
               <Filter className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
