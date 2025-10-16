@@ -1,9 +1,7 @@
-// src/app/[locale]/(app)/crm/calendari/_components/CalendarClient.tsx
-
 'use client';
 
 import { useMemo } from 'react';
-import { Calendar, dateFnsLocalizer, EventPropGetter, CalendarProps, View } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, EventPropGetter, CalendarProps, View, NavigateAction } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
@@ -23,16 +21,7 @@ import { cn } from '@/lib/utils/utils';
 import { useCalendarController } from '../_hooks/useCalendarController';
 import { useCalendarDialogs } from '../_hooks/useCalendarDialog';
 import CalendarSkeleton from './CalendarSkeleton';
-import CalendarSkeletonEvent from './CalendarSkeletonEvent'; // Necessari pel renderitzat de skeleton events
-
-// Define the signature of the Server Action (unchanged)
-type FetchCalendarDataAction = (startDate: string, endDate: string) => Promise<{
-    tasks: EnrichedTaskForCalendar[] | null;
-    quotes: EnrichedQuoteForCalendar[] | null;
-    sentEmails: EnrichedEmailForCalendar[] | null;
-    receivedEmails: EnrichedEmailForCalendar[] | null;
-    error?: string;
-}>;
+import CalendarSkeletonEvent from './CalendarSkeletonEvent';
 
 export type EventSourcesState = {
     tasks: boolean;
@@ -44,11 +33,8 @@ export type EventSourcesState = {
 const locales = { es };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 const DragAndDropCalendar = withDragAndDrop(Calendar as React.ComponentType<CalendarProps<CalendarEvent>>);
-// ✅ CORRECCIÓ CLAU: Declarem les vistes com a constant mutable fora de useMemo.
 const CALENDAR_VIEWS: View[] = ['month', 'week', 'day', 'agenda'];
 
-// ✅ CORRECCIÓ: Reubicació dels estils i el style getter aquí
-// ✅ Reubicació dels estils i el style getter aquí
 const eventStyles = {
     task: {
         Baixa: { backgroundColor: '#3498db', color: 'white' },
@@ -79,7 +65,6 @@ const eventStyleGetter: EventPropGetter<CalendarEvent> = (event) => {
     return { style: { ...style, borderRadius: '5px', opacity: 0.9, border: '0px', display: 'block' } };
 };
 
-
 export interface CalendarClientProps {
     initialTasks: EnrichedTaskForCalendar[];
     initialQuotes: EnrichedQuoteForCalendar[];
@@ -88,9 +73,14 @@ export interface CalendarClientProps {
     teamUsers: { id: string; full_name: string | null }[];
     contacts: Tables<'contacts'>[];
     departments: Tables<'departments'>[];
-    fetchCalendarDataAction: FetchCalendarDataAction;
+    fetchCalendarDataAction: (startDate: string, endDate: string) => Promise<{
+        tasks: EnrichedTaskForCalendar[] | null;
+        quotes: EnrichedQuoteForCalendar[] | null;
+        sentEmails: EnrichedEmailForCalendar[] | null;
+        receivedEmails: EnrichedEmailForCalendar[] | null;
+        error?: string;
+    }>;
 }
-
 
 export default function CalendarClient(props: CalendarClientProps) {
     const t = useTranslations('Calendar');
@@ -101,7 +91,6 @@ export default function CalendarClient(props: CalendarClientProps) {
         view,
         date,
         eventSources,
-        handleNavigate: handleCalendarNavigation,
         handleToolbarNavigation,
         handleViewChange,
         handleDataMutation,
@@ -129,7 +118,6 @@ export default function CalendarClient(props: CalendarClientProps) {
 
     const { handleMoveEvent } = useCalendar(tasks, handleMoveTask);
 
-    // ✅ CORRECCIÓ: Definició COMPLETA del useMemo per localització
     const messages = useMemo(() => ({
         allDay: t('allDay'),
         previous: t('previous'),
@@ -146,29 +134,39 @@ export default function CalendarClient(props: CalendarClientProps) {
         showMore: (total: number) => `+ ${total} ${t('more')}`,
     }), [t]);
 
+    const formattedLabel = useMemo(() => {
+        let dateFormat: string;
+        switch (view) {
+            case 'month': dateFormat = 'MMMM yyyy'; break;
+            case 'week': dateFormat = 'dd MMM yyyy'; break;
+            case 'day': dateFormat = 'EEEE, dd MMMM yyyy'; break;
+            case 'agenda': dateFormat = 'dd MMMM yyyy'; break;
+            default: dateFormat = 'MMMM yyyy';
+        }
+        return format(date, dateFormat, { locale: es }).replace(/^\w/, c => c.toUpperCase());
+    }, [date, view]);
 
-    // 🧠 Racional: Definim les propietats de la Toolbar de forma completa, ja que hereta de ToolbarProps
     const toolbarProps = useMemo(() => ({
-        label: messages.month,
+        label: formattedLabel,
         onNavigate: handleToolbarNavigation,
         onView: handleViewChange,
         view: view,
-        // ✅ CORRECCIÓ CLAU: Utilitzem 'as const' per fixar el tipus a View[]
-        views: CALENDAR_VIEWS, // ✅ Utilitzem la constant mutable
+        views: CALENDAR_VIEWS,
         date: date,
         localizer: localizer,
-        // Les nostres custom props
         eventSources: eventSources,
         onEventSourcesChange: setEventSources,
         onCreateTask: handleOpenNewTaskDialog,
-    }), [date, view, eventSources, handleToolbarNavigation, handleViewChange, setEventSources, handleOpenNewTaskDialog, messages.month]);
+    }), [formattedLabel, handleToolbarNavigation, handleViewChange, view, date, eventSources, setEventSources, handleOpenNewTaskDialog]);
+
+    // ✅ Adaptador per a onNavigate de react-big-calendar
+    const handleCalendarNavigationAdapter = (newDate: Date, _: View, action: NavigateAction) => {
+        handleToolbarNavigation(action, newDate);
+    };
 
     return (
         <div>
-            {/* Toolbar es renderitza sempre per permetre la navegació */}
-            <CalendarToolbar
-                {...toolbarProps}
-            />
+            <CalendarToolbar {...toolbarProps} />
 
             {isLoading ? (
                 <CalendarSkeleton />
@@ -178,7 +176,7 @@ export default function CalendarClient(props: CalendarClientProps) {
                     events={filteredEvents}
                     startAccessor="start"
                     endAccessor="end"
-                    style={{ height: 'calc(100vh - 150px)' }}
+                    style={{ height: 'calc(100vh - 150px)', borderRadius: '0 0 0.5rem 0.5rem' }}
                     selectable
                     onSelectSlot={handleSelectSlot}
                     onSelectEvent={handleSelectEvent}
@@ -189,17 +187,20 @@ export default function CalendarClient(props: CalendarClientProps) {
                     view={view}
                     date={date}
                     onView={handleViewChange}
-                    onNavigate={handleCalendarNavigation}
+                    onNavigate={handleCalendarNavigationAdapter}
                     className={cn('rbc-calendar-force-light-theme')}
                     components={{
                         toolbar: () => null,
-                        // ✅ Renderitza el skeleton si l'esdeveniment és de tipus 'skeleton'
-                        event: (props) => props.event.eventType === 'skeleton' ? <CalendarSkeletonEvent {...props} /> : <div className="rbc-event-content">{props.title}</div>
+                        event: (props) =>
+                            props.event.eventType === 'skeleton' ? (
+                                <CalendarSkeletonEvent {...props} />
+                            ) : (
+                                <div className="rbc-event-content">{props.title}</div>
+                            ),
                     }}
                 />
             )}
 
-            {/* ... (Dialogs unchanged) ... */}
             <TaskDialogManager
                 task={selectedTask ? { ...selectedTask, user_id: selectedTask.user_id ?? '' } : null}
                 open={isTaskDialogOpen}

@@ -63,6 +63,7 @@ interface UseCalendarControllerReturn {
     handleMoveTask: (taskId: number, newDueDate: string) => void;
     setEventSources: React.Dispatch<React.SetStateAction<EventSourcesState>>;
     updateDateAndData: (newDate: Date, newView: View) => void;
+    handleEventSourcesChange: (newSources: EventSourcesState) => void;
 }
 
 // -------------------------------------------------------------
@@ -182,7 +183,18 @@ export const useCalendarController = ({
     }, [handleDataFetch]);
 
     // 4️⃣ HANDLERS DE NAVEGACIÓ I INTERACCIÓ
+    // ✅ NOU HANDLER: Gestiona el canvi de filtre i força la recàrrega de dades per a la vista actual
+    const handleEventSourcesChange = useCallback((newSources: EventSourcesState) => {
+        // 1. Actualitza l'estat local (necessari per a la propera crida a handleDataFetch)
+        setEventSources(newSources);
 
+        // 2. Força la recàrrega de dades amb la data i vista actuals, utilitzant els NOUS filtres.
+        // 🧠 Racional: Com que eventSources és una dependència de handleDataFetch,
+        // al canviar l'estat de forma síncrona i cridar-lo just després, React utilitza
+        // el nou valor de eventSources a la funció re-creada.
+        handleDataFetch(date, view);
+    }, [date, view, handleDataFetch]); // ⚠️ NOTA: ja no depèn de setEventSources, sinó de handleDataFetch
+    
     // Handler per quan l’usuari fa servir la toolbar del calendari (PREV, NEXT, TODAY)
     const handleToolbarNavigation = useCallback((action: NavigateAction, newDate?: Date) => {
         let targetDate: Date;
@@ -357,7 +369,8 @@ export const useCalendarController = ({
         handleViewChange,
         handleDataMutation,
         handleMoveTask,
-        setEventSources,
+        setEventSources, // ✅ Retornem el setter original per compatibilitat amb React
         updateDateAndData,
+        handleEventSourcesChange, // ✅ Exposem el handler personalitzat per recarregar dades amb nous filtres
     };
 };
