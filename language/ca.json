@@ -595,6 +595,8 @@
     }
   },
   "QuotesPage": {
+    "title": "Pressupostos",
+    "newQuoteButton": "Nou Pressupost",
     "toast": {
       "successTitle": "Èxit!",
       "errorTitle": "Error"
@@ -716,7 +718,7 @@
       "discount": "Descompte (%)",
       "discountAmount": "Import Descompte",
       "taxableBase": "Base Imposable",
-      "taxes": "Impostos (IVA 21%)",
+      "taxes": "Impostos (IVA%)",
       "total": "Total"
     },
     "preview": {
@@ -729,7 +731,7 @@
       "itemHeader": "Concepte",
       "totalHeader": "Total",
       "discountLine": "Descompte:",
-      "taxesLine": "Impostos (21%):",
+      "taxesLine": "IVA:",
       "notesAndTerms": "Notes i Termes",
       "totalLabel": "TOTAL",
       "quantityHeader": "Quant.",

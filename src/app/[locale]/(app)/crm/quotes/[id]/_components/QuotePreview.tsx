@@ -1,119 +1,77 @@
+// /app/[locale]/(app)/crm/quotes/[id]/_components/QuotePreview.tsx (Refactoritzat)
 "use client";
 
 import React from 'react';
-// Hem eliminat la importació de 'next/image' perquè farem servir una etiqueta <img> estàndard
-import type { Quote, Contact } from '@/types/crm';
 import { useTranslations } from 'next-intl';
-import type { TeamData, CompanyProfile } from '@/types/settings';
+// ✅ 1. Importem els tipus correctes des de la BD i el hook.
+import { type Database } from '@/types/supabase';
+import { type EditableQuote } from '../_hooks/useQuoteEditor';
 
-// --------------------
-// Tipus de propietats
-// --------------------
+// ✅ 2. Definim els tipus locals a partir de la BD.
+type Contact = Database['public']['Tables']['contacts']['Row'];
+type Team = Database['public']['Tables']['teams']['Row'];
+
 interface QuotePreviewProps {
-    quote: Quote;
+    quote: EditableQuote;
     contacts: Contact[];
-    companyProfile: TeamData | null;
+    companyProfile: Team | null; // <-- Ara és de tipus 'Team'
     subtotal: number;
     discountAmount: number;
     tax: number;
     total: number;
 }
 
-// ---------------------------------------------------------
-// Funció per mapejar les dades de l'equip cap al perfil empresa
-// ---------------------------------------------------------
-const mapTeamDataToProfile = (teamData: TeamData | null): CompanyProfile | null => {
-    if (!teamData) return null;
-
-    return {
-        id: teamData.id,
-        company_name: teamData.name,
-        company_tax_id: teamData.tax_id,
-        company_address: teamData.address,
-        company_email: teamData.email,
-        company_phone: teamData.phone,
-        logo_url: teamData.logo_url,
-    };
-};
-
-// --------------------------
-// Component principal: QuotePreview
-// --------------------------
 export const QuotePreview = ({
     quote,
     contacts,
-    companyProfile,
+    companyProfile, // <-- Ja no es diu 'displayProfile', rep el 'team' directament
     subtotal,
     discountAmount,
     tax,
     total
 }: QuotePreviewProps) => {
-
-    // Obtenim el contacte associat al pressupost
     const contact = contacts.find(c => c.id === quote.contact_id);
-
-    // Base imposable (subtotal - descompte)
     const base = subtotal - discountAmount;
-
-    // Hook per traduccions
     const t = useTranslations('QuoteEditor');
 
-    // Transformació de dades d'equip a perfil empresa
-    const displayProfile = mapTeamDataToProfile(companyProfile);
+    // ⛔ La funció 'mapTeamDataToProfile' i el tipus 'CompanyProfile' ja no són necessaris.
 
     return (
-        // El 'aside' és només un contenidor a la UI (no forma part del PDF)
-        <aside className="hidden lg:block glass-card p-4 overflow-y-auto">
-
-            {/* AQUEST DIV ES CONVERTIRÀ A PDF */}
+        <aside className="hidden lg:block glass-card overflow-y-auto">
             <div id="quote-preview-for-pdf">
                 <div className="bg-white text-gray-900 px-8 py-2 font-sans text-sm">
-
-                    {/* ---------------- HEADER ---------------- */}
-                    {/* ✅ HEM MODIFICAT AQUESTA SECCIÓ */}
-                    <header className="flex justify-between items-center border-b-2 border-gray-200"> {/* Reduït el padding inferior (pb-2) */}
-                        {/* Logo de l'empresa o placeholder */}
-                        {displayProfile?.logo_url ? (
-                            <>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={displayProfile.logo_url}
-                                    alt="Logo"
-                                    style={{ maxWidth: '100px', height: '70px', objectFit: 'contain' }}
-                                    crossOrigin="anonymous"
-                                />
-                            </>
+                    <header className="flex justify-between items-center border-b-2 border-gray-200">
+                        {companyProfile?.logo_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={companyProfile.logo_url}
+                                alt="Logo"
+                                style={{ maxWidth: '100px', height: '70px', objectFit: 'contain' }}
+                                crossOrigin="anonymous"
+                            />
                         ) : (
                             <div className="h-12 w-28 flex items-center justify-center bg-gray-100 text-gray-400 text-xs rounded">
                                 {t('preview.logoPlaceholder')}
                             </div>
                         )}
-                        {/* ✅ Aquest 'div' ara té menys marge superior per a apropar-se al logo */}
-                        <div className="text-right ml-2"> {/* Afegit marge esquerre per a separar del logo */}
-                            <p className="font-bold text-lg">{displayProfile?.company_name || t('preview.yourCompany')}</p>
+                        <div className="text-right ml-2">
+                            {/* ✅ 3. Accedim a les propietats del tipus 'Team'. */}
+                            <p className="font-bold text-lg">{companyProfile?.name || t('preview.yourCompany')}</p>
                             <p className="text-gray-500 text-base mt-0"># {quote.quote_number || t('preview.pending')}</p>
                         </div>
                     </header>
 
-                    {/* ---------------- DADES EMPRESA I CLIENT ---------------- */}
                     <section className="grid grid-cols-2 gap-8 my-4">
                         <div>
-                            <p className="font-semibold">
-                                {displayProfile?.company_name || t('preview.yourCompany')}
-                            </p>
-                            <p className="text-gray-600">{displayProfile?.company_address}</p>
-                            <p className="text-gray-600">{displayProfile?.company_tax_id}</p>
-                            <p className="text-gray-600">{displayProfile?.company_email}</p>
-
+                            <p className="font-semibold">{companyProfile?.name || t('preview.yourCompany')}</p>
+                            <p className="text-gray-600">{companyProfile?.address}</p>
+                            <p className="text-gray-600">{companyProfile?.tax_id}</p>
+                            <p className="text-gray-600">{companyProfile?.email}</p>
                         </div>
-
                         <div className="text-right">
-                            <p className="font-semibold">
-                                {contact?.nom || t('preview.unselectedClient')}
-                            </p>
+                            <p className="font-semibold">{contact?.nom || t('preview.unselectedClient')}</p>
                             <p className="text-gray-600">{contact?.empresa}</p>
                             <p className="text-gray-600">{contact?.email}</p>
-
                         </div>
                     </section>
 

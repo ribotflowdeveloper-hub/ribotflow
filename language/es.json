@@ -589,6 +589,8 @@
     }
   },
   "QuotesPage": {
+    "title": "Presupuestos",
+    "newQuoteButton": "Nuevo Presupuesto",
     "toast": {
       "successTitle": "¡Éxito!",
       "errorTitle": "Error"
@@ -710,7 +712,7 @@
       "discount": "Descuento (%)",
       "discountAmount": "Importe Descuento",
       "taxableBase": "Base Imponible",
-      "taxes": "Impuestos (IVA 21%)",
+      "taxes": "Impuestos (IVA%)",
       "total": "Total"
     },
     "preview": {
@@ -723,7 +725,7 @@
       "itemHeader": "Concepto",
       "totalHeader": "Total",
       "discountLine": "Descuento:",
-      "taxesLine": "Impuestos (21%):",
+      "taxesLine": "IVA:",
       "notesAndTerms": "Notas y Términos",
       "totalLabel": "TOTAL",
       "quantityHeader": "Cant.",

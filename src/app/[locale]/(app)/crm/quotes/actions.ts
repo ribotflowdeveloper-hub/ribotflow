@@ -1,50 +1,57 @@
-// In your quotes actions file
+// /app/[locale]/(app)/crm/quotes/actions.ts
 
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
+import { validateUserSession } from "@/lib/supabase/session";
+// ✅ Importació dels tipus de Supabase per al tipus de l'ID
+import type { Database } from '@/types/supabase';
 
-// ❌ The old getTeamId helper function is no longer needed and should be deleted.
+// -------------------------------------------------------------
+// ✅ TIPUS DE L'ID (Assumint number per bigint)
+// -------------------------------------------------------------
+type QuoteId = Database['public']['Tables']['quotes']['Row']['id'];
 
 /**
  * @summary Deletes a quote and its associated items.
  */
-export async function deleteQuoteAction(quoteId: string) {
-    // ✅ 2. Validació centralitzada
+// ✅ L'argument 'quoteId' ara té el tipus de Supabase (QuoteId, que és number).
+export async function deleteQuoteAction(quoteId: QuoteId) {
     const session = await validateUserSession();
     if ('error' in session) {
-        return { success: false, message: session.error.message };
+        // Retornem un tipus d'error ben definit per a Next.js Server Actions
+        return { success: false as const, message: session.error.message };
     }
     const { supabase } = session;
 
     if (!quoteId) {
-        return { success: false, message: "ID de pressupost invàlid." };
+        return { success: false as const, message: "ID de pressupost invàlid." };
     }
 
-    // This code is now secure. The RLS policies on both 'quote_items' and 'quotes'
-    // will prevent a user from deleting data that doesn't belong to their active team.
+    // -------------------------------------------------------------
+    // ✅ SEGURETAT DE TIPUS EN LA CONSULTA
+    // -------------------------------------------------------------
+    // La lògica de seguretat RLS ja protegeix aquestes operacions.
     const { error: itemsError } = await supabase
         .from('quote_items')
         .delete()
-        .eq('quote_id', quoteId);
+        .eq('quote_id', quoteId); // ✅ 'number' === 'number'.
 
     if (itemsError) {
         console.error("Error deleting quote items:", itemsError);
-        return { success: false, message: "Could not delete quote details." };
+        return { success: false as const, message: "No s'han pogut eliminar els detalls del pressupost." };
     }
 
     const { error: quoteError } = await supabase
         .from('quotes')
         .delete()
-        .eq('id', quoteId);
+        .eq('id', quoteId); // ✅ 'number' === 'number'.
 
     if (quoteError) {
         console.error("Error deleting quote:", quoteError);
-        return { success: false, message: "Could not delete quote." };
+        return { success: false as const, message: "No s'ha pogut eliminar el pressupost." };
     }
 
     revalidatePath('/crm/quotes');
-    return { success: true, message: "Quote deleted successfully." };
+    return { success: true as const, message: "Pressupost eliminat correctament." };
 }
-

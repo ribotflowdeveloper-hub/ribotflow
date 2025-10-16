@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorClient.tsx (Refactoritzat per al Disseny)
 "use client";
 
 import React from 'react';
@@ -8,26 +9,28 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import type { Quote, Contact, Product, Opportunity } from '@/types/crm';
-import type { TeamData } from '@/types/settings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from "@/components/ui/switch";
-
-// Importem el hook que conté TOTA la lògica
-import { useQuoteEditor } from '../_hooks/useQuoteEditor';
-
-// Importem els sub-components de presentació
+import { type Database } from '@/types/supabase';
+import { useQuoteEditor, type EditableQuote } from '../_hooks/useQuoteEditor';
 import { CompanyProfileDialog } from './CompanyProfileDialog';
 import { QuoteMeta } from './QuoteMeta';
 import { QuoteItems } from './QuoteItems';
 import { QuoteTotals } from './QuoteTotals';
 import { QuotePreview } from './QuotePreview';
+import { Separator } from '@/components/ui/separator'; // Importem el separador
+
+// --- Tipus Derivats de la Base de Dades ---
+type Contact = Database['public']['Tables']['contacts']['Row'];
+type Product = Database['public']['Tables']['products']['Row'];
+type Opportunity = Database['public']['Tables']['opportunities']['Row'];
+type Team = Database['public']['Tables']['teams']['Row'];
 
 interface QuoteEditorClientProps {
-    initialQuote: Quote;
+    initialQuote: EditableQuote;
     contacts: Contact[];
     products: Product[];
-    companyProfile: TeamData | null;
+    companyProfile: Team | null;
     initialOpportunities: Opportunity[];
     userId: string;
     locale: string;
@@ -49,6 +52,31 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
         isSaving, isSending,
         t
     } = useQuoteEditor(props);
+    
+    // Funció per a la navegació enrere
+    const handleBack = () => router.push(`/${props.locale}/crm/quotes`);
+
+    // -------------------------------------------------------------
+    // Funció de Renderitzat per a l'Estat d'Enviament (Card)
+    // -------------------------------------------------------------
+    const SentStatusCard = () => {
+        if (!quote.sent_at) return null;
+
+        const sentDate = new Date(quote.sent_at).toLocaleDateString(props.locale, { 
+            day: '2-digit', 
+            month: 'short', // 'short' per a estalviar espai a la capçalera
+            year: 'numeric' 
+        });
+
+        return (
+            <div 
+                // ✅ Ús de fons 'success' per indicar estat positiu, amb text negre.
+                className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm font-medium whitespace-nowrap"
+            >
+                {t('quoteEditor.sentOn', { date: sentDate })}
+            </div>
+        );
+    };
 
     return (
         <>
@@ -75,10 +103,17 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
             </AlertDialog>
 
             <div className="flex flex-col h-full">
+                {/* ------------------------------------------------------------- */}
+                {/* ✅ NOU DISSENY DE LA CAPÇALERA AMB L'ESTAT A L'ESQUERRA */}
+                {/* ------------------------------------------------------------- */}
                 <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <Button variant="ghost" onClick={() => router.push('/crm/quotes')}>
-                        <ArrowLeft className="w-4 h-4 mr-2" />{t('quoteEditor.backButton')}
-                    </Button>
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" onClick={handleBack}> 
+                            <ArrowLeft className="w-4 h-4 mr-2" />{t('quoteEditor.backButton')}
+                        </Button>
+                        <SentStatusCard /> {/* ✅ Estat d'enviament al costat del botó de tornada */}
+                    </div>
+                    
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" size="icon" onClick={() => setIsProfileDialogOpen(true)} title={t('quoteEditor.companyDataTooltip')}>
                             <Building className="w-4 h-4" />
@@ -88,12 +123,12 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
                         }
-                        <Button onClick={handleSave} disabled={isSaving || isSending}>
+                        <Button onClick={handleSave} disabled={isSaving || isSending} className="min-w-[100px]">
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                             {quote.id === 'new' ? t('quoteEditor.createButton') : t('quoteEditor.saveButton')}
                         </Button>
                         {quote.id !== 'new' && (
-                            <Button onClick={handleSend} disabled={isSaving || isSending}>
+                            <Button onClick={handleSend} disabled={isSaving || isSending} className="min-w-[120px]">
                                 {isSending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -112,26 +147,26 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                     </div>
                 </header>
 
-                {quote.sent_at && (
-                    <div className="mb-4 p-2 text-center bg-green-100 text-green-800 rounded-md text-sm">
-                        {t('quoteEditor.sentOn', { date: new Date(quote.sent_at).toLocaleDateString(props.locale, { day: '2-digit', month: 'long', year: 'numeric' }) })}
-                    </div>
-                )}
+                {/* ❌ Eliminem l'anterior div de sent_at, ja no és necessari */}
 
                 <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
                     <section className="flex flex-col gap-4 overflow-y-auto pr-4">
-                        <div className="glass-card p-4">
+                        
+                        {/* ------------------------------------------------------------- */}
+                        {/* ✅ Ús de Card per sortir del fons gris ('glass-card' a 'Card') */}
+                        {/* ------------------------------------------------------------- */}
+                        <Card className="p-4"> 
                             <QuoteMeta
-                                contact_id={quote.contact_id}
+                                contact_id={quote.contact_id !== null && quote.contact_id !== undefined ? String(quote.contact_id) : null}
                                 quote_number={quote.quote_number}
                                 issue_date={quote.issue_date}
                                 expiry_date={quote.expiry_date ?? null}
                                 onMetaChange={onQuoteChange}
                                 contacts={props.contacts}
                             />
-                        </div>
+                        </Card>
 
-                        <div className="glass-card p-4">
+                        <Card className="p-4"> 
                             <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
                             {state.contactOpportunities.length > 0 ? (
                                 <Select
@@ -139,14 +174,11 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                     onValueChange={(value) => onQuoteChange('opportunity_id', value ? Number(value) : null)}
                                     disabled={!quote.contact_id}
                                 >
-                                    <SelectTrigger
-                                        className="w-full text-foreground" // ✅ AFEGEIX "text-foreground" AQUÍ
-                                    >
+                                    <SelectTrigger className="w-full text-foreground">
                                         <SelectValue placeholder="Selecciona una oportunitat" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {state.contactOpportunities.map(o => (
-                                            // ✅ CORRECCIÓ CLAU: Convertim l'ID a string aquí
                                             <SelectItem key={o.id} value={String(o.id)}>
                                                 {o.name} ({o.stage_name})
                                             </SelectItem>
@@ -156,15 +188,16 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             ) : (
                                 <p className="mt-2 text-sm text-muted-foreground">{t('quoteEditor.noOpenOpportunities')}</p>
                             )}
-                        </div>
+                        </Card>
 
-                        <div className="glass-card p-2">
+                        <Card className="p-2"> 
                             <QuoteItems
                                 items={quote.items || []}
                                 onItemsChange={onItemsChange}
                                 products={props.products}
                                 userId={props.userId}
                             />
+                            <Separator className="my-4" />
                             <QuoteTotals
                                 subtotal={subtotal}
                                 discount={quote.discount}
@@ -175,7 +208,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                                 tax_percent={quote.tax_percent}
                                 setTaxPercent={(p) => onQuoteChange('tax_percent', p)}
                             />
-                        </div>
+                        </Card>
 
                         <Card>
                             <CardHeader><CardTitle>{t('options.title')}</CardTitle></CardHeader>
@@ -192,14 +225,14 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             </CardContent>
                         </Card>
 
-                        <div className="glass-card p-4">
+                        <Card className="p-4"> 
                             <Label>Notes Addicionals</Label>
                             <Textarea
                                 value={quote.notes ?? ''}
                                 onChange={(e) => onQuoteChange('notes', e.target.value)}
                                 className="mt-2 min-h-[220px]"
                             />
-                        </div>
+                        </Card>
                     </section>
 
                     <aside id="quote-preview-for-pdf-wrapper" className="hidden lg:block glass-card p-4 overflow-y-auto">

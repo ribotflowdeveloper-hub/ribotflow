@@ -1,31 +1,39 @@
+// /app/crm/quotes/[id]/_hooks/useQuoteEditor.ts (COMPLET I CORREGIT)
 "use client";
 
-// ✅ Importem 'useReducer' i 'useCallback' a més dels altres hooks
-import { useMemo, useTransition, useEffect, useReducer, useCallback } from 'react';
+import { useReducer, useCallback, useMemo, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from "sonner";
 import { createClient } from '@/lib/supabase/client';
 import { saveQuoteAction, deleteQuoteAction, sendQuoteAction } from '../actions';
-import type { Quote, Opportunity, QuoteItem } from '@/types/crm';
-import type { TeamData } from '@/types/settings';
+import { type Database } from '@/types/supabase';
+// ✅ 1. CORRECCIÓ: Importem 'useTranslations' com a valor.
 import { useTranslations } from 'next-intl';
 
-// ----------------------------------------------------------------
-// 1. DEFINICIÓ DE PROPS (Això no canvia)
-// ----------------------------------------------------------------
+// Definicions de tipus basades en la BD
+type Quote = Database['public']['Tables']['quotes']['Row'];
+type Opportunity = Database['public']['Tables']['opportunities']['Row'];
+type QuoteItem = Database['public']['Tables']['quote_items']['Row'];
+type Team = Database['public']['Tables']['teams']['Row'];
+
+// Aquest tipus representa un pressupost que pot ser nou ('id: "new"') o existent ('id: number')
+export type EditableQuote = Omit<Quote, 'id'> & { 
+    id: 'new' | number;
+    items: Partial<QuoteItem>[]; 
+};
+
+// Props que espera el hook
 interface UseQuoteEditorProps {
-    initialQuote: Quote;
+    initialQuote: EditableQuote;
     initialOpportunities: Opportunity[];
-    companyProfile: TeamData | null;
+    companyProfile: Team | null;
     userId: string;
 }
 
-// ----------------------------------------------------------------
-// 2. DEFINICIÓ DE L'ESTAT I LES ACCIONS PER AL REDUCER
-// ----------------------------------------------------------------
+// ... (Estat i accions per al Reducer es mantenen igual)
 type EditorState = {
-    quote: Quote;
-    currentTeamData: TeamData | null;
+    quote: EditableQuote;
+    currentTeamData: Team | null;
     contactOpportunities: Opportunity[];
     isDeleteDialogOpen: boolean;
     isProfileDialogOpen: boolean;
@@ -33,18 +41,14 @@ type EditorState = {
 };
 
 type EditorAction =
-    | { type: 'SET_QUOTE'; payload: Quote }
-    | { type: 'UPDATE_QUOTE_FIELD'; payload: { field: keyof Quote; value: Quote[keyof Quote] } } // <-- Línia corregida
-    | { type: 'SET_TEAM_DATA'; payload: TeamData | null }
+    | { type: 'SET_QUOTE'; payload: EditableQuote }
+    | { type: 'UPDATE_QUOTE_FIELD'; payload: { field: keyof EditableQuote; value: EditableQuote[keyof EditableQuote] } }
+    | { type: 'SET_TEAM_DATA'; payload: Team | null }
     | { type: 'SET_OPPORTUNITIES'; payload: Opportunity[] }
     | { type: 'SET_DELETE_DIALOG'; payload: boolean }
     | { type: 'SET_PROFILE_DIALOG'; payload: boolean }
     | { type: 'SET_SENDING_STATUS'; payload: EditorState['sendingStatus'] };
-
-// ----------------------------------------------------------------
-// 3. LA FUNCIÓ REDUCER (EL "PANELL DE CONTROL")
-// Aquesta funció pura rep l'estat actual i una acció, i retorna el nou estat.
-// ----------------------------------------------------------------
+    
 function editorReducer(state: EditorState, action: EditorAction): EditorState {
     switch (action.type) {
         case 'SET_QUOTE':
@@ -66,9 +70,6 @@ function editorReducer(state: EditorState, action: EditorAction): EditorState {
     }
 }
 
-// ----------------------------------------------------------------
-// 4. EL HOOK 'useQuoteEditor' REFACTORITZAT
-// ----------------------------------------------------------------
 export function useQuoteEditor({
     initialQuote,
     initialOpportunities,
@@ -88,44 +89,32 @@ export function useQuoteEditor({
         sendingStatus: 'idle',
     };
 
-    // Utilitzem useReducer en lloc de múltiples useStates
     const [state, dispatch] = useReducer(editorReducer, initialState);
-
     const [isSaving, startSaveTransition] = useTransition();
     const [isSending, startSendTransition] = useTransition();
 
-    // Dades Derivades (llegeixen de 'state.quote')
     const { subtotal, discountAmount, tax, total } = useMemo(() => {
         const { items, discount, tax_percent } = state.quote;
-        if (!items) return { subtotal: 0, discountAmount: 0, tax: 0, total: 0 };
         const sub = items.reduce((acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0), 0);
         const calculatedDiscountAmount = sub * ((discount || 0) / 100);
         const subAfterDiscount = sub - calculatedDiscountAmount;
         const taxAmount = subAfterDiscount * ((tax_percent ?? 21) / 100);
-        // ✅ CORRECCIÓ: Utilitza la variable correcta 'calculatedDiscountAmount'
-        return {
-            subtotal: sub,
-            discountAmount: calculatedDiscountAmount, // <-- Aquí estava l'error
-            tax: taxAmount,
-            total: subAfterDiscount + taxAmount
-        };
+        return { subtotal: sub, discountAmount: calculatedDiscountAmount, tax: taxAmount, total: subAfterDiscount + taxAmount };
     }, [state.quote]);
 
-
-    // --- Handlers que despatxen accions ---
-    const onQuoteChange = useCallback(<K extends keyof Quote>(field: K, value: Quote[K]) => {
+    const onQuoteChange = useCallback(<K extends keyof EditableQuote>(field: K, value: EditableQuote[K]) => {
         dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field, value } });
     }, []);
 
-    const onItemsChange = useCallback((items: QuoteItem[]) => {
+    const onItemsChange = useCallback((items: Partial<QuoteItem>[]) => {
         dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field: 'items', value: items } });
     }, []);
 
-    // Handlers d'Accions (despatxen accions al reducer)
     const handleSave = useCallback(() => {
         startSaveTransition(async () => {
+            // ✅ 2. L'objecte que passem ara és compatible amb el tipus 'QuotePayload' de l'acció.
             const result = await saveQuoteAction({ ...state.quote, subtotal, tax, total });
-            if (result.success && result.data) {
+            if (result.success && typeof result.data === 'number') {
                 toast.success(result.message);
                 if (state.quote.id === 'new') {
                     router.replace(`/crm/quotes/${result.data}`);
@@ -137,8 +126,10 @@ export function useQuoteEditor({
     }, [state.quote, subtotal, tax, total, router, t]);
 
     const handleDelete = useCallback(() => {
-        if (state.quote.id === 'new') return;
+        // ✅ 3. GUARD: Aquesta comprovació assegura que només passem un 'number' a l'acció.
+        if (typeof state.quote.id !== 'number') return;
         startSaveTransition(async () => {
+            if (typeof state.quote.id !== 'number') return;
             const result = await deleteQuoteAction(state.quote.id);
             if (result.success) {
                 toast.success(result.message);
@@ -149,70 +140,57 @@ export function useQuoteEditor({
         });
     }, [state.quote.id, router, t]);
 
-    // Dins del teu hook useQuoteEditor
-
     const handleSend = useCallback(() => {
-        // ✅ CORRECCIÓ: Llegeix 'quote' des de l'objecte 'state'
-        if (state.quote.id === 'new') {
+        // ✅ 4. GUARD: Mateixa comprovació per a l'acció d'enviament.
+        if (typeof state.quote.id !== 'number') {
             toast.error(t('toast.errorTitle'), { description: t('toast.saveFirst') });
             return;
         }
 
         startSendTransition(async () => {
             const element = document.getElementById('quote-preview-for-pdf');
-            if (!element) {
-                toast.error(t('toast.errorTitle'), { description: "Element de previsualització no trobat." });
-                return;
-            }
+            if (!element) return;
 
             try {
-                // ✅ CORRECCIÓ: Usa 'dispatch' per canviar l'estat
                 dispatch({ type: 'SET_SENDING_STATUS', payload: 'generating' });
                 toast.info(t('quoteEditor.generatingPDF'));
 
                 const { default: html2pdf } = await import('html2pdf.js');
+                // ✅ 5. CORRECCIÓ DE TIPUS: Definim explícitament l'orientació.
                 const PDF_OPTIONS = {
                     margin: 10,
                     filename: `pressupost-${state.quote.quote_number || 'esborrany'}.pdf`,
-                    image: { type: 'jpeg', quality: 0.98 }, // TypeScript veu 'jpeg' com string
+                    image: { type: 'jpeg', quality: 0.98 } as const,
                     html2canvas: { scale: 3, useCORS: true },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' as const },
                     pagebreak: { mode: 'css' as const, before: '.page-break-before' }
-                } as const; // ✅ Amb "as const", TypeScript entén que 'jpeg' és del tipus 'jpeg'
+                };
 
                 const pdfBlob = await html2pdf().from(element).set(PDF_OPTIONS).output('blob');
-
-                // ✅ CORRECCIÓ: Usa 'dispatch' per canviar l'estat
+                
                 dispatch({ type: 'SET_SENDING_STATUS', payload: 'uploading' });
-                const filePath = `${userId}/${state.quote.id}.pdf`; // ✅ Llegeix 'id' des de 'state.quote'
+                const filePath = `${userId}/${state.quote.id}.pdf`;
                 const { error: uploadError } = await supabase.storage.from('quotes').upload(filePath, pdfBlob, { upsert: true });
                 if (uploadError) throw uploadError;
 
-                // ✅ CORRECCIÓ: Usa 'dispatch' per canviar l'estat
                 dispatch({ type: 'SET_SENDING_STATUS', payload: 'sending' });
-                const result = await sendQuoteAction(state.quote.id); // ✅ Llegeix 'id' des de 'state.quote'
+                const result = await sendQuoteAction(state.quote.id as number);
                 if (!result.success) throw new Error(result.message);
 
-                // ✅ CORRECCIÓ: Actualitza l'estat a través de múltiples 'dispatch'
                 dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field: 'status', value: 'Sent' } });
                 dispatch({ type: 'UPDATE_QUOTE_FIELD', payload: { field: 'sent_at', value: new Date().toISOString() } });
-
+                
                 toast.success("Èxit!", { description: result.message });
-
             } catch (error) {
                 const e = error instanceof Error ? error : new Error(t('toast.sendError'));
                 toast.error(t('toast.errorTitle'), { description: e.message });
             } finally {
-                // ✅ CORRECCIÓ: Usa 'dispatch' per tornar a l'estat inicial
                 dispatch({ type: 'SET_SENDING_STATUS', payload: 'idle' });
             }
         });
-    }, [state.quote, userId, supabase, t]); // ✅ Afegim les dependències necessàries al useCallback
+    }, [state.quote, userId, supabase, t]);
 
-
-    // Efectes (despatxen accions)
     useEffect(() => {
-        // Sincronitza l'estat si les props inicials canvien (ex: després d'un router.refresh)
         dispatch({ type: 'SET_QUOTE', payload: initialQuote });
     }, [initialQuote]);
 
@@ -228,28 +206,19 @@ export function useQuoteEditor({
         fetchOpportunities();
     }, [state.quote.contact_id, supabase]);
 
-    // Retornem l'estat i les funcions que el component de UI necessita
     return {
-        // L'estat sencer
         state,
-        // Accés directe a les parts de l'estat més usades
         quote: state.quote,
-        // Funcions per a modificar l'estat (per a passar als fills)
-        dispatch, // Podem passar 'dispatch' directament o crear funcions més específiques
-        // ✅ Retornem els callbacks amb els noms correctes
+        dispatch,
         onQuoteChange,
         onItemsChange,
-        setQuote: (newQuote: Quote) => dispatch({ type: 'SET_QUOTE', payload: newQuote }),
+        setQuote: (newQuote: EditableQuote) => dispatch({ type: 'SET_QUOTE', payload: newQuote }),
         setIsDeleteDialogOpen: (isOpen: boolean) => dispatch({ type: 'SET_DELETE_DIALOG', payload: isOpen }),
         setIsProfileDialogOpen: (isOpen: boolean) => dispatch({ type: 'SET_PROFILE_DIALOG', payload: isOpen }),
-        setCurrentTeamData: (data: TeamData | null) => dispatch({ type: 'SET_TEAM_DATA', payload: data }),
-        // Dades derivades
+        setCurrentTeamData: (data: Team | null) => dispatch({ type: 'SET_TEAM_DATA', payload: data }),
         subtotal, discountAmount, tax, total,
-        // Handlers d'accions
         handleSave, handleDelete, handleSend,
-        // Estats de transició
         isSaving, isSending,
-        // Traduccions
         t
     };
 }

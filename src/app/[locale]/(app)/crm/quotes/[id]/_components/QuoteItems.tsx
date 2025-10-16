@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteItems.tsx (Refactoritzat i Complet)
 "use client";
 
 import React from 'react';
@@ -7,23 +8,24 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, Trash2, BookPlus, Save, Loader2 } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
-import type { QuoteItem, Product } from '@/types/crm';
 import { useTranslations } from 'next-intl';
-import { useQuoteItems } from '../_hooks/useQuoteItems'; // ✅ 1. Importem el hook
+import { type Database } from '@/types/supabase';
+import { useQuoteItems } from '../_hooks/useQuoteItems';
 
-// ✅ 1. Definim les props correctes. 'onAddNewItem' ja no és necessària per separat.
+// --- Tipus Derivats de la Base de Dades ---
+type QuoteItem = Database['public']['Tables']['quote_items']['Row'];
+type Product = Database['public']['Tables']['products']['Row'];
+
 interface QuoteItemsProps {
-    items: QuoteItem[];
-    onItemsChange: (newItems: QuoteItem[]) => void;
+    items: Partial<QuoteItem>[]; // Els ítems poden no tenir 'id' si són nous.
+    onItemsChange: (newItems: Partial<QuoteItem>[]) => void;
     products: Product[];
     userId: string;
 }
 
-// ✅ PAS 3.2: Canviem el nom de la prop que passem al hook
 export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
     const t = useTranslations('QuoteEditor.items');
 
-    // ✅ 2. Passem 'onItemsChange' directament al hook a través de '...props'
     const {
         isSavingProduct, isCreating, setIsCreating,
         newProduct, setNewProduct, isPopoverOpen, setIsPopoverOpen,
@@ -44,7 +46,7 @@ export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
                     <div key={index} className="flex items-start gap-2">
                         <TextareaAutosize
                             placeholder={t('placeholderDescription')}
-                            value={item.description}
+                            value={item.description || ''}
                             onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                             minRows={1}
                             className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-w-[300px]"

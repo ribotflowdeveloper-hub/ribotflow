@@ -537,6 +537,8 @@
     "toastSuccessDescription": "The opportunity has been saved successfully."
   },
   "QuotesPage": {
+    "title": "Quotes",
+    "newQuoteButton": "New Quote",
     "toast": {
       "successTitle": "Success!",
       "errorTitle": "Error"
@@ -658,7 +660,7 @@
       "discount": "Discount (%)",
       "discountAmount": "Discount Amount",
       "taxableBase": "Taxable Base",
-      "taxes": "Taxes (VAT 21%)",
+      "taxes": "Taxes (VAT%)",
       "total": "Total"
     },
     "preview": {
@@ -671,7 +673,7 @@
       "itemHeader": "Item",
       "totalHeader": "Total",
       "discountLine": "Discount:",
-      "taxesLine": "Taxes (21%):",
+      "taxesLine": "VAT:",
       "notesAndTerms": "Notes and Terms",
       "totalLabel": "TOTAL",
       "quantityHeader": "Qty.",

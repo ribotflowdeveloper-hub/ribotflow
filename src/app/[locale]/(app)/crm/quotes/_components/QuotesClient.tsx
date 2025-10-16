@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/crm/quotes/_components/QuotesClient.tsx
 "use client";
 
 import React from 'react';
@@ -6,21 +7,29 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Loader2, Trash2, Edit, ArrowUpDown } from 'lucide-react';
+import { Loader2, Trash2, Edit, ArrowUpDown, Plus } from 'lucide-react'; 
 import type { QuoteWithContact } from '../page';
 import { useTranslations, useLocale } from 'next-intl';
 import { QUOTE_STATUS_MAP } from '@/types/crm';
 import { cn } from '@/lib/utils/utils';
-import { useQuotes } from '../_hooks/useQuotes'; // ✅ 1. Importem el nostre nou hook
+import { useQuotes } from '../_hooks/useQuotes'; 
+
+// MAPA DE CLASSES D'ESTAT MILLORAT PER AL CONTRAST
+const TEXT_CONTRAST_MAP: Record<string, string> = {
+    'bg-gray-100': 'text-gray-800',
+    'bg-yellow-100': 'text-yellow-800',
+    'bg-blue-100': 'text-blue-800',
+    'bg-green-600': 'text-white',
+    'bg-red-600': 'text-white',
+};
 
 export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContact[] }) {
     const t = useTranslations('QuotesPage');
     const locale = useLocale();
 
-    // ✅ 2. Tota la lògica i estats venen del hook.
     const {
         isPending,
-        quotes, // ✅ Ara reps la llista de l'estat del hook
+        quotes, 
         quoteToDelete,
         setQuoteToDelete,
         handleSort,
@@ -47,12 +56,25 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
 
     return (
         <>
+            {/* Capçalera (Títol i Botó) */}
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold">Pressupostos</h1>
+                <Button asChild>
+                    <Link href={`/${locale}/crm/quotes/new`}>
+                        <Plus className="w-4 h-4 mr-2" /> {t('newQuoteButton')} 
+                    </Link>
+                </Button>
+            </div>
+            
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={cn("relative", isPending && "opacity-50 pointer-events-none")}>
                 {isPending && (<div className="absolute inset-0 flex items-center justify-center bg-background/50 z-10"><Loader2 className="w-8 h-8 animate-spin" /></div>)}
-                <div className="glass-card">
+                
+                {/* Taula amb estil sòlid */}
+                <div className="bg-card rounded-xl shadow-lg border border-border"> 
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                {/* Les capçaleres per defecte ja tenen padding ajustat */}
                                 <SortableHeader column="quote_number" label={t('table.number')} />
                                 <SortableHeader column="contacts.nom" label={t('table.client')} />
                                 <SortableHeader column="issue_date" label={t('table.issueDate')} />
@@ -64,19 +86,34 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
                         <TableBody>
                             {quotes.length > 0 ? quotes.map(quote => {
                                 const statusInfo = QUOTE_STATUS_MAP.find(s => s.dbValue === quote.status) || { key: 'unknown', colorClass: 'bg-gray-100' };
+                                const textClass = TEXT_CONTRAST_MAP[statusInfo.colorClass] || 'text-white';
+
+                                // ✅ CLASSE base per a totes les cel·les: reduïm 'py-4' per defecte a 'py-1'
+                                const BASE_CELL_CLASS = "py-1";
+
                                 return (
                                     <TableRow key={quote.id}>
-                                        <TableCell className="font-medium">{quote.quote_number || `PRE-${quote.id.substring(0, 6)}`}</TableCell>
-                                        <TableCell>{quote.contacts?.nom || t('noClient')}</TableCell>
-                                        <TableCell>{new Date(quote.issue_date).toLocaleDateString(locale)}</TableCell>
-                                        <TableCell>€{quote.total?.toLocaleString(locale, { minimumFractionDigits: 2 }) || '0,00'}</TableCell>
-                                        <TableCell>
-                                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusInfo.colorClass}`}>
+                                        {/* Reducció de padding vertical a 'py-2' */}
+                                        <TableCell className={cn("font-medium", BASE_CELL_CLASS)}>{quote.quote_number || `PRE-${String(quote.id).substring(0, 6)}`}</TableCell>
+                                        <TableCell className={BASE_CELL_CLASS}>{quote.contacts?.nom || t('noClient')}</TableCell>
+                                        <TableCell className={BASE_CELL_CLASS}>{new Date(quote.issue_date).toLocaleDateString(locale)}</TableCell>
+                                        <TableCell className={BASE_CELL_CLASS}>€{quote.total?.toLocaleString(locale, { minimumFractionDigits: 2 }) || '0,00'}</TableCell>
+                                        
+                                        {/* Cel·la d'Estat: també amb padding reduït */}
+                                        <TableCell className={BASE_CELL_CLASS}>
+                                            <span className={cn(
+                                                "px-2 py-1 text-xs font-medium rounded-full",
+                                                statusInfo.colorClass,
+                                                textClass,
+                                                "min-w-[70px] inline-flex justify-center" 
+                                            )}>
                                                 {t(`status.${statusInfo.key}`)}
                                             </span>
                                         </TableCell>
-                                        <TableCell className="text-right">
-                                            <Link href={`/crm/quotes/${quote.id}`} className="inline-flex items-center justify-center h-8 w-8" title={t('actions.edit')}>
+                                        
+                                        {/* Cel·la d'Accions: alineació a la dreta i padding reduït */}
+                                        <TableCell className={cn("text-right", BASE_CELL_CLASS)}>
+                                            <Link href={`/${locale}/crm/quotes/${quote.id}`} className="inline-flex items-center justify-center h-8 w-8" title={t('actions.edit')}>
                                                 <Edit className="w-4 h-4" />
                                             </Link>
                                             <Button variant="ghost" size="icon" title={t('actions.delete')} onClick={() => setQuoteToDelete(quote)}>
@@ -95,6 +132,7 @@ export function QuotesClient({ initialQuotes }: { initialQuotes: QuoteWithContac
                 </div>
             </motion.div>
 
+            {/* AlertDialog (sense canvis) */}
             <AlertDialog open={!!quoteToDelete} onOpenChange={() => setQuoteToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>

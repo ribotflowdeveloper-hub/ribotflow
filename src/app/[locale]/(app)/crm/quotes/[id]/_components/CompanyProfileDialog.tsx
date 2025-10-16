@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/crm/quotes/[id]/_components/CompanyProfileDialog.tsx (Refactoritzat)
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -9,43 +10,33 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Loader2, Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateTeamProfileAction } from '../actions';
-// ✅ Assegurem que importem el tipus correcte. TeamData és el que ve del servidor.
-import type { TeamData, CompanyProfile } from '@/types/settings/team';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+// ✅ 1. Importem la definició de la base de dades.
+import { type Database } from '@/types/supabase';
 
-// L'estat local treballarà amb el format de CompanyProfile per als formularis.
-type EditableProfile = Partial<CompanyProfile>;
+// ✅ 2. Definim el tipus per a la taula 'teams'.
+type Team = Database['public']['Tables']['teams']['Row'];
 
-// ✅ La prop 'profile' ara és de tipus 'TeamData', que coincideix amb el que envia el servidor.
 export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpdate }: {
     open: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    profile: TeamData | null; // <-- Canvi de tipus
-    onProfileUpdate: (newProfile: TeamData) => void; // <-- Canvi de tipus
+    profile: Team | null; // <-- Tipus correcte
+    onProfileUpdate: (newProfile: Team) => void; // <-- Tipus correcte
 }) {
     const t = useTranslations('QuoteEditor');
-    const [localProfile, setLocalProfile] = useState<EditableProfile>({});
+    // ✅ 3. L'estat local ara és un objecte parcial del tipus 'Team'.
+    const [localProfile, setLocalProfile] = useState<Partial<Team>>({});
     const [isSaving, startSaveTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
     const supabase = createClient();
 
-    // ✅ AQUEST ÉS EL CANVI MÉS IMPORTANT
-    // Aquest useEffect s'executa quan el diàleg s'obre o quan les dades del perfil canvien.
-    // "Tradueix" les dades de la taula 'teams' al format que el nostre formulari espera.
     useEffect(() => {
         if (profile) {
-            setLocalProfile({
-                id: profile.id,
-                company_name: profile.name,
-                company_tax_id: profile.tax_id,
-                company_address: profile.address,
-                company_email: profile.email,
-                company_phone: profile.phone,
-                logo_url: profile.logo_url,
-            });
+            // No cal "traduir" els camps, simplement copiem el perfil.
+            setLocalProfile(profile);
         }
-    }, [profile]); // Aquesta dependència assegura que l'estat s'actualitza si le
+    }, [profile]);
 
     const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -64,31 +55,14 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
         setIsUploading(false);
     };
 
-    /**
-     * @summary Gestor per desar el perfil. Ara és més segur i net.
-     */
     const handleSaveProfile = () => {
-        if (!profile?.id) {
-            toast.error(t('toast.errorTitle'), { description: t('toast.missingProfileData') });
-            return;
-        }
-
         startSaveTransition(async () => {
-            const profileToSend: Partial<CompanyProfile> = {
-                company_name: localProfile.company_name || null,
-                company_tax_id: localProfile.company_tax_id || null,
-                company_address: localProfile.company_address || null,
-                company_email: localProfile.company_email || null,
-                company_phone: localProfile.company_phone || null,
-                logo_url: localProfile.logo_url || null,
-            };
+            // ✅ 4. Passem directament l'estat local, que ja té el format correcte.
+            const result = await updateTeamProfileAction(localProfile);
 
-            const result = await updateTeamProfileAction(profileToSend);
-
-            // ✅ CORRECCIÓ: Canviem 'result.updatedProfile' per 'result.data'
             if (result.success && result.data) {
                 toast.success(t('toast.successTitle'), { description: result.message });
-                onProfileUpdate(result.data); // <-- Aquí també
+                onProfileUpdate(result.data);
                 onOpenChange(false);
             } else {
                 toast.error(t('toast.errorTitle'), { description: result.message });
@@ -96,7 +70,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
         });
     };
 
-    // Funció per gestionar els canvis als inputs de manera genèrica
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setLocalProfile(prev => ({ ...prev, [name]: value }));
@@ -104,7 +77,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            {/* ✅ CORRECCIÓN: Eliminamos 'glass-effect'. DialogContent ya es adaptable. */}
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{t('companyProfileDialog.title')}</DialogTitle>
@@ -115,13 +87,7 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                         <Label>{t('companyProfileDialog.logoLabel')}</Label>
                         <div className="mt-1 flex items-center gap-4">
                             {localProfile.logo_url ? (
-                                <Image
-                                    src={localProfile.logo_url}
-                                    alt={t('companyProfileDialog.logoAlt')}
-                                    width={64} height={64}
-                                    // ✅ CORRECCIÓN: Usamos 'bg-muted' para un fondo neutro
-                                    className="object-contain rounded-lg bg-muted p-1"
-                                />
+                                <Image src={localProfile.logo_url} alt={t('companyProfileDialog.logoAlt')} width={64} height={64} className="object-contain rounded-lg bg-muted p-1" />
                             ) : <div className="h-16 w-16 bg-muted rounded-lg" />}
                             <Button asChild variant="outline">
                                 <label htmlFor="logo-upload" className="cursor-pointer flex items-center gap-2">
@@ -132,12 +98,12 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                             <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploading} />
                         </div>
                     </div>
-                    {/* ✅ Els inputs ara funcionen perquè 'localProfile' té el format correcte */}
-                    <div><Label htmlFor="company_name">{t('companyProfileDialog.nameLabel')}</Label><Input id="company_name" name="company_name" value={localProfile.company_name || ''} onChange={handleInputChange} /></div>
-                    <div><Label htmlFor="company_tax_id">{t('companyProfileDialog.taxIdLabel')}</Label><Input id="company_tax_id" name="company_tax_id" value={localProfile.company_tax_id || ''} onChange={handleInputChange} /></div>
-                    <div><Label htmlFor="company_address">{t('companyProfileDialog.addressLabel')}</Label><Input id="company_address" name="company_address" value={localProfile.company_address || ''} onChange={handleInputChange} /></div>
-                    <div><Label htmlFor="company_email">{t('companyProfileDialog.emailLabel')}</Label><Input id="company_email" name="company_email" type="email" value={localProfile.company_email || ''} onChange={handleInputChange} /></div>
-                    <div><Label htmlFor="company_phone">{t('companyProfileDialog.phoneLabel')}</Label><Input id="company_phone" name="company_phone" value={localProfile.company_phone || ''} onChange={handleInputChange} /></div>
+                    {/* ✅ 5. Els camps ara corresponen a les columnes de la taula 'teams'. */}
+                    <div><Label htmlFor="name">{t('companyProfileDialog.nameLabel')}</Label><Input id="name" name="name" value={localProfile.name || ''} onChange={handleInputChange} /></div>
+                    <div><Label htmlFor="tax_id">{t('companyProfileDialog.taxIdLabel')}</Label><Input id="tax_id" name="tax_id" value={localProfile.tax_id || ''} onChange={handleInputChange} /></div>
+                    <div><Label htmlFor="address">{t('companyProfileDialog.addressLabel')}</Label><Input id="address" name="address" value={localProfile.address || ''} onChange={handleInputChange} /></div>
+                    <div><Label htmlFor="email">{t('companyProfileDialog.emailLabel')}</Label><Input id="email" name="email" type="email" value={localProfile.email || ''} onChange={handleInputChange} /></div>
+                    <div><Label htmlFor="phone">{t('companyProfileDialog.phoneLabel')}</Label><Input id="phone" name="phone" value={localProfile.phone || ''} onChange={handleInputChange} /></div>
                 </div>
                 <DialogFooter>
                     <Button onClick={() => onOpenChange(false)} variant="ghost">{t('buttons.cancel')}</Button>

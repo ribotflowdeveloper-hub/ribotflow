@@ -1,15 +1,19 @@
 /**
- * Tipus base per a pàgines del directori App Router
- * (compatible amb Next.js 15 i React 19 RC)
+ * Aquesta és la definició canònica per a les props d'una pàgina a l'App Router de Next.js.
+ * El component de pàgina que utilitza aquest tipus HA de ser 'async'.
  */
-export interface PageProps {
+export type PageProps = {
   /**
-   * Paràmetres dinàmics de la URL (async a Next 15)
+   * Paràmetres dinàmics de la ruta (ex: { id: '123' }).
+   * Un cop dins d'un component 'async', ja estan resolts a 'string'.
    */
-  params: Promise<Record<string, string>> | Record<string, string>;
+  params: { [key: string]: string };
 
   /**
-   * Paràmetres de cerca (query string)
+   * Paràmetres de la query string (ex: { status: 'Sent' }).
+   * - És opcional ('?') perquè pot no haver-hi paràmetres a la URL.
+   * - Un cop dins d'un component 'async', ja estan resolts a l'objecte.
+   * - Els valors poden ser 'string' o un array de 'string[]' (ex: ?tag=a&tag=b).
    */
-  searchParams?: Promise<Record<string, string>> | Record<string, string>;
-}
+  searchParams?: { [key: string]: string | string[] | undefined };
+};

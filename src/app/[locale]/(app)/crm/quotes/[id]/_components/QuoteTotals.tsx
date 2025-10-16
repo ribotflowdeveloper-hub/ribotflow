@@ -2,10 +2,9 @@
 
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Importem el component Label
+import { Label } from '@/components/ui/label';
 import { useTranslations } from 'next-intl';
 
-// Definim les props correctament
 interface QuoteTotalsProps {
     subtotal: number;
     discount: number | null;
@@ -30,7 +29,7 @@ export const QuoteTotals: React.FC<QuoteTotalsProps> = ({
     const t = useTranslations('QuoteEditor.totals');
     
     return (
-        <div className="mt-6 ml-auto w-full max-w-sm space-y-2">
+        <div className="mt-6 ml-auto w-full max-w-sm space-y-2 px-4 py-2">
             <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('subtotal')}</span>
                 <span className="font-medium">€{subtotal.toFixed(2)}</span>
