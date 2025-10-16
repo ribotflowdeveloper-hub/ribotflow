@@ -2385,7 +2385,8 @@ CREATE TABLE IF NOT EXISTS "public"."tasks" (
     "department_id" bigint,
     "user_asign_id" "uuid",
     "asigned_date" timestamp with time zone,
-    "duration" numeric
+    "duration" numeric,
+    "finish_date" timestamp with time zone
 );
 
 
@@ -2401,6 +2402,10 @@ COMMENT ON COLUMN "public"."tasks"."asigned_date" IS 'Data assignació';
 
 
 COMMENT ON COLUMN "public"."tasks"."duration" IS 'Duració';
+
+
+
+COMMENT ON COLUMN "public"."tasks"."finish_date" IS 'Finish Date';
 
 
 
@@ -2536,7 +2541,9 @@ CREATE TABLE IF NOT EXISTS "public"."user_credentials" (
     "expires_at" timestamp with time zone,
     "provider_user_id" "text",
     "provider_page_id" "text",
-    "team_id" "uuid"
+    "team_id" "uuid",
+    "config" "jsonb",
+    "encrypted_password" "text"
 );
 
 
@@ -2819,6 +2826,11 @@ ALTER TABLE ONLY "public"."tickets"
 
 ALTER TABLE ONLY "public"."user_credentials"
     ADD CONSTRAINT "user_credentials_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."user_credentials"
+    ADD CONSTRAINT "user_credentials_user_id_provider_key" UNIQUE ("user_id", "provider");
 
 
 

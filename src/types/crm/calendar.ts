@@ -22,5 +22,5 @@ export interface CalendarEvent {
   end: Date;
   allDay?: boolean;
   resource?: unknown; // Use 'unknown' for a safer alternative to 'any'.
-  eventType?: 'task' | 'quote' | 'email' | 'receivedEmail';
+  eventType?: 'task' | 'quote' | 'email' | 'receivedEmail' | 'skeleton'; // ✅ SOLUCIÓ 2: Afegim 'skeleton' com a tipus vàlid.
 }

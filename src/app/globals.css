@@ -380,4 +380,67 @@ input[type="range"].slider::-moz-range-thumb {
   .prose-email pre {
     @apply whitespace-pre-wrap break-words;
   }
+  /* ========================================================================= */
+/* FORÇAR EL TEMA CLAR DE REACT-BIG-CALENDAR (Requisit 1) */
+/* Aplicar aquesta classe a l'embolcall del component Calendar */
+/* ========================================================================= */
+.rbc-calendar-force-light-theme {
+  /* Forçar fons blanc i colors clars per defecte */
+  background-color: white !important;
+  color: #000 !important; /* Text fosc */
+  border-radius: 8px; /* Opcional: per millorar la visualització */
+  padding: 1rem;
+}
+
+.rbc-calendar-force-light-theme .rbc-header {
+  color: #333 !important; /* Caps de setmana */
+  border-bottom-color: #eee !important;
+  background-color: #f8f8f8 !important; /* Fons del capçalera */
+}
+
+.rbc-calendar-force-light-theme .rbc-day-bg {
+  background-color: white !important;
+}
+
+.rbc-calendar-force-light-theme .rbc-today {
+  background-color: #e6f7ff !important; /* Color per al dia d'avui */
+}
+
+.rbc-calendar-force-light-theme .rbc-toolbar button {
+  color: #333 !important;
+  border-color: #ccc !important;
+}
+
+/* Fons de les cel·les per a vistes de mes/setmana */
+.rbc-calendar-force-light-theme .rbc-row-segment, 
+.rbc-calendar-force-light-theme .rbc-time-slot, 
+.rbc-calendar-force-light-theme .rbc-time-view,
+.rbc-calendar-force-light-theme .rbc-month-view,
+.rbc-calendar-force-light-theme .rbc-agenda-view {
+  background-color: white !important;
+}
+
+/* Sobreescriure qualsevol ombra o text fosc residual */
+.rbc-calendar-force-light-theme .rbc-off-range-bg {
+  background-color: #fafafa !important;
+}
+
+.rbc-calendar-force-light-theme .rbc-date-cell {
+  color: #333 !important;
+}
+
+/* El text dels dies que no són del mes */
+.rbc-calendar-force-light-theme .rbc-off-range .rbc-date-cell {
+  color: #999 !important;
+}
+
+.rbc-calendar-force-light-theme .rbc-rtl .rbc-btn-group,
+.rbc-calendar-force-light-theme .rbc-btn-group {
+    background-color: transparent !important;
+}
+
+/* Assegurem que el cos de la vista de temps estigui clar */
+.rbc-calendar-force-light-theme .rbc-time-view-resources .rbc-time-view-content {
+    background-color: white !important;
+}
 }
