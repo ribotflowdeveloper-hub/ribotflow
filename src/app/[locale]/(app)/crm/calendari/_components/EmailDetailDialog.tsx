@@ -1,3 +1,4 @@
+// src/app/[locale]/(app)/crm/calendari/_components/EmailDetailDialog.tsx (AQUEST CODI ERA CORRECTE)
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { EnrichedEmailForCalendar } from './CalendarData';
 import { format } from 'date-fns';
@@ -14,7 +15,7 @@ interface Props {
 export function EmailDetailDialog({ email, open, onOpenChange }: Props) {
   if (!email) return null;
 
-  // Construïm una URL que l'Inbox podria utilitzar per seleccionar el correu
+  // La construcció de la URL sempre ha estat correcta.
   const emailUrl = `/comunicacio/inbox?ticketId=${email.id}`;
 
   return (
@@ -30,7 +31,6 @@ export function EmailDetailDialog({ email, open, onOpenChange }: Props) {
           <hr/>
           <div className="text-sm text-muted-foreground max-h-48 overflow-y-auto" dangerouslySetInnerHTML={{ __html: email.preview || '' }} />
         </div>
-        {/* ✅ NOU: Peu del diàleg amb el botó de redirecció */}
         <DialogFooter>
           <Button variant="outline" asChild>
             <Link href={emailUrl}>

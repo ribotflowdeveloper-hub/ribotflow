@@ -1,4 +1,4 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_components/inbox-client.tsx
+// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxClient.tsx
 "use client";
 
 import React from 'react';
@@ -7,8 +7,6 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useTranslations } from 'next-intl';
 import { useInbox } from '../_hooks/useInbox';
 import type { User } from '@supabase/supabase-js';
-
-// ✨ CANVI: Importem tots els tipus necessaris des de la nostra única font de veritat.
 import type { Contact, EnrichedTicket, InboxPermission, TeamMemberWithProfile, Template } from '@/types/db';
 
 // Components
@@ -19,17 +17,13 @@ import { ContactPanel } from './ContactPanel';
 import { ComposeDialog } from './ComposeDialog';
 import { MobileDetailView } from './MobileDetailView';
 
-// ❌ ELIMINAT: Ja no necessitem definir tipus locals com TeamMember o Permission.
-
-// ✨ CANVI: Definim les props del component amb els tipus importats de db.ts
+// ✅ Props simplificades. Ja no necessitem `initialSelectedTicket` ni `initialSelectedTicketBody`.
 interface InboxClientProps {
   user: User;
   initialTickets: EnrichedTicket[];
   initialTemplates: Template[];
   initialReceivedCount: number;
   initialSentCount: number;
-  initialSelectedTicket: EnrichedTicket | null;
-  initialSelectedTicketBody: string | null;
   teamMembers: TeamMemberWithProfile[];
   permissions: InboxPermission[];
   allTeamContacts: Contact[];
@@ -46,7 +40,11 @@ export function InboxClient(props: InboxClientProps) {
     setTicketToDelete, setActiveFilter, setComposeState, setSearchTerm,
     setIsContactPanelOpen, setInboxFilter, handleSelectTicket, handleDeleteTicket,
     handleLoadMore, handleSaveContact, handleComposeNew, handleReply, handleRefresh,
-  } = useInbox({ ...props, initialUnreadCount: props.initialReceivedCount, t });
+  } = useInbox({ 
+      ...props, 
+      initialUnreadCount: props.initialReceivedCount, 
+      t 
+  });
 
   return (
     <>

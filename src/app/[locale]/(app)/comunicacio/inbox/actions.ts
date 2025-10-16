@@ -285,3 +285,37 @@ export async function getTicketsAction(
 
   return (data ?? []) as EnrichedTicket[];
 }
+
+
+export async function getTicketByIdAction(ticketId: number): Promise<{ data: EnrichedTicket | null, error: string | null }> {
+  try {
+    const session = await validateUserSession();
+    if ('error' in session) {
+      throw new Error(session.error.message);
+    }
+    const { supabase, user, activeTeamId } = session;
+    if (!user) throw new Error('User not authenticated');
+
+    // Fem una crida a la funció RPC que ja tenim, però per a un sol tiquet
+    const { data, error } = await supabase
+      .rpc('get_inbox_tickets', {
+        p_user_id: user.id,
+        p_team_id: activeTeamId,
+        p_visible_user_ids: [user.id], // Aquí podem ser més restrictius o oberts segons la lògica de permisos
+        p_limit: 1,
+        p_offset: 0,
+        p_search_term: '',
+        p_ticket_id: ticketId // ✅ El paràmetre clau per buscar un tiquet específic
+      })
+      .single();
+
+    if (error) throw error;
+    
+    return { data: data as EnrichedTicket, error: null };
+
+  } catch (err: unknown) {
+    console.error('Error in getTicketByIdAction:', err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return { data: null, error: errorMessage };
+  }
+}
