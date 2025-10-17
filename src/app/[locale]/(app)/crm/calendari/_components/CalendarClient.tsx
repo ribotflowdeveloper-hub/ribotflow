@@ -24,7 +24,6 @@ import { EmailDetailDialog } from './EmailDetailDialog';
 import { cn } from '@/lib/utils/utils';
 import { useCalendarController } from '../_hooks/useCalendarController';
 import { useCalendarDialogs } from '../_hooks/useCalendarDialog';
-import CalendarSkeleton from './CalendarSkeleton';
 import CalendarSkeletonEvent from './CalendarSkeletonEvent';
 
 // 🔑 FIX: Exportem el tipus EventSourcesState
@@ -98,7 +97,7 @@ export default function CalendarClient(props: CalendarClientProps) {
         handleMoveTask,
         setEventSources,
         updateDateAndData,
-        isLoading,
+       
     } = useCalendarController(props);
 
     const {
@@ -183,9 +182,7 @@ export default function CalendarClient(props: CalendarClientProps) {
         <div>
             <CalendarToolbar {...toolbarProps} />
 
-            {isLoading ? (
-                <CalendarSkeleton />
-            ) : (
+           
                 <DragAndDropCalendar
                     localizer={localizer}
                     events={filteredEvents}
@@ -215,7 +212,7 @@ export default function CalendarClient(props: CalendarClientProps) {
                             ),
                     }}
                 />
-            )}
+           
 
             <TaskDialogManager
                 task={selectedTask ? { ...selectedTask, user_id: selectedTask.user_id ?? '' } : null}
