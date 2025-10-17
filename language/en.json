@@ -902,7 +902,11 @@
       "paid": "Paid",
       "overdue": "Overdue",
       "draft": "Draft",
-      "unknown": "Unknown"
+      "unknown": "Unknown",
+      "cancelled": "Cancelled"
+    },
+    "filter": {
+      "allStatuses": "All statuses"
     }
   },
   "ExpenseDetailPage": {
@@ -1489,22 +1493,23 @@
     }
   },
   "Shared": {
-  "table": {
-    "actions": "Actions"
-  },
-  "actions": {
-    "edit": "Edit",
-    "delete": "Delete",
-    "view": "View details"
-  },
-  "deleteDialog": {
-    "title": "Are you sure?",
-    "description1": "This action cannot be undone. The record will be permanently deleted.",
-    "description2": "Deleted data cannot be recovered.",
-    "confirmButton": "Yes, delete",
-    "cancelButton": "Cancel",
-    "deleting": "Deleting..."
+    "table": {
+      "actions": "Actions",
+      "view": "View",
+      "toggleColumns": "Toggle columns"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "view": "View details"
+    },
+    "deleteDialog": {
+      "title": "Are you sure?",
+      "description1": "This action cannot be undone. The record will be permanently deleted.",
+      "description2": "Deleted data cannot be recovered.",
+      "confirmButton": "Yes, delete",
+      "cancelButton": "Cancel",
+      "deleting": "Deleting..."
+    }
   }
-}
-
 }

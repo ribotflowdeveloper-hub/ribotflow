@@ -903,7 +903,11 @@
       "paid": "Pagada",
       "overdue": "Vençuda",
       "draft": "Esborrany",
-      "unknown": "Desconegut"
+      "unknown": "Desconegut",
+      "cancelled": "Anul·lada"
+    },
+    "filter": {
+      "allStatuses": "Tots els estats"
     }
   },
   "ExpenseDetailPage": {
@@ -1538,7 +1542,9 @@
   },
   "Shared": {
     "table": {
-      "actions": "Accions"
+      "actions": "Accions",
+      "view": "Vista",
+      "toggleColumns": "Activa/desactiva columnes"
     },
     "actions": {
       "edit": "Editar",

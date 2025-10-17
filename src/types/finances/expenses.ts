@@ -24,29 +24,34 @@ export type ExpenseAttachment = {
 
 // --- 2. Tipus Base de Despesa (Taula `expenses`) ---
 
-// Utilitzem number per a l'ID (bigint) i afegim team_id (crucial)
-export type Expense = {
-    id: number; 
-    team_id: string; // Afegit: Crucial per RLS i context d'acció
+// ✅ NOU: Definim el tipus per a l'estat de la despesa, basat en l'ENUM de la DB
+export type ExpenseStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
+
+export interface Expense {
+    id: number;
     user_id: string;
-    created_at: string;
-    
-    supplier_id: string | null;
-    invoice_number: string | null;
+    team_id: string;
+    description: string;
+    total_amount: number;
     expense_date: string; // format YYYY-MM-DD
     category: string | null;
-    description: string;
-    notes?: string | null;
-
-    subtotal: number;
-    total_amount: number;
-    discount_amount: number | null;
-    tax_rate: number | null;
+    created_at: string;
+    invoice_number: string | null;
     tax_amount: number | null;
+    subtotal: number | null;
+    discount_amount: number | null;
+    notes: string | null;
+    tax_rate: number | null;
+    supplier_id: string | null;
     
-    status: string; // Deixar-ho com a string o l'enum 'pending'|'paid'|...
-};
-
+    // ✅ NOU: Camps afegits
+    status: ExpenseStatus;
+    payment_date: string | null; // format YYYY-MM-DD
+    payment_method: string | null;
+    is_billable: boolean;
+    project_id: string | null;
+    is_reimbursable: boolean;
+}
 // --- 3. Tipus Compostos (per a les vistes i accions) ---
 
 // Tipus usat a la llista (només amb el nom del proveïdor)

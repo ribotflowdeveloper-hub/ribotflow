@@ -897,7 +897,11 @@
       "paid": "Pagada",
       "overdue": "Vencida",
       "draft": "Borrador",
-      "unknown": "Desconocido"
+      "unknown": "Desconocido",
+      "cancelled": "Anulada"
+    },
+    "filter": {
+      "allStatuses": "Todos los estados"
     }
   },
   "ExpenseDetailPage": {
@@ -1481,22 +1485,23 @@
     }
   },
   "Shared": {
-  "table": {
-    "actions": "Acciones"
-  },
-  "actions": {
-    "edit": "Editar",
-    "delete": "Eliminar",
-    "view": "Ver detalle"
-  },
-  "deleteDialog": {
-    "title": "¿Estás seguro?",
-    "description1": "Esta acción no se puede deshacer. El registro se eliminará permanentemente.",
-    "description2": "Los datos eliminados no se podrán recuperar.",
-    "confirmButton": "Sí, eliminar",
-    "cancelButton": "Cancelar",
-    "deleting": "Eliminando..."
+    "table": {
+      "actions": "Acciones",
+      "view": "Vista",
+      "toggleColumns": "Activa/desactiva columnas"
+    },
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "view": "Ver detalle"
+    },
+    "deleteDialog": {
+      "title": "¿Estás seguro?",
+      "description1": "Esta acción no se puede deshacer. El registro se eliminará permanentemente.",
+      "description2": "Los datos eliminados no se podrán recuperar.",
+      "confirmButton": "Sí, eliminar",
+      "cancelButton": "Cancelar",
+      "deleting": "Eliminando..."
+    }
   }
-}
-
 }
