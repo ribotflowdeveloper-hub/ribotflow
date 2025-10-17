@@ -51,6 +51,7 @@ export function Agenda({
     <div>
       {/* Grup de botons de filtre */}
       <div className="flex gap-2 mb-4 flex-shrink-0">
+
         <ToggleGroup
           type="single"
           value={activeFilter}

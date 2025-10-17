@@ -11,9 +11,10 @@ import { Radar } from "./_components/Radar";
 import { TaskDialogManager, EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 import { toast } from "sonner";
 import { startTransition } from "react";
-import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus } from "lucide-react";
+import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar } from "lucide-react";
 import { Agenda, TaskFilterStatus } from "./_components/agenda/Agenda";
 import { updateSimpleTask } from '@/app/actions/tasks/actions';
+import Link from 'next/link';
 
 import { Tables } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
@@ -168,6 +169,17 @@ export function DashboardClient({
           className="lg:col-span-2 h-full flex flex-col"
           actions={
             <div className="flex items-center space-x-4">
+              {/* 🔑 NOU: BOTÓ DE CALENDARI PER RENVIAR AL CALENDARI COMPLET */}
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="flex-shrink-0"
+              >
+                <Link href="/crm/calendari" aria-label={"Calendar"}>
+                  <Calendar className="h-5 w-5" />
+                </Link>
+              </Button>
               <div className="flex items-center space-x-2">
                 <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
                 <Label htmlFor="show-all-tasks" className="text-xs font-normal cursor-pointer">{t('agenda.viewAll')}</Label>
