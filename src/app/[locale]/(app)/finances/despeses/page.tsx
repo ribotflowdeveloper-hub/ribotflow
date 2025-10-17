@@ -1,19 +1,18 @@
 // src/app/[locale]/(app)/finances/despeses/page.tsx
 import { fetchExpenses } from './actions';
 import { ExpensesClient } from './_components/ExpensesClient';
-import { ExpensesSkeleton } from './_components/ExpensesSkeleton'; // Assumint que existeix
 
+/**
+ * Pàgina principal (Server Component) per a la gestió de despeses.
+ * La seva única responsabilitat és carregar les dades inicials.
+ */
 export default async function ExpensesPage() {
-    // Carreguem les dades al servidor
-    const initialExpenses = await fetchExpenses();
+    // ✅ CORRECCIÓ: Cridem fetchExpenses amb un objecte de filtres buit
+    // per a la càrrega inicial de totes les despeses.
+    const initialExpenses = await fetchExpenses({});
 
-    if (!initialExpenses) {
-        // En cas d'error greu, mostrem el skeleton o un missatge d'error
-        return <ExpensesSkeleton />; 
-    }
-
+    // Passem les dades inicials al component client, que s'encarregarà de la interactivitat.
     return (
-        // Client Component per a la interactivitat
         <ExpensesClient initialExpenses={initialExpenses} />
     );
 }

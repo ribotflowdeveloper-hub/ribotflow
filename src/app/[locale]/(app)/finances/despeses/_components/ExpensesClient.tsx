@@ -1,30 +1,20 @@
 // src/app/[locale]/(app)/finances/despeses/_components/expenses-client.tsx
 "use client";
 
-import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit } from 'lucide-react'; 
-import { useTranslations, useLocale } from 'next-intl';
-import { cn } from '@/lib/utils/utils';
-import { ExpenseWithContact, EXPENSE_STATUS_MAP } from '@/types/finances/expenses'; 
+import { useLocale } from 'next-intl';
+import { ExpenseWithContact } from '@/types/finances/expenses'; 
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { useExpenses } from '../_hooks/useExpenses'; 
 import { formatCurrency, formatLocalizedDate } from '@/lib/utils/formatters'; 
-
-const TEXT_CONTRAST_MAP: Record<string, string> = {
-    'bg-gray-100': 'text-gray-800',
-    'bg-yellow-100': 'text-yellow-800',
-    'bg-blue-100': 'text-blue-800',
-    'bg-green-600': 'text-white',
-    'bg-red-600': 'text-white',
-};
+import { ExpenseFilters } from './ExpenseFilters';
 
 export function ExpensesClient({ initialExpenses }: { initialExpenses: ExpenseWithContact[] }) {
-    const t = useTranslations('ExpensesPage');
-    const tShared = useTranslations('Shared'); 
     const locale = useLocale();
 
+    // ✅ Ara desestructurem 't' i 'tShared' directament des del hook
     const {
         isPending,
         expenses, 
@@ -34,68 +24,55 @@ export function ExpensesClient({ initialExpenses }: { initialExpenses: ExpenseWi
         handleDelete,
         currentSortColumn,
         currentSortOrder,
-    } = useExpenses({ initialExpenses, t }); 
+        searchTerm,
+        filters,
+        handleSearchChange,
+        handleCategoryChange,
+        t,
+        tShared
+    } = useExpenses({ initialExpenses }); 
 
-    // ✅ CORRECCIÓ FINAL: La definició de les columnes ara rep 'row' directament.
+    // ❌ La declaració duplicada s'ha eliminat
+
     const columns: ColumnDef<ExpenseWithContact>[] = [
-        {
-            accessorKey: "invoice_number", 
-            header: t('table.number'),
-            enableSorting: true,
-            cell: (row) => row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`,
-            cellClassName: "font-medium",
-        },
-        {
-            accessorKey: "suppliers.nom", 
-            header: t('table.supplier'),
-            enableSorting: true,
-            cell: (row) => row.suppliers?.nom || t('noSupplier'),
-        },
-        {
+      {
+          accessorKey: "invoice_number", 
+          header: t('table.number'),
+          enableSorting: true,
+          cell: (row) => row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`,
+          cellClassName: "font-medium",
+      },
+      {
+          accessorKey: "suppliers.nom", 
+          header: t('table.supplier'),
+          enableSorting: true,
+          cell: (row) => row.suppliers?.nom || t('noSupplier'),
+      },
+      {
             accessorKey: "description",
             header: t('table.description'),
             enableSorting: false, 
             cell: (row) => <span className="max-w-[150px] truncate">{row.description}</span>,
-        },
-        {
+      },
+      {
             accessorKey: "expense_date",
             header: t('table.date'),
             enableSorting: true,
             cell: (row) => formatLocalizedDate(row.expense_date, "PPP", locale),
-        },
-        {
+      },
+      {
             accessorKey: "total_amount",
             header: t('table.total'),
             enableSorting: true,
             cell: (row) => formatCurrency(row.total_amount),
-        },
-        {
+      },
+      {
             accessorKey: "category",
             header: t('table.category'),
             enableSorting: true,
             cell: (row) => row.category || t('noCategory'),
-        },
-        {
-            accessorKey: "status",
-            header: t('table.status'),
-            enableSorting: true,
-            cell: (row) => {
-                const statusInfo = EXPENSE_STATUS_MAP.find(s => s.dbValue === row.status) || { key: 'unknown', colorClass: 'bg-gray-100' };
-                const textClass = TEXT_CONTRAST_MAP[statusInfo.colorClass] || 'text-gray-800';
-                
-                return (
-                    <span className={cn(
-                        "px-2 py-1 text-xs font-medium rounded-full",
-                        statusInfo.colorClass,
-                        textClass,
-                        "min-w-[70px] inline-flex justify-center" 
-                    )}>
-                        {t(`status.${statusInfo.key}`)}
-                    </span>
-                );
-            },
-        },
-        {
+      },
+      {
             accessorKey: "actions_edit",
             header: "", 
             enableSorting: false,
@@ -105,12 +82,12 @@ export function ExpensesClient({ initialExpenses }: { initialExpenses: ExpenseWi
                 </Link>
             ),
             cellClassName: "text-right",
-        }
+      }
     ];
 
     const deleteDescription = (
         <p>
-            {tShared('deleteDialog.description1')} <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
+            {tShared('deleteDialog.description1')} <span className="font-bold">{expenseToDelete?.invoice_number || `ID ${expenseToDelete?.id}`}</span>.
             <br />
             {tShared('deleteDialog.description2')}
         </p>
@@ -118,7 +95,7 @@ export function ExpensesClient({ initialExpenses }: { initialExpenses: ExpenseWi
 
     return (
         <>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-4">
                 <h1 className="text-3xl font-bold">{t('title')}</h1>
                 <Button asChild>
                     <Link href={`/${locale}/finances/despeses/new`}> 
@@ -127,12 +104,19 @@ export function ExpensesClient({ initialExpenses }: { initialExpenses: ExpenseWi
                 </Button>
             </div>
             
+            <ExpenseFilters 
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              category={filters.category}
+              onCategoryChange={handleCategoryChange}
+            />
+            
             <GenericDataTable
                 data={expenses}
                 columns={columns}
                 onSort={handleSort}
                 currentSortColumn={currentSortColumn}
-                currentSortOrder={currentSortOrder}
+                currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
                 isPending={isPending}
                 onDelete={handleDelete}
                 deleteItem={expenseToDelete}

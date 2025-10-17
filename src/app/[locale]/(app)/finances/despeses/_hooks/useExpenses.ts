@@ -1,89 +1,91 @@
 // src/app/[locale]/(app)/finances/despeses/_hooks/useExpenses.ts
-// Exemple basat en la lògica de useQuotes
-import { useState, useTransition, useMemo } from 'react';
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect, useTransition, useCallback } from 'react';
+import { useDebounce } from 'use-debounce';
+import { fetchExpenses, type ExpenseFilters, deleteExpense } from '../actions';
+import { type ExpenseWithContact } from '@/types/finances/expenses';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-import { ExpenseWithContact } from '@/types/finances/expenses';
-import { deleteExpense } from '../actions'; // Importem la Server Action
 
 interface UseExpensesProps {
-    initialExpenses: ExpenseWithContact[];
-    t: (key: string) => string; // Per traduccions
+  initialExpenses: ExpenseWithContact[];
 }
 
 export function useExpenses({ initialExpenses }: UseExpensesProps) {
-    const router = useRouter();
-    const pathname = usePathname();
-    const searchParams = useSearchParams();
-    
-    const [isPending, startTransition] = useTransition();
-    const [expenseToDelete, setExpenseToDelete] = useState<ExpenseWithContact | null>(null);
+  // ✅ Centralitzem les dues instàncies de traducció aquí
+  const t = useTranslations('ExpensesPage');
+  const tShared = useTranslations('Shared');
+  const [isPending, startTransition] = useTransition();
 
-    // 1. Lògica d'ordenació
-    const currentSortColumn = useMemo(() => {
-        const key = Array.from(searchParams.keys()).find(key => key.startsWith('sortBy-'));
-        return key ? key.replace('sortBy-', '') : null;
-    }, [searchParams]);
+  const [expenses, setExpenses] = useState<ExpenseWithContact[]>(initialExpenses);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({ category: 'all' });
+  const [sorting, setSorting] = useState({ column: 'expense_date', order: 'desc' });
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
 
-    const currentSortOrder = searchParams.get(`sortBy-${currentSortColumn}`) as 'asc' | 'desc' | null;
+  const loadExpenses = useCallback(() => {
+    startTransition(async () => {
+      const serverFilters: ExpenseFilters = {
+        searchTerm: debouncedSearchTerm,
+        category: filters.category,
+        sortBy: sorting.column,
+        sortOrder: sorting.order as 'asc' | 'desc',
+      };
+      const newExpenses = await fetchExpenses(serverFilters);
+      setExpenses(newExpenses);
+    });
+  }, [debouncedSearchTerm, filters, sorting]);
 
-    const handleSort = (column: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        const currentOrder = params.get(`sortBy-${column}`);
-        
-        // Netejar altres camps d'ordenació
-        Array.from(params.keys()).forEach(key => {
-            if (key.startsWith('sortBy-') && key !== `sortBy-${column}`) {
-                params.delete(key);
-            }
-        });
+  useEffect(() => {
+    loadExpenses();
+  }, [loadExpenses]);
 
-        if (!currentOrder) {
-            params.set(`sortBy-${column}`, 'asc');
-        } else if (currentOrder === 'asc') {
-            params.set(`sortBy-${column}`, 'desc');
+  const handleSort = (columnKey: string) => {
+    setSorting(prev => {
+      const isSameColumn = prev.column === columnKey;
+      const newOrder = isSameColumn && prev.order === 'asc' ? 'desc' : 'asc';
+      return { column: columnKey, order: newOrder };
+    });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    setFilters(prev => ({ ...prev, category: value }));
+  };
+  
+  const [expenseToDelete, setExpenseToDelete] = useState<ExpenseWithContact | null>(null);
+  
+  const handleDelete = () => {
+    if (!expenseToDelete) return;
+
+    startTransition(async () => {
+        const result = await deleteExpense(expenseToDelete.id as number);
+        if(result.success) {
+            toast.success(result.message);
+            setExpenseToDelete(null);
+            loadExpenses(); // Recarreguem les dades
         } else {
-            params.delete(`sortBy-${column}`);
+            toast.error(result.message);
         }
-        
-        startTransition(() => {
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-        });
-    };
+    });
+  };
 
-    // 2. Lògica d'eliminació
-    const handleDelete = () => {
-        if (!expenseToDelete) return;
-
-        startTransition(async () => {
-            // L'ID és bigint a la DB, per tant, el passem com a 'number'
-            const result = await deleteExpense(expenseToDelete.id); 
-            
-            if (result.success) {
-                toast.success(result.message);
-                setExpenseToDelete(null); // Tancar el diàleg
-            } else {
-                toast.error(result.message);
-            }
-        });
-    };
-
-    // 3. Lògica de filtrat/ordenació a la UI (Hauria de ser millor al Server Component)
-    // Per a llistes petites, la fem aquí. Per a grans, es fa al 'fetchExpenses' basat en `searchParams`.
-    const sortedAndFilteredExpenses = useMemo(() => {
-        // ... (Implementació de l'ordenació i filtre aquí o deixar que el Server Component ho faci)
-        return initialExpenses; // Per ara, retornem les dades inicials
-    }, [initialExpenses]); 
-
-    return {
-        isPending,
-        expenses: sortedAndFilteredExpenses,
-        expenseToDelete,
-        setExpenseToDelete,
-        handleSort,
-        handleDelete,
-        currentSortColumn,
-        currentSortOrder,
-        searchParams,
-    };
+  return {
+    isPending,
+    expenses,
+    searchTerm,
+    filters,
+    handleSearchChange,
+    handleCategoryChange,
+    handleSort,
+    currentSortColumn: sorting.column,
+    currentSortOrder: sorting.order,
+    expenseToDelete,
+    setExpenseToDelete,
+    handleDelete,
+    t,
+    tShared, // ✅ Retornem tShared per al component
+  };
 }

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { ExpensesClient } from './ExpensesClient';
 import { fetchExpenses } from '../actions'; // ✅ Funció Server Action
 import { getTranslations } from 'next-intl/server';
-import { createServerActionClient } from '@/lib/supabase/server'; 
+import { createClient as createServerActionClient } from '@/lib/supabase/server'; 
 
 /**
  * Server Component: Capa de Dades per a la llista de Despeses.
@@ -24,8 +24,13 @@ export async function ExpensesData() {
     // 2. Càrrega de Dades
     try {
         // Obtenim les despeses (amb el nom del proveïdor)
-        const initialExpenses = await fetchExpenses(); 
-        
+        const initialExpenses = await fetchExpenses({
+            searchTerm: '',
+            category: 'all',
+            sortBy: 'expense_date',
+            sortOrder: 'desc'
+        });
+
         // 3. Renderitzat del Client Component
         // ✅ NOMÉS passem les despeses. La llista de proveïdors (si cal) es carregarà
         // només a la vista de detall/creació.

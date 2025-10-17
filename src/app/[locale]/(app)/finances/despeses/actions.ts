@@ -15,39 +15,63 @@ import { validateUserSession } from "@/lib/supabase/session";
 import { createClient as createServerActionClient } from "@/lib/supabase/server";
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
 
-// ----------------------------------------------------
-// SERVER FETCH: Llista i Detall
-// ----------------------------------------------------
+export interface ExpenseFilters {
+  searchTerm?: string;
+  category?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
 
-export async function fetchExpenses(): Promise<ExpenseWithContact[]> {
-    const supabase = createServerActionClient(); 
+/**
+ * ✅ PAS 1: Definim un tipus per al resultat que retorna la nostra funció RPC.
+ * Aquest tipus ha de coincidir amb les columnes del 'RETURNS TABLE' de la funció SQL.
+ */
+type RpcSearchResult = {
+    id: number;
+    invoice_number: string | null;
+    expense_date: string;
+    total_amount: number;
+    category: string | null;
+    description: string;
+    supplier_id: string | null;
+    supplier_nom: string | null;
+};
+
+export async function fetchExpenses(filters: ExpenseFilters): Promise<ExpenseWithContact[]> {
+    const session = await validateUserSession();
+    if ("error" in session) {
+        console.error("Session error in fetchExpenses:", session.error);
+        return [];
+    }
+    const { supabase, activeTeamId } = session;
     
-    // ✅ CORRECCIÓ FINAL: Hem eliminat el camp 'status' que no existeix a la taula.
-    const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-            id, 
-            invoice_number, 
-            expense_date, 
-            total_amount, 
-            category, 
-            description,
-            suppliers (
-                id,
-                nom
-            )
-        `)
-        .order('expense_date', { ascending: false });
+    const { data, error } = await supabase.rpc('search_expenses', {
+        p_team_id: activeTeamId,
+        p_search_term: filters.searchTerm || null,
+        p_category: filters.category || null,
+        p_sort_by: filters.sortBy || 'expense_date',
+        p_sort_order: filters.sortOrder || 'desc'
+    });
 
     if (error) {
-        console.error("Error fetching expenses for list:", error.message); 
-        throw new Error("Error en carregar les dades de despeses per a la llista.");
+        console.error("Error calling RPC search_expenses:", error.message);
+        throw new Error("Error en carregar les dades de despeses.");
     }
-    
+
     if (!data) {
         return [];
     }
-    return data as unknown as ExpenseWithContact[];
+
+    // ✅ PAS 2: Apliquem el nostre tipus al paràmetre 'item' del .map()
+    const formattedData = data.map((item: RpcSearchResult) => ({
+        ...item,
+        suppliers: item.supplier_id ? {
+            id: item.supplier_id,
+            nom: item.supplier_nom,
+        } : null,
+    }));
+    
+    return formattedData as unknown as ExpenseWithContact[];
 }
 
 export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDetail | null> {
@@ -130,7 +154,7 @@ async function syncExpenseItems(
       return { success: false, message: `Error esborrant conceptes: ${deleteError.message}` }; 
     }
     
-    const itemsToUpsert = items.map(({ total, ...item }) => ({
+    const itemsToUpsert = items.map(item => ({
         ...item, 
         expense_id: expenseId,
         user_id: user.id,
