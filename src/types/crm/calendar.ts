@@ -24,3 +24,26 @@ export interface CalendarEvent {
   resource?: unknown; // Use 'unknown' for a safer alternative to 'any'.
   eventType?: 'task' | 'quote' | 'email' | 'receivedEmail' | 'skeleton'; // ✅ SOLUCIÓ 2: Afegim 'skeleton' com a tipus vàlid.
 }
+
+// 🧠 Definició centralitzada de l'estat dels filtres (ActiveSources)
+// Aquest tipus és el contracte entre el Client Component i la Server Action.
+export type ActiveSources = {
+    tasks: boolean;
+    quotes: boolean;
+    emails: boolean;
+    receivedEmails: boolean;
+};
+
+// Tipus per a l'estat del formulari
+export type FormState = {
+  error?: {
+    form?: string;
+    db?: string;
+    title?: string[];
+    description?: string[];
+    due_date?: string[];
+    priority?: string[];
+    user_id?: string[];
+  };
+  success?: boolean;
+};

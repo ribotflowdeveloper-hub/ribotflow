@@ -3,7 +3,6 @@
 
 import { ToolbarProps, View } from 'react-big-calendar';
 import { useTranslations } from 'next-intl';
-import { Dispatch, SetStateAction } from 'react';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
@@ -41,7 +40,7 @@ Separator.displayName = SeparatorPrimitive.Root.displayName;
 
 interface CalendarToolbarProps extends ToolbarProps<CalendarEvent> {
   eventSources: EventSourcesState;
-  onEventSourcesChange: Dispatch<SetStateAction<EventSourcesState>>;
+  onEventSourcesChange: (newSources: EventSourcesState) => void;
   onCreateTask: () => void;
 }
 
@@ -72,7 +71,7 @@ export default function CalendarToolbar({
         <Button variant="ghost" size="icon" onClick={() => onNavigate('NEXT')} aria-label={t('next')}>
           <ChevronRight className="h-4 w-4 text-black" />
         </Button>
-        <h2 className="text-2xl font-bold ml-6 text-white">{label}</h2>
+        <h2 className="text-2xl font-bold ml-6 text-black">{label}</h2>
       </div>
 
       <div className="flex items-center gap-3">
@@ -98,7 +97,7 @@ export default function CalendarToolbar({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="text-white">{tFilters('title')}</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-white , bg-gray-800">{tFilters('title')}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuCheckboxItem checked={eventSources.tasks} onCheckedChange={(checked) => onEventSourcesChange({ ...eventSources, tasks: !!checked })}>
               {tFilters('tasks')}

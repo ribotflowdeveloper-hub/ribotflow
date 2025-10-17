@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 import { useCallback } from 'react';       // Per memoritzar funcions i evitar re-renderitzats innecessaris
 import { toast } from 'sonner';            // Llibreria per mostrar notificacions d’usuari
-import { updateTaskDate } from '../actions'; // Acció del servidor per actualitzar la data d’una tasca
+import { updateSimpleTask} from '@/app/actions/tasks/actions'; // Acció del servidor per actualitzar la data d’una tasca
 import { CalendarEvent } from '@/types/crm'; // Tipus genèric d’esdeveniment del calendari
 import { EnrichedTaskForCalendar } from '../_components/CalendarData'; // Tipus específic per a tasques
 
@@ -56,14 +56,14 @@ export default function useCalendar(
     // -------------------------------------------------------------------------
     // ⚙️ ACTUALITZACIÓ REAL AL BACKEND
     // -------------------------------------------------------------------------
-    const result = await updateTaskDate(taskId, newDueDate);
+    const result = await updateSimpleTask(taskId, { due_date: newDueDate });
 
     // -------------------------------------------------------------------------
     // 🧯 GESTIÓ D'ERRORS I FEEDBACK A L’USUARI
     // -------------------------------------------------------------------------
     if (result.error) {
         // ❌ Si el servidor respon amb error, mostrem toast i revertim la data
-        toast.error("Error en actualitzar la data.", { description: result.error.db });
+        toast.error("Error en actualitzar la data.", { description: result.error.message });
         onTaskMove(taskId, originalTask.due_date!);
     } else {
         // ✅ Si tot va bé, mostrem confirmació d’èxit

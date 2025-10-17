@@ -1,6 +1,7 @@
+// src/app/[locale]/(app)/crm/calendari/_components/CalendarClient.tsx
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { Calendar, dateFnsLocalizer, EventPropGetter, CalendarProps, View, NavigateAction } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -10,6 +11,10 @@ import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 import { CalendarEvent } from '@/types/crm';
+// 🔑 Imports afegits per la coherència de tipus (fetchCalendarDataAction)
+import { fetchCalendarData } from '../_hooks/calendarFetch';
+import { ActiveSources } from '@/types/crm/calendar';
+// ----------------------------------------------------------------------
 import { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCalendar } from './CalendarData';
 import { TaskDialogManager } from '@/components/features/tasks/TaskDialogManager';
 import { Tables } from '@/types/supabase';
@@ -23,18 +28,15 @@ import { useCalendarDialogs } from '../_hooks/useCalendarDialog';
 import CalendarSkeleton from './CalendarSkeleton';
 import CalendarSkeletonEvent from './CalendarSkeletonEvent';
 
-export type EventSourcesState = {
-    tasks: boolean;
-    quotes: boolean;
-    emails: boolean;
-    receivedEmails: boolean;
-};
+// 🔑 Ús del tipus centralitzat (ActiveSources) amb l'àlies antic per retrocompatibilitat
+export type EventSourcesState = ActiveSources;
 
 const locales = { es };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 const DragAndDropCalendar = withDragAndDrop(Calendar as React.ComponentType<CalendarProps<CalendarEvent>>);
 const CALENDAR_VIEWS: View[] = ['month', 'week', 'day', 'agenda'];
 
+// 🎨 DEFINICIONS D'ESTILS
 const eventStyles = {
     task: {
         Baixa: { backgroundColor: '#3498db', color: 'white' },
@@ -65,6 +67,9 @@ const eventStyleGetter: EventPropGetter<CalendarEvent> = (event) => {
     return { style: { ...style, borderRadius: '5px', opacity: 0.9, border: '0px', display: 'block' } };
 };
 
+// ----------------------------------------------------------------------
+// 📦 INTERFÍCIE DE PROPIETATS
+// ----------------------------------------------------------------------
 export interface CalendarClientProps {
     initialTasks: EnrichedTaskForCalendar[];
     initialQuotes: EnrichedQuoteForCalendar[];
@@ -73,15 +78,13 @@ export interface CalendarClientProps {
     teamUsers: { id: string; full_name: string | null }[];
     contacts: Tables<'contacts'>[];
     departments: Tables<'departments'>[];
-    fetchCalendarDataAction: (startDate: string, endDate: string) => Promise<{
-        tasks: EnrichedTaskForCalendar[] | null;
-        quotes: EnrichedQuoteForCalendar[] | null;
-        sentEmails: EnrichedEmailForCalendar[] | null;
-        receivedEmails: EnrichedEmailForCalendar[] | null;
-        error?: string;
-    }>;
+    // 🔑 FIX DE TIPUS: Utilitzem 'typeof' per heretar la signatura correcta
+    fetchCalendarDataAction: typeof fetchCalendarData;
 }
 
+// ----------------------------------------------------------------------
+// ⚙️ COMPONENT PRINCIPAL
+// ----------------------------------------------------------------------
 export default function CalendarClient(props: CalendarClientProps) {
     const t = useTranslations('Calendar');
 
@@ -148,7 +151,10 @@ export default function CalendarClient(props: CalendarClientProps) {
 
     const toolbarProps = useMemo(() => ({
         label: formattedLabel,
-        onNavigate: handleToolbarNavigation,
+        onNavigate: (action: NavigateAction, newDate?: Date) => {
+            // Pass a default date if undefined (fallback to current date)
+            handleToolbarNavigation(action, newDate ?? date);
+        },
         onView: handleViewChange,
         view: view,
         views: CALENDAR_VIEWS,
@@ -158,12 +164,16 @@ export default function CalendarClient(props: CalendarClientProps) {
         onEventSourcesChange: setEventSources,
         onCreateTask: handleOpenNewTaskDialog,
     }), [formattedLabel, handleToolbarNavigation, handleViewChange, view, date, eventSources, setEventSources, handleOpenNewTaskDialog]);
-
-    // ✅ Adaptador per a onNavigate de react-big-calendar
-    const handleCalendarNavigationAdapter = (newDate: Date, _: View, action: NavigateAction) => {
+    // -------------------------------------------------------------------------
+    // 🔑 FIX CLAU: ADAPTADOR EXPLÍCITAMENT TIPAT PER A `onNavigate`
+    // -------------------------------------------------------------------------
+    // Utilitzem CalendarProps<CalendarEvent>['onNavigate'] per obtenir la signatura exacta 
+    // i useC allback per mantenir la referència estable.
+    const handleCalendarNavigate: CalendarProps<CalendarEvent>['onNavigate'] = useCallback((newDate: Date, view: View, action: NavigateAction) => {
+        // 1. Aquesta signatura és acceptada per react-big-calendar.
+        // 2. Cridem a la funció del hook, passant els arguments en l'ordre que espera.
         handleToolbarNavigation(action, newDate);
-    };
-
+    }, [handleToolbarNavigation]); // Depèn només de la funció del hook
     return (
         <div>
             <CalendarToolbar {...toolbarProps} />
@@ -187,7 +197,8 @@ export default function CalendarClient(props: CalendarClientProps) {
                     view={view}
                     date={date}
                     onView={handleViewChange}
-                    onNavigate={handleCalendarNavigationAdapter}
+                    // 🔑 FIX CLAU: Passem la funció de navegació del hook directament
+                    onNavigate={handleCalendarNavigate}
                     className={cn('rbc-calendar-force-light-theme')}
                     components={{
                         toolbar: () => null,
