@@ -1,4 +1,4 @@
-// TaskFormView.tsx - Versió final amb la funcionalitat i el disseny correctes
+// TaskFormView.tsx - Versió actualitzada
 
 'use client';
 
@@ -7,7 +7,7 @@ import { DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/componen
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import EditorWysiwyg from '@/components/ui/EditorWysiwyg';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -24,7 +24,8 @@ import { cn } from '@/lib/utils/utils';
 interface TaskFormViewProps {
     task: EnrichedTask | null;
     onSetViewMode: () => void;
-    onTaskMutation: () => void;
+    // ✅ CANVI: Actualitzem la definició per coincidir amb la nova lògica.
+    onTaskMutation: (options?: { closeDialog?: boolean }) => void;
     contacts: Tables<'contacts'>[];
     departments: Tables<'departments'>[];
     teamMembers: { id: string; full_name: string | null }[];
@@ -60,17 +61,21 @@ function FormActions({ isEditing, onSetViewMode, isPending }: { isEditing: boole
 export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, departments, teamMembers, initialDate }: TaskFormViewProps) {
     const [isPending, startTransition] = useTransition();
 
-    // Estats locals (sense canvis)
+    // Estats locals
     const getInitialDate = () => initialDate || (task?.due_date ? new Date(task.due_date) : new Date());
     const [dueDate, setDueDate] = useState<Date | undefined>(getInitialDate());
     const [contactComboboxOpen, setContactComboboxOpen] = useState(false);
     const [selectedContactId, setSelectedContactId] = useState<string | null>(task?.contact_id?.toString() ?? null);
     const [teamMemberComboboxOpen, setTeamMemberComboboxOpen] = useState(false);
     const [assignedUserId, setAssignedUserId] = useState<string | null>(task?.user_asign_id ?? null);
+    const [descriptionContent, setDescriptionContent] = useState<string>(task?.description ?? '');
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+
+        formData.set('description', descriptionContent);
+
         const action = task ? updateTask : createTask;
 
         startTransition(async () => {
@@ -82,14 +87,15 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
                 toast.error('Hi ha hagut un error', { description: errorValues });
             } else if (result.success) {
                 toast.success(task ? 'Tasca actualitzada!' : 'Tasca creada!');
+                
+                // ✅ CORRECTE: Cridem la funció sense paràmetres.
+                // Això farà que el component pare executi l'acció per defecte (tancar el diàleg).
                 onTaskMutation();
             }
         });
     };
 
     return (
-        // ✅ SOLUCIÓ: Tornem a l'estructura original amb un Fragment (<>) com a arrel.
-        // Això permet que DialogContent distribueixi correctament la capçalera, el contingut i el peu de pàgina.
         <>
             <DialogHeader>
                 <DialogTitle className="text-2xl">{task ? 'Editar Tasca' : 'Crear Nova Tasca'}</DialogTitle>
@@ -108,24 +114,24 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
                     {/* Descripció */}
                     <div className="space-y-2">
                         <Label htmlFor="description" className="flex items-center gap-2"><AlignLeft className="w-4 h-4" />Descripció</Label>
-                        <Textarea id="description" name="description" defaultValue={task?.description ?? ''} placeholder="Afegeix més detalls sobre la tasca..." rows={4} />
+                        <EditorWysiwyg
+                            id="description"
+                            name="description"
+                            defaultValue={descriptionContent}
+                            onChange={(html) => setDescriptionContent(html)}
+                        />
                     </div>
 
-                    {/* Fields in a grid - 3 COLUMNS */}
+                    {/* Resta dels camps del formulari (sense canvis) */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {/* Data de venciment */}
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2"><CalendarIcon className="w-4 h-4" />Data de venciment</Label>
                             <Popover>
                                 <PopoverTrigger asChild><Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !dueDate && "text-muted-foreground")}>{dueDate ? format(dueDate, "PPP", { locale: es }) : <span>Selecciona una data</span>}</Button></PopoverTrigger>
                                 <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dueDate} onSelect={setDueDate} autoFocus /></PopoverContent>
-
                             </Popover>
                             <input type="hidden" name="due_date" value={dueDate ? dueDate.toISOString() : ''} />
-
                         </div>
-
-                        {/* Prioritat */}
                         <div className="space-y-2">
                             <Label htmlFor="priority" className="flex items-center gap-2"><Flag className="w-4 h-4" />Prioritat</Label>
                             <Select name="priority" defaultValue={task?.priority ?? 'Mitjana'}>
@@ -137,15 +143,11 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
                                 </SelectContent>
                             </Select>
                         </div>
-
-                        {/* Duració */}
                         <div className="space-y-2">
                             <Label htmlFor="duration" className="flex items-center gap-2"><Clock className="w-4 h-4" />Duració</Label>
                             <Input id="duration" name="duration" type="number" step="0.01" placeholder="Hores (ex: 1.25)" defaultValue={task?.duration ?? ''} />
                         </div>
                     </div>
-
-                    {/* Assignar a & Data d'assignació */}
                     <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2 space-y-2">
                             <Label className="flex items-center gap-2"><User className="w-4 h-4" />Assignar a</Label>
@@ -163,7 +165,6 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
                                     </Command>
                                 </PopoverContent>
                                 <input type="hidden" name="user_asign_id" value={assignedUserId ?? 'none'} />
-
                             </Popover>
                         </div>
                         <div className="col-span-1 space-y-2">
@@ -171,8 +172,6 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
                             <Input id="assignment_date" name="assignment_date" type="text" value={task?.asigned_date ? format(new Date(task.asigned_date), "dd/MM/yyyy") : '-'} readOnly className="bg-muted/50 cursor-not-allowed" />
                         </div>
                     </div>
-
-                    {/* Contacte associat & Departament */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <Label className="flex items-center gap-2"><User className="w-4 h-4" />Contacte associat</Label>
@@ -190,7 +189,6 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
                                     </Command>
                                 </PopoverContent>
                                 <input type="hidden" name="contact_id" value={selectedContactId ?? 'none'} />
-
                             </Popover>
                         </div>
                         <div className="space-y-2">

@@ -1,15 +1,16 @@
 "use client";
 
+import { useState, useEffect } from "react"; // ✅ 1. Importem useState i useEffect
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils/utils";
+import { cn, sanitizeHtml } from "@/lib/utils/utils";
 import { format, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, Contact as ContactIcon, User as UserIcon, Clock, Building } from "lucide-react";
 import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
-import { priorityStyles, TaskPriority } from '@/config/styles/task'; // He ajustat la ruta a la teva estructura
+import { priorityStyles, TaskPriority } from '@/config/styles/task';
 
 interface TaskCardProps {
   task: EnrichedTask;
@@ -17,19 +18,16 @@ interface TaskCardProps {
   onToggleTask: (taskId: number, currentStatus: boolean) => void;
 }
 
-// ✅ NOVA FUNCIÓ: Genera un color HSL consistent a partir d'un text (com un ID d'usuari)
-// Això ens assegura que cada usuari sempre tindrà el mateix color.
 const generateHslColorFromString = (str: string | null | undefined) => {
     if (!str) return null;
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const h = hash % 220; // Hue (to de color) de 0 a 300
-    return { h, s: 60, l: 75 }; // Retornem un color pastel (saturació 70%, lluminositat 65%)
+    const h = hash % 220;
+    return { h, s: 60, l: 75 };
 };
 
-// Subcomponent per a les meta-dades
 function MetaItem({ icon: Icon, text, className }: { icon: React.ElementType, text: React.ReactNode, className?: string }) {
     if (!text) return null;
     return (
@@ -49,22 +47,29 @@ export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
     "text-orange-500 dark:text-orange-400 font-semibold": dueDate && isToday(dueDate),
   });
 
-  // ✅ NOU: Generem el color per a la targeta si hi ha un usuari assignat
   const userColor = generateHslColorFromString(task.user_asign_id);
   const cardStyle = userColor
     ? {
-        backgroundColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 0.15)`, // Fons suau i transparent
-        borderColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 0.4)`,     // Vora del mateix to
+        backgroundColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 0.15)`,
+        borderColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 0.4)`,
       }
     : {};
+  
+  // ✅ 2. Creem un estat per a la descripció, inicialitzat a buit
+  const [plainTextDescription, setPlainTextDescription] = useState('');
+
+  // ✅ 3. Utilitzem useEffect per processar l'HTML només al client
+  useEffect(() => {
+    // Aquesta funció només s'executarà al navegador, després del primer render
+    setPlainTextDescription(sanitizeHtml(task.description));
+  }, [task.description]); // Es tornarà a executar si la descripció de la tasca canvia
 
   return (
     <div 
       className="flex items-start gap-3 p-3 rounded-lg border bg-card text-card-foreground shadow-sm transition-colors group hover:bg-muted/50"
-      style={cardStyle} // Apliquem l'estil de fons
+      style={cardStyle}
     >
       
-      {/* Columna 1: Checkbox */}
       <div className="pt-1">
           <Checkbox
             id={`task-${task.id}`}
@@ -74,10 +79,8 @@ export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
           />
       </div>
 
-      {/* Columna 2: Contingut principal estructurat en dues línies */}
       <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onViewTask(task)}>
         
-        {/* LÍNIA SUPERIOR: Títol, Prioritat i Assignat */}
         <div className="flex justify-between items-start gap-2">
             <p className={cn("font-semibold leading-tight break-words pr-2", task.is_completed && "line-through text-muted-foreground")}>
               {task.title}
@@ -106,11 +109,11 @@ export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
             </div>
         </div>
 
-        {/* LÍNIA INFERIOR: Descripció i Meta-dades */}
         <div className="space-y-2 text-muted-foreground">
-            {task.description && (
+            {/* ✅ 4. Mostrem la descripció des de l'estat */}
+            {plainTextDescription && (
               <p className="text-sm truncate">
-                {task.description}
+                {plainTextDescription}
               </p>
             )}
             <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 text-xs">

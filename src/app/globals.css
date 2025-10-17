@@ -7,56 +7,30 @@
 @tailwind utilities;
 
 /* === COLORS I VARIABLES === */
-/* La directiva '@layer base' ens permet definir estils base o per defecte. */
 @layer base {
-  /* ':root' defineix variables CSS globals per al tema clar (light mode).
-     Aquestes variables són compatibles amb el sistema de theming de shadcn/ui.
-     Estan definides en format HSL (Hue, Saturation, Lightness) sense les unitats,
-     perquè Tailwind/shadcn pugui aplicar opacitat dinàmicament (ex: bg-primary/50). */
-     :root {
-      /* Fons: Un gris molt clar en lloc de blanc pur (menys brillant) */
-      --background: 220 20% 97%;
-      /* Text principal: Un gris molt fosc, gairebé negre, per a un millor contrast */
-      --foreground: 220 15% 15%;
-      
-      /* Targetes: Blanques, però el fons general apagat fa que no siguin tan cridaneres */
-      --card: 0 0% 100%;
-      --card-foreground: 220 15% 15%;
-      
-      /* Popovers: Un gris lleugerament més fosc que el fons */
-      --popover: 220 20% 95%;
-      --popover-foreground: 220 15% 15%;
-      
-      /* Colors d'accentuació (els mantenim vibrants) */
-      --primary: 262 83% 58%;
-      --primary-foreground: 0 0% 100%;
-      
-      /* Secundari: Grisos més definits per a botons i fons */
-      --secondary: 220 15% 90%;
-      --secondary-foreground: 220 15% 20%;
-      
-      /* Silenciat (Muted): Tons de gris per a textos menys importants */
-      --muted: 220 15% 92%;
-      --muted-foreground: 220 10% 45%;
-      
-      /* Colors d'èmfasi */
-      --accent: 262 80% 95%;
-      --accent-foreground: 262 83% 50%;
-      
-      /* Destructiu (vermell per a eliminacions) */
-      --destructive: 0 84.2% 50%;
-      --destructive-foreground: 0 0% 100%;
-  
-      /* Vores i camps d'entrada */
-      --border: 220 15% 88%;
-      --input: 220 15% 88%;
-      --ring: 262 83% 58%;
-      --radius: 0.75rem;
-      
-    }
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 15% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 15%;
+    --popover: 220 20% 95%;
+    --popover-foreground: 220 15% 15%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 90%;
+    --secondary-foreground: 220 15% 20%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 262 80% 95%;
+    --accent-foreground: 262 83% 50%;
+    --destructive: 0 84.2% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 88%;
+    --ring: 262 83% 58%;
+    --radius: 0.75rem;
+  }
 
-  /* La classe '.dark' s'aplica a l'etiqueta <html> quan el tema fosc està actiu.
-  Aquí sobreescrivim les mateixes variables CSS amb els seus valors per al tema fosc. */
   .dark {
     --background: 230 15% 8%;
     --foreground: 230 15% 92%;
@@ -79,46 +53,34 @@
     --ring: 262 83% 58%;
   }
 
-  /* Estils globals per a les etiquetes principals. */
   html,
   body,
   #root {
     height: 100%;
     width: 100%;
-    overflow-x: hidden; /* Evita el scroll horitzontal no desitjat */
+    overflow-x: hidden;
   }
-  /* ================================ */
   
-  /* Apliquem la vora per defecte a tots els elements i un desplaçament suau. */
   * {
     @apply border-border scroll-smooth;
   }
   
-  /* Estils per al <body> de l'aplicació. */
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', sans-serif;
-    /* Hem tret min-h-screen perquè ara tenim height: 100% a dalt */
   }
 }
-/* === EFECTES I ESTILS PERSONALITZATS === */
-/* Aquestes són classes personalitzades que pots utilitzar a qualsevol lloc de l'aplicació. */
 
 /* === EFECTES I ESTILS PERSONALITZATS === */
 @layer components {
-  /* ✅ EFECTE DE VIDRE (GLASSMORPHISM) ADAPTAT PER AL TEMA CLAR */
   .glass-effect {
-    /* Tema clar per defecte */
     @apply backdrop-blur-xl border border-black/10 rounded-xl bg-white/50;
   }
   .dark .glass-effect {
-    /* Tema fosc */
     @apply bg-white/5 border-white/10;
   }
 }
 
-  /* Efecte de vidre translúcid (Glassmorphism). */
-/* === GLASS & GRADIENTS === */
 .glass-effect {
   @apply backdrop-blur-xl border border-black/10 rounded-xl bg-white/5;
 }
@@ -138,11 +100,6 @@
   @apply transition-all duration-300 hover:scale-105 hover:shadow-[0_15px_30px_rgba(102,126,234,0.3)];
 }
 
-/* === SIDEBAR === */
-/* === COMPONENTS PERSONALITZATS === */
-/* Aquí definim classes per a components reutilitzables que no formen part de shadcn/ui. */
-
-/* Estil per a un element de la barra lateral. */
 .sidebar-item {
   @apply flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 bg-white/5 hover:bg-white/10 cursor-pointer;
 }
@@ -150,7 +107,6 @@
   @apply bg-gradient-to-r from-purple-500 to-blue-500 text-white;
 }
 
-/* === COMPONENTS VISUALS === */
 .metric-card {
   @apply glass-effect p-6 card-hover;
 }
@@ -167,7 +123,6 @@
   @apply flex flex-col items-center justify-center py-16 text-center text-muted-foreground;
 }
 
-/* === BADGES === */
 .status-badge {
   @apply px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
 }
@@ -184,7 +139,6 @@
   @apply bg-yellow-500/10 text-yellow-400 border border-yellow-400/30;
 }
 
-/* Animació per als títols amb degradat */
 @keyframes gradient-shift {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
@@ -200,12 +154,10 @@
   animation: gradient-shift 8s ease infinite;
 }
 
-/* Classe per a activar les funcionalitats en fer scroll */
 .feature-block.opacity-100 {
   opacity: 1;
 }
 
-/* Popup del mapa fosc (si el fas servir en altres llocs) */
 .mapboxgl-popup-content {
   background-color: #2d3748;
   color: #edf2f7;
@@ -216,11 +168,6 @@
   color: #edf2f7;
 }
 
-/* === EFECTES ANIMATS === */
-/* === EFECTES ANIMATS === */
-/* Definim animacions reutilitzables amb keyframes. */
-
-/* Animació per fer que un element "floti" amunt i avall. */
 .floating-animation {
   animation: floating 6s ease-in-out infinite;
 }
@@ -229,7 +176,7 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-12px); }
 }
-/* Animació que crea una brillantor que palpita. */
+
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite alternate;
 }
@@ -238,7 +185,6 @@
   to { box-shadow: 0 0 25px rgba(102, 126, 234, 0.8); }
 }
 
-/* === BOTONS DE FILTRE === */
 .filter-button {
   @apply px-4 py-2 rounded-lg transition-all duration-200 text-sm font-medium;
 }
@@ -248,11 +194,10 @@
 .filter-button:not(.active) {
   @apply bg-white/10 text-gray-300 hover:bg-white/20;
 }
-/* === ESTILS PER A LLIBRERIES EXTERNES === */
 
-/* Estils per personalitzar els popups de la llibreria MapboxGL. */
+/* === ESTILS PER A LLIBRERIES EXTERNES === */
 .mapboxgl-popup-content {
-  background-color: #1f2937; /* Un gris fosc, ajusta'l al teu color */
+  background-color: #1f2937;
   color: #ffffff;
   border-radius: 8px;
   padding: 8px 12px;
@@ -265,12 +210,10 @@
 .mapboxgl-popup-close-button {
   color: #ffffff !important;
 }
-/* src/app/globals.css */
 
-/* Estil per al popup de Mapbox en tema fosc */
 .popup-dark .mapboxgl-popup-content {
-  background-color: #1f2937; /* gray-800 */
-  color: #d1d5db; /* gray-300 */
+  background-color: #1f2937;
+  color: #d1d5db;
   border-radius: 8px;
   padding: 12px;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -280,13 +223,12 @@
   border-top-color: #1f2937 !important;
 }
 .popup-dark .mapboxgl-popup-close-button {
-  color: #9ca3af; /* gray-400 */
+  color: #9ca3af;
 }
 .popup-dark .mapboxgl-popup-close-button:hover {
-  background-color: #374151; /* gray-700 */
+  background-color: #374151;
 }
 
-/* Estil personalitzat per a les barres de desplaçament (scrollbars). */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
 }
@@ -294,13 +236,13 @@
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #4b5563; /* gray-600 */
+  background: #4b5563;
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #6b7280; /* gray-500 */
+  background: #6b7280;
 }
-/* === SLIDERS FUTURISTES === */
+
 input[type="range"].slider {
   -webkit-appearance: none;
   appearance: none;
@@ -339,13 +281,9 @@ input[type="range"].slider::-moz-range-thumb {
 .text-muted-strong {
   color: hsl(220, 10%, 35%);
 }
-/* === ESTILS PER AL CONTINGUT HTML (Ex: Emails, Previsualitzacions) === */
-/* La directiva '@layer components' s'utilitza per definir classes de components més complexes. */
+
 @layer components {
-  /* La classe 'prose-email' està dissenyada per estilitzar contingut HTML
-     que no controlem directament (com el cos d'un correu electrònic). */
   .prose-email {
-    /* NOU: Forcem que les paraules llargues es puguin trencar */
     @apply break-words;
   }
   .prose-email a {
@@ -361,23 +299,92 @@ input[type="range"].slider::-moz-range-thumb {
     @apply list-inside list-disc pl-4;
   }
 
-  /* ===== NOU: Regles per domesticar el contingut intern ===== */
-
-  /* Regles per assegurar que imatges, vídeos o taules dins d'un correu
-     no siguin més grans que el seu contenidor i es vegin bé. */
   .prose-email img,
   .prose-email video,
   .prose-email iframe {
     @apply max-w-full h-auto rounded-md;
   }
 
-  /* Les taules ocuparan el 100% de l'amplada i no més */
   .prose-email table {
     @apply w-full table-fixed;
   }
 
-  /* El text pre-formatat (sovint codi) farà salts de línia */
   .prose-email pre {
     @apply whitespace-pre-wrap break-words;
   }
+}
+
+/* === ESTILS PER A L'EDITOR TIPTAP === */
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+  padding-left: 1rem; 
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+  align-items: center; 
+  margin-top: 0.5rem;
+}
+
+ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+  cursor: pointer;
+  position: relative;
+  width: 1rem;
+  height: 1rem;
+}
+
+ul[data-type="taskList"] li > div {
+  flex-grow: 1;
+}
+
+ul[data-type="taskList"] li::before {
+  content: none;
+}
+
+/* ✅ NOU: Amaguem el checkbox original del navegador */
+ul[data-type="taskList"] li input[type="checkbox"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent;
+  margin: 0;
+  font: inherit;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  transform: translateY(-0.075em);
+  display: grid;
+  place-content: center;
+  transition: all 0.2s;
+}
+
+/* ✅ NOU: Creem el "check" de dins amb un pseudo-element */
+ul[data-type="taskList"] li input[type="checkbox"]::before {
+  content: "";
+  width: 0.65em;
+  height: 0.65em;
+  transform: scale(0);
+  transition: 120ms transform ease-in-out;
+  box-shadow: inset 1em 1em hsl(var(--primary-foreground));
+  background-color: CanvasText; /* Per a compatibilitat */
+  -webkit-clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+
+/* ✅ NOU: Estil quan el checkbox està marcat */
+ul[data-type="taskList"] li input[type="checkbox"]:checked {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+}
+
+ul[data-type="taskList"] li input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  text-decoration: line-through;
+  color: hsl(var(--muted-foreground));
 }

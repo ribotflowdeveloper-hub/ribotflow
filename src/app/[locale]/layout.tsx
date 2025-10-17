@@ -1,5 +1,7 @@
 import '../globals.css';
 import 'prismjs/themes/prism-tomorrow.css';
+import 'flowbite'; // 👈 AFEGEIX AQUESTA LÍNIA AQUÍ
+
 import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';
 import { ReactNode } from 'react';
@@ -25,8 +27,6 @@ export async function generateMetadata(props: { params: Promise<{ locale: string
     description: t('description'),
     metadataBase: new URL(siteUrl),
     
-    // ✅ NOU: Afegim la configuració per a les icones i el manifest.
-    // Next.js buscarà automàticament aquests fitxers a la carpeta /app.
     icons: {
       icon: '/favicon.ico',
       apple: '/apple-icon.png',
