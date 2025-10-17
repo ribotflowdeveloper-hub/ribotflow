@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 
 import { redirect } from 'next/navigation';
-import { ExpensesClient } from './expenses-client';
+import { ExpensesClient } from './ExpensesClient';
 
 export async function ExpensesData() {
     const supabase = createClient();
