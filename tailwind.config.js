@@ -1,11 +1,13 @@
-import tailwindcssAnimate from "tailwindcss-animate"; // ✅ 1. Importem el plugin a l'inici
-
+import tailwindcssAnimate from "tailwindcss-animate";
+import flowbiteTypography from 'flowbite-typography';
+import flowbitePlugin from 'flowbite/plugin'; // 👈 1. Importem el plugin principal de Flowbite
 
 /** @type {import('tailwindcss').Config} */
 const config = {
     darkMode: ["class"],
     content: [
         "./src/**/*.{js,ts,jsx,tsx,mdx}",
+        "./node_modules/flowbite/**/*.js" // 👈 2. Afegim la ruta als components de Flowbite
     ],
     theme: {
         container: {
@@ -56,10 +58,6 @@ const config = {
                     DEFAULT: "hsl(var(--success))",
                     foreground: "hsl(var(--success-foreground))",
                 },
-                destructive: {
-                    DEFAULT: "hsl(var(--destructive))",
-                    foreground: "hsl(var(--destructive-foreground))",
-                },
             },
             borderRadius: {
                 lg: 'var(--radius)',
@@ -82,8 +80,11 @@ const config = {
             }
         }
     },
-    // ✅ CORRECCIÓ: El plugin ha d'estar dins de 'plugins'
-    plugins: [tailwindcssAnimate],
+    plugins: [
+        tailwindcssAnimate, 
+        flowbiteTypography,
+        flowbitePlugin // 👈 3. Registrem el plugin de Flowbite
+    ],
 };
 
 export default config;

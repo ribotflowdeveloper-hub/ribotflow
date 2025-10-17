@@ -8,13 +8,13 @@ import { Tables } from '@/types/supabase';
 
 // Aquest serà el nostre nou tipus de tasca universal
 export type EnrichedTask = Tables<'tasks'> & {
-  contacts: { id: number; nom: string } | null;
-  profiles: { 
-    id: string; 
-    full_name: string | null; 
-    avatar_url: string | null; // ✅ SOLUCIÓ: Afegim la nova propietat
-  } | null;
-  departments: { id: number; name: string } | null;
+    contacts: { id: number; nom: string } | null;
+    profiles: { 
+        id: string; 
+        full_name: string | null; 
+        avatar_url: string | null;
+    } | null;
+    departments: { id: number; name: string } | null;
 };
 
 interface TaskDialogManagerProps {
@@ -25,10 +25,12 @@ interface TaskDialogManagerProps {
     contacts: Tables<'contacts'>[];
     departments: Tables<'departments'>[];
     teamMembers: { id: string; full_name: string | null }[];
-    // Callback per refrescar les dades a la vista principal
-    onTaskMutation: () => void;
-    initialDate?: Date; // ✅ NOU: Afegim la prop opcional
-
+    
+    // ✅ CANVI CLAU: Modifiquem la definició de onTaskMutation.
+    // Ara pot rebre un objecte opcional amb instruccions.
+    onTaskMutation: (options?: { closeDialog?: boolean }) => void;
+    
+    initialDate?: Date;
 }
 
 export function TaskDialogManager({
@@ -40,7 +42,6 @@ export function TaskDialogManager({
     teamMembers,
     onTaskMutation,
     initialDate,
-
 }: TaskDialogManagerProps) {
     // 'isEditing' controla si mostrem la vista de detalls o el formulari
     const [isEditing, setIsEditing] = useState(false);
@@ -65,14 +66,15 @@ export function TaskDialogManager({
                         contacts={contacts}
                         departments={departments}
                         teamMembers={teamMembers}
+                        // La funció modificada es passa al formulari
                         onTaskMutation={onTaskMutation}
-                        initialDate={initialDate} // ✅ La passem al formulari
-
+                        initialDate={initialDate}
                     />
                 ) : (
                     <TaskDetailView
                         task={task!} // Si no editem, la tasca sempre existeix
                         onSetEditMode={() => setIsEditing(true)}
+                        // La funció modificada es passa a la vista de detall
                         onTaskMutation={onTaskMutation}
                         onClose={() => onOpenChange(false)}
                     />
