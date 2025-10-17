@@ -287,35 +287,48 @@ export async function getTicketsAction(
 }
 
 
+/**
+ * Carrega un tiquet específic pel seu ID.
+ */
 export async function getTicketByIdAction(ticketId: number): Promise<{ data: EnrichedTicket | null, error: string | null }> {
-  try {
-    const session = await validateUserSession();
-    if ('error' in session) {
-      throw new Error(session.error.message);
-    }
-    const { supabase, user, activeTeamId } = session;
-    if (!user) throw new Error('User not authenticated');
+  try {
+    const session = await validateUserSession();
+    if ('error' in session) {
+      throw new Error(session.error.message);
+    }
+    const { supabase, user, activeTeamId } = session;
+    if (!user) throw new Error('User not authenticated');
 
-    // Fem una crida a la funció RPC que ja tenim, però per a un sol tiquet
-    const { data, error } = await supabase
-      .rpc('get_inbox_tickets', {
-        p_user_id: user.id,
-        p_team_id: activeTeamId,
-        p_visible_user_ids: [user.id], // Aquí podem ser més restrictius o oberts segons la lògica de permisos
-        p_limit: 1,
-        p_offset: 0,
-        p_search_term: '',
-        p_ticket_id: ticketId // ✅ El paràmetre clau per buscar un tiquet específic
-      })
-      .single();
-
-    if (error) throw error;
+    // 1. Calculem TOTS els IDs visibles (llista de permisos)
+    const { data: permissions } = await supabase.from('inbox_permissions').select('target_user_id').eq('team_id', activeTeamId).eq('grantee_user_id', user.id);
+    const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id) || [])];
     
-    return { data: data as EnrichedTicket, error: null };
+    // 🔑 FIX CLAU: Fem una consulta directa a la taula/vista 'enriched_tickets'
+    //             en lloc de cridar l'RPC amb paràmetres incorrectes.
+    const { data: ticket, error } = await supabase
+        .from('enriched_tickets')
+        .select('*')
+        .eq('id', ticketId) // Filtrem pel ticketId
+        .in('user_id', visibleUserIds) // 🔒 Restricció de seguretat (visibilitat)
+        .limit(1)
+        .single(); // Utilitzem .single() perquè busquem per ID (hauria de ser únic)
 
-  } catch (err: unknown) {
-    console.error('Error in getTicketByIdAction:', err);
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    return { data: null, error: errorMessage };
-  }
+    if (error) {
+        console.error('Error in getTicketByIdAction (database):', error);
+        throw error;
+    }
+    
+    if (!ticket) {
+        // Això es dispara si es troba l'ID però l'usuari no té permís (o no existeix)
+        return { data: null, error: "No s'ha pogut trobar el correu especificat (ID vàlid però accés denegat o no existeix)." };
+    }
+
+    // Si tot va bé, retornem el tiquet
+    return { data: ticket as EnrichedTicket, error: null };
+
+  } catch (err: unknown) {
+    console.error('Error in getTicketByIdAction (debug):', err);
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return { data: null, error: `Error intern en carregar el tiquet: ${errorMessage}` };
+  }
 }

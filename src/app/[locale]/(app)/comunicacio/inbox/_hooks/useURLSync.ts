@@ -3,87 +3,99 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import type { EnrichedTicket } from '@/types/db';
 
 type UseURLSyncProps = {
-  selectedTicket: EnrichedTicket | null;
-  debouncedSearchTerm: string;
-  initialTickets: EnrichedTicket[];
-  onSelectTicketFromURL: (ticket: EnrichedTicket) => void;
-  onFetchAndSelectTicket: (ticketId: number) => void;
-
+  selectedTicket: EnrichedTicket | null;
+  debouncedSearchTerm: string;
+  initialTickets: EnrichedTicket[];
+  onSelectTicketFromURL: (ticket: EnrichedTicket) => void;
+  onFetchAndSelectTicket: (ticketId: number) => void;
 };
 
 export function useURLSync({
-  selectedTicket,
-  debouncedSearchTerm,
-  initialTickets,
-  onSelectTicketFromURL,
-  onFetchAndSelectTicket, // ✅ La rebem aquí
+  selectedTicket,
+  debouncedSearchTerm,
+  initialTickets,
+  onSelectTicketFromURL,
+  onFetchAndSelectTicket,
 
 }: UseURLSyncProps) {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
 
-  // Aquest 'ref' controlarà si ja hem fet la càrrega inicial des de la URL.
-  const hasInitializedFromUrl = useRef(false);
+  const hasInitializedFromUrl = useRef(false);
 
-  // Per accedir a les darreres versions de les props dins d'un useEffect sense
-  // afegir-les com a dependències inestables, les guardem en 'refs'.
-  const ticketsRef = useRef(initialTickets);
-  ticketsRef.current = initialTickets;
+  const ticketsRef = useRef(initialTickets);
+  ticketsRef.current = initialTickets;
 
-  const onSelectRef = useRef(onSelectTicketFromURL);
-  onSelectRef.current = onSelectTicketFromURL;
+  const onSelectRef = useRef(onSelectTicketFromURL);
+  onSelectRef.current = onSelectTicketFromURL;
 
-  // Obtenim una versió estable (string) dels paràmetres per usar-la a les dependències.
-  const searchParamsString = searchParams.toString();
+  const onFetchRef = useRef(onFetchAndSelectTicket);
+  onFetchRef.current = onFetchAndSelectTicket;
 
-  // EFECTE 1: LLEGIR LA URL. S'executa només si canvien els paràmetres de la URL.
-  useEffect(() => {
-    // Obtenim la versió més recent dels tiquets des del 'ref'.
-    const currentTickets = ticketsRef.current;
+  const searchParamsString = searchParams.toString();
 
-    // Només actuem si no hem inicialitzat i ja tenim tiquets per buscar.
-    if (!hasInitializedFromUrl.current && currentTickets.length > 0) {
-      const params = new URLSearchParams(searchParamsString);
-      const ticketIdFromUrl = params.get('ticketId');
+  // -------------------------------------------------------------------------
+  // EFECTE 1: LLEGIR LA URL (Inicialització).
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (hasInitializedFromUrl.current) return; 
+    
+    const params = new URLSearchParams(searchParamsString);
+    const ticketIdFromUrl = params.get('ticketId');
 
-      if (ticketIdFromUrl) {
-        const ticketToSelect = currentTickets.find(t => t.id?.toString() === ticketIdFromUrl);
-        if (ticketToSelect) {
-          // Marquem com a inicialitzat ABANS de cridar l'acció.
-          hasInitializedFromUrl.current = true;
-          // Cridem la funció de selecció a través del 'ref'.
-          onSelectRef.current(ticketToSelect);
-        }
-      } else {
-        // ✅ Cas 2: NO el trobem, demanem que el vagin a buscar.
-        onFetchAndSelectTicket(Number(ticketIdFromUrl));
-      }
-    }
-  }, [initialTickets, searchParamsString, onSelectTicketFromURL, onFetchAndSelectTicket]);
+    if (ticketIdFromUrl) {
+      const ticketIdNum = Number(ticketIdFromUrl);
+      const ticketToSelect = ticketsRef.current.find(t => t.id === ticketIdNum);
 
-  // EFECTE 2: ESCRVIRE A LA URL. Només s'activa després de la inicialització.
-  useEffect(() => {
-    // No fem res fins que l'EFECTE 1 hagi acabat la seva feina.
-    if (!hasInitializedFromUrl.current) {
-      return;
-    }
+      if (ticketToSelect) {
+        // Cas A: Trobem el tiquet localment.
+        hasInitializedFromUrl.current = true;
+        onSelectRef.current(ticketToSelect);
+      } else {
+        // Cas B: Tiquet NO a la llista (Cal anar a buscar-lo).
+        // Mantenim hasInitializedFromUrl = true per BLOCAR l'EFECTE 2 i evitar neteja
+        hasInitializedFromUrl.current = true; 
+        onFetchRef.current(ticketIdNum);
+      }
+    } else {
+      // Cas C: Si NO hi ha ID a la URL, la inicialització de l'ID s'ha completat.
+      hasInitializedFromUrl.current = true;
+    }
+  }, [initialTickets, searchParamsString]); 
+    // Nota: Eliminem les funcions com a dependència ja que són refs estables.
 
-    const params = new URLSearchParams(searchParamsString);
 
-    if (selectedTicket?.id) {
-      params.set('ticketId', selectedTicket.id.toString());
-    } else {
-      params.delete('ticketId');
-    }
+  // -------------------------------------------------------------------------
+  // EFECTE 2: ESCRVIRE A LA URL (Sincronització).
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    const params = new URLSearchParams(searchParamsString);
+    const ticketIdInUrl = params.get('ticketId'); // 🔑 Llegim l'estat actual de la URL
+    
+    // 🔑 DOBLE BLOQUEIG:
+    // 1. Si l'inicialització no ha acabat.
+    // 2. Si hi ha un ticketId a la URL, però selectedTicket encara és null (estem esperant el fetch).
+    if (!hasInitializedFromUrl.current || (ticketIdInUrl && !selectedTicket?.id)) {
+      return;
+    }
 
-    if (debouncedSearchTerm) {
-      params.set('q', debouncedSearchTerm);
-    } else {
-      params.delete('q');
-    }
+    // La URL i l'estat estan sincronitzats, podem escriure
+    if (selectedTicket?.id) {
+      // L'usuari ha seleccionat un tiquet: escrivim l'ID
+      params.set('ticketId', selectedTicket.id.toString());
+    } else {
+      // L'usuari ha tancat el detall (selectedTicket = null): esborrem l'ID
+      params.delete('ticketId'); 
+    }
 
-    if (params.toString() !== searchParamsString) {
-      window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
-    }
-  }, [selectedTicket, debouncedSearchTerm, pathname, searchParamsString]); // ✅ Aquestes dependències també són estables.
+    if (debouncedSearchTerm) {
+      params.set('q', debouncedSearchTerm);
+    } else {
+      params.delete('q');
+    }
+
+    if (params.toString() !== searchParamsString) {
+      window.history.replaceState(null, '', `${pathname}?${params.toString()}`);
+    }
+  }, [selectedTicket, debouncedSearchTerm, pathname, searchParamsString]);
 }

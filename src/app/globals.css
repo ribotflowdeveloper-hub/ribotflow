@@ -375,6 +375,25 @@ input[type="range"].slider::-moz-range-thumb {
 .rbc-calendar-force-light-theme .rbc-time-view-resources .rbc-time-view-content {
     background-color: white !important;
 }
+.rbc-time-view .rbc-day-slot .rbc-events-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px; /* Afegeix un petit espai vertical entre esdeveniments */
+}
+.rbc-time-view .rbc-event {
+  position: relative !important;
+  left: 0 !important;
+  top: 0 !important;
+  width: 100%;
+}
+.rbc-event {
+  height: auto;
+  min-height: 25px; /* Una alçada mínima per a esdeveniments curts */
+}
+/* Permetem que la cel·la de la franja horària creixi si el contingut la supera */
+.rbc-day-slot .rbc-time-slot {
+  flex-grow: 1;
+}
 
 }
 

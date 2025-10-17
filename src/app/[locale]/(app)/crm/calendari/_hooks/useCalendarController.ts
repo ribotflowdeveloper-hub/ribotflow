@@ -3,6 +3,11 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { View, NavigateAction } from 'react-big-calendar';
 import { toast } from 'sonner';
+// 💡 Imports NETEJATS: Només mantenim les funcions necessàries per al càlcul manual de dates
+import { 
+    startOfToday, 
+    addDays, addWeeks, addMonths 
+} from 'date-fns';
 
 import { CalendarEvent } from '@/types/crm';
 import { ActiveSources } from '@/types/crm/calendar';
@@ -10,6 +15,9 @@ import { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCale
 import { getDateRange } from './calendarHelpers';
 import { fetchCalendarData } from './calendarFetch';
 import { mapEvents } from './calendarMapEvents';
+
+// Hem eliminat la definició de 'localizer' ja que no s'utilitzava directament.
+
 
 interface UseCalendarControllerProps {
     initialTasks: EnrichedTaskForCalendar[];
@@ -35,44 +43,39 @@ export const useCalendarController = ({
     const [eventSources, setEventSources] = useState<EventSourcesState>({
         tasks: true, quotes: false, emails: false, receivedEmails: false
     });
-
+    
     // -------------------------------------------------------------------------
     // 🧠 handleDataFetch: Lògica Asíncrona AÏLLADA
-    // Rep l'estat com a argument per evitar problemes de closure.
     // -------------------------------------------------------------------------
     const handleDataFetch = useCallback(async (currentDate: Date, currentView: View, currentSources: EventSourcesState) => {
-
+        
         console.log('🔄 [Fetch] Iniciant càrrega de dades. Loading=true');
-        setIsLoading(true);
-
+        setIsLoading(true); 
+        
         try {
-            // Utilitzem els valors passats
             const { start, end } = getDateRange(currentDate, currentView);
             const startDateStr = start.toISOString();
             const endDateStr = end.toISOString();
 
             console.log('   [Fetch] Sol·licitant dades per al rang:', startDateStr.slice(0, 10), 'a', endDateStr.slice(0, 10));
-            console.log('   [Fetch] Filtres enviats a la Server Action:', currentSources);
 
             const data = await fetchCalendarDataAction(startDateStr, endDateStr, currentSources);
 
             if (data.error) {
                 console.error('   [Fetch] Error del servidor:', data.error);
                 toast.error("Error carregant dades del calendari.", { description: data.error });
-                setTasks([]);
+                setTasks([]); 
                 setQuotes([]);
                 setSentEmails([]);
                 setReceivedEmails([]);
                 return;
             }
-
-            console.log(`   [Fetch] Dades rebudes. Tasks: ${data.tasks?.length ?? 0}, Quotes: ${data.quotes?.length ?? 0}, Emails: ${data.sentEmails?.length ?? 0}`);
-
+            
             setTasks(data.tasks ?? []);
             setQuotes(data.quotes ?? []);
             setSentEmails(data.sentEmails ?? []);
             setReceivedEmails(data.receivedEmails ?? []);
-
+            
         } catch (e) {
             console.error('   [Fetch] Error de xarxa/genèric:', e);
             toast.error("Error carregant dades del calendari (error de xarxa).");
@@ -80,16 +83,11 @@ export const useCalendarController = ({
             console.log('   [Fetch] Finalitzant càrrega. Loading=false');
             setIsLoading(false);
         }
-    }, [fetchCalendarDataAction]);
+    }, [fetchCalendarDataAction]); 
 
-
-    // -------------------------------------------------------------------------
-    // 💡 useEffect: L'EFECTE CLAU
-    // Dispara handleDataFetch cada vegada que l'estat de control (date, view, eventSources) canvia.
-    // -------------------------------------------------------------------------
+    
+    // 💡 useEffect: SINCRONITZADOR D'ESTAT (Dispara la càrrega quan l'estat canvia)
     useEffect(() => {
-        // 💡 La primera càrrega del hook (amb initialData) és redundant, però BigCalendar 
-        // sempre farà una navegació inicial, així que la deixem.
         handleDataFetch(date, view, eventSources);
     }, [date, view, eventSources, handleDataFetch]);
 
@@ -98,53 +96,92 @@ export const useCalendarController = ({
     // 🧭 updateDateAndData: Sols canvia l'estat
     // -------------------------------------------------------------------------
     const updateDateAndData = useCallback((newDate: Date, newView: View) => {
-        console.log(`🧭 [Update] Canviant Data/View: ${newDate.toISOString().slice(0, 10)} / ${newView}`);
-        // Aquests canvis de setDate/setView dispararan l'useEffect
+        console.log(`🧭 [Update] Canviant Data/View: ${newDate.toISOString().slice(0,10)} / ${newView}`);
         setDate(newDate);
         setView(newView);
-
+        
     }, []);
 
     // -------------------------------------------------------------------------
-    // ⚙️ handleToolbarNavigation: Usat per BigCalendar onNavigate/Toolbar
+    // ⚙️ handleToolbarNavigation: Gestió Unificada (FIX CLAU)
     // -------------------------------------------------------------------------
-    const handleToolbarNavigation = useCallback((action: NavigateAction, newDate: Date) => {
-        console.log(`▶️ [Nav] Clic a: ${action}. Nova data suggerida: ${newDate.toISOString().slice(0, 10)}`);
-        updateDateAndData(newDate, view);
-    }, [view, updateDateAndData]);
+    const handleToolbarNavigation = useCallback((action: NavigateAction, newDate?: Date) => {
+        let targetDate: Date;
+        
+        console.log(`▶️ [Nav] Clic a: ${action}. Nova data suggerida: ${newDate ? newDate.toISOString().slice(0,10) : 'CALCULANT...'}`);
+
+        // 1. Check if newDate is provided (Internal R-B-C navigation)
+        if (newDate) {
+            targetDate = newDate;
+        } else {
+            // 2. If newDate is NOT provided (External Toolbar navigation), calculate it manually.
+            
+            const currentDate = date;
+            const multiplier = (action === 'NEXT' ? 1 : -1);
+
+            switch (action) {
+                case 'TODAY':
+                    targetDate = startOfToday();
+                    break;
+                case 'NEXT':
+                case 'PREV':
+                    // Utilitzem les funcions primitives de date-fns segons la vista
+                    switch (view) {
+                        case 'month':
+                            targetDate = addMonths(currentDate, multiplier);
+                            break;
+                        case 'week':
+                            targetDate = addWeeks(currentDate, multiplier);
+                            break;
+                        case 'day':
+                            targetDate = addDays(currentDate, multiplier);
+                            break;
+                        case 'agenda':
+                            // Per a l'agenda, utilitzem navegació mensual
+                            targetDate = addMonths(currentDate, multiplier);
+                            break;
+                        default:
+                            targetDate = currentDate; 
+                    }
+                    break;
+                default:
+                    targetDate = currentDate;
+            }
+        }
+        
+        // Finalment, actualitzem la data (targetDate ja és vàlida) i la vista
+        updateDateAndData(targetDate, view);
+        
+    }, [view, updateDateAndData, date]); 
+
 
     // -------------------------------------------------------------------------
-    // 🔄 handleEventSourcesChange: Gestió de Filtres (Només estableix l'estat)
+    // 🔄 handleEventSourcesChange: Gestió de Filtres
     // -------------------------------------------------------------------------
     const handleEventSourcesChange = useCallback((newSources: EventSourcesState) => {
         console.log('🔘 [Filtre] Canviant filtres a:', newSources);
 
-        // Netejar dades per mostrar l'skeleton (bona UX)
         console.log('   [Filtre] Netejant dades antigues (Wipe)');
         setTasks([]);
         setQuotes([]);
         setSentEmails([]);
         setReceivedEmails([]);
-
-        // El canvi de setEventSources dispararà l'useEffect i la recàrrega.
-        setEventSources(newSources);
-    }, []); // sense handleDataFetch com a dependència ja que no es crida directament
-
-
+        
+        setEventSources(newSources); 
+        
+    }, []);
 
     // -------------------------------------------------------------------------
     // 🔄 handleViewChange: Gestió de Canvi de Vista
     // -------------------------------------------------------------------------
     const handleViewChange = useCallback((newView: View) => {
-        // Només actualitza la vista, l'efecte ho carregarà
-        setView(newView);
+        setView(newView); 
     }, []);
 
     const handleMoveTask = useCallback((taskId: number, newDueDate: string) => setTasks(t => t.map(task => task.id === taskId ? { ...task, due_date: newDueDate } : task)), []);
-
-    // Per re-carregar dades després d'una acció (com crear/modificar una tasca)
+    
+    // Per re-carregar dades després d'una acció (mutació)
     const handleDataMutation = useCallback(() => {
-        // Crida la funció de càrrega amb l'estat actual per força la recàrrega.
         handleDataFetch(date, view, eventSources);
     }, [date, view, eventSources, handleDataFetch]);
 
@@ -152,21 +189,17 @@ export const useCalendarController = ({
     // 🧬 filteredEvents: Llista d'esdeveniments per al Calendari (useMemo)
     // -------------------------------------------------------------------------
     const filteredEvents: CalendarEvent[] = useMemo(() => {
-        console.log(`✨ [Memo] Recomputant events. Loading: ${isLoading}, Tasks count: ${tasks.length}, Filtres actius: ${Object.entries(eventSources)
-            .filter(([, value]) => value)
-            .map(([key]) => key)
-            .join(',')
-            }`);
+        console.log(`✨ [Memo] Recomputant events...`);
         return mapEvents({ tasks, quotes, sentEmails, receivedEmails, eventSources, isLoading, date });
     }, [tasks, quotes, sentEmails, receivedEmails, eventSources, isLoading, date]);
-
+    
     // -------------------------------------------------------------------------
     // 📤 RETORN DEL HOOK
     // -------------------------------------------------------------------------
     return {
         tasks, filteredEvents, view, date, eventSources, isLoading,
         handleToolbarNavigation, handleViewChange, handleDataMutation, handleMoveTask,
-        setEventSources: handleEventSourcesChange, // Retorna el callback simple
+        setEventSources: handleEventSourcesChange,
         updateDateAndData,
     };
 };

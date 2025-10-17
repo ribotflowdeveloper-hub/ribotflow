@@ -1,4 +1,3 @@
-// src/app/[locale]/(app)/crm/calendari/_components/CalendarClient.tsx
 'use client';
 
 import { useMemo, useCallback } from 'react';
@@ -28,7 +27,7 @@ import { useCalendarDialogs } from '../_hooks/useCalendarDialog';
 import CalendarSkeleton from './CalendarSkeleton';
 import CalendarSkeletonEvent from './CalendarSkeletonEvent';
 
-// 🔑 Ús del tipus centralitzat (ActiveSources) amb l'àlies antic per retrocompatibilitat
+// 🔑 FIX: Exportem el tipus EventSourcesState
 export type EventSourcesState = ActiveSources;
 
 const locales = { es };
@@ -78,7 +77,6 @@ export interface CalendarClientProps {
     teamUsers: { id: string; full_name: string | null }[];
     contacts: Tables<'contacts'>[];
     departments: Tables<'departments'>[];
-    // 🔑 FIX DE TIPUS: Utilitzem 'typeof' per heretar la signatura correcta
     fetchCalendarDataAction: typeof fetchCalendarData;
 }
 
@@ -148,32 +146,39 @@ export default function CalendarClient(props: CalendarClientProps) {
         }
         return format(date, dateFormat, { locale: es }).replace(/^\w/, c => c.toUpperCase());
     }, [date, view]);
+    
+    // -------------------------------------------------------------------------
+    // 🔑 ADAPTADOR 1: Per a react-big-calendar (envia newDate, view, action)
+    // -------------------------------------------------------------------------
+    const handleCalendarNavigate: CalendarProps<CalendarEvent>['onNavigate'] = useCallback((newDate: Date, view: View, action: NavigateAction) => {
+        // BigCalendar ha calculat la newDate. La passem al hook.
+        handleToolbarNavigation(action, newDate);
+    }, [handleToolbarNavigation]);
+    
+    // -------------------------------------------------------------------------
+    // 🔑 ADAPTADOR 2: Per a CalendarToolbar (envia només action)
+    // -------------------------------------------------------------------------
+    const handleToolbarAction = useCallback((action: NavigateAction) => {
+        // La Toolbar només envia l'acció. Passem 'undefined' com a newDate, 
+        // forçant que el hook la calculi.
+        handleToolbarNavigation(action, undefined);
+    }, [handleToolbarNavigation]);
+
 
     const toolbarProps = useMemo(() => ({
         label: formattedLabel,
-        onNavigate: (action: NavigateAction, newDate?: Date) => {
-            // Pass a default date if undefined (fallback to current date)
-            handleToolbarNavigation(action, newDate ?? date);
-        },
+        // 🔑 Utilitzem l'adaptador simple per la Toolbar
+        onNavigate: handleToolbarAction, 
         onView: handleViewChange,
         view: view,
         views: CALENDAR_VIEWS,
         date: date,
         localizer: localizer,
-        eventSources: eventSources,
         onEventSourcesChange: setEventSources,
+        eventSources: eventSources, // Fix: Ensure eventSources is passed here
         onCreateTask: handleOpenNewTaskDialog,
-    }), [formattedLabel, handleToolbarNavigation, handleViewChange, view, date, eventSources, setEventSources, handleOpenNewTaskDialog]);
-    // -------------------------------------------------------------------------
-    // 🔑 FIX CLAU: ADAPTADOR EXPLÍCITAMENT TIPAT PER A `onNavigate`
-    // -------------------------------------------------------------------------
-    // Utilitzem CalendarProps<CalendarEvent>['onNavigate'] per obtenir la signatura exacta 
-    // i useC allback per mantenir la referència estable.
-    const handleCalendarNavigate: CalendarProps<CalendarEvent>['onNavigate'] = useCallback((newDate: Date, view: View, action: NavigateAction) => {
-        // 1. Aquesta signatura és acceptada per react-big-calendar.
-        // 2. Cridem a la funció del hook, passant els arguments en l'ordre que espera.
-        handleToolbarNavigation(action, newDate);
-    }, [handleToolbarNavigation]); // Depèn només de la funció del hook
+    }), [formattedLabel, handleViewChange, view, date, eventSources, setEventSources, handleOpenNewTaskDialog, handleToolbarAction]);
+
     return (
         <div>
             <CalendarToolbar {...toolbarProps} />
@@ -197,7 +202,7 @@ export default function CalendarClient(props: CalendarClientProps) {
                     view={view}
                     date={date}
                     onView={handleViewChange}
-                    // 🔑 FIX CLAU: Passem la funció de navegació del hook directament
+                    // 🔑 Utilitzem l'adaptador que BigCalendar espera
                     onNavigate={handleCalendarNavigate}
                     className={cn('rbc-calendar-force-light-theme')}
                     components={{
