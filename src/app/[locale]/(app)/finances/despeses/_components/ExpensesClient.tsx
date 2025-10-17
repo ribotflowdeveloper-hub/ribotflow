@@ -1,124 +1,146 @@
-/**
- * @file expenses-client.tsx
- * @summary Aquest fitxer conté el component de client que gestiona tota la interfície interactiva
- * de la pàgina de Gestió de Despeses. S'encarrega d'orquestrar la visualització de la taula,
- * l'obertura del diàleg per crear/editar despeses i del calaix lateral per veure'n els detalls.
- */
-
+// src/app/[locale]/(app)/finances/despeses/_components/expenses-client.tsx
 "use client";
 
-import React, { useState, useOptimistic} from 'react';
-import { motion } from 'framer-motion';
+import React from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { ExpenseDialog } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog';
-import { ExpenseTable } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseTable';
-import { ExpenseDetailDrawer } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer';
-import { type Expense, type Supplier } from '@/types/finances/index';
-import { createClient } from '@/lib/supabase/client';
-import { useTranslations } from 'next-intl';
+import { Plus, Edit } from 'lucide-react'; 
+import { useTranslations, useLocale } from 'next-intl';
+import { cn } from '@/lib/utils/utils';
+import { ExpenseWithContact, EXPENSE_STATUS_MAP } from '@/types/finances/expenses'; 
+import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
+import { useExpenses } from '../_hooks/useExpenses'; 
+import { formatCurrency, formatLocalizedDate } from '@/lib/utils/formatters'; 
 
-interface ExpensesClientProps {
-  initialExpenses: Expense[];
-  initialSuppliers: Supplier[];
-}
+const TEXT_CONTRAST_MAP: Record<string, string> = {
+    'bg-gray-100': 'text-gray-800',
+    'bg-yellow-100': 'text-yellow-800',
+    'bg-blue-100': 'text-blue-800',
+    'bg-green-600': 'text-white',
+    'bg-red-600': 'text-white',
+};
 
-export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesClientProps) {
-  const t = useTranslations('Expenses');
+export function ExpensesClient({ initialExpenses }: { initialExpenses: ExpenseWithContact[] }) {
+    const t = useTranslations('ExpensesPage');
+    const tShared = useTranslations('Shared'); 
+    const locale = useLocale();
 
+    const {
+        isPending,
+        expenses, 
+        expenseToDelete,
+        setExpenseToDelete,
+        handleSort,
+        handleDelete,
+        currentSortColumn,
+        currentSortOrder,
+    } = useExpenses({ initialExpenses, t }); 
 
-  // NOU: L'estat optimista.
-  // 'state' és el valor base (les despeses del servidor).
-  // 'action' és la nova despesa que afegim "optimísticament".
-  const [optimisticExpenses] = useOptimistic<Expense[], Expense>(
-    initialExpenses,
-    (state, newExpense) => {
-      // Aquesta funció defineix com canvia l'estat.
-      // Si la despesa ja existeix, la reemplacem. Si no, l'afegim al principi.
-      const existingIndex = state.findIndex(e => e.id === newExpense.id);
-      if (existingIndex !== -1) {
-        state[existingIndex] = newExpense;
-        return [...state];
-      }
-      return [newExpense, ...state];
-    }
-  );
-  // Gestió de l'estat del component.
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false); // Controla la visibilitat del diàleg de creació/edició.
-  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false); // Controla la visibilitat del calaix de detalls.
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null); // Emmagatzema la despesa seleccionada.
-  const supabase = createClient()
-    ;
+    // ✅ CORRECCIÓ FINAL: La definició de les columnes ara rep 'row' directament.
+    const columns: ColumnDef<ExpenseWithContact>[] = [
+        {
+            accessorKey: "invoice_number", 
+            header: t('table.number'),
+            enableSorting: true,
+            cell: (row) => row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`,
+            cellClassName: "font-medium",
+        },
+        {
+            accessorKey: "suppliers.nom", 
+            header: t('table.supplier'),
+            enableSorting: true,
+            cell: (row) => row.suppliers?.nom || t('noSupplier'),
+        },
+        {
+            accessorKey: "description",
+            header: t('table.description'),
+            enableSorting: false, 
+            cell: (row) => <span className="max-w-[150px] truncate">{row.description}</span>,
+        },
+        {
+            accessorKey: "expense_date",
+            header: t('table.date'),
+            enableSorting: true,
+            cell: (row) => formatLocalizedDate(row.expense_date, "PPP", locale),
+        },
+        {
+            accessorKey: "total_amount",
+            header: t('table.total'),
+            enableSorting: true,
+            cell: (row) => formatCurrency(row.total_amount),
+        },
+        {
+            accessorKey: "category",
+            header: t('table.category'),
+            enableSorting: true,
+            cell: (row) => row.category || t('noCategory'),
+        },
+        {
+            accessorKey: "status",
+            header: t('table.status'),
+            enableSorting: true,
+            cell: (row) => {
+                const statusInfo = EXPENSE_STATUS_MAP.find(s => s.dbValue === row.status) || { key: 'unknown', colorClass: 'bg-gray-100' };
+                const textClass = TEXT_CONTRAST_MAP[statusInfo.colorClass] || 'text-gray-800';
+                
+                return (
+                    <span className={cn(
+                        "px-2 py-1 text-xs font-medium rounded-full",
+                        statusInfo.colorClass,
+                        textClass,
+                        "min-w-[70px] inline-flex justify-center" 
+                    )}>
+                        {t(`status.${statusInfo.key}`)}
+                    </span>
+                );
+            },
+        },
+        {
+            accessorKey: "actions_edit",
+            header: "", 
+            enableSorting: false,
+            cell: (row) => (
+                <Link href={`/${locale}/finances/despeses/${row.id}`} className="inline-flex items-center justify-center h-8 w-8" title={tShared('actions.edit')}>
+                    <Edit className="w-4 h-4" />
+                </Link>
+            ),
+            cellClassName: "text-right",
+        }
+    ];
 
-  /**
-   * @summary Gestor per obrir el diàleg per crear una nova despesa.
-   */
-  const handleCreateNew = () => {
-    setSelectedExpense(null); // Assegurem que no hi ha dades inicials.
-    setIsFormDialogOpen(true);
-  };
+    const deleteDescription = (
+        <p>
+            {tShared('deleteDialog.description1')} <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
+            <br />
+            {tShared('deleteDialog.description2')}
+        </p>
+    );
 
-  /**
-   * @summary Gestor per veure els detalls complets d'una despesa.
-   * Aquesta funció fa una nova consulta al client per obtenir totes les dades relacionades
-   * (ítems, adjunts) abans d'obrir el calaix.
-   */
-  const handleViewDetails = async (expense: Expense) => {
-    const { data: fullExpense } = await supabase
-      .from('expenses')
-      .select('*, suppliers(*), expense_items(*), expense_attachments(*)')
-      .eq('id', expense.id)
-      .single();
-    setSelectedExpense(fullExpense || expense);
-    setIsDetailDrawerOpen(true);
-  };
-
-  /**
-   * @summary Gestor per passar del calaix de detalls al diàleg d'edició.
-   */
-  const handleEditFromDrawer = (expense: Expense) => {
-    setIsDetailDrawerOpen(false);
-    setSelectedExpense(expense);
-    setIsFormDialogOpen(true);
-  };
-
-  /**
-    * NOU: Funció que s'executa quan el diàleg de formulari desa les dades.
-    * Aquesta funció serà passada com a prop a `ExpenseDialog`.
-    */
-  
-
-  return (
-    <>
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Capçalera de la pàgina amb títol i botó d'acció. */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">{t('title')}</h1>
-          <Button onClick={handleCreateNew}>
-            <Plus className="w-4 h-4 mr-2" /> {t('newButton')}
-          </Button>
-        </div>
-
-        {/* La taula de despeses rep les dades inicials i una funció per gestionar el clic en una fila. */}
-        <ExpenseTable expenses={optimisticExpenses} onViewDetails={handleViewDetails} />
-      </motion.div>
-
-      {/* Els components de diàleg i calaix es mantenen fora del flux principal per a un millor rendiment
-          i per gestionar la seva visibilitat a través de l'estat del component pare. */}
-      <ExpenseDetailDrawer
-        expense={selectedExpense}
-        isOpen={isDetailDrawerOpen}
-        onClose={() => setIsDetailDrawerOpen(false)}
-        onEdit={handleEditFromDrawer}
-      />
-
-      <ExpenseDialog
-        isOpen={isFormDialogOpen}
-        setIsOpen={setIsFormDialogOpen}
-        initialData={selectedExpense}
-        suppliers={initialSuppliers}
-
-      />
-    </>
-  );
+    return (
+        <>
+            <div className="flex justify-between items-center mb-8">
+                <h1 className="text-3xl font-bold">{t('title')}</h1>
+                <Button asChild>
+                    <Link href={`/${locale}/finances/despeses/new`}> 
+                        <Plus className="w-4 h-4 mr-2" /> {t('newExpenseButton')} 
+                    </Link>
+                </Button>
+            </div>
+            
+            <GenericDataTable
+                data={expenses}
+                columns={columns}
+                onSort={handleSort}
+                currentSortColumn={currentSortColumn}
+                currentSortOrder={currentSortOrder}
+                isPending={isPending}
+                onDelete={handleDelete}
+                deleteItem={expenseToDelete}
+                setDeleteItem={setExpenseToDelete}
+                deleteTitleKey='deleteDialog.title'
+                deleteDescription={deleteDescription}
+                emptyStateMessage={t('emptyState')}
+            />
+        </>
+    );
 }

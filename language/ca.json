@@ -883,78 +883,89 @@
       "daysAgo": "Fa {count} dies"
     }
   },
-  "Expenses": {
+  "ExpensesPage": {
     "title": "Gestió de Despeses",
-    "newButton": "Nova Despesa",
-    "tableHeaderSupplier": "Proveïdor / Descripció",
-    "tableHeaderInvoiceNo": "Nº Factura",
-    "tableHeaderDate": "Data",
-    "tableHeaderCategory": "Categoria",
-    "tableHeaderAmount": "Import",
-    "emptyState": "Encara no has registrat cap despesa.",
-    "drawerTitle": "{supplierOrDesc}",
-    "drawerDescInvoice": "Factura Nº {invoiceNumber}",
-    "drawerDescNoInvoice": "Despesa sense número",
-    "attachments": "Adjunts",
-    "noAttachments": "No hi ha arxius adjunts.",
-    "date": "Data",
-    "category": "Categoria",
+    "newExpenseButton": "Nova Despesa",
+    "emptyState": "Encara no has registrat cap despesa. Comença creant-ne una de nova.",
+    "noSupplier": "Sense proveïdor",
     "noCategory": "Sense categoria",
-    "subtotal": "Subtotal",
-    "discount": "Descompte",
-    "taxBase": "Base Imposable",
-    "vat": "IVA ({taxRate}%)",
-    "total": "Total",
-    "editButton": "Editar",
-    "closeButton": "Tancar",
-    "downloadErrorTitle": "Error de descàrrega",
-    "downloadErrorDescription": "No s'ha pogut descarregar l'arxiu.",
-    "dialogEditTitle": "Editar Despesa",
-    "dialogNewTitle": "Nova Despesa",
-    "dialogDescription": "Registra una despesa manualment o puja un arxiu.",
-    "fillWithAI": "Omplir amb IA",
-    "processing": "Processant...",
-    "dataExtracted": "Dades extretes!",
-    "reviewForm": "Revisa i completa el formulari.",
-    "extractError": "No s'han pogut extreure dades",
-    "ocrError": "Error processant la factura",
-    "generalDescription": "Descripció General",
-    "descriptionPlaceholder": "Ex: Compra de material d'oficina",
-    "supplier": "Proveïdor",
-    "selectSupplier": "Selecciona un proveïdor...",
-    "searchSupplier": "Buscar proveïdor...",
-    "noSupplierFound": "No s'ha trobat.",
-    "invoiceNo": "Nº Factura / Tiquet",
-    "expenseDate": "Data de la Despesa",
-    "pickDate": "Tria data",
-    "categoryPlaceholder": "Ex: Software, Material...",
-    "items": "Conceptes",
-    "itemDescription": "Descripció",
-    "itemQuantity": "Quant.",
-    "itemUnitPrice": "P. Unitari",
-    "itemTotal": "Total",
-    "addItem": "Afegir línia",
-    "notes": "Notes",
-    "uploadFiles": "Pujar Arxius",
-    "uploading": "Pujant...",
-    "uploadErrorTitle": "Error en pujar l'adjunt",
-    "uploadSuccessTitle": "Èxit",
-    "uploadSuccessDescription": "S'ha pujat l'adjunt correctament.",
-    "cancelButton": "Cancel·lar",
-    "saveChangesButton": "Desar Canvis",
-    "createButton": "Crear Despesa",
-    "saveErrorTitle": "Error en desar",
-    "saveSuccessTitle": "Èxit!",
-    "saveSuccessDescription": "Despesa desada correctament.",
-    "ExpenseCategories": {
-      "transport": "Transport",
-      "officeSupplies": "Material d'Oficina",
-      "software": "Software i Subscripcions",
-      "marketing": "Màrqueting",
-      "meals": "Dietes i Representació",
-      "utilities": "Subministraments",
-      "rent": "Lloguer",
-      "other": "Altres"
+    "table": {
+      "number": "Nº Factura",
+      "supplier": "Proveïdor",
+      "description": "Descripció",
+      "date": "Data",
+      "total": "Total",
+      "category": "Categoria",
+      "status": "Estat"
+    },
+    "status": {
+      "pending": "Pendent",
+      "paid": "Pagada",
+      "overdue": "Vençuda",
+      "draft": "Esborrany",
+      "unknown": "Desconegut"
+    }
+  },
+  "ExpenseDetailPage": {
+    "title": {
+      "new": "Nova Despesa",
+      "edit": "Editar Despesa"
+    },
+    "button": {
+      "saving": "Desant...",
+      "save": "Desa",
+      "cancel": "Cancel·la",
+      "addItem": "Afegeix concepte"
+    },
+    "card": {
+      "generalDetails": "Detalls Generals",
+      "expenseItems": "Conceptes de la Despesa",
+      "notes": "Notes Addicionals",
+      "totals": "Totals",
+      "attachments": "Adjunts",
+      "metadata": "Informació del Registre"
+    },
+    "field": {
+      "supplier": "Proveïdor",
+      "expenseDate": "Data de la Despesa",
+      "invoiceNumber": "Número de Factura (Opcional)",
+      "description": "Descripció General",
+      "discount": "Descompte (€)",
+      "taxRate": "Impostos (%)"
+    },
+    "placeholder": {
+      "invoiceNumber": "Ex: F-2024-123",
+      "description": "Descripció breu de la despesa...",
+      "notes": "Qualsevol detall addicional..."
+    },
+    "select": {
+      "selectSupplier": "Selecciona un proveïdor..."
+    },
+    "label": {
+      "subtotal": "Subtotal",
+      "total": "Total"
+    },
+    "upload": {
+      "dragAndDrop": "Arrossega aquí un fitxer o fes clic per pujar-lo."
+    },
+    "metadata": {
+      "id": "ID de la Despesa",
+      "createdBy": "Creat Per",
+      "createdAt": "Data de Creació"
+    },
+    "toast": {
+      "saveSuccess": "Despesa desada correctament!",
+      "saveError": "Hi ha hagut un error en desar la despesa."
+    },
+    "items": {
+      "description": "Descripció",
+      "quantity": "Quant.",
+      "unitPrice": "Preu Unit.",
+      "total": "Total",
+      "placeholder": {
+        "description": "Concepte del servei o producte"
+      },
+      "emptyState": "No hi ha cap concepte afegit."
     }
   },
   "InvoicingPage": {
@@ -1523,6 +1534,24 @@
       "load": "Carregar conceptes",
       "download": "Descarregar conceptes",
       "startingexport": "Iniciant l'exportació de conceptes..."
+    }
+  },
+  "Shared": {
+    "table": {
+      "actions": "Accions"
+    },
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "view": "Veure detall"
+    },
+    "deleteDialog": {
+      "title": "Estàs segur?",
+      "description1": "Aquesta acció no es pot desfer. S'esborrarà permanentment el registre",
+      "description2": "Les dades eliminades no es podran recuperar.",
+      "confirmButton": "Sí, esborra",
+      "cancelButton": "Cancel·la",
+      "deleting": "S'està esborrant..."
     }
   }
 }

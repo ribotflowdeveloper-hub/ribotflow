@@ -877,78 +877,89 @@
       "daysAgo": "Hace {count} días"
     }
   },
-  "Expenses": {
+  "ExpensesPage": {
     "title": "Gestión de Gastos",
-    "newButton": "Nuevo Gasto",
-    "tableHeaderSupplier": "Proveedor / Descripción",
-    "tableHeaderInvoiceNo": "Nº Factura",
-    "tableHeaderDate": "Fecha",
-    "tableHeaderCategory": "Categoría",
-    "tableHeaderAmount": "Importe",
-    "emptyState": "Aún no has registrado ningún gasto.",
-    "drawerTitle": "{supplierOrDesc}",
-    "drawerDescInvoice": "Factura Nº {invoiceNumber}",
-    "drawerDescNoInvoice": "Gasto sin número",
-    "attachments": "Adjuntos",
-    "noAttachments": "No hay archivos adjuntos.",
-    "date": "Fecha",
-    "category": "Categoría",
+    "newExpenseButton": "Nuevo Gasto",
+    "emptyState": "Aún no has registrado ningún gasto. Empieza creando uno nuevo.",
+    "noSupplier": "Sin proveedor",
     "noCategory": "Sin categoría",
-    "subtotal": "Subtotal",
-    "discount": "Descuento",
-    "taxBase": "Base Imponible",
-    "vat": "IVA ({taxRate}%)",
-    "total": "Total",
-    "editButton": "Editar",
-    "closeButton": "Cerrar",
-    "downloadErrorTitle": "Error de descarga",
-    "downloadErrorDescription": "No se pudo descargar el archivo.",
-    "dialogEditTitle": "Editar Gasto",
-    "dialogNewTitle": "Nuevo Gasto",
-    "dialogDescription": "Registra un gasto manualmente o sube un archivo.",
-    "fillWithAI": "Rellenar con IA",
-    "processing": "Procesando...",
-    "dataExtracted": "¡Datos extraídos!",
-    "reviewForm": "Revisa y completa el formulario.",
-    "extractError": "No se pudieron extraer los datos",
-    "ocrError": "Error procesando la factura",
-    "generalDescription": "Descripción General",
-    "descriptionPlaceholder": "Ej: Compra de material de oficina",
-    "supplier": "Proveedor",
-    "selectSupplier": "Selecciona un proveedor...",
-    "searchSupplier": "Buscar proveedor...",
-    "noSupplierFound": "No se ha encontrado.",
-    "invoiceNo": "Nº Factura / Ticket",
-    "expenseDate": "Fecha del Gasto",
-    "pickDate": "Elige fecha",
-    "categoryPlaceholder": "Ej: Software, Material...",
-    "items": "Conceptos",
-    "itemDescription": "Descripción",
-    "itemQuantity": "Cant.",
-    "itemUnitPrice": "P. Unitario",
-    "itemTotal": "Total",
-    "addItem": "Añadir línea",
-    "notes": "Notas",
-    "uploadFiles": "Subir Archivos",
-    "uploading": "Subiendo...",
-    "uploadErrorTitle": "Error al subir el adjunto",
-    "uploadSuccessTitle": "Éxito",
-    "uploadSuccessDescription": "El adjunto se ha subido correctamente.",
-    "cancelButton": "Cancelar",
-    "saveChangesButton": "Guardar Cambios",
-    "createButton": "Crear Gasto",
-    "saveErrorTitle": "Error al guardar",
-    "saveSuccessTitle": "¡Éxito!",
-    "saveSuccessDescription": "Gasto guardado correctamente.",
-    "ExpenseCategories": {
-      "transport": "Transporte",
-      "officeSupplies": "Material de Oficina",
-      "software": "Software y Suscripciones",
-      "marketing": "Marketing",
-      "meals": "Dietas y Representación",
-      "utilities": "Suministros",
-      "rent": "Alquiler",
-      "other": "Otros"
+    "table": {
+      "number": "Nº Factura",
+      "supplier": "Proveedor",
+      "description": "Descripción",
+      "date": "Fecha",
+      "total": "Total",
+      "category": "Categoría",
+      "status": "Estado"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "paid": "Pagada",
+      "overdue": "Vencida",
+      "draft": "Borrador",
+      "unknown": "Desconocido"
+    }
+  },
+  "ExpenseDetailPage": {
+    "title": {
+      "new": "Nuevo Gasto",
+      "edit": "Editar Gasto"
+    },
+    "button": {
+      "saving": "Guardando...",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "addItem": "Añadir concepto"
+    },
+    "card": {
+      "generalDetails": "Detalles Generales",
+      "expenseItems": "Conceptos del Gasto",
+      "notes": "Notas Adicionales",
+      "totals": "Totales",
+      "attachments": "Adjuntos",
+      "metadata": "Información del Registro"
+    },
+    "field": {
+      "supplier": "Proveedor",
+      "expenseDate": "Fecha del Gasto",
+      "invoiceNumber": "Número de Factura (Opcional)",
+      "description": "Descripción General",
+      "discount": "Descuento (€)",
+      "taxRate": "Impuestos (%)"
+    },
+    "placeholder": {
+      "invoiceNumber": "Ej: F-2024-123",
+      "description": "Descripción breve del gasto...",
+      "notes": "Cualquier detalle adicional..."
+    },
+    "select": {
+      "selectSupplier": "Selecciona un proveedor..."
+    },
+    "label": {
+      "subtotal": "Subtotal",
+      "total": "Total"
+    },
+    "upload": {
+      "dragAndDrop": "Arrastra aquí un archivo o haz clic para subirlo."
+    },
+    "metadata": {
+      "id": "ID del Gasto",
+      "createdBy": "Creado Por",
+      "createdAt": "Fecha de Creación"
+    },
+    "toast": {
+      "saveSuccess": "¡Gasto guardado correctamente!",
+      "saveError": "Ha ocurrido un error al guardar el gasto."
+    },
+    "items": {
+      "description": "Descripción",
+      "quantity": "Cant.",
+      "unitPrice": "Precio Unit.",
+      "total": "Total",
+      "placeholder": {
+        "description": "Concepto del servicio o producto"
+      },
+      "emptyState": "No hay ningún concepto añadido."
     }
   },
   "InvoicingPage": {
@@ -1468,5 +1479,24 @@
       "load": "Cargar conceptos",
       "download": "Descargar conceptos"
     }
+  },
+  "Shared": {
+  "table": {
+    "actions": "Acciones"
+  },
+  "actions": {
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "view": "Ver detalle"
+  },
+  "deleteDialog": {
+    "title": "¿Estás seguro?",
+    "description1": "Esta acción no se puede deshacer. El registro se eliminará permanentemente.",
+    "description2": "Los datos eliminados no se podrán recuperar.",
+    "confirmButton": "Sí, eliminar",
+    "cancelButton": "Cancelar",
+    "deleting": "Eliminando..."
   }
+}
+
 }

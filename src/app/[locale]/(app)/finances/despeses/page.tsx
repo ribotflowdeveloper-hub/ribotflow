@@ -1,23 +1,19 @@
-/**
- * @file page.tsx (Despeses)
- * @summary Punto de entrada de la página, implementando React Suspense para carga optimizada.
- */
+// src/app/[locale]/(app)/finances/despeses/page.tsx
+import { fetchExpenses } from './actions';
+import { ExpensesClient } from './_components/ExpensesClient';
+import { ExpensesSkeleton } from './_components/ExpensesSkeleton'; // Assumint que existeix
 
-import { Suspense } from 'react';
-import type { Metadata } from 'next';
-import { ExpensesData } from './_components/ExpensesData';
-import { ExpensesSkeleton } from './_components/ExpensesSkeleton';
+export default async function ExpensesPage() {
+    // Carreguem les dades al servidor
+    const initialExpenses = await fetchExpenses();
 
-export const metadata: Metadata = {
-  title: 'Despeses | Ribot',
-};
+    if (!initialExpenses) {
+        // En cas d'error greu, mostrem el skeleton o un missatge d'error
+        return <ExpensesSkeleton />; 
+    }
 
-// Ya no necesitamos exportar los tipos desde aquí.
-
-export default function DespesesPage() {
-  return (
-    <Suspense fallback={<ExpensesSkeleton />}>
-      <ExpensesData />
-    </Suspense>
-  );
+    return (
+        // Client Component per a la interactivitat
+        <ExpensesClient initialExpenses={initialExpenses} />
+    );
 }

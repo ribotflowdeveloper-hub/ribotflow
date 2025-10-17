@@ -29,15 +29,30 @@ export function formatLocalizedDate(
     return format(new Date(date), formatString, { locale });
 }
 
-/**
- * Formata un número com a moneda en Euros.
- * @param amount El número a formatar.
- * @returns La quantitat formatada (ex: "1.234,56 €").
- */
-export function formatCurrency(amount: number | null | undefined): string {
-    const num = amount || 0;
-    return new Intl.NumberFormat('es-ES', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(num);
+/** Formata una data a un format localitzat (e.g., dd/mm/yyyy) */
+export function formatDate(dateStr: string | number | Date, locale: string = 'ca'): string {
+    if (!dateStr) return '';
+    try {
+        return new Date(dateStr).toLocaleDateString(locale, {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        });
+    } catch {
+        return String(dateStr);
+    }
+}
+
+/** Formata una quantitat amb la moneda (e.g., € 1.234,56) */
+export function formatCurrency(amount: number | null | undefined, currency: string = 'EUR', locale: string = 'ca'): string {
+    if (amount === null || amount === undefined) return '€ 0,00';
+    try {
+        return amount.toLocaleString(locale, {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+        });
+    } catch {
+        return `${currency} ${amount.toFixed(2)}`;
+    }
 }

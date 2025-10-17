@@ -1,25 +1,83 @@
-/**
- * @file actions.ts (Despeses)
- * @summary Server Actions per al mòdul de Gestió de Despeses.
- */
+// src/app/[locale]/(app)/finances/despeses/actions.ts
 
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { type Expense, type ExpenseItem } from "@/types/finances/index";
-import { type ActionResult } from "@/types/shared/index"; // ✅ 1. Importem el teu tipus correcte
+import { 
+    type Expense, 
+    type ExpenseItem, 
+    type ExpenseWithContact,
+    type ExpenseDetail,
+    type ExpenseFormDataForAction
+} from "@/types/finances/expenses";
+import { type ActionResult } from "@/types/shared/index"; 
 import { validateUserSession } from "@/lib/supabase/session";
-import { SupabaseClient, User } from "@supabase/supabase-js";
+import { createClient as createServerActionClient } from "@/lib/supabase/server";
+import { type SupabaseClient, type User } from "@supabase/supabase-js";
 
-// --- Helpers Interns (Extrets de saveExpenseAction) ---
+// ----------------------------------------------------
+// SERVER FETCH: Llista i Detall
+// ----------------------------------------------------
 
-/**
- * Crea o actualitza la despesa principal a la base de dades.
- */
+export async function fetchExpenses(): Promise<ExpenseWithContact[]> {
+    const supabase = createServerActionClient(); 
+    
+    // ✅ CORRECCIÓ FINAL: Hem eliminat el camp 'status' que no existeix a la taula.
+    const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+            id, 
+            invoice_number, 
+            expense_date, 
+            total_amount, 
+            category, 
+            description,
+            suppliers (
+                id,
+                nom
+            )
+        `)
+        .order('expense_date', { ascending: false });
+
+    if (error) {
+        console.error("Error fetching expenses for list:", error.message); 
+        throw new Error("Error en carregar les dades de despeses per a la llista.");
+    }
+    
+    if (!data) {
+        return [];
+    }
+    return data as unknown as ExpenseWithContact[];
+}
+
+export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDetail | null> {
+    const supabase = createServerActionClient();
+    
+    const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+            *,
+            suppliers (id, nom, nif),
+            expense_items (*),
+            expense_attachments (*)
+        `)
+        .eq('id', expenseId)
+        .single();
+
+    if (error) {
+        console.error("Error fetching expense detail:", error.message);
+        return null; 
+    }
+    
+    return data as unknown as ExpenseDetail;
+}
+
+// --- Helpers Interns (La resta del fitxer no canvia) ---
+
 async function upsertExpenseDetails(
   supabase: SupabaseClient,
-  expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "expense_items">,
-  expenseId: string | null,
+  expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" >,
+  expenseId: string | number | null,
   userId: string,
   teamId: string
 ): Promise<ActionResult<Expense>> {
@@ -28,10 +86,10 @@ async function upsertExpenseDetails(
       expenseData.expense_date = new Date(expenseData.expense_date).toISOString().split('T')[0];
     } catch (e) {
       console.error("Error al formatar la data:", e);
-      return { success: false, message: "Format de data invàlid." }; // ✅ CORREGIT
+      return { success: false, message: "Format de data invàlid." };
     }
   }
-
+    
   const query = expenseId
     ? supabase.from("expenses").update(expenseData).eq("id", expenseId)
     : supabase.from("expenses").insert({ ...expenseData, user_id: userId, team_id: teamId });
@@ -39,130 +97,148 @@ async function upsertExpenseDetails(
   const { data, error } = await query.select().single();
 
   if (error) {
-    return { success: false, message: error.message }; // ✅ CORREGIT
+    return { success: false, message: error.message };
   }
   
-  return { success: true, message: "Despesa desada correctament.", data: data as Expense }; // ✅ CORREGIT
+  return { success: true, message: "Despesa desada correctament.", data: data as Expense };
 }
 
-/**
- * Sincronitza els conceptes d'una despesa.
- */
 async function syncExpenseItems(
     supabase: SupabaseClient,
-    expenseId: string,
+    expenseId: number, 
     items: ExpenseItem[] | undefined,
     user: User,
     teamId: string
 ): Promise<ActionResult> {
-    if (!items) { // Si no hi ha 'items' a l'objecte, no fem res.
+    if (!items || items.length === 0) {
+      const { error: deleteError } = await supabase.from('expense_items').delete().eq('expense_id', expenseId);
+      if (deleteError) {
+        return { success: false, message: `Error netejant conceptes antics: ${deleteError.message}` };
+      }
       return { success: true, message: "No hi ha conceptes per sincronitzar." };
     }
-
-    // Si ExpenseItem no té 'id', aquesta línia s'ha d'ajustar o eliminar.
-    // Per exemple, si cada item té una descripció única:
-    // const itemIdsFromForm = items.map(item => item.description).filter(Boolean);
-
-    // Si no es pot identificar per 'id', simplement no utilitzis aquesta lògica:
-    const itemIdsFromForm: string[] = [];
+    
+    const existingItemIds = items.map(item => item.id).filter(id => id && id > 0);
 
     const { error: deleteError } = await supabase
         .from('expense_items')
         .delete()
         .eq('expense_id', expenseId)
-        .not('id', 'in', `(${itemIdsFromForm.join(',')})`);
+        .not('id', 'in', `(${existingItemIds.join(',')})`); 
 
     if (deleteError) {
-      return { success: false, message: `Error esborrant conceptes: ${deleteError.message}` }; // ✅ CORREGIT
+      return { success: false, message: `Error esborrant conceptes: ${deleteError.message}` }; 
     }
     
-    if (items.length === 0) {
-      return { success: true, message: "Tots els conceptes s'han esborrat." }; // ✅ CORREGIT
-    }
-
-    const itemsToUpsert = items.map(item => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
+    const itemsToUpsert = items.map(({ total, ...item }) => ({
+        ...item, 
         expense_id: expenseId,
         user_id: user.id,
-        team_id: teamId
+        team_id: teamId,
     }));
 
-    const { error: upsertError } = await supabase.from("expense_items").upsert(itemsToUpsert);
+    const { error: upsertError } = await supabase
+        .from("expense_items")
+        .upsert(itemsToUpsert, { onConflict: 'id', ignoreDuplicates: false });
+        
     if (upsertError) {
-      return { success: false, message: `Error actualitzant conceptes: ${upsertError.message}` }; // ✅ CORREGIT
+      return { success: false, message: `Error actualitzant conceptes: ${upsertError.message}` };
     }
     
-    return { success: true, message: "Conceptes sincronitzats correctament." }; // ✅ CORREGIT
+    return { success: true, message: "Conceptes sincronitzats correctament." };
 }
 
 
-// --- Server Actions Públiques ---
+// --- Server Actions Públiques (La resta del fitxer no canvia) ---
 
 export async function processOcrAction(formData: FormData): Promise<ActionResult<Record<string, unknown>>> {
     const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
+    if ("error" in session) return { success: false, message: session.error.message };
     const { supabase } = session;
 
-    const { data, error } = await supabase.functions.invoke("process-ocr", { body: formData });
+    const file = formData.get("file") as File | null;
+    if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." };
+    
+    const { data, error } = await supabase.functions.invoke("process-ocr", { body: { file_name: file.name, file_type: file.type } }); 
     
     if (error) {
-      return { success: false, message: error.message }; // ✅ CORREGIT
+      return { success: false, message: error.message };
     }
-    return { success: true, message: "Document processat amb èxit.", data }; // ✅ CORREGIT
+    return { success: true, message: "Document processat amb èxit.", data };
 }
 
 export async function saveExpenseAction(
-    expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "expense_items"> & { expense_items?: ExpenseItem[] },
-    expenseId: string | null
+    expenseData: ExpenseFormDataForAction,
+    expenseId: string | number | null
 ): Promise<ActionResult<Expense>> {
     const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
+    if ("error" in session) return { success: false, message: session.error.message };
     const { supabase, user, activeTeamId } = session;
 
-    const { expense_items, ...rest } = expenseData;
-    // Elimina 'expense_items' explícitament per evitar errors de tipus
-    const expenseDetails = { ...rest };
+    const { expense_items, id: formId, ...rest } = expenseData;
+    const currentId: string | number | null = expenseId ?? formId ?? null;
 
-    // Pas 1: Desar la despesa principal
-    const expenseResult = await upsertExpenseDetails(supabase, expenseDetails, expenseId, user.id, activeTeamId);
+    const expenseResult = await upsertExpenseDetails(supabase, rest, currentId, user.id, activeTeamId);
     if (!expenseResult.success || !expenseResult.data) {
-      return expenseResult; // Retornem l'error que ja ve formatat
+      return expenseResult;
     }
     
-    // Pas 2: Sincronitzar els conceptes
-    const itemsResult = await syncExpenseItems(supabase, expenseResult.data.id ?? "", expense_items, user, activeTeamId);
+    const newExpenseId = expenseResult.data.id as number;
+    const itemsResult = await syncExpenseItems(supabase, newExpenseId, expense_items, user, activeTeamId);
     if (!itemsResult.success) {
-      return { success: false, message: itemsResult.message, data: undefined }; // Cast to ActionResult<Expense>
+      return { success: false, message: itemsResult.message, data: expenseResult.data }; 
     }
 
     revalidatePath("/finances/despeses");
-    return { success: true, message: "Despesa desada amb èxit.", data: expenseResult.data }; // ✅ CORREGIT
+    if (newExpenseId) {
+        revalidatePath(`/finances/despeses/${newExpenseId}`);
+    }
+    
+    return { success: true, message: "Despesa desada amb èxit.", data: expenseResult.data };
 }
 
 export async function uploadAttachmentAction(expenseId: string, formData: FormData): Promise<ActionResult> {
     const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
+    if ("error" in session) return { success: false, message: session.error.message };
     const { supabase, user, activeTeamId } = session;
 
     const file = formData.get("file") as File | null;
-    if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." }; // ✅ CORREGIT
+    if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." };
 
     const filePath = `${activeTeamId}/${expenseId}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage.from("despeses-adjunts").upload(filePath, file);
-    if (uploadError) return { success: false, message: uploadError.message }; // ✅ CORREGIT
+    if (uploadError) return { success: false, message: uploadError.message };
 
     const { error: dbError } = await supabase.from("expense_attachments").insert({
-        expense_id: expenseId,
+        expense_id: expenseId as unknown as number,
         user_id: user.id,
         team_id: activeTeamId,
         file_path: filePath,
         filename: file.name,
         mime_type: file.type,
     });
-    if (dbError) return { success: false, message: dbError.message }; // ✅ CORREGIT
+    if (dbError) return { success: false, message: dbError.message };
 
     revalidatePath("/finances/despeses");
-    return { success: true, message: "Adjunt pujat correctament." }; // ✅ CORREGIT
+    revalidatePath(`/finances/despeses/${expenseId}`); 
+    return { success: true, message: "Adjunt pujat correctament." };
+}
+
+export async function deleteExpense(expenseId: number): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ("error" in session) return { success: false, message: session.error.message };
+    const { supabase } = session;
+
+    const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', expenseId);
+
+    if (error) {
+        console.error("Error deleting expense:", error.message);
+        return { success: false, message: `Error al eliminar la despesa: ${error.message}` };
+    }
+
+    revalidatePath("/finances/despeses");
+    return { success: true, message: `Despesa eliminada correctament.` };
 }

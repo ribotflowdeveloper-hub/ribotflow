@@ -21,6 +21,7 @@ type ContactStatusCode = typeof CONTACT_STATUS_MAP[number]['code'];
 export type Contact = {
   id: string;
   nom: string;
+  nif?: string | null;
   empresa: string | null;
   created_at?: string;
   email?: string | null;

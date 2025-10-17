@@ -1,39 +1,40 @@
-// /app/finances/despeses/_components/ExpensesData.tsx
-
-import { createClient } from '@/lib/supabase/server';
+// src/app/[locale]/(app)/finances/despeses/_components/ExpensesData.tsx
 
 import { redirect } from 'next/navigation';
 import { ExpensesClient } from './ExpensesClient';
+import { fetchExpenses } from '../actions'; // ✅ Funció Server Action
+import { getTranslations } from 'next-intl/server';
+import { createServerActionClient } from '@/lib/supabase/server'; 
 
+/**
+ * Server Component: Capa de Dades per a la llista de Despeses.
+ * * ✅ El Per Què: Centralitza l'autenticació i l'obtenció de dades. 
+ * Si la càrrega falla, activa el mecanisme d'error de Next.js (error.tsx).
+ */
 export async function ExpensesData() {
-    const supabase = createClient();
+    // 1. Validació de Sessió (Patró de Next.js/Supabase)
+    const supabase = createServerActionClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
-
-    // --- LÒGICA D'EQUIP ACTIU DEFINITIVA ---
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        redirect('/settings/team');
+    if (!user) {
+        redirect('/login'); 
     }
-    const claims = JSON.parse(claimsString);
-    if (!claims.app_metadata?.active_team_id) {
-        redirect('/settings/team');
+    
+    const t = await getTranslations('ExpensesPage');
+    
+    // 2. Càrrega de Dades
+    try {
+        // Obtenim les despeses (amb el nom del proveïdor)
+        const initialExpenses = await fetchExpenses(); 
+        
+        // 3. Renderitzat del Client Component
+        // ✅ NOMÉS passem les despeses. La llista de proveïdors (si cal) es carregarà
+        // només a la vista de detall/creació.
+        return <ExpensesClient initialExpenses={initialExpenses || []} />;
+        
+    } catch (error) {
+        // En cas d'error de Supabase a fetchExpenses, l'error ja s'ha llançat.
+        // Aquí ens assegurem que el missatge sigui comprensible.
+        console.error("Error durant la càrrega de ExpensesData:", error);
+        throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
     }
-    // ------------------------------------
-
-    // Les consultes ara són segures i no necessiten filtres manuals.
-    // La RLS filtrarà 'expenses' i 'suppliers' automàticament.
-    const [expensesRes, suppliersRes] = await Promise.all([
-        supabase.from('expenses').select('*, suppliers(nom), expense_attachments(id)').order('expense_date', { ascending: false }),
-        supabase.from('suppliers').select('id, nom').order('nom')
-    ]);
-    // CANVI: En lloc d'un console.error, llancem un error de veritat.
-    if (expensesRes.error || suppliersRes.error) {
-        const error = expensesRes.error || suppliersRes.error;
-        console.error("Error en carregar les dades de despeses:", error);
-        // Això aturarà el renderitzat i farà que Next.js busqui el fitxer error.tsx més proper.
-        throw new Error("No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
-    }
-
-    return <ExpensesClient initialExpenses={expensesRes.data || []} initialSuppliers={suppliersRes.data || []} />;
 }

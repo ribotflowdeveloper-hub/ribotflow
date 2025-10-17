@@ -882,78 +882,89 @@
       "daysAgo": "{count} days ago"
     }
   },
-  "Expenses": {
+  "ExpensesPage": {
     "title": "Expense Management",
-    "newButton": "New Expense",
-    "tableHeaderSupplier": "Supplier / Description",
-    "tableHeaderInvoiceNo": "Invoice No.",
-    "tableHeaderDate": "Date",
-    "tableHeaderCategory": "Category",
-    "tableHeaderAmount": "Amount",
-    "emptyState": "You haven’t recorded any expenses yet.",
-    "drawerTitle": "{supplierOrDesc}",
-    "drawerDescInvoice": "Invoice No. {invoiceNumber}",
-    "drawerDescNoInvoice": "Expense without number",
-    "attachments": "Attachments",
-    "noAttachments": "No attachments available.",
-    "date": "Date",
-    "category": "Category",
+    "newExpenseButton": "New Expense",
+    "emptyState": "You haven’t recorded any expenses yet. Start by creating a new one.",
+    "noSupplier": "No supplier",
     "noCategory": "No category",
-    "subtotal": "Subtotal",
-    "discount": "Discount",
-    "taxBase": "Taxable Base",
-    "vat": "VAT ({taxRate}%)",
-    "total": "Total",
-    "editButton": "Edit",
-    "closeButton": "Close",
-    "downloadErrorTitle": "Download Error",
-    "downloadErrorDescription": "The file could not be downloaded.",
-    "dialogEditTitle": "Edit Expense",
-    "dialogNewTitle": "New Expense",
-    "dialogDescription": "Record an expense manually or upload a file.",
-    "fillWithAI": "Fill with AI",
-    "processing": "Processing...",
-    "dataExtracted": "Data extracted!",
-    "reviewForm": "Review and complete the form.",
-    "extractError": "Data could not be extracted",
-    "ocrError": "Error processing invoice",
-    "generalDescription": "General Description",
-    "descriptionPlaceholder": "Ex: Purchase of office supplies",
-    "supplier": "Supplier",
-    "selectSupplier": "Select a supplier...",
-    "searchSupplier": "Search supplier...",
-    "noSupplierFound": "Not found.",
-    "invoiceNo": "Invoice No. / Receipt",
-    "expenseDate": "Expense Date",
-    "pickDate": "Pick date",
-    "categoryPlaceholder": "Ex: Software, Material...",
-    "items": "Items",
-    "itemDescription": "Description",
-    "itemQuantity": "Qty",
-    "itemUnitPrice": "Unit Price",
-    "itemTotal": "Total",
-    "addItem": "Add line",
-    "notes": "Notes",
-    "uploadFiles": "Upload Files",
-    "uploading": "Uploading...",
-    "uploadErrorTitle": "Attachment Upload Error",
-    "uploadSuccessTitle": "Success",
-    "uploadSuccessDescription": "The attachment has been uploaded successfully.",
-    "cancelButton": "Cancel",
-    "saveChangesButton": "Save Changes",
-    "createButton": "Create Expense",
-    "saveErrorTitle": "Save Error",
-    "saveSuccessTitle": "Success!",
-    "saveSuccessDescription": "Expense saved successfully.",
-    "ExpenseCategories": {
-      "transport": "Transport",
-      "officeSupplies": "Office Supplies",
-      "software": "Software & Subscriptions",
-      "marketing": "Marketing",
-      "meals": "Meals & Entertainment",
-      "utilities": "Utilities",
-      "rent": "Rent",
-      "other": "Other"
+    "table": {
+      "number": "Invoice Nº",
+      "supplier": "Supplier",
+      "description": "Description",
+      "date": "Date",
+      "total": "Total",
+      "category": "Category",
+      "status": "Status"
+    },
+    "status": {
+      "pending": "Pending",
+      "paid": "Paid",
+      "overdue": "Overdue",
+      "draft": "Draft",
+      "unknown": "Unknown"
+    }
+  },
+  "ExpenseDetailPage": {
+    "title": {
+      "new": "New Expense",
+      "edit": "Edit Expense"
+    },
+    "button": {
+      "saving": "Saving...",
+      "save": "Save",
+      "cancel": "Cancel",
+      "addItem": "Add Item"
+    },
+    "card": {
+      "generalDetails": "General Details",
+      "expenseItems": "Expense Items",
+      "notes": "Additional Notes",
+      "totals": "Totals",
+      "attachments": "Attachments",
+      "metadata": "Record Information"
+    },
+    "field": {
+      "supplier": "Supplier",
+      "expenseDate": "Expense Date",
+      "invoiceNumber": "Invoice Number (Optional)",
+      "description": "General Description",
+      "discount": "Discount (€)",
+      "taxRate": "Taxes (%)"
+    },
+    "placeholder": {
+      "invoiceNumber": "Ex: F-2024-123",
+      "description": "Short description of the expense...",
+      "notes": "Any additional details..."
+    },
+    "select": {
+      "selectSupplier": "Select a supplier..."
+    },
+    "label": {
+      "subtotal": "Subtotal",
+      "total": "Total"
+    },
+    "upload": {
+      "dragAndDrop": "Drag a file here or click to upload."
+    },
+    "metadata": {
+      "id": "Expense ID",
+      "createdBy": "Created By",
+      "createdAt": "Creation Date"
+    },
+    "toast": {
+      "saveSuccess": "Expense saved successfully!",
+      "saveError": "An error occurred while saving the expense."
+    },
+    "items": {
+      "description": "Description",
+      "quantity": "Qty.",
+      "unitPrice": "Unit Price",
+      "total": "Total",
+      "placeholder": {
+        "description": "Service or product concept"
+      },
+      "emptyState": "No items added yet."
     }
   },
   "InvoicingPage": {
@@ -1476,5 +1487,24 @@
       "load": "Load concepts",
       "download": "Download concepts"
     }
+  },
+  "Shared": {
+  "table": {
+    "actions": "Actions"
+  },
+  "actions": {
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View details"
+  },
+  "deleteDialog": {
+    "title": "Are you sure?",
+    "description1": "This action cannot be undone. The record will be permanently deleted.",
+    "description2": "Deleted data cannot be recovered.",
+    "confirmButton": "Yes, delete",
+    "cancelButton": "Cancel",
+    "deleting": "Deleting..."
   }
+}
+
 }
