@@ -54,11 +54,11 @@ export const navModules: NavItem[] = [
     labelKey: 'finances', // ✅ Canviat
     icon: Landmark,
     basePath: '/finances',
-    path: '/finances/facturacio',
+    path: '/finances/invoices',
     isSingle: false,
     children: [
-      { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/facturacio', isSingle: true },
-      { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/despeses', isSingle: true },
+      { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/invoices', isSingle: true },
+      { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/expenses', isSingle: true },
     ]
   },
   {
