@@ -332,3 +332,47 @@ export async function getTicketByIdAction(ticketId: number): Promise<{ data: Enr
     return { data: null, error: `Error intern en carregar el tiquet: ${errorMessage}` };
   }
 }
+
+/**
+ * ✅ NOVA FUNCIÓ (SIMPLIFICADA)
+ * Obté els tiquets/emails relacionats amb els contactes d'un proveïdor.
+ * ATENCIÓ: Aquesta consulta pot ser lenta si hi ha molts contactes.
+ * Podria necessitar optimització o una taula/vista específica.
+ */
+export async function fetchTicketsForSupplierContacts(supplierId: string) {
+    const session = await validateUserSession();
+    if ("error" in session) return [];
+    const { supabase, activeTeamId } = session;
+
+    // 1. Trobar els emails dels contactes d'aquest proveïdor
+    const { data: contacts, error: contactsError } = await supabase
+        .from('contacts')
+        .select('email')
+        .eq('supplier_id', supplierId)
+        .eq('team_id', activeTeamId)
+        .not('email', 'is', null); // Només contactes amb email
+
+    if (contactsError || !contacts || contacts.length === 0) {
+        return [];
+    }
+
+    const contactEmails = contacts.map(c => c.email);
+
+    // 2. Cercar tiquets on el remitent o destinatari sigui un d'aquests emails
+    const { data: tickets, error: ticketsError } = await supabase
+        .from('tickets') // O la taula que correspongui
+        .select('id, subject, created_at, last_message_at, status, sender_email, recipient_email')
+        .in('sender_email', contactEmails) // O bé 'or(`sender_email.in.(${...}),recipient_email.in.(${...})`)' si vols ambdós
+        .eq('team_id', activeTeamId)
+        .order('last_message_at', { ascending: false })
+        .limit(50);
+
+    if (ticketsError) {
+        console.error("Error fetching tickets for supplier contacts:", ticketsError.message);
+        return [];
+    }
+    return tickets;
+}
+
+// Tipus per a la resposta (opcional)
+export type TicketForSupplier = Awaited<ReturnType<typeof fetchTicketsForSupplierContacts>>[0];

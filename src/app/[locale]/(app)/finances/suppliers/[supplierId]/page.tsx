@@ -1,53 +1,36 @@
 import { Suspense } from 'react';
-import { getTranslations } from 'next-intl/server';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
-import { type PageProps } from '@/types/shared/next-page-props';
-// Més endavant, aquí anirà el component de dades:
-// import { SupplierDetailData } from './_components/SupplierDetailData';
+import { SupplierDetailData } from './_components/SupplierDetailData';
 
-type SupplierDetailPageProps = PageProps;
+// El tipus PageProps ja inclou params: { supplierId: string }
+type SupplierDetailPageProps = {
+  params: { supplierId: string };
+};
 
-export default async function SupplierDetailPage({ params }: SupplierDetailPageProps) {
-  const isNew = params.supplierId === 'new';
-  const t = await getTranslations('SupplierDetailPage'); // Hauràs d'afegir traduccions
+// Aquest component només fa de contenidor i passa els params
+export default function SupplierDetailPage({ params }: SupplierDetailPageProps) {
+  // ❌ NO ACCEDIR a params.supplierId AQUÍ ❌
+  // const isNewPage = params.supplierId === 'new'; // <--- ELIMINAR AQUESTA LÍNIA
+  // const t = await getTranslations...; // <--- ELIMINAR AQUESTA LÍNIA
+  // const title = ...; // <--- ELIMINAR AQUESTA LÍNIA
+  // const description = ...; // <--- ELIMINAR AQUESTA LÍNIA
 
   return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title={isNew ? t('createTitle') : t('editTitle')}
-        description={isNew ? t('createDescription') : t('editDescription')}
-        showBackButton={true}
-      />
-
-      <Suspense fallback={<SupplierDetailSkeleton />}>
-        {/* <SupplierDetailData supplierId={isNew ? null : params.supplierId} /> */}
-
-        {/* De moment, mostrem un placeholder */}
-        <p className="p-4 bg-card rounded-lg border">
-            {isNew ? t('loadingCreate') : `${t('loadingEdit')} ${params.supplierId}`}
-        </p>
-      </Suspense>
-    </div>
+    // Suspense envolta el component que fa la càrrega de dades
+    <Suspense fallback={<SupplierDetailSkeleton />}>
+      {/* Passem params directament a SupplierDetailData per complir la interfície */}
+      <SupplierDetailData params={params} />
+    </Suspense>
   );
 }
 
-// Un Skeleton bàsic per al formulari
+// El Skeleton es queda igual
 function SupplierDetailSkeleton() {
     return (
         <div className="space-y-6 p-4 bg-card rounded-lg border">
-            <div className="space-y-2">
-                <Skeleton className="h-4 w-1/6" />
-                <Skeleton className="h-10 w-1/2" />
-            </div>
-             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/6" />
-                <Skeleton className="h-10 w-1/2" />
-            </div>
-             <div className="space-y-2">
-                <Skeleton className="h-4 w-1/6" />
-                <Skeleton className="h-10 w-1/3" />
-            </div>
+            <div className="space-y-2"><Skeleton className="h-4 w-1/6" /><Skeleton className="h-10 w-1/2" /></div>
+            <div className="space-y-2"><Skeleton className="h-4 w-1/6" /><Skeleton className="h-10 w-1/2" /></div>
+            <div className="space-y-2"><Skeleton className="h-4 w-1/6" /><Skeleton className="h-10 w-1/3" /></div>
             <Skeleton className="h-10 w-24" />
         </div>
     )

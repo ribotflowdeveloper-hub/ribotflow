@@ -24,7 +24,7 @@ export function ColumnToggleButton<TData>({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 bg-white">
+        <Button variant="outline" size="sm" className="h-9">
           <SlidersHorizontal className="mr-2 h-4 w-4 " />
           {t('view')}
         </Button>
