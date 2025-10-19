@@ -48,7 +48,6 @@
     "excel": "Excel",
     "CrearTemplate": "Crear plantilla",
     "LoadFile": "Carregar fitxer"
-
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -945,7 +944,10 @@
       "notes": "Qualsevol detall addicional..."
     },
     "select": {
-      "selectSupplier": "Selecciona un proveïdor..."
+      "selectSupplier": "Selecciona un proveïdor...",
+      "searchSupplier": "Cerca un proveïdor...",
+      "noSupplierFound": "No s'ha trobat cap proveïdor.",
+      "noSupplier": "Sense proveïdor"
     },
     "label": {
       "subtotal": "Subtotal",
@@ -973,6 +975,19 @@
       },
       "emptyState": "No hi ha cap concepte afegit."
     }
+  },
+  "ExpenseDetail": { 
+      "attachments": {
+          "title": "Adjunts",
+          "description": "Fitxers associats a aquesta despesa.",
+          "uploadButton": "Pujar Fitxer",
+          "empty": "No hi ha fitxers adjunts.",
+          "deleteConfirmTitle": "Vols eliminar aquest adjunt?",
+          "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
+          "fileSize": "Mida",
+          "uploadDate": "Pujat el",
+          "download": "Descarregar"
+      }
   },
   "InvoicingPage": {
     "title": "Facturació",
@@ -1588,6 +1603,65 @@
     "toast": {
       "deleteSuccess": "Proveïdor esborrat amb èxit.",
       "deleteError": "No s'ha pogut esborrar el proveïdor."
+    }
+  },
+  "SupplierDetailPage": {
+    "createTitle": "Crear Proveïdor",
+    "editTitle": "Editar Proveïdor",
+    "createDescription": "Afegeix un nou proveïdor (entitat) al sistema.",
+    "editDescription": "Edita els detalls d'aquest proveïdor.",
+    "loadingCreate": "Carregant creador de proveïdors...",
+    "detailsCardTitle": "Detalls del Proveïdor",
+    "detailsCardDescription": "Informació principal del proveïdor.",
+    "form": {
+      "name": "Nom de l'empresa",
+      "nif": "NIF / CIF",
+      "email": "Email principal (facturació)",
+      "phone": "Telèfon principal",
+      "saving": "Desant...",
+      "save": "Desar Canvis"
+    },
+    "contactsCard": {
+      "title": "Contactes",
+      "description": "Persones assignades a aquest proveïdor.",
+      "newButton": "Nou Contacte",
+      "table": {
+        "name": "Nom",
+        "email": "Email",
+        "phone": "Telèfon"
+      },
+      "empty": "Encara no hi ha contactes assignats a aquest proveïdor."
+    },
+    "validation": {
+      "nameRequired": "El nom de l'empresa és obligatori."
+    },
+    "toast": {
+      "saveError": "Hi ha hagut un error en desar el proveïdor."
+    },
+    "expensesCard": {
+      "title": "Despeses",
+      "description": "Despeses registrades per a aquest proveïdor.",
+      "newButton": "Nova Despesa",
+      "table": {
+        "date": "Data",
+        "description": "Descripció",
+        "amount": "Import",
+        "status": "Estat"
+      },
+      "empty": "No hi ha despeses registrades per a aquest proveïdor."
+    },
+    "ticketsCard": {
+      "title": "Comunicacions",
+      "description": "Emails i tiquets relacionats amb els contactes d'aquest proveïdor.",
+      "newButton": "Nou Contacte",
+      "searchInboxButton": "Cerca a la Safata d'Entrada",
+      "table": {
+        "subject": "Assumpte",
+        "lastActivity": "Última Activitat",
+        "status": "Estat"
+      },
+      "empty": "No s'han trobat comunicacions relacionades.",
+      "noSubject": "(Sense Assumpte)"
     }
   }
 }

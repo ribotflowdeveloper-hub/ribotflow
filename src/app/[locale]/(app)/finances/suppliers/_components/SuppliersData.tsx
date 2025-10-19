@@ -1,30 +1,46 @@
+// src/app/[locale]/(app)/finances/suppliers/_components/SuppliersData.tsx
+// ✅ Importem SupplierFilters de nou
 import { fetchPaginatedSuppliers, type SupplierFilters } from '../actions';
 import { SuppliersClient } from './SuppliersClient';
 
+// ✅ Definim les noves props que rep aquest component
 interface SuppliersDataProps {
-  searchParams: { [key: string]: string | string[] | undefined };
+  page: string;
+  pageSize: string;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: string;
 }
 
-// Aquest component llegeix els paràmetres de la URL,
-// construeix els filtres i fa la crida a la Server Action.
-export async function SuppliersData({ searchParams }: SuppliersDataProps) {
-  
-  const page = parseInt(searchParams['page'] as string || '1', 10);
-  const pageSize = parseInt(searchParams['pageSize'] as string || '10', 10);
-  const searchTerm = searchParams['search'] as string | undefined;
-  const sortBy = searchParams['sortBy'] as string || 'nom';
-  const sortOrder = (searchParams['sortOrder'] as 'asc' | 'desc') || 'asc';
+export async function SuppliersData({
+  page: pageProp,
+  pageSize: pageSizeProp,
+  search,
+  sortBy: sortByProp,
+  sortOrder: sortOrderProp,
+}: SuppliersDataProps) {
 
+  // ✅ Parsegem els valors rebuts com a props
+  const page = parseInt(pageProp, 10);
+  const pageSize = parseInt(pageSizeProp, 10);
+  const sortBy = sortByProp || 'nom';
+  const sortOrder = (sortOrderProp === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
+
+  // ✅ Reconstruïm l'objecte 'filters'
   const filters: SupplierFilters = {
-    searchTerm,
+    searchTerm: search || undefined,
     sortBy,
     sortOrder,
     limit: pageSize,
     offset: (page - 1) * pageSize,
   };
 
-  // Crida a la Server Action per obtenir les dades
+  console.log('SuppliersData - Calling action with filters:', filters);
+
+  // ✅ Cridem l'acció amb l'objecte 'filters'
   const initialData = await fetchPaginatedSuppliers(filters);
+
+  console.log('SuppliersData - Received initialData:', initialData);
 
   return (
     <SuppliersClient initialData={initialData} />

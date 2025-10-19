@@ -289,6 +289,7 @@ export type Database = {
           notes: string | null
           partner_name: string | null
           social_media: Json | null
+          supplier_id: string | null
           team_id: string | null
           telefon: string | null
           ubicacio: string | null
@@ -315,6 +316,7 @@ export type Database = {
           notes?: string | null
           partner_name?: string | null
           social_media?: Json | null
+          supplier_id?: string | null
           team_id?: string | null
           telefon?: string | null
           ubicacio?: string | null
@@ -341,6 +343,7 @@ export type Database = {
           notes?: string | null
           partner_name?: string | null
           social_media?: Json | null
+          supplier_id?: string | null
           team_id?: string | null
           telefon?: string | null
           ubicacio?: string | null
@@ -354,6 +357,13 @@ export type Database = {
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_contact_supplier"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -544,7 +554,13 @@ export type Database = {
           extra_data: Json | null
           id: number
           invoice_number: string | null
+          is_billable: boolean
+          is_reimbursable: boolean
           notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["expense_status"]
           subtotal: number | null
           supplier_id: string | null
           tax_amount: number | null
@@ -562,7 +578,13 @@ export type Database = {
           extra_data?: Json | null
           id?: number
           invoice_number?: string | null
+          is_billable?: boolean
+          is_reimbursable?: boolean
           notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["expense_status"]
           subtotal?: number | null
           supplier_id?: string | null
           tax_amount?: number | null
@@ -580,7 +602,13 @@ export type Database = {
           extra_data?: Json | null
           id?: number
           invoice_number?: string | null
+          is_billable?: boolean
+          is_reimbursable?: boolean
           notes?: string | null
+          payment_date?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["expense_status"]
           subtotal?: number | null
           supplier_id?: string | null
           tax_amount?: number | null
@@ -590,6 +618,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_supplier_id_fkey"
             columns: ["supplier_id"]
@@ -1239,6 +1274,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          id: string
+          name: string
+          start_date: string | null
+          status: string | null
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name: string
+          start_date?: string | null
+          status?: string | null
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          name?: string
+          start_date?: string | null
+          status?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_items: {
         Row: {
@@ -2995,7 +3071,13 @@ export type Database = {
           extra_data: Json | null
           id: number
           invoice_number: string | null
+          is_billable: boolean
+          is_reimbursable: boolean
           notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["expense_status"]
           subtotal: number | null
           supplier_id: string | null
           tax_amount: number | null
@@ -3008,6 +3090,41 @@ export type Database = {
       save_refresh_token: {
         Args: { provider_name: string; refresh_token_value: string }
         Returns: undefined
+      }
+      search_expenses: {
+        Args:
+          | {
+              p_category?: string
+              p_limit?: number
+              p_offset?: number
+              p_search_term?: string
+              p_sort_by?: string
+              p_sort_order?: string
+              p_status?: string
+              p_team_id: string
+            }
+          | {
+              p_category?: string
+              p_search_term?: string
+              p_sort_by?: string
+              p_sort_order?: string
+              p_team_id: string
+            }
+        Returns: {
+          category: string
+          description: string
+          expense_date: string
+          id: number
+          invoice_number: string
+          is_billable: boolean
+          is_reimbursable: boolean
+          payment_date: string
+          project_id: string
+          status: string
+          supplier_id: string
+          supplier_nom: string
+          total_amount: number
+        }[]
       }
       spheroid_in: {
         Args: { "": unknown }
@@ -4144,6 +4261,7 @@ export type Database = {
       }
     }
     Enums: {
+      expense_status: "pending" | "paid" | "overdue" | "cancelled"
       invoice_status: "Draft" | "Sent" | "Paid" | "Overdue" | "Cancelled"
       opportunity_stage:
         | "Nou Lead"
@@ -4298,6 +4416,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      expense_status: ["pending", "paid", "overdue", "cancelled"],
       invoice_status: ["Draft", "Sent", "Paid", "Overdue", "Cancelled"],
       opportunity_stage: [
         "Nou Lead",

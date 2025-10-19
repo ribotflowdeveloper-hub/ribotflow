@@ -124,3 +124,30 @@ export async function processOcrAction(formData: FormData): Promise<ActionResult
     }
     return { success: true, message: "Document processat amb èxit.", data };
 }
+
+/**
+ * ✅ NOVA FUNCIÓ
+ * Obté les despeses associades a un proveïdor específic.
+ */
+export async function fetchExpensesForSupplier(supplierId: string) {
+  const session = await validateUserSession();
+  if ("error" in session) return [];
+  const { supabase, activeTeamId } = session;
+
+  const { data, error } = await supabase
+    .from('expenses')
+    .select('id, expense_date, description, total_amount, status') // Camps bàsics
+    .eq('supplier_id', supplierId)
+    .eq('team_id', activeTeamId)
+    .order('expense_date', { ascending: false })
+    .limit(50); // Limitem per rendiment
+
+  if (error) {
+    console.error("Error fetching expenses for supplier:", error.message);
+    return [];
+  }
+  return data;
+}
+
+// Tipus per a la resposta (opcional)
+export type ExpenseForSupplier = Awaited<ReturnType<typeof fetchExpensesForSupplier>>[0];

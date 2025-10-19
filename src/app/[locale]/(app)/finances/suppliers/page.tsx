@@ -1,11 +1,10 @@
+// src/app/[locale]/(app)/finances/suppliers/page.tsx
 import { Suspense } from 'react';
-// ✅ CORRECCIÓ: Imports separats. 'Card' i 'Skeleton' són components diferents.
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SuppliersData } from './_components/SuppliersData';
 
-// ✅ CORRECCIÓ: Tipem correctament els searchParams,
-// seguint el patró que fas servir a expenses/page.tsx
+// Defineix el tipus explícitament per claredat, com abans
 type SuppliersPageProps = {
   searchParams: {
     page?: string;
@@ -16,12 +15,24 @@ type SuppliersPageProps = {
   };
 };
 
-// La pàgina rep 'searchParams' i els passa a SuppliersData
 export default async function SuppliersListPage({ searchParams }: SuppliersPageProps) {
+  // ✅ Llegim els valors AQUÍ, al component de pàgina
+  const page = searchParams?.page ?? '1';
+  const pageSize = searchParams?.pageSize ?? '10';
+  const search = searchParams?.search;
+  const sortBy = searchParams?.sortBy;
+  const sortOrder = searchParams?.sortOrder;
+
   return (
     <Suspense fallback={<SuppliersListSkeleton />}>
-      {/* ✅ Passem els searchParams al component de dades */}
-      <SuppliersData searchParams={searchParams} />
+      {/* ✅ Passem els valors individuals com a props */}
+      <SuppliersData
+        page={page}
+        pageSize={pageSize}
+        search={search}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+      />
     </Suspense>
   );
 }
