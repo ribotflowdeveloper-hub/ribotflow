@@ -33,7 +33,7 @@ export function ExpenseDetailClient({ initialData, isNew, allSuppliers }: Expens
         handleAddItem,
         handleRemoveItem,
         t,
-    } = useExpenseDetail({ initialData, isNew, allSuppliers });
+    } = useExpenseDetail({ initialData, isNew });
 
     const isSaving = isPending;
     const expenseTitle = isNew
@@ -56,7 +56,7 @@ export function ExpenseDetailClient({ initialData, isNew, allSuppliers }: Expens
 
                     {/* Botó de Cancel·lar/Tornar */}
                     <Button asChild variant="outline" disabled={isSaving}>
-                        <Link href="/finances/despeses">
+                        <Link href="/finances/expenses">
                             <X className="w-4 h-4 mr-2" /> {t('button.cancel')}
                         </Link>
                     </Button>

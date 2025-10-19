@@ -5,6 +5,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │   ├── chatbotActions.ts
 │   │   ├── exportActions.ts
 │   │   ├── invitationActions.ts
+│   │   ├── localeActions.ts
 │   │   └── tasks
 │   │       └── actions.ts
 │   ├── api
@@ -241,29 +242,39 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   ├── actions.ts
 │       │   │   └── ExcelDropdownButton.tsx
 │       │   ├── finances
-│       │   │   ├── despeses
+│       │   │   ├── expenses
 │       │   │   │   ├── actions.ts
-│       │   │   │   ├── error.tsx
+│       │   │   │   ├── page.tsx
+│       │   │   │   ├── [expenseId]
+│       │   │   │   │   ├── actions.ts
+│       │   │   │   │   ├── page.tsx
+│       │   │   │   │   ├── _components
+│       │   │   │   │   │   ├── ExpenseAttachmentCard.tsx
+│       │   │   │   │   │   ├── ExpenseDetailClient.tsx
+│       │   │   │   │   │   ├── ExpenseDetailData.tsx
+│       │   │   │   │   │   ├── ExpenseDetailSkeleton.tsx
+│       │   │   │   │   │   ├── ExpenseItemsEditor.tsx
+│       │   │   │   │   │   └── SupplierCombobox.tsx
+│       │   │   │   │   └── _hooks
+│       │   │   │   │       └── useExpenseDetail.ts
+│       │   │   │   ├── _components
+│       │   │   │   │   ├── ExpenseFilters.tsx
+│       │   │   │   │   ├── ExpensesClient.tsx
+│       │   │   │   │   ├── ExpensesData.tsx
+│       │   │   │   │   ├── ExpensesSkeleton.tsx
+│       │   │   │   │   └── StatCard.tsx
+│       │   │   │   └── _hooks
+│       │   │   │       └── useExpenses.ts
+│       │   │   ├── invoices
+│       │   │   │   ├── actions.ts
 │       │   │   │   ├── page.tsx
 │       │   │   │   └── _components
-│       │   │   │       ├── expenses
-│       │   │   │       │   ├── ExpenseDetailDrawer.tsx
-│       │   │   │       │   ├── ExpenseDialog.tsx
-│       │   │   │       │   ├── ExpenseTable.tsx
-│       │   │   │       │   └── _hooks
-│       │   │   │       │       ├── useExpenseActions.ts
-│       │   │   │       │       └── useExpenseForm.ts
-│       │   │   │       ├── expenses-client.tsx
-│       │   │   │       ├── ExpensesData.tsx
-│       │   │   │       └── ExpensesSkeleton.tsx
-│       │   │   └── facturacio
-│       │   │       ├── actions.ts
-│       │   │       ├── page.tsx
-│       │   │       └── _components
-│       │   │           ├── FacturacioClient.tsx
-│       │   │           ├── FacturacioData.tsx
-│       │   │           ├── FacturacioSkeleton.tsx
-│       │   │           └── InvoiceDialog.tsx
+│       │   │   │       ├── FacturacioClient.tsx
+│       │   │   │       ├── FacturacioData.tsx
+│       │   │   │       ├── FacturacioSkeleton.tsx
+│       │   │   │       └── InvoiceDialog.tsx
+│       │   │   └── proveidors
+│       │   │       └── actions.ts
 │       │   ├── layout.tsx
 │       │   ├── loading.tsx
 │       │   ├── network
@@ -381,6 +392,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │           └── useSignupForm.ts
 │       ├── accept-invite
 │       │   └── route.ts
+│       ├── global-error.tsx
 │       ├── invitation
 │       │   └── accept
 │       │       ├── page.tsx
@@ -439,7 +451,10 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   ├── shared
 │   │   ├── AccessDenied.tsx
 │   │   ├── ActivityItem.tsx
+│   │   ├── ColumnToggleButton.tsx
 │   │   ├── EmptyState.tsx
+│   │   ├── GenericDataTable.tsx
+│   │   ├── PaginationBar.tsx
 │   │   ├── StatCard.tsx
 │   │   └── StatusBadge.tsx
 │   ├── theme-provider.tsx
@@ -461,6 +476,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       ├── EditorWysiwyg.tsx
 │       ├── input.tsx
 │       ├── label.tsx
+│       ├── pagination.tsx
 │       ├── popover.tsx
 │       ├── progress.tsx
 │       ├── select.tsx
@@ -536,7 +552,8 @@ ESTRUCTURA DEL PROJECTE (./src)
     │   ├── expenses.ts
     │   ├── index.ts
     │   ├── invoices.ts
-    │   └── scheams.ts
+    │   ├── scheams.ts
+    │   └── suppliers.ts
     ├── network
     │   └── network.ts
     ├── settings
@@ -733,6 +750,56 @@ export async function acceptInviteAction(token: string) {
 }
 
 
+
+// =================== FILE: src/app/actions/localeActions.ts ===================
+
+// src/app/actions/localeActions.ts
+// Aquest fitxer s'executarà exclusivament al servidor
+'use server';
+
+import { cookies } from 'next/headers';
+// ❌ Eliminem la importació innecessària de NextResponse.
+// ❌ Eliminem la importació incorrecta de Locale de '@/types/shared/index'.
+
+// ✅ Importem directament les llistes i el defaultLocale des de la font canònica.
+import { locales, defaultLocale } from '@/i18n'; 
+
+// 🚀 Constant per al nom de la Cookie de persistència (Ha de coincidir amb el middleware)
+const LOCALE_COOKIE_NAME = 'NEXT_LOCALE';
+
+// 🔑 CLAU: Determinar si estem en un entorn segur (HTTPS)
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Definim un tipus d'unió per als nostres idiomes basat en l'array de i18n
+type AppLocale = typeof locales[number];
+
+/**
+ * Estableix la cookie de preferència d'idioma de forma explícita amb màxim temps de vida.
+ * Aquesta acció garanteix el maxAge i la configuració secure/httpOnly correcte.
+ * @param locale - L'idioma a establir (ha de ser un string, ja que ve del client).
+ */
+export async function setLocalePersistence(locale: string) {
+  
+  // 1. Validació segura sense 'any'
+  const finalLocale: AppLocale = locales.includes(locale as AppLocale) 
+    ? (locale as AppLocale) 
+    : defaultLocale;
+  
+  // 2. Fixar la cookie
+  // Utilitzem next/headers/cookies().set per fixar la cookie des del servidor.
+  (await
+        // 2. Fixar la cookie
+        // Utilitzem next/headers/cookies().set per fixar la cookie des del servidor.
+        cookies()).set(LOCALE_COOKIE_NAME, finalLocale, {
+    maxAge: 60 * 60 * 24 * 365, // 1 any
+    httpOnly: false, // Permetem que el client (o el middleware) la llegeixi si cal.
+    secure: isProduction, // Condicional per a Localhost vs Producció
+    path: '/', // Disponible a tota l'aplicació
+    sameSite: 'lax',
+  });
+  
+  return { success: true, locale: finalLocale };
+}
 
 // =================== FILE: src/app/actions/tasks/actions.ts ===================
 
@@ -8480,60 +8547,111 @@ export const useCalendarDialogs = ({ updateDateAndData }: UseCalendarDialogsProp
 
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/actions.ts ===================
 
-// a l'arxiu d'accions dels contactes
-
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { Contact } from '@/types/crm';
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la nova funció
+import type { Contact } from '@/types/crm/contacts'; // Assegurem que s'importa el tipus Contact correctament
+import { validateUserSession } from "@/lib/supabase/session"; 
 
-export async function createContactAction(
-    formData: FormData
-): Promise<{ data: Contact | null; error: { message: string } | null }> {
+// ----------------------------------------------------
+// ACCIONS DE LLISTA/FETCHING
+// ----------------------------------------------------
 
-    // ✅ 2. Cridem la funció de validació. Tot en una línia.
+/**
+ * Obté tots els contactes/proveïdors de l'equip actiu.
+ * Aquesta funció és cridada per Server Components com ExpenseDetailData.tsx.
+ * * * ✅ El Per Què: Optimitza la càrrega de llistes per a selectors (dropdowns).
+ */
+export async function fetchContacts(): Promise<Contact[]> {
     const session = await validateUserSession();
+    
+    // Si la sessió falla (usuari no logat o sense equip), no podem fer el fetch.
     if ('error' in session) {
-        return { data: null, error: session.error };
-    }
-    // A partir d'aquí, sabem que tenim tot el que necessitem.
-    const { supabase, user, activeTeamId } = session;
-
-    const nom = formData.get('nom') as string;
-    const email = formData.get('email') as string;
-
-    if (!nom || !email) {
-        return { data: null, error: { message: 'El nom i l\'email són obligatoris.' } };
+        // En lloc de llençar un error, que podria trencar la pàgina de detall,
+        // retornem un array buit si la llista de contactes no és essencial per a l'autenticació.
+        // Tot i així, en una aplicació on la despesa depèn de l'usuari, el redirect ja s'hauria fet.
+        console.error("No es pot carregar la sessió per obtenir els contactes:", session.error.message);
+        return [];
     }
 
-    const dataToInsert = {
-        nom,
-        email,
-        empresa: formData.get('empresa') as string,
-        telefon: formData.get('telefon') as string,
-        estat: formData.get('estat') as 'Lead' | 'Proveidor' | 'Client',
-        valor: parseFloat(formData.get('valor') as string) || 0,
-        team_id: activeTeamId, // ✅ Inserim l'ID de l'equip actiu
-        user_id: user.id,
-    };
-
-    // La política RLS 'WITH CHECK' de la taula 'contacts' verificarà que
-    // l'usuari té permís per inserir en aquest 'team_id'.
+    const { supabase } = session;
+    
+    // La clau és utilitzar un SELECT lleuger. 
+    // La RLS filtrarà automàticament per team_id.
     const { data, error } = await supabase
         .from('contacts')
-        .insert(dataToInsert)
-        .select()
-        .single();
+        .select(`
+            id,
+            nom,
+            nif,
+            email,
+            telefon,
+            estat,
+            empresa,
+            valor
+        `)
+        .order('nom', { ascending: true }); // Ordenació alfabètica per defecte
 
     if (error) {
-        console.error("Error en crear el contacte:", error);
-        return { data: null, error: { message: error.message } };
+        console.error("Error en carregar els contactes:", error);
+        // Llançar un error actiu per al error.tsx (gestió d'errors al servidor)
+        throw new Error("No s'han pogut carregar els contactes.");
     }
-
-    revalidatePath('/crm/contactes');
-    return { data, error: null };
+    
+    // ✅ Bona Pràctica: Casting segur al tipus definit (Contact[])
+    return (data as Contact[]) || []; 
 }
+
+
+// ----------------------------------------------------
+// ACCIONS DE MUTACIÓ
+// ----------------------------------------------------
+
+export async function createContactAction(
+    formData: FormData
+): Promise<{ data: Contact | null; error: { message: string } | null }> {
+
+    // ✅ 2. Cridem la funció de validació.
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { data: null, error: session.error };
+    }
+    const { supabase, user, activeTeamId } = session;
+
+    const nom = formData.get('nom') as string;
+    const email = formData.get('email') as string;
+
+    if (!nom || !email) {
+        return { data: null, error: { message: 'El nom i l\'email són obligatoris.' } };
+    }
+
+    const dataToInsert = {
+        nom,
+        email,
+        empresa: formData.get('empresa') as string,
+        telefon: formData.get('telefon') as string,
+        estat: formData.get('estat') as 'Lead' | 'Proveidor' | 'Client',
+        valor: parseFloat(formData.get('valor') as string) || 0,
+        team_id: activeTeamId, 
+        user_id: user.id,
+    };
+
+    const { data, error } = await supabase
+        .from('contacts')
+        .insert(dataToInsert)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error en crear el contacte:", error);
+        return { data: null, error: { message: error.message } };
+    }
+
+    revalidatePath('/crm/contactes');
+    return { data, error: null };
+}
+
+
 
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/page.tsx ===================
 
@@ -14874,9 +14992,10 @@ import { Radar } from "./_components/Radar";
 import { TaskDialogManager, EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 import { toast } from "sonner";
 import { startTransition } from "react";
-import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus } from "lucide-react";
+import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar } from "lucide-react";
 import { Agenda, TaskFilterStatus } from "./_components/agenda/Agenda";
 import { updateSimpleTask } from '@/app/actions/tasks/actions';
+import Link from 'next/link';
 
 import { Tables } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
@@ -15031,6 +15150,17 @@ export function DashboardClient({
           className="lg:col-span-2 h-full flex flex-col"
           actions={
             <div className="flex items-center space-x-4">
+              {/* 🔑 NOU: BOTÓ DE CALENDARI PER RENVIAR AL CALENDARI COMPLET */}
+              <Button
+                asChild
+                variant="outline"
+                size="icon"
+                className="flex-shrink-0"
+              >
+                <Link href="/crm/calendari" aria-label={"Calendar"}>
+                  <Calendar className="h-5 w-5" />
+                </Link>
+              </Button>
               <div className="flex items-center space-x-2">
                 <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
                 <Label htmlFor="show-all-tasks" className="text-xs font-normal cursor-pointer">{t('agenda.viewAll')}</Label>
@@ -15169,6 +15299,7 @@ export function Agenda({
     <div>
       {/* Grup de botons de filtre */}
       <div className="flex gap-2 mb-4 flex-shrink-0">
+
         <ToggleGroup
           type="single"
           value={activeFilter}
@@ -16596,30 +16727,161 @@ const DropdownButton: React.FC<DropdownButtonProps> = ({ options, onSelect }) =>
 export default DropdownButton;
 
 
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/actions.ts ===================
 
-/**
- * @file actions.ts (Despeses)
- * @summary Server Actions per al mòdul de Gestió de Despeses.
- */
-
+// src/app/[locale]/(app)/finances/despeses/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { type Expense, type ExpenseItem } from "@/types/finances/index";
-import { type ActionResult } from "@/types/shared/index"; // ✅ 1. Importem el teu tipus correcte
+import {
+    type Expense,
+    type ExpenseItem,
+    type ExpenseWithContact,
+    type ExpenseDetail,
+    type ExpenseFormDataForAction,
+    type ExpenseStatus 
+} from "@/types/finances/expenses";
+import { type ActionResult } from "@/types/shared/index";
 import { validateUserSession } from "@/lib/supabase/session";
-import { SupabaseClient, User } from "@supabase/supabase-js";
+import { createClient as createServerActionClient } from "@/lib/supabase/server";
+import { type SupabaseClient, type User } from "@supabase/supabase-js";
 
-// --- Helpers Interns (Extrets de saveExpenseAction) ---
+export interface ExpenseFilters {
+    searchTerm?: string;
+    category?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    status?: string; 
+    limit?: number; 
+    offset?: number; 
+}
+
+// ✅ NOU: Tipus de resposta per a la paginació
+export interface PaginatedExpensesResponse {
+    data: ExpenseWithContact[];
+    count: number;
+}
+
+type RpcSearchResult = {
+    id: number;
+    invoice_number: string | null;
+    expense_date: string;
+    total_amount: number;
+    category: string | null;
+    description: string;
+    supplier_id: string | null;
+    supplier_nom: string | null;
+    status: ExpenseStatus;
+    payment_date: string | null;
+    is_billable: boolean;
+    project_id: string | null;
+};
 
 /**
- * Crea o actualitza la despesa principal a la base de dades.
+ * ✅ NOU: Funció principal per a la paginació.
+ * Obté les dades i el recompte total.
  */
+export async function fetchPaginatedExpenses(filters: ExpenseFilters): Promise<PaginatedExpensesResponse> {
+    const session = await validateUserSession();
+    if ("error" in session) {
+        console.error("Session error in fetchPaginatedExpenses:", session.error);
+        return { data: [], count: 0 };
+    }
+    const { supabase, activeTeamId } = session;
+
+    // --- 1. Consulta de Dades (RPC, com abans) ---
+    const { data: rpcData, error: rpcError } = await supabase.rpc('search_expenses', {
+        p_team_id: activeTeamId,
+        p_search_term: filters.searchTerm || null,
+        p_category: filters.category || null,
+        p_status: filters.status || null, 
+        p_sort_by: filters.sortBy || 'expense_date',
+        p_sort_order: filters.sortOrder || 'desc',
+        p_limit: filters.limit ?? 50,
+        p_offset: filters.offset ?? 0,
+    });
+
+    if (rpcError) {
+        console.error("Error calling RPC search_expenses:", rpcError.message);
+        throw new Error("Error en carregar les dades de despeses.");
+    }
+
+    const formattedData = (rpcData || []).map((item: RpcSearchResult) => ({
+        ...item,
+        suppliers: item.supplier_id ? {
+            id: item.supplier_id,
+            nom: item.supplier_nom,
+        } : null,
+    }));
+
+    // --- 2. Consulta de Recompte Total ---
+    // El Per Què: Necessitem una segona consulta que utilitzi ELS MATEIXOS FILTRES
+    // que l'RPC, però sense límit ni offset, per saber el total de registres.
+    
+    let countQuery = supabase
+        .from('expenses')
+        .select('id', { count: 'exact', head: true })
+        .eq('team_id', activeTeamId);
+
+    // Apliquem els mateixos filtres que l'RPC
+    if (filters.status && filters.status !== 'all') {
+        countQuery = countQuery.eq('status', filters.status);
+    }
+    if (filters.category && filters.category !== 'all') {
+        countQuery = countQuery.eq('category', filters.category);
+    }
+    if (filters.searchTerm) {
+        // Assumim que l'RPC busca en 'description' i 'invoice_number'
+        // Ajusta-ho si l'RPC busca en més camps.
+        countQuery = countQuery.or(
+            `description.ilike.%${filters.searchTerm}%,invoice_number.ilike.%${filters.searchTerm}%`
+        );
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) {
+        console.error("Error fetching expenses count:", countError.message);
+        throw new Error("Error en obtenir el recompte de despeses.");
+    }
+
+    return { 
+        data: formattedData as unknown as ExpenseWithContact[], 
+        count: count ?? 0 
+    };
+}
+
+
+// (Mantenim les altres funcions d'abans, com fetchExpenseDetail, per no trencar res)
+
+export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDetail | null> {
+    const supabase = createServerActionClient();
+
+    const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+            *,
+            suppliers (id, nom, nif),
+            expense_items (*),
+            expense_attachments (*)
+        `)
+        .eq('id', expenseId)
+        .single();
+
+    if (error) {
+        console.error("Error fetching expense detail:", error.message);
+        return null;
+    }
+
+    return data as unknown as ExpenseDetail;
+}
+
+// --- Helpers Interns (La resta del fitxer no canvia) ---
+
 async function upsertExpenseDetails(
   supabase: SupabaseClient,
-  expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "expense_items">,
-  expenseId: string | null,
+  expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id">,
+  expenseId: string | number | null,
   userId: string,
   teamId: string
 ): Promise<ActionResult<Expense>> {
@@ -16628,7 +16890,7 @@ async function upsertExpenseDetails(
       expenseData.expense_date = new Date(expenseData.expense_date).toISOString().split('T')[0];
     } catch (e) {
       console.error("Error al formatar la data:", e);
-      return { success: false, message: "Format de data invàlid." }; // ✅ CORREGIT
+      return { success: false, message: "Format de data invàlid." };
     }
   }
 
@@ -16639,1211 +16901,1546 @@ async function upsertExpenseDetails(
   const { data, error } = await query.select().single();
 
   if (error) {
-    return { success: false, message: error.message }; // ✅ CORREGIT
+    return { success: false, message: error.message };
   }
-  
-  return { success: true, message: "Despesa desada correctament.", data: data as Expense }; // ✅ CORREGIT
+
+  return { success: true, message: "Despesa desada correctament.", data: data as Expense };
 }
 
-/**
- * Sincronitza els conceptes d'una despesa.
- */
 async function syncExpenseItems(
-    supabase: SupabaseClient,
-    expenseId: string,
-    items: ExpenseItem[] | undefined,
-    user: User,
-    teamId: string
+  supabase: SupabaseClient,
+  expenseId: number,
+  items: ExpenseItem[] | undefined,
+  user: User,
+  teamId: string
 ): Promise<ActionResult> {
-    if (!items) { // Si no hi ha 'items' a l'objecte, no fem res.
-      return { success: true, message: "No hi ha conceptes per sincronitzar." };
-    }
-
-    // Si ExpenseItem no té 'id', aquesta línia s'ha d'ajustar o eliminar.
-    // Per exemple, si cada item té una descripció única:
-    // const itemIdsFromForm = items.map(item => item.description).filter(Boolean);
-
-    // Si no es pot identificar per 'id', simplement no utilitzis aquesta lògica:
-    const itemIdsFromForm: string[] = [];
-
-    const { error: deleteError } = await supabase
-        .from('expense_items')
-        .delete()
-        .eq('expense_id', expenseId)
-        .not('id', 'in', `(${itemIdsFromForm.join(',')})`);
-
+  if (!items || items.length === 0) {
+    const { error: deleteError } = await supabase.from('expense_items').delete().eq('expense_id', expenseId);
     if (deleteError) {
-      return { success: false, message: `Error esborrant conceptes: ${deleteError.message}` }; // ✅ CORREGIT
+      return { success: false, message: `Error netejant conceptes antics: ${deleteError.message}` };
     }
-    
-    if (items.length === 0) {
-      return { success: true, message: "Tots els conceptes s'han esborrat." }; // ✅ CORREGIT
-    }
+    return { success: true, message: "No hi ha conceptes per sincronitzar." };
+  }
 
-    const itemsToUpsert = items.map(item => ({
-        description: item.description,
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        expense_id: expenseId,
-        user_id: user.id,
-        team_id: teamId
-    }));
+  const existingItemIds = items.map(item => item.id).filter(id => id && id > 0);
 
-    const { error: upsertError } = await supabase.from("expense_items").upsert(itemsToUpsert);
-    if (upsertError) {
-      return { success: false, message: `Error actualitzant conceptes: ${upsertError.message}` }; // ✅ CORREGIT
-    }
-    
-    return { success: true, message: "Conceptes sincronitzats correctament." }; // ✅ CORREGIT
+  const { error: deleteError } = await supabase
+    .from('expense_items')
+    .delete()
+    .eq('expense_id', expenseId)
+    .not('id', 'in', `(${existingItemIds.join(',')})`);
+
+  if (deleteError) {
+    return { success: false, message: `Error esborrant conceptes: ${deleteError.message}` };
+  }
+
+  const itemsToUpsert = items.map(item => ({
+    ...item,
+    expense_id: expenseId,
+    user_id: user.id,
+    team_id: teamId,
+  }));
+
+  const { error: upsertError } = await supabase
+    .from("expense_items")
+    .upsert(itemsToUpsert, { onConflict: 'id', ignoreDuplicates: false });
+
+  if (upsertError) {
+    return { success: false, message: `Error actualitzant conceptes: ${upsertError.message}` };
+  }
+
+  return { success: true, message: "Conceptes sincronitzats correctament." };
 }
 
 
-// --- Server Actions Públiques ---
+// --- Server Actions Públiques (La resta del fitxer no canvia) ---
 
 export async function processOcrAction(formData: FormData): Promise<ActionResult<Record<string, unknown>>> {
-    const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
-    const { supabase } = session;
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase } = session;
 
-    const { data, error } = await supabase.functions.invoke("process-ocr", { body: formData });
-    
-    if (error) {
-      return { success: false, message: error.message }; // ✅ CORREGIT
-    }
-    return { success: true, message: "Document processat amb èxit.", data }; // ✅ CORREGIT
+  const file = formData.get("file") as File | null;
+  if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." };
+
+  const { data, error } = await supabase.functions.invoke("process-ocr", { body: { file_name: file.name, file_type: file.type } });
+
+  if (error) {
+    return { success: false, message: error.message };
+  }
+  return { success: true, message: "Document processat amb èxit.", data };
 }
 
 export async function saveExpenseAction(
-    expenseData: Omit<Expense, "id" | "created_at" | "user_id" | "team_id" | "expense_items"> & { expense_items?: ExpenseItem[] },
-    expenseId: string | null
+  expenseData: ExpenseFormDataForAction,
+  expenseId: string | number | null
 ): Promise<ActionResult<Expense>> {
-    const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
-    const { supabase, user, activeTeamId } = session;
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, user, activeTeamId } = session;
 
-    const { expense_items, ...rest } = expenseData;
-    // Elimina 'expense_items' explícitament per evitar errors de tipus
-    const expenseDetails = { ...rest };
+  const { expense_items, id: formId, ...rest } = expenseData;
+  const currentId: string | number | null = expenseId ?? formId ?? null;
 
-    // Pas 1: Desar la despesa principal
-    const expenseResult = await upsertExpenseDetails(supabase, expenseDetails, expenseId, user.id, activeTeamId);
-    if (!expenseResult.success || !expenseResult.data) {
-      return expenseResult; // Retornem l'error que ja ve formatat
-    }
-    
-    // Pas 2: Sincronitzar els conceptes
-    const itemsResult = await syncExpenseItems(supabase, expenseResult.data.id ?? "", expense_items, user, activeTeamId);
-    if (!itemsResult.success) {
-      return { success: false, message: itemsResult.message, data: undefined }; // Cast to ActionResult<Expense>
-    }
+  const expenseResult = await upsertExpenseDetails(supabase, rest, currentId, user.id, activeTeamId);
+  if (!expenseResult.success || !expenseResult.data) {
+    return expenseResult;
+  }
 
-    revalidatePath("/finances/despeses");
-    return { success: true, message: "Despesa desada amb èxit.", data: expenseResult.data }; // ✅ CORREGIT
+  const newExpenseId = expenseResult.data.id as number;
+  const itemsResult = await syncExpenseItems(supabase, newExpenseId, expense_items, user, activeTeamId);
+  if (!itemsResult.success) {
+    return { success: false, message: itemsResult.message, data: expenseResult.data };
+  }
+
+  revalidatePath("/finances/despeses");
+  if (newExpenseId) {
+    revalidatePath(`/finances/despeses/${newExpenseId}`);
+  }
+
+  return { success: true, message: "Despesa desada amb èxit.", data: expenseResult.data };
 }
 
 export async function uploadAttachmentAction(expenseId: string, formData: FormData): Promise<ActionResult> {
-    const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message }; // ✅ CORREGIT
-    const { supabase, user, activeTeamId } = session;
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, user, activeTeamId } = session;
 
-    const file = formData.get("file") as File | null;
-    if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." }; // ✅ CORREGIT
+  const file = formData.get("file") as File | null;
+  if (!file) return { success: false, message: "No s'ha proporcionat cap fitxer." };
 
-    const filePath = `${activeTeamId}/${expenseId}/${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase.storage.from("despeses-adjunts").upload(filePath, file);
-    if (uploadError) return { success: false, message: uploadError.message }; // ✅ CORREGIT
+  const filePath = `${activeTeamId}/${expenseId}/${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage.from("despeses-adjunts").upload(filePath, file);
+  if (uploadError) return { success: false, message: uploadError.message };
 
-    const { error: dbError } = await supabase.from("expense_attachments").insert({
-        expense_id: expenseId,
-        user_id: user.id,
-        team_id: activeTeamId,
-        file_path: filePath,
-        filename: file.name,
-        mime_type: file.type,
-    });
-    if (dbError) return { success: false, message: dbError.message }; // ✅ CORREGIT
+  const { error: dbError } = await supabase.from("expense_attachments").insert({
+    expense_id: expenseId as unknown as number,
+    user_id: user.id,
+    team_id: activeTeamId,
+    file_path: filePath,
+    filename: file.name,
+    mime_type: file.type,
+  });
+  if (dbError) return { success: false, message: dbError.message };
 
-    revalidatePath("/finances/despeses");
-    return { success: true, message: "Adjunt pujat correctament." }; // ✅ CORREGIT
+  revalidatePath("/finances/despeses");
+  revalidatePath(`/finances/despeses/${expenseId}`);
+  return { success: true, message: "Adjunt pujat correctament." };
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/error.tsx ===================
+export async function deleteExpense(expenseId: number): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase } = session;
 
-"use client"; // Els fitxers d'error han de ser components de client.
+  const { error } = await supabase
+    .from('expenses')
+    .delete()
+    .eq('id', expenseId);
 
-import { Button } from '@/components/ui/button';
-import { useEffect } from 'react';
+  if (error) {
+    console.error("Error deleting expense:", error.message);
+    return { success: false, message: `Error al eliminar la despesa: ${error.message}` };
+  }
 
-export default function ExpensesError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
-  useEffect(() => {
-    // Pots registrar l'error en un servei extern com Sentry
-    console.error(error);
-  }, [error]);
-
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center">
-      <h2 className="text-2xl font-bold mb-4">Alguna cosa ha anat malament!</h2>
-      <p className="mb-6">{error.message}</p>
-      <Button
-        onClick={
-          // Intenta recuperar-se tornant a renderitzar el segment
-          () => reset()
-        }
-      >
-        Torna a intentar-ho
-      </Button>
-    </div>
-  );
+  revalidatePath("/finances/despeses");
+  return { success: true, message: `Despesa eliminada correctament.` };
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/page.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/page.tsx ===================
 
-/**
- * @file page.tsx (Despeses)
- * @summary Punto de entrada de la página, implementando React Suspense para carga optimizada.
- */
-
+// src/app/[locale]/(app)/finances/despeses/page.tsx
 import { Suspense } from 'react';
-import type { Metadata } from 'next';
 import { ExpensesData } from './_components/ExpensesData';
 import { ExpensesSkeleton } from './_components/ExpensesSkeleton';
 
-export const metadata: Metadata = {
-  title: 'Despeses | Ribot',
-};
-
-// Ya no necesitamos exportar los tipos desde aquí.
-
-export default function DespesesPage() {
-  return (
-    <Suspense fallback={<ExpensesSkeleton />}>
-      <ExpensesData />
-    </Suspense>
-  );
-}
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer.tsx ===================
-
 /**
- * @file ExpenseDetailDrawer.tsx
- * @summary Aquest fitxer defineix un component de client que mostra un calaix lateral (drawer)
- * amb els detalls complets d'una despesa. S'encarrega de calcular i formatar les dades
- * financeres, obtenir les URLs dels fitxers adjunts des de Supabase Storage i gestionar la seva descàrrega.
+ * Pàgina principal (Server Component) per a la gestió de despeses.
+ * * ✅ ARQUITECTURA CORRECTA:
+ * 1. La Pàgina (page.tsx) no ha de contenir lògica de dades.
+ * 2. Utilitzem <Suspense> per gestionar l'estat de càrrega.
+ * 3. <ExpensesData> és el Server Component que s'encarrega de l'autenticació
+ * i de la càrrega de dades inicial (les primeres 50).
+ * 4. <ExpensesSkeleton> es mostra mentre <ExpensesData> està carregant.
  */
-
-"use client";
-
-import React, { useState, useEffect, FC } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter } from "@/components/ui/drawer";
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Paperclip, Edit, Download } from 'lucide-react';
-import { format } from "date-fns";
-import { ca, es, enUS } from "date-fns/locale";
-import { toast } from 'sonner';
-import { type Expense } from '@/types/finances/index';
-import { useLocale, useTranslations } from 'next-intl';
-
-interface ExpenseDetailDrawerProps {
-  expense: Expense | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onEdit: (expense: Expense) => void;
-}
-
-// Tipus per a un adjunt que inclou la seva URL pública.
-type AttachmentWithUrl = {
-  id: string;
-  publicUrl: string;
-  filename: string;
-  mime_type: string;
-};
-
-export const ExpenseDetailDrawer: FC<ExpenseDetailDrawerProps> = ({ expense, isOpen, onClose, onEdit }) => {
-  const [attachmentUrls, setAttachmentUrls] = useState<AttachmentWithUrl[]>([]);
-  const supabase = createClient()
-;
-  const t = useTranslations('Expenses');
-  const locale = useLocale();
-
-  const getDateLocale = () => {
-    switch (locale) {
-      case 'es': return es;
-      case 'en': return enUS;
-      default: return ca;
-    }
-  };
-  // Aquest efecte s'executa quan el component rep una nova despesa.
-  // La seva funció és obtenir les URLs públiques dels fitxers adjunts des de Supabase Storage.
-  useEffect(() => {
-    if (expense && expense.expense_attachments) {
-      const urls = expense.expense_attachments.map(att => {
-        const { data } = supabase.storage.from('despeses-adjunts').getPublicUrl(att.file_path);
-        return { ...att, publicUrl: data.publicUrl };
-      });
-      setAttachmentUrls(urls);
-    }
-  }, [expense, supabase.storage]);
-
-  /**
-   * @summary Gestor per a la descàrrega d'un fitxer adjunt des del navegador.
-   */
-  const handleDownload = async (attachment: { publicUrl: string, filename: string }) => {
-    try {
-      // Fem una petició 'fetch' per obtenir el contingut del fitxer.
-      const response = await fetch(attachment.publicUrl);
-      if (!response.ok) throw new Error('Network response was not ok.');
-      // Convertim la resposta en un 'Blob'.
-      const blob = await response.blob();
-      // Creem una URL temporal al navegador per a aquest 'Blob'.
-      const url = window.URL.createObjectURL(blob);
-      // Creem un element <a> invisible, hi assignem la URL i el nom del fitxer, i simulem un clic per iniciar la descàrrega.
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = attachment.filename;
-      document.body.appendChild(a);
-      a.click();
-      // Neteja: eliminem l'URL i l'element <a> del DOM.
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch {
-      toast.error(t('downloadErrorTitle'), { description: t('downloadErrorDescription') });
-    }
-  };
-
-  // Si no hi ha cap despesa seleccionada, no renderitzem res.
-  if (!expense) return null;
-
-  // Calculem la base imposable per a la seva visualització.
-  const baseImposable = (expense.subtotal || 0) - (expense.discount_amount || 0);
-
-
-  return (
-    <Drawer open={isOpen} onClose={onClose}>
-      {/* ✅ CORRECCIÓ: DrawerContent ja gestiona els colors de fons i text per a cada tema. */}
-      <DrawerContent className="p-6">
-        <div className="max-w-4xl mx-auto w-full">
-          <DrawerHeader className="text-left p-0 mb-4">
-            <DrawerTitle className="text-2xl font-bold">
-              {expense.suppliers?.nom || expense.description}
-            </DrawerTitle>
-            <DrawerDescription>
-              {expense.invoice_number ? t('drawerDescInvoice', { invoiceNumber: expense.invoice_number }) : t('drawerDescNoInvoice')}
-            </DrawerDescription>
-          </DrawerHeader>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* --- Adjunts --- */}
-            <div className="md:col-span-1 space-y-4">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Paperclip className="w-4 h-4" /> {t('attachments')}
-              </h3>
-              {attachmentUrls.length > 0 ? (
-                <div className="space-y-2">
-                  {attachmentUrls.map(att => (
-                    // ✅ CORRECCIÓ: Usem 'bg-muted' per a un fons que s'adapta.
-                    <div key={att.id} className="bg-muted p-2 rounded-lg flex items-center justify-between">
-                      <a href={att.publicUrl} target="_blank" rel="noopener noreferrer" className="truncate text-sm hover:underline">
-                        {att.filename}
-                      </a>
-                      <Button variant="ghost" size="icon" onClick={() => handleDownload(att)}>
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('noAttachments')}</p>
-              )}
-            </div>
-
-
-            {/* --- Detall --- */}
-            {/* ✅ CORRECCIÓ: Usem 'bg-muted' per a un fons que s'adapta. */}
-            <div className="md:col-span-2 bg-muted p-6 rounded-xl space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">{t('date')}</span>
-                <span>{expense.expense_date ? format(new Date(expense.expense_date), "PPP", { locale: getDateLocale() }) : '-'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">{t('category')}</span>
-                <Badge variant="secondary" className={undefined}>{expense.category || t('noCategory')}</Badge>
-              </div>
-              <div className="border-t border-border my-4"></div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><p className="text-muted-foreground">{t('subtotal')}</p><p className="font-mono">€{(expense.subtotal || 0).toFixed(2)}</p></div>
-                {expense.discount_amount && expense.discount_amount > 0 && (
-                  <div className="flex justify-between text-orange-500 dark:text-orange-400">
-                    <p>{t('discount')}</p>
-                    <p className="font-mono">-€{(expense.discount_amount).toFixed(2)}</p>
-                  </div>
-                )}
-                <div className="flex justify-between"><p className="text-muted-foreground">{t('taxBase')}</p><p className="font-mono">€{baseImposable.toFixed(2)}</p></div>
-                <div className="flex justify-between"><p className="text-muted-foreground">{t('vat', { taxRate: expense.tax_rate || 21 })}</p><p className="font-mono">€{(expense.tax_amount || 0).toFixed(2)}</p></div>
-              </div>
-              <div className="flex justify-between items-center text-xl font-bold border-t border-foreground/20 pt-2 mt-2">
-                <p>{t('total')}</p>
-                <p className="font-mono">- €{(expense.total_amount || 0).toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Peu del calaix amb els botons d'acció */}
-          <DrawerFooter className="flex-row justify-start p-0 pt-6 gap-2">
-            <Button onClick={() => onEdit(expense)}>
-              <Edit className="w-4 h-4 mr-2" />  {t('editButton')}
-            </Button>
-            <Button variant="outline" onClick={onClose}>
-              {t('closeButton')}
-            </Button>
-          </DrawerFooter>
-        </div>
-      </DrawerContent>
-    </Drawer>
-  );
-};
-
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog.tsx ===================
-
-// src/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog.tsx
-
-"use client";
-
-import React, { FC } from "react";
-import { useLocale, useTranslations } from "next-intl";
-import { format } from "date-fns";
-import { ca, es, enUS } from "date-fns/locale";
-import { cn } from "@/lib/utils/utils";
-
-// Hooks
-import { useExpenseForm } from './_hooks/useExpenseForm';
-import { useExpenseActions } from './_hooks/useExpenseActions';
-
-// UI Components
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-
-// Icons
-import { Loader2, Plus, Calendar as CalendarIcon, Check, ChevronsUpDown, Trash2, BrainCircuit, UploadCloud, Paperclip } from "lucide-react";
-
-// Types
-import { ExpenseDialogProps, ExpenseFormDataForAction } from "@/types/finances/index";
-
-// --- Tipus Locals del Component ---
-
-
-
-
-// --- Component Principal ---
-
-export const ExpenseDialog: FC<ExpenseDialogProps> = ({ isOpen, setIsOpen, initialData, suppliers }) => {
-  const t = useTranslations("Expenses");
-  const locale = useLocale();
-
-  // ✅ 1. Tota la lògica de les accions i estats de càrrega està encapsulada aquí.
-  const { isSaving, isProcessingOcr, isUploading, processOcr, uploadAttachment, saveExpense } = useExpenseActions();
-
-  // ✅ 2. Tota la lògica del formulari (estat, càlculs, handlers) està encapsulada aquí.
-  const {
-    currentExpense,
-    setCurrentExpense,
-    selectedSupplier,
-    setSelectedSupplier,
-    comboboxOpen,
-    setComboboxOpen,
-    handleItemChange,
-    addItem,
-    removeItem,
-    updateFormWithOcrData,
-  } = useExpenseForm(initialData, suppliers, isOpen);
-
-  // --- Funcions "Pont" que connecten la UI amb els hooks ---
-
-  const handleOcrUpload = (file?: File) => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    processOcr(formData, updateFormWithOcrData);
-  };
-
-  const handleAttachmentUpload = (file?: File) => {
-    if (!file || !initialData?.id) return;
-    const formData = new FormData();
-    formData.append("file", file);
-    uploadAttachment(initialData.id, formData);
-  };
-
-  const handleSave = () => {
-  const supplierData = selectedSupplier
-    ? { nom: selectedSupplier.nom }
-    : null;
-
-  const dataToSend: ExpenseFormDataForAction = {
-    supplier_id: currentExpense.supplier_id,
-    invoice_number: currentExpense.invoice_number,
-    expense_date: currentExpense.expense_date,
-    category: currentExpense.category,
-    description: currentExpense.description,
-    notes: currentExpense.notes ?? null,
-    discount_amount: currentExpense.discount_amount ?? 0,
-    tax_rate: currentExpense.tax_rate ?? 21,
-    expense_items: currentExpense.expense_items ?? [],
-    subtotal: currentExpense.subtotal ?? 0,
-    tax_amount: currentExpense.tax_amount ?? 0,
-    total_amount: currentExpense.total_amount ?? 0,
-
-    // ✅ Camps extra
-    expense_attachments: currentExpense.expense_attachments ?? [],
-    suppliers: supplierData, // <-- ara és type-safe
-  };
-
-  const expenseId = initialData?.id ?? currentExpense.id ?? null;
-  saveExpense(dataToSend, expenseId, () => setIsOpen(false));
-};
-
-
-  const getDateLocale = () => ({ es, en: enUS, ca }[locale] || ca);
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-w-4xl h-[95vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{initialData ? t("dialogEditTitle") : t("dialogNewTitle")}</DialogTitle>
-          <DialogDescription>{t("dialogDescription")}</DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto pr-4 -mr-6">
-          <form
-            onSubmit={(e) => { e.preventDefault(); handleSave(); }}
-            className="space-y-6 pt-4"
-          >
-            {/* --- Secció OCR --- */}
-            <div className="bg-muted/50 p-4 rounded-lg">
-              <Label htmlFor="ocr-file-dialog" className="flex items-center gap-2 font-bold mb-2 cursor-pointer">
-                <BrainCircuit className="w-5 h-5 text-primary" /> {t("fillWithAI")}
-              </Label>
-              <Input
-                id="ocr-file-dialog" type="file" accept="image/*,application/pdf" className="text-xs"
-                onChange={(e) => handleOcrUpload(e.target.files?.[0])}
-                disabled={isProcessingOcr}
-              />
-              {isProcessingOcr && (
-                <p className="text-xs mt-2 flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" /> {t("processing")}
-                </p>
-              )}
-            </div>
-
-            {/* --- Camps Principals --- */}
-            <div className="space-y-2">
-              <Label>{t("generalDescription")}</Label>
-              <Input
-                placeholder={t("descriptionPlaceholder")}
-                value={currentExpense.description || ""}
-                onChange={(e) => setCurrentExpense((p) => ({ ...p, description: e.target.value }))}
-                required
-              />
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t("supplier")}</Label>
-                <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" className="w-full justify-between text-left font-normal">
-                      {selectedSupplier?.nom || t("selectSupplier")}
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0 glass-effect">
-                    <Command>
-                      <CommandInput placeholder={t("searchSupplier")} />
-                      <CommandList>
-                        <CommandEmpty>{t("noSupplierFound")}</CommandEmpty>
-                        <CommandGroup>
-                          {suppliers.map((s) => (
-                            <CommandItem key={s.id} value={s.nom} onSelect={() => {
-                              setSelectedSupplier(s);
-                              setCurrentExpense((p) => ({ ...p, supplier_id: s.id }));
-                              setComboboxOpen(false);
-                            }}>
-                              <Check className={cn("mr-2 h-4 w-4", currentExpense.supplier_id === s.id ? "opacity-100" : "opacity-0")} />
-                              {s.nom}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label>{t("invoiceNo")}</Label>
-                <Input
-                  value={currentExpense.invoice_number ?? ""}
-                  onChange={(e) => setCurrentExpense((p) => ({ ...p, invoice_number: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t("expenseDate")}</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !currentExpense.expense_date && "text-muted-foreground")}>
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {currentExpense.expense_date ? format(new Date(currentExpense.expense_date), "PPP", { locale: getDateLocale() }) : <span>{t("pickDate")}</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={currentExpense.expense_date ? new Date(currentExpense.expense_date) : undefined}
-                      onSelect={(d) => setCurrentExpense((p) => ({ ...p, expense_date: d?.toISOString() || "" }))}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-2">
-                <Label>{t("category")}</Label>
-                <Input
-                  placeholder={t("categoryPlaceholder")}
-                  value={currentExpense.category ?? ""}
-                  onChange={(e) => setCurrentExpense((p) => ({ ...p, category: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            {/* --- Taula de Conceptes (Items) --- */}
-            <div className="space-y-2">
-              <Label className="font-bold">{t("items")}</Label>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-2/4">{t("itemDescription")}</TableHead>
-                      <TableHead>{t("itemQuantity")}</TableHead>
-                      <TableHead>{t("itemUnitPrice")}</TableHead>
-                      <TableHead className="text-right">{t("itemTotal")}</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(currentExpense.expense_items || []).map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Input value={item.description || ""} onChange={(e) => handleItemChange(index, "description", e.target.value)} placeholder={t("descriptionPlaceholder")} />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" value={item.quantity} onChange={(e) => handleItemChange(index, "quantity", parseFloat(e.target.value) || 0)} className="w-20" />
-                        </TableCell>
-                        <TableCell>
-                          <Input type="number" step="0.01" value={item.unit_price} onChange={(e) => handleItemChange(index, "unit_price", parseFloat(e.target.value) || 0)} className="w-24" />
-                        </TableCell>
-                        <TableCell className="text-right font-mono">€{((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addItem} className="mt-2">
-                <Plus className="w-4 h-4 mr-2" /> {t("addItem")}
-              </Button>
-            </div>
-
-            {/* --- Secció de Notes i Totals --- */}
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-2">
-                <Label>{t("notes")}</Label>
-                <Textarea value={currentExpense.notes ?? ""} onChange={(e) => setCurrentExpense((p) => ({ ...p, notes: e.target.value }))} rows={5} />
-              </div>
-              <div className="space-y-4 bg-muted p-4 rounded-lg">
-                <div className="flex justify-between items-center text-sm"><p className="text-muted-foreground">{t("subtotal")}</p><p className="font-mono">€{(currentExpense.subtotal || 0).toFixed(2)}</p></div>
-                <div className="flex justify-between items-center text-sm text-orange-400">
-                  <Label htmlFor="discount-input-expense" className="text-orange-400">{t("discount")}</Label>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono">-€</span>
-                    <Input id="discount-input-expense" type="number" step="0.01" value={currentExpense.discount_amount ?? ""} onChange={(e) => setCurrentExpense((p) => ({ ...p, discount_amount: parseFloat(e.target.value) || 0 }))} className="w-24 h-8 font-mono text-right" placeholder="0.00" />
-                  </div>
-                </div>
-                <div className="flex justify-between items-center text-sm pt-2 border-t border-white/10"><p className="font-semibold">{t("taxBase")}</p><p className="font-mono font-semibold">€{((currentExpense.subtotal || 0) - (currentExpense.discount_amount || 0)).toFixed(2)}</p></div>
-                <div className="flex justify-between items-center text-sm">
-                  <div className="flex items-center gap-2"><p className="text-muted-foreground">{t("vat", { taxRate: currentExpense.tax_rate || 21 })}</p><Input type="number" value={currentExpense.tax_rate ?? 21} onChange={(e) => setCurrentExpense((p) => ({ ...p, tax_rate: parseFloat(e.target.value) || 0 }))} className="w-16 h-8" /><span>%</span></div>
-                  <p className="font-mono">€{(currentExpense.tax_amount || 0).toFixed(2)}</p>
-                </div>
-                <div className="flex justify-between items-center text-lg font-bold border-t border-white/20 pt-2 mt-2"><p>{t("total")}</p><p className="font-mono">€{(currentExpense.total_amount || 0).toFixed(2)}</p></div>
-              </div>
-            </div>
-
-            {/* --- Secció d'Adjunts --- */}
-            {initialData?.id && (
-              <div className="space-y-2">
-                <Label htmlFor="attachment-file-expense" className="flex items-center gap-2 font-bold"><UploadCloud className="w-5 h-5 text-purple-400" /> {t("uploadFiles")}</Label>
-                <Input id="attachment-file-expense" type="file" className="text-xs" onChange={(e) => handleAttachmentUpload(e.target.files?.[0])} disabled={isUploading} />
-                {isUploading && <p className="text-xs mt-2 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> {t("uploading")}</p>}
-                {(currentExpense.expense_attachments ?? []).length > 0 && (
-                  <div className="space-y-1 pt-2">
-                    {currentExpense.expense_attachments!.map((att) => (
-                      <div key={att.id} className="flex items-center justify-between text-sm bg-muted p-2 rounded">
-                        <div className="flex items-center gap-2"><Paperclip className="w-4 h-4" />{att.filename}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </form>
-        </div>
-
-        <DialogFooter className="pt-4 border-t border-white/10">
-          <DialogClose asChild><Button type="button" variant="ghost">{t("cancelButton")}</Button></DialogClose>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-            {initialData ? t("saveChangesButton") : t("createButton")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-export default ExpenseDialog;
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseTable.tsx ===================
-
-"use client";
-
-import React, { FC } from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Paperclip } from 'lucide-react';
-import { format } from "date-fns";
-
-import { type Expense } from '@/types/finances/index';
-import { useLocale, useTranslations } from 'next-intl';
-import { ca, es, enUS } from "date-fns/locale";
-
-// Definim les propietats que espera el component.
-interface ExpenseTableProps {
-    expenses: Expense[]; // Llista de despeses a mostrar.
-    onViewDetails: (expense: Expense) => void; // Funció a executar en clicar una fila.
-}
-
-/**
- * Component presentacional per mostrar la llista de despeses en format de taula.
- * Cada fila és clicable per obrir el calaix de detalls.
- */
-export const ExpenseTable: FC<ExpenseTableProps> = ({ expenses, onViewDetails }) => {
-    const t = useTranslations('Expenses');
-    const locale = useLocale();
-
-    const getDateLocale = () => {
-        switch (locale) {
-            case 'es': return es;
-            case 'en': return enUS;
-            default: return ca;
-        }
-    };
+export default async function ExpensesPage() {
     return (
-        <div className="glass-effect rounded-xl overflow-hidden">
-            <Table>
-                <TableHeader>
-                    <TableRow className="border-b-white/10 hover:bg-white/5">
-                        <TableHead>{t('tableHeaderSupplier')}</TableHead>
-                        <TableHead>{t('tableHeaderInvoiceNo')}</TableHead>
-                        <TableHead>{t('tableHeaderDate')}</TableHead>
-                        <TableHead>{t('tableHeaderCategory')}</TableHead>
-                        <TableHead className="text-right">{t('tableHeaderAmount')}</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {expenses.length > 0 ? expenses.map(expense => (
-                        // Fem que tota la fila sigui clicable per a una millor UX.
-                        <TableRow key={expense.id} className="cursor-pointer hover:bg-white/10 border-b-white/10" onClick={() => onViewDetails(expense)}>
-                            <TableCell className="font-medium flex items-center gap-2">
-                                {/* Mostra el nom del proveïdor o la descripció general si no n'hi ha. */}
-                                {expense.suppliers?.nom || expense.description || 'N/A'}
-                                {/* Mostra una icona de clip si la despesa té arxius adjunts. */}
-                                {expense.expense_attachments && expense.expense_attachments.length > 0 && (
-                                    <Paperclip className="h-4 w-4 text-muted-foreground" />
-                                )}
-                            </TableCell>
-                            <TableCell className="font-mono text-muted-foreground">{expense.invoice_number || '-'}</TableCell>
-                            <TableCell>{expense.expense_date ? format(new Date(expense.expense_date), "dd MMM, yyyy", { locale: getDateLocale() }) : '-'}</TableCell>
-                            <TableCell><span className="bg-white/10 px-2 py-1 text-xs rounded-full">{expense.category || '-'}</span></TableCell>
-                            <TableCell className="text-right font-mono">- €{(expense.total_amount || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}</TableCell>
-                        </TableRow>
-                    )) : (
-                        // Fila per a l'estat buit, que ocupa totes les columnes.
-                        <TableRow>
-                            <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                                {t('emptyState')}
-                            </TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </div>
+        <Suspense fallback={<ExpensesSkeleton />}>
+            <ExpensesData />
+        </Suspense>
     );
-};
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses/_hooks/useExpenseActions.ts ===================
-
-import { useTransition } from 'react';
-import { toast } from 'sonner';
-import { useTranslations } from 'next-intl';
-import {
-  processOcrAction,
-  uploadAttachmentAction,
-  saveExpenseAction
-} from '@/app/[locale]/(app)/finances/despeses/actions';
-import type { ExpenseFormDataForAction } from '@/types/finances/index'; // ✅ millor importar directament de types
-
-export function useExpenseActions() {
-  const t = useTranslations('Expenses');
-  const [isSaving, startSaveTransition] = useTransition();
-  const [isProcessingOcr, startOcrTransition] = useTransition();
-  const [isUploading, startUploadTransition] = useTransition();
-
-  const processOcr = async (
-    formData: FormData,
-    onOcrSuccess: (data: Record<string, unknown>) => void
-  ) => {
-    startOcrTransition(async () => {
-      const result = await processOcrAction(formData);
-      if (!result.success) {
-        toast.error(t('ocrError'), { description: result.message });
-        return;
-      }
-      if (!result.data) {
-        toast.error(t('extractError'));
-        return;
-      }
-      onOcrSuccess(result.data);
-      toast.success(t('dataExtracted'), { description: t('reviewForm') });
-    });
-  };
-
-  const uploadAttachment = async (expenseId: string, formData: FormData) => {
-    startUploadTransition(async () => {
-      const result = await uploadAttachmentAction(expenseId, formData);
-      if (!result.success) {
-        toast.error(t('uploadErrorTitle'), { description: result.message });
-      } else {
-        toast.success(t('uploadSuccessTitle'), {
-          description: t('uploadSuccessDescription'),
-        });
-        window.location.reload();
-      }
-    });
-  };
-
-  const saveExpense = async (
-    data: ExpenseFormDataForAction,
-    expenseId: string | null,
-    onSaveSuccess: () => void
-  ) => {
-    startSaveTransition(async () => {
-      const result = await saveExpenseAction(data, expenseId);
-      if (!result.success) {
-        toast.error(t('saveErrorTitle'), { description: result.message });
-      } else {
-        toast.success(t('saveSuccessTitle'), {
-          description: t('saveSuccessDescription'),
-        });
-        onSaveSuccess();
-        window.location.reload();
-      }
-    });
-  };
-
-  return {
-    isSaving,
-    isProcessingOcr,
-    isUploading,
-    processOcr,
-    uploadAttachment,
-    saveExpense,
-  };
 }
 
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses/_hooks/useExpenseForm.ts ===================
-
-// src/app/[locale]/(app)/finances/despeses/_components/expenses/hooks/useExpenseForm.ts
-
-"use client";
-
-import { useState, useEffect } from 'react';
-import type { Expense, Supplier, ExpenseItem, ExpenseFormState , OcrExpenseData} from '@/types/finances/index';
-
-// Aquesta funció ara és vàlida perquè els camps que falten són opcionals
-const getInitialExpenseState = (): ExpenseFormState => ({
-  supplier_id: null,
-  invoice_number: null,
-  expense_date: new Date().toISOString(),
-  category: null,
-  description: "",
-  notes: "",
-  discount_amount: 0,
-  tax_rate: 21,
-  expense_items: [{ description: "", quantity: 1, unit_price: 0 }],
-  expense_attachments: [],
-  subtotal: 0,
-  tax_amount: 0,
-  total_amount: 0,
-});
-
-const mapExpenseToFormState = (exp: Expense): ExpenseFormState => ({
-  id: exp.id ?? undefined,
-  supplier_id: exp.supplier_id ?? null,
-  invoice_number: exp.invoice_number ?? null,
-  expense_date: exp.expense_date ?? new Date().toISOString(),
-  category: exp.category ?? null,
-  description: exp.description ?? "",
-  notes: exp.notes ?? "",
-  discount_amount: exp.discount_amount ?? 0,
-  tax_rate: exp.tax_rate ?? 21,
-  expense_items:
-    (Array.isArray(exp.expense_items) && exp.expense_items.length > 0)
-      ? exp.expense_items
-      : [{ description: "", quantity: 1, unit_price: 0 }],
-  expense_attachments: exp.expense_attachments ?? [],
-  subtotal: exp.subtotal ?? 0,
-  tax_amount: exp.tax_amount ?? 0,
-  total_amount: exp.total_amount ?? 0,
-  created_at: exp.created_at ?? undefined,
-  user_id: exp.user_id ?? undefined,
-});
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/actions.ts ===================
 
 
-// --- El Hook Principal ---
 
-export function useExpenseForm(initialData: Expense | null, suppliers: Supplier[], isOpen: boolean) {
-    
-    // --- Estats del formulari ---
-    const [currentExpense, setCurrentExpense] = useState<ExpenseFormState>(getInitialExpenseState());
-    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-    const [comboboxOpen, setComboboxOpen] = useState(false);
-    
-    // --- Efectes per sincronitzar l'estat ---
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/page.tsx ===================
 
-    // Efecte per inicialitzar o reiniciar el formulari quan s'obre el diàleg
-    useEffect(() => {
-        if (isOpen) {
-            const newState = initialData ? mapExpenseToFormState(initialData) : getInitialExpenseState();
-            setCurrentExpense(newState);
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/page.tsx
+// Utilitzem el patró Data fetching Component -> Client Component
+import { notFound } from 'next/navigation';
+// import { getTranslations } from 'next-intl/server'; // ❌ Eliminat, no s'utilitza aquí
+import { ExpenseDetailData } from './_components/ExpenseDetailData'; // Component que farà el fetch
+// import { ExpenseDetailSkeleton } from './_components/ExpenseDetailSkeleton'; // ❌ Eliminat, utilitza loading.tsx
 
-            if (newState.supplier_id) {
-                setSelectedSupplier(suppliers.find((s) => s.id === newState.supplier_id) ?? null);
-            } else {
-                setSelectedSupplier(null);
-            }
-        }
-    }, [initialData, isOpen, suppliers]);
+interface ExpenseDetailPageProps {
+    params: {
+        expenseId: string;
+        locale: string;
+    };
+    searchParams: {
+        [key: string]: string | string[] | undefined;}
+}
 
-    // Efecte per recalcular els totals automàticament
-    useEffect(() => {
-        const items = currentExpense.expense_items ?? [];
-        const subtotal = items.reduce(
-            (acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0),
-            0
+export default async function ExpenseDetailPage({ params }: ExpenseDetailPageProps) {
+    // ✅ Next.js App Router & Server Components: L'ID es llegeix directament del path
+    const expenseId = params.expenseId; 
+
+    // ✅ Bones Pràctiques: 'new' vs 'id'
+    if (expenseId === 'new') {
+        // Renderitzar formulari de creació
+        // Passem null perquè la capa de dades sàpiga que no ha de fer cap fetch.
+        return (
+            <ExpenseDetailData expenseId={null} /> 
         );
-        const discount = Number(currentExpense.discount_amount || 0);
-        const taxRate = Number(currentExpense.tax_rate ?? 21);
-        const baseImposable = subtotal - discount;
-        const taxAmount = baseImposable * (taxRate / 100);
-        const totalAmount = baseImposable + taxAmount;
-
-        setCurrentExpense((prev) => ({
-            ...prev,
-            subtotal,
-            tax_amount: taxAmount,
-            total_amount: totalAmount,
-        }));
-    }, [currentExpense.expense_items, currentExpense.tax_rate, currentExpense.discount_amount]);
-
-    // --- Gestors d'esdeveniments (Handlers) ---
-
-    const handleItemChange = (index: number, field: keyof ExpenseItem, value: string | number) => {
-        setCurrentExpense((prev) => {
-            const items = [...prev.expense_items];
-            items[index] = { ...items[index], [field]: value };
-            return { ...prev, expense_items: items };
-        });
-    };
-
-    const addItem = () => {
-        setCurrentExpense((prev) => ({
-            ...prev,
-            expense_items: [...prev.expense_items, { description: "", quantity: 1, unit_price: 0 }],
-        }));
-    };
-
-    const removeItem = (index: number) => {
-        setCurrentExpense((prev) => ({
-            ...prev,
-            expense_items: prev.expense_items.filter((_, i) => i !== index),
-        }));
-    };
-    
-
-
-    const updateFormWithOcrData = (data: OcrExpenseData) => {
-        const newItems: ExpenseItem[] = Array.isArray(data.expense_items)
-            ? data.expense_items.map((item) => ({
-                description: typeof item.description === "string" ? item.description : "",
-                quantity: Number(item.quantity ?? 1),
-                unit_price: Number(item.unit_price ?? 0),
-            }))
-            : [{ description: "", quantity: 1, unit_price: 0 }];
-
-        const partialUpdate: Partial<ExpenseFormState> = {
-            expense_items: newItems,
-            expense_date: data.issue_date ? new Date(data.issue_date).toISOString() : undefined,
-            description: data.description ? String(data.description) : undefined,
-            invoice_number: data.invoice_number ? String(data.invoice_number) : undefined,
-        };
-        
-        // Filtrem per no sobreescriure camps amb 'undefined'
-        const update = Object.fromEntries(Object.entries(partialUpdate).filter(([, v]) => v !== undefined));
-
-        setCurrentExpense((prev) => ({ ...prev, ...update }));
-    };
-
-    // --- Retornem l'estat i les funcions que el component necessitarà ---
-    return {
-        currentExpense,
-        setCurrentExpense,
-        selectedSupplier,
-        setSelectedSupplier,
-        comboboxOpen,
-        setComboboxOpen,
-        handleItemChange,
-        addItem,
-        removeItem,
-        updateFormWithOcrData,
-    };
-}
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/expenses-client.tsx ===================
-
-/**
- * @file expenses-client.tsx
- * @summary Aquest fitxer conté el component de client que gestiona tota la interfície interactiva
- * de la pàgina de Gestió de Despeses. S'encarrega d'orquestrar la visualització de la taula,
- * l'obertura del diàleg per crear/editar despeses i del calaix lateral per veure'n els detalls.
- */
-
-"use client";
-
-import React, { useState, useOptimistic} from 'react';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
-import { ExpenseDialog } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDialog';
-import { ExpenseTable } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseTable';
-import { ExpenseDetailDrawer } from '@/app/[locale]/(app)/finances/despeses/_components/expenses/ExpenseDetailDrawer';
-import { type Expense, type Supplier } from '@/types/finances/index';
-import { createClient } from '@/lib/supabase/client';
-import { useTranslations } from 'next-intl';
-
-interface ExpensesClientProps {
-  initialExpenses: Expense[];
-  initialSuppliers: Supplier[];
-}
-
-export function ExpensesClient({ initialExpenses, initialSuppliers }: ExpensesClientProps) {
-  const t = useTranslations('Expenses');
-
-
-  // NOU: L'estat optimista.
-  // 'state' és el valor base (les despeses del servidor).
-  // 'action' és la nova despesa que afegim "optimísticament".
-  const [optimisticExpenses] = useOptimistic<Expense[], Expense>(
-    initialExpenses,
-    (state, newExpense) => {
-      // Aquesta funció defineix com canvia l'estat.
-      // Si la despesa ja existeix, la reemplacem. Si no, l'afegim al principi.
-      const existingIndex = state.findIndex(e => e.id === newExpense.id);
-      if (existingIndex !== -1) {
-        state[existingIndex] = newExpense;
-        return [...state];
-      }
-      return [newExpense, ...state];
-    }
-  );
-  // Gestió de l'estat del component.
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false); // Controla la visibilitat del diàleg de creació/edició.
-  const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false); // Controla la visibilitat del calaix de detalls.
-  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null); // Emmagatzema la despesa seleccionada.
-  const supabase = createClient()
-    ;
-
-  /**
-   * @summary Gestor per obrir el diàleg per crear una nova despesa.
-   */
-  const handleCreateNew = () => {
-    setSelectedExpense(null); // Assegurem que no hi ha dades inicials.
-    setIsFormDialogOpen(true);
-  };
-
-  /**
-   * @summary Gestor per veure els detalls complets d'una despesa.
-   * Aquesta funció fa una nova consulta al client per obtenir totes les dades relacionades
-   * (ítems, adjunts) abans d'obrir el calaix.
-   */
-  const handleViewDetails = async (expense: Expense) => {
-    const { data: fullExpense } = await supabase
-      .from('expenses')
-      .select('*, suppliers(*), expense_items(*), expense_attachments(*)')
-      .eq('id', expense.id)
-      .single();
-    setSelectedExpense(fullExpense || expense);
-    setIsDetailDrawerOpen(true);
-  };
-
-  /**
-   * @summary Gestor per passar del calaix de detalls al diàleg d'edició.
-   */
-  const handleEditFromDrawer = (expense: Expense) => {
-    setIsDetailDrawerOpen(false);
-    setSelectedExpense(expense);
-    setIsFormDialogOpen(true);
-  };
-
-  /**
-    * NOU: Funció que s'executa quan el diàleg de formulari desa les dades.
-    * Aquesta funció serà passada com a prop a `ExpenseDialog`.
-    */
-  
-
-  return (
-    <>
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-        {/* Capçalera de la pàgina amb títol i botó d'acció. */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">{t('title')}</h1>
-          <Button onClick={handleCreateNew}>
-            <Plus className="w-4 h-4 mr-2" /> {t('newButton')}
-          </Button>
-        </div>
-
-        {/* La taula de despeses rep les dades inicials i una funció per gestionar el clic en una fila. */}
-        <ExpenseTable expenses={optimisticExpenses} onViewDetails={handleViewDetails} />
-      </motion.div>
-
-      {/* Els components de diàleg i calaix es mantenen fora del flux principal per a un millor rendiment
-          i per gestionar la seva visibilitat a través de l'estat del component pare. */}
-      <ExpenseDetailDrawer
-        expense={selectedExpense}
-        isOpen={isDetailDrawerOpen}
-        onClose={() => setIsDetailDrawerOpen(false)}
-        onEdit={handleEditFromDrawer}
-      />
-
-      <ExpenseDialog
-        isOpen={isFormDialogOpen}
-        setIsOpen={setIsFormDialogOpen}
-        initialData={selectedExpense}
-        suppliers={initialSuppliers}
-
-      />
-    </>
-  );
-}
-
-
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/ExpensesData.tsx ===================
-
-// /app/finances/despeses/_components/ExpensesData.tsx
-
-import { createClient } from '@/lib/supabase/server';
-
-import { redirect } from 'next/navigation';
-import { ExpensesClient } from './expenses-client';
-
-export async function ExpensesData() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) redirect('/login');
-
-    // --- LÒGICA D'EQUIP ACTIU DEFINITIVA ---
-    const { data: claimsString, error: claimsError } = await supabase.rpc('get_current_jwt_claims');
-    if (claimsError || !claimsString) {
-        redirect('/settings/team');
-    }
-    const claims = JSON.parse(claimsString);
-    if (!claims.app_metadata?.active_team_id) {
-        redirect('/settings/team');
-    }
-    // ------------------------------------
-
-    // Les consultes ara són segures i no necessiten filtres manuals.
-    // La RLS filtrarà 'expenses' i 'suppliers' automàticament.
-    const [expensesRes, suppliersRes] = await Promise.all([
-        supabase.from('expenses').select('*, suppliers(nom), expense_attachments(id)').order('expense_date', { ascending: false }),
-        supabase.from('suppliers').select('id, nom').order('nom')
-    ]);
-    // CANVI: En lloc d'un console.error, llancem un error de veritat.
-    if (expensesRes.error || suppliersRes.error) {
-        const error = expensesRes.error || suppliersRes.error;
-        console.error("Error en carregar les dades de despeses:", error);
-        // Això aturarà el renderitzat i farà que Next.js busqui el fitxer error.tsx més proper.
-        throw new Error("No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
     }
 
-    return <ExpensesClient initialExpenses={expensesRes.data || []} initialSuppliers={suppliersRes.data || []} />;
+    // Assumint que l'ID de la DB és un nombre (bigint)
+    const id = parseInt(expenseId);
+
+    if (isNaN(id) || id <= 0) {
+        // Si no és 'new' i no és un nombre vàlid, retornem 404
+        notFound(); 
+    }
+
+    // El component 'ExpenseDetailData' farà el fetch i passarà la dada al client component
+    return (
+        <ExpenseDetailData expenseId={id} />
+    );
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/despeses/_components/ExpensesSkeleton.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_components/ExpenseAttachmentCard.tsx ===================
 
-/**
- * @file ExpensesSkeleton.tsx
- * @summary Muestra un esqueleto de carga para la página de Gastos.
- */
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseAttachmentCard.tsx
 "use client";
 
 import React from 'react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { FileText, Download, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { ExpenseAttachment } from '@/types/finances/expenses';
+import { useTranslations } from 'next-intl';
 
-export const ExpensesSkeleton: React.FC = () => (
-    <div className="space-y-8 animate-pulse">
-        {/* Esqueleto para la cabecera */}
-        <div className="flex justify-between items-center">
-            <Skeleton className="h-9 w-1/3" />
-            <Skeleton className="h-10 w-36" />
+interface ExpenseAttachmentCardProps {
+    attachment: ExpenseAttachment;
+    // L'ID de la despesa és útil per a la lògica d'eliminació/descàrrega
+    expenseId: number; 
+    // Assumim una funció d'eliminació passada com a prop o injectada amb un hook
+    onDelete?: (attachmentId: string) => void;
+}
+
+/**
+ * Component per visualitzar i gestionar un adjunt d'una despesa.
+ * ✅ El Per Què: Centralitza la lògica de previsualització, descàrrega i eliminació 
+ * d'adjunts de Supabase Storage, mantenint net el component pare.
+ */
+export function ExpenseAttachmentCard({ attachment, onDelete }: ExpenseAttachmentCardProps) {
+    const t = useTranslations('ExpenseDetail.attachments');
+    
+    // URL simulada de Supabase Storage
+    const downloadUrl = `/api/attachments/download?path=${attachment.file_path}&filename=${attachment.filename}`; 
+
+    return (
+        <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
+            <div className="flex items-center space-x-3 truncate">
+                <FileText className="w-5 h-5 text-primary shrink-0" />
+                <span className="text-sm font-medium truncate" title={attachment.filename}>
+                    {attachment.filename}
+                </span>
+            </div>
+            <div className="flex space-x-2 shrink-0">
+                <Button asChild variant="ghost" size="icon" title={t('download')}>
+                    <a href={downloadUrl} download>
+                        <Download className="w-4 h-4" />
+                    </a>
+                </Button>
+                {onDelete && (
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        title={t('delete')} 
+                        onClick={() => onDelete(attachment.id)}
+                    >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                )}
+            </div>
         </div>
-        {/* Esqueleto para la tabla */}
-        <div className="space-y-2">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
-            <Skeleton className="h-16 w-full" />
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_components/ExpenseDetailClient.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseDetailClient.tsx
+"use client";
+
+import React from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Plus, Save, X, FileText } from 'lucide-react';
+// ✅ Importem els tipus base
+import { ExpenseDetail } from '@/types/finances/expenses';
+import { Supplier } from '@/types/finances/suppliers';
+import { useExpenseDetail } from '../_hooks/useExpenseDetail';
+import { ExpenseItemsEditor } from './ExpenseItemsEditor';
+import { ExpenseAttachmentCard } from './ExpenseAttachmentCard'; // ✅ Import corregit
+import { formatCurrency, formatDate } from '@/lib/utils/formatters'; // ✅ Import corregit
+
+interface ExpenseDetailClientProps {
+    initialData: ExpenseDetail | null;
+    isNew: boolean;
+    allSuppliers: Pick<Supplier, 'id' | 'nom'>[];
+}
+
+export function ExpenseDetailClient({ initialData, isNew, allSuppliers }: ExpenseDetailClientProps) {
+    const {
+        isPending,
+        formData,
+        handleFieldChange,
+        handleSubmit,
+        handleItemChange,
+        handleAddItem,
+        handleRemoveItem,
+        t,
+    } = useExpenseDetail({ initialData, isNew, allSuppliers });
+
+    const isSaving = isPending;
+    const expenseTitle = isNew
+        ? t('title.new')
+        : formData.invoice_number || `Despesa #${initialData?.id}`;
+
+    const locale = 'ca'; // Hardcoded o obtenir de useLocale
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Capçalera: Títol i Accions */}
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-bold">{expenseTitle}</h1>
+                <div className="flex space-x-3">
+                    {/* Botó de Desat */}
+                    <Button type="submit" disabled={isSaving}>
+                        {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                        {isSaving ? t('button.saving') : t('button.save')}
+                    </Button>
+
+                    {/* Botó de Cancel·lar/Tornar */}
+                    <Button asChild variant="outline" disabled={isSaving}>
+                        <Link href="/finances/expenses">
+                            <X className="w-4 h-4 mr-2" /> {t('button.cancel')}
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+
+            {/* Contingut Principal: Grid (2/3 + 1/3) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* Columna Esquerra (Formulari Principal) - 2/3 */}
+                <div className="lg:col-span-2 space-y-3">
+
+                    {/* Targeta 1: Detalls Bàsics */}
+                    <Card>
+                        <CardHeader><CardTitle>{t('card.generalDetails')}</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                {/* Proveïdor (Selector) */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="supplier_id">{t('field.supplier')}</Label>
+                                    <select
+                                        id="supplier_id"
+                                        value={formData.supplier_id || ''}
+                                        onChange={(e) => handleFieldChange('supplier_id', e.target.value || null)}
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                        disabled={isSaving}
+                                    >
+                                        <option value="">{t('select.selectSupplier')}</option>
+                                        {allSuppliers.map(supplier => (
+                                            <option key={supplier.id} value={supplier.id}>{supplier.nom}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {/* Data de la Despesa */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="expense_date">{t('field.expenseDate')}</Label>
+                                    <Input
+                                        id="expense_date"
+                                        type="date"
+                                        value={formData.expense_date}
+                                        onChange={(e) => handleFieldChange('expense_date', e.target.value)}
+                                        disabled={isSaving}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Número de Factura */}
+                            <div className="space-y-2">
+                                <Label htmlFor="invoice_number">{t('field.invoiceNumber')}</Label>
+                                <Input
+                                    id="invoice_number"
+                                    value={formData.invoice_number || ''}
+                                    onChange={(e) => handleFieldChange('invoice_number', e.target.value)}
+                                    disabled={isSaving}
+                                    placeholder={t('placeholder.invoiceNumber')}
+                                />
+                            </div>
+
+                            {/* Descripció (General) */}
+                            <div className="space-y-2">
+                                <Label htmlFor="description">{t('field.description')}</Label>
+                                <Textarea
+                                    id="description"
+                                    value={formData.description}
+                                    onChange={(e) => handleFieldChange('description', e.target.value)}
+                                    disabled={isSaving}
+                                    rows={3}
+                                    placeholder={t('placeholder.description')}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Targeta 2: Conceptes/Línies d'Article */}
+                    <Card>
+                        <CardHeader className='flex-row justify-between items-center'>
+                            <CardTitle>{t('card.expenseItems')}</CardTitle>
+                            <Button type="button" size="sm" variant="outline" onClick={handleAddItem} disabled={isSaving}>
+                                <Plus className="w-4 h-4 mr-2" /> {t('button.addItem')}
+                            </Button>
+                        </CardHeader>
+                        <CardContent>
+                            <ExpenseItemsEditor
+                                items={formData.expense_items || []}
+                                onItemChange={handleItemChange}
+                                onRemoveItem={handleRemoveItem}
+                                isSaving={isSaving}
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* Targeta 3: Notes Adicionals */}
+                    <Card>
+                        <CardHeader><CardTitle>{t('card.notes')}</CardTitle></CardHeader>
+                        <CardContent>
+                            <Textarea
+                                id="notes"
+                                value={formData.notes || ''}
+                                onChange={(e) => handleFieldChange('notes', e.target.value)}
+                                disabled={isSaving}
+                                rows={4}
+                                placeholder={t('placeholder.notes')}
+                            />
+                        </CardContent>
+                    </Card>
+
+                </div>
+
+                {/* Columna Dreta (Metadades i Totals) - 1/3 */}
+                <div className="lg:col-span-1 space-y-3">
+
+                    {/* Targeta 4: Totals i Impostos */}
+                    <Card>
+                        <CardHeader><CardTitle>{t('card.totals')}</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+
+                            {/* Subtotal */}
+                            <div className="flex justify-between items-center">
+                                <Label>{t('label.subtotal')}</Label>
+                                <span className="font-medium">{formatCurrency(formData.subtotal, 'EUR', locale)}</span>
+                            </div>
+
+                            {/* Descompte */}
+                            <div className="space-y-1">
+                                <Label htmlFor="discount_amount">{t('field.discount')}</Label>
+                                <Input
+                                    id="discount_amount"
+                                    type="number"
+                                    value={formData.discount_amount || 0}
+                                    onChange={(e) => handleFieldChange('discount_amount', parseFloat(e.target.value) || 0)}
+                                    disabled={isSaving}
+                                    step="0.01"
+                                />
+                            </div>
+
+                            {/* Impostos (Tax Rate) */}
+                            <div className="space-y-1">
+                                <Label htmlFor="tax_rate">{t('field.taxRate')}</Label>
+                                <div className="flex items-center space-x-2">
+                                    <Input
+                                        id="tax_rate"
+                                        type="number"
+                                        value={formData.tax_rate || 0}
+                                        onChange={(e) => handleFieldChange('tax_rate', parseFloat(e.target.value) || 0)}
+                                        disabled={isSaving}
+                                        step="0.01"
+                                    />
+                                    <span className='font-mono'>({formatCurrency(formData.tax_amount, 'EUR', locale)})</span>
+                                </div>
+                            </div>
+
+                            {/* Total Final */}
+                            <div className="pt-2 border-t mt-4 flex justify-between items-center">
+                                <Label className="text-lg font-bold">{t('label.total')}</Label>
+                                <span className="text-xl font-extrabold text-primary">{formatCurrency(formData.total_amount, 'EUR', locale)}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Targeta 5: Adjunts (Documents) */}
+                    <Card>
+                        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />{t('card.attachments')}</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                            {/* ✅ CORRECCIÓ: Utilitzem !isNew i initialData per fer-lo segur */}
+                            {!isNew && initialData?.expense_attachments?.map(attachment => (
+                                <ExpenseAttachmentCard
+                                    key={attachment.id}
+                                    attachment={attachment}
+                                    expenseId={initialData.id}
+                                />
+                            ))}
+                            {/* Àrea de pujada */}
+                            <div className="border-2 border-dashed p-4 text-center rounded-lg">
+                                <p className="text-sm text-muted-foreground">{t('upload.dragAndDrop')}</p>
+                                {/* El botó de pujada i l'OCR s'integrarien aquí amb useExpenseDetail hook */}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Targeta 6: Informació de Creació (Solo mode Edició) */}
+                    {/* ✅ CORRECCIÓ: Utilitzem !isNew i initialData per fer-lo segur */}
+                    {!isNew && initialData && (
+                        <Card>
+                            <CardHeader><CardTitle>{t('card.metadata')}</CardTitle></CardHeader>
+                            <CardContent className="space-y-2 text-sm text-muted-foreground">
+                                <p><strong>{t('metadata.id')}:</strong> {initialData.id}</p>
+                                <p><strong>{t('metadata.createdBy')}:</strong> {initialData.user_id}</p>
+                                <p><strong>{t('metadata.createdAt')}:</strong> {formatDate(initialData.created_at, locale)}</p>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                </div>
+            </div>
+        </form>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_components/ExpenseDetailData.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseDetailData.tsx
+import { notFound } from 'next/navigation';
+import { fetchExpenseDetail } from '../../actions'; 
+// ❌ Línia antiga
+// import { fetchContacts } from '@/app/[locale]/(app)/crm/contactes/actions'; 
+// ✅ Línia nova i correcta
+import { fetchSuppliers } from '@/app/[locale]/(app)/finances/proveidors/actions'; 
+import { ExpenseDetailClient } from './ExpenseDetailClient';
+
+interface ExpenseDetailDataProps {
+    expenseId: number | null; 
+}
+
+export async function ExpenseDetailData({ expenseId }: ExpenseDetailDataProps) {
+    const [
+        expenseData, 
+        allSuppliers
+    ] = await Promise.all([
+        expenseId ? fetchExpenseDetail(expenseId) : Promise.resolve(null),
+        // ✅ Crida a la nova funció
+        fetchSuppliers() 
+    ]);
+
+    if (expenseId && !expenseData) {
+        notFound();
+    }
+    
+    return (
+        <ExpenseDetailClient 
+            initialData={expenseData}
+            isNew={expenseId === null}
+            allSuppliers={allSuppliers || []}
+        />
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_components/ExpenseDetailSkeleton.tsx ===================
+
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
+/**
+ * Esquelet de càrrega professional per a la vista de detall de Despesa.
+ * * ✅ El Per Què: Simula l'estructura visual del formulari d'edició/creació,
+ * orientant l'usuari sobre on es carregarà el contingut.
+ */
+export function ExpenseDetailSkeleton() {
+    return (
+        <div className="space-y-8 p-4">
+            {/* Capçalera - Títol i Accions */}
+            <div className="flex justify-between items-center mb-8">
+                <Skeleton className="h-8 w-64" />
+                <div className="flex space-x-2">
+                    <Skeleton className="h-10 w-24" />
+                    <Skeleton className="h-10 w-24" />
+                </div>
+            </div>
+
+            {/* Contingut Principal (Grid de 3 columnes típic d'editor/detall) */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                {/* Columna Esquerra (Formulari Principal) - 2/3 */}
+                <div className="lg:col-span-2 space-y-8">
+                    
+                    {/* Targeta 1: Detalls Bàsics */}
+                    <Card>
+                        <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Camps de selecció (Proveïdor, Data) */}
+                                <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-10 w-full" /></div>
+                                <div className="space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-10 w-full" /></div>
+                            </div>
+                            {/* Camp de text (Descripció/Número de factura) */}
+                            <div className="space-y-2"><Skeleton className="h-4 w-1/4" /><Skeleton className="h-10 w-full" /></div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Targeta 2: Conceptes/Línies d'Article */}
+                    <Card>
+                        <CardHeader><Skeleton className="h-6 w-52" /></CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Línia d'Article de capçalera (simulada) */}
+                            <div className="flex space-x-4 border-b pb-2">
+                                <Skeleton className="h-4 w-1/2" />
+                                <Skeleton className="h-4 w-1/4" />
+                                <Skeleton className="h-4 w-1/4" />
+                            </div>
+                            {/* Línies d'article */}
+                            {Array.from({ length: 3 }).map((_, i) => (
+                                <div key={i} className="flex space-x-4">
+                                    <Skeleton className="h-10 w-1/2" />
+                                    <Skeleton className="h-10 w-1/4" />
+                                    <Skeleton className="h-10 w-1/4" />
+                                    <Skeleton className="h-10 w-10 rounded-full" />
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Columna Dreta (Metadades) - 1/3 */}
+                <div className="lg:col-span-1 space-y-8">
+                    {/* Targeta 3: Sumari i Totals */}
+                    <Card>
+                        <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+                        <CardContent className="space-y-3">
+                            <div className="flex justify-between"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-4 w-1/4" /></div>
+                            <div className="flex justify-between"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-4 w-1/4" /></div>
+                            <Separator />
+                            <div className="flex justify-between"><Skeleton className="h-6 w-1/2" /><Skeleton className="h-6 w-1/3" /></div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Targeta 4: Adjunts */}
+                    <Card>
+                        <CardHeader><Skeleton className="h-6 w-32" /></CardHeader>
+                        <CardContent className="space-y-3">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-8 w-24 rounded-lg" />
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
         </div>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_components/ExpenseItemsEditor.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseItemsEditor.tsx
+import React from 'react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Trash2 } from 'lucide-react';
+import { ExpenseItem } from '@/types/finances/expenses';
+import { useTranslations } from 'next-intl';
+
+interface ExpenseItemsEditorProps {
+    items: ExpenseItem[];
+    onItemChange: (index: number, field: keyof ExpenseItem, value: string | number) => void;
+    onRemoveItem: (index: number) => void;
+    isSaving: boolean;
+}
+
+export function ExpenseItemsEditor({ items, onItemChange, onRemoveItem, isSaving }: ExpenseItemsEditorProps) {
+    const t = useTranslations('ExpenseDetailPage.items');
+    return (
+        <div className="space-y-4">
+            {/* Header de la Taula */}
+            <div className="grid grid-cols-12 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                <span className="col-span-6">{t('description')}</span>
+                <span className="col-span-2 text-right">{t('quantity')}</span>
+                <span className="col-span-2 text-right">{t('unitPrice')}</span>
+                <span className="col-span-2 text-right">{t('total')}</span>
+                <span className="w-8"></span> {/* Columna buida per al botó d'esborrar */}
+            </div>
+
+            {items.map((item, index) => (
+                <div key={item.id || index} className="grid grid-cols-12 gap-2 items-center">
+                    {/* Descripció */}
+                    <div className="col-span-6">
+                        <Input
+                            placeholder={t('placeholder.description')}
+                            value={item.description}
+                            onChange={(e) => onItemChange(index, 'description', e.target.value)}
+                            disabled={isSaving}
+                        />
+                    </div>
+
+                    {/* Quantitat */}
+                    <div className="col-span-2">
+                        <Input
+                            type="number"
+                            placeholder="0"
+                            value={item.quantity || 0}
+                            onChange={(e) => onItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            disabled={isSaving}
+                            className="text-right"
+                            step="any"
+                        />
+                    </div>
+
+                    {/* Preu Unitari */}
+                    <div className="col-span-2">
+                        <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={item.unit_price || 0}
+                            onChange={(e) => onItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                            disabled={isSaving}
+                            className="text-right"
+                            step="0.01"
+                        />
+                    </div>
+
+                    {/* Total (Lectura) */}
+                    <div className="col-span-2 text-right font-medium">
+                        {item.total ? item.total.toFixed(2) : '0.00'}
+                    </div>
+
+                    {/* Botó d'Esborrar */}
+                    <div className="col-span-0 flex justify-end">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveItem(index)}
+                            disabled={isSaving}
+                            className="w-8 h-8 text-red-500 hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </Button>
+                    </div>
+                </div>
+            ))}
+
+            {items.length === 0 && (
+                <p className="text-center text-muted-foreground py-4">{t('emptyState')}</p>
+            )}
+        </div>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_components/SupplierCombobox.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/SupplierCombobox.tsx
+"use client";
+
+import * as React from "react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils/utils";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { type Supplier } from '@/types/finances/suppliers';
+import { useTranslations } from "next-intl";
+import { searchSuppliers } from "@/app/[locale]/(app)/finances/proveidors/actions"; // <-- Has de crear aquesta Server Action
+
+interface SupplierComboboxProps {
+    value: string | null;
+    onChange: (value: string | null) => void;
+    initialSupplier: Pick<Supplier, 'id' | 'nom'> | null;
+    disabled?: boolean;
+}
+
+export function SupplierCombobox({ value, onChange, initialSupplier, disabled }: SupplierComboboxProps) {
+    const t = useTranslations('ExpenseDetailPage');
+    const [open, setOpen] = React.useState(false);
+    
+    // Llista de proveïdors trobats en la cerca
+    const [suppliers, setSuppliers] = React.useState<Pick<Supplier, 'id' | 'nom'>[]>(
+        initialSupplier ? [initialSupplier] : []
+    );
+    
+    // El proveïdor seleccionat (objecte)
+    const selectedSupplier = suppliers.find(s => s.id === value) || null;
+    
+    const [searchTerm, setSearchTerm] = React.useState("");
+
+    // Cerca asíncrona
+    React.useEffect(() => {
+        if (!open) return;
+
+        const fetchSuppliers = async () => {
+            // Crida a la Server Action
+            const results = await searchSuppliers(searchTerm); // <-- Aquesta acció ha de fer un select('id, nom').ilike('nom', `%${searchTerm}%`).limit(20)
+            setSuppliers(results);
+        };
+        
+        // Un petit debounce
+        const timer = setTimeout(fetchSuppliers, 300);
+        return () => clearTimeout(timer);
+
+    }, [searchTerm, open]);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between"
+                    disabled={disabled}
+                >
+                    {selectedSupplier
+                        ? selectedSupplier.nom
+                        : t('select.selectSupplier')}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                <Command>
+                    <CommandInput 
+                        placeholder={t('select.searchSupplier')}
+                        onValueChange={setSearchTerm}
+                    />
+                    <CommandList>
+                        <CommandEmpty>{t('select.noSupplierFound')}</CommandEmpty>
+                        <CommandGroup>
+                            {/* Opció per netejar */}
+                            <CommandItem
+                                onSelect={() => {
+                                    onChange(null);
+                                    setOpen(false);
+                                }}
+                            >
+                                {t('select.noSupplier')}
+                            </CommandItem>
+                            
+                            {suppliers.map((supplier) => (
+                                <CommandItem
+                                    key={supplier.id}
+                                    value={supplier.nom} // Cerquem per nom
+                                    onSelect={() => {
+                                        onChange(supplier.id.toString());
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check
+                                        className={cn(
+                                            "mr-2 h-4 w-4",
+                                            value === supplier.id ? "opacity-100" : "opacity-0"
+                                        )}
+                                    />
+                                    {supplier.nom}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/[expenseId]/_hooks/useExpenseDetail.ts ===================
+
+// src/app/[locale]/(app)/finances/despeses/[expenseId]/_hooks/useExpenseDetail.ts
+import { useState, useEffect, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+
+import { type ExpenseDetail, type ExpenseFormDataForAction, type ExpenseItem } from '@/types/finances/expenses';
+import { type Supplier } from '@/types/finances/suppliers';
+import { saveExpenseAction } from '../../actions';
+
+interface UseExpenseDetailProps {
+    initialData: ExpenseDetail | null;
+    isNew: boolean;
+    allSuppliers: Pick<Supplier, 'id' | 'nom'>[];
+}
+
+// ✅ Hem eliminat 'status' per alinear-ho amb la DB i els tipus corregits.
+const defaultInitialData: Omit<ExpenseFormDataForAction, 'status'> = {
+    id: 'new',
+    description: '',
+    total_amount: 0,
+    expense_date: new Date().toISOString().split('T')[0],
+    category: null,
+    invoice_number: null,
+    tax_amount: 0,
+    subtotal: 0,
+    discount_amount: 0,
+    notes: null,
+    tax_rate: 21,
+    supplier_id: null,
+    expense_items: [],
+};
+
+// ✅ Hem afegit 'allSuppliers' a la desestructuració.
+export function useExpenseDetail({ initialData, isNew, allSuppliers }: UseExpenseDetailProps) {
+    const t = useTranslations('ExpenseDetailPage');
+    const router = useRouter();
+    const [isPending, startTransition] = useTransition();
+
+    // El 'as ExpenseFormDataForAction' és necessari perquè TypeScript sap que a defaultInitialData li falta 'status',
+    // però confiem que la resta de la nostra lògica ja no el fa servir.
+    const [formData, setFormData] = useState<ExpenseFormDataForAction>(
+        initialData ? { ...initialData, id: initialData.id.toString() } : defaultInitialData as ExpenseFormDataForAction
+    );
+
+    const calculateTotals = (items: ExpenseItem[], discount: number, taxRate: number) => {
+        const subtotal = items.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0);
+        const effectiveSubtotal = subtotal - discount;
+        const taxAmount = effectiveSubtotal > 0 ? effectiveSubtotal * (taxRate / 100) : 0;
+        const totalAmount = effectiveSubtotal + taxAmount;
+        return { subtotal, taxAmount, totalAmount };
+    };
+
+    useEffect(() => {
+        const { subtotal, taxAmount, totalAmount } = calculateTotals(
+            formData.expense_items || [],
+            formData.discount_amount || 0,
+            formData.tax_rate || 0
+        );
+        setFormData(prev => ({
+            ...prev,
+            subtotal,
+            tax_amount: taxAmount,
+            total_amount: totalAmount
+        }));
+    }, [formData.expense_items, formData.discount_amount, formData.tax_rate]);
+
+    const handleFieldChange = <K extends keyof ExpenseFormDataForAction>(field: K, value: ExpenseFormDataForAction[K]) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleItemChange = <K extends keyof ExpenseItem>(index: number, field: K, value: ExpenseItem[K]) => {
+        const newItems = [...(formData.expense_items || [])];
+        if (!newItems[index]) return;
+        newItems[index] = { ...newItems[index], [field]: value };
+        if (field === 'quantity' || field === 'unit_price') {
+            newItems[index].total = (Number(newItems[index].quantity) || 0) * (Number(newItems[index].unit_price) || 0);
+        }
+        setFormData(prev => ({ ...prev, expense_items: newItems }));
+    };
+
+    const handleAddItem = () => {
+        const newItem: ExpenseItem = {
+            id: Date.now(),
+            expense_id: typeof formData.id === 'string' && formData.id !== 'new' ? Number(formData.id) : 0,
+            description: '',
+            quantity: 1,
+            unit_price: 0,
+            total: 0,
+        };
+        setFormData(prev => ({ ...prev, expense_items: [...(prev.expense_items || []), newItem] }));
+    };
+
+    const handleRemoveItem = (index: number) => {
+        const newItems = [...(formData.expense_items || [])];
+        newItems.splice(index, 1);
+        setFormData(prev => ({ ...prev, expense_items: newItems }));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setFormErrors({}); // Resetejem errors
+
+        startTransition(async () => {
+            // ✅ Passem el formData tal qual
+            const result = await saveExpenseAction(formData);
+
+            if (result.success) {
+                toast.success(result.message);
+                router.push('/finances/despeses');
+                router.refresh(); // router.refresh() potser no cal si fas push
+            } else {
+                toast.error(result.message);
+                if (result.errors) {
+                    setFormErrors(result.errors); // <-- Guardem els errors
+                }
+            }
+        });
+    };
+
+    return {
+        isPending,
+        formData,
+        handleFieldChange,
+        handleSubmit,
+        handleItemChange,
+        handleAddItem,
+        handleRemoveItem,
+        t,
+        // Pots retornar 'allSuppliers' si el component client el necessita directament
+        allSuppliers
+    };
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpenseFilters.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/_components/ExpenseFilters.tsx
+'use client';
+
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+import { useTranslations } from 'next-intl';
+interface ExpenseFiltersProps {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  category: string;
+  onCategoryChange: (value: string) => void;
+  status: string;
+  onStatusChange: (value: string) => void;
+}
+
+export function ExpenseFilters({
+  searchTerm,
+  onSearchChange,
+  status,
+  onStatusChange,
+}: ExpenseFiltersProps) {
+  // Aquesta llista de categories podria venir com a prop des del servidor
+  const t = useTranslations('ExpensesPage');
+  const statuses = ['pending', 'paid', 'overdue', 'cancelled'];
+
+  return (
+    <div className="mb-4 flex items-center space-x-4">
+      <Input
+        placeholder="Busca per descripció o proveïdor..."
+        value={searchTerm}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="max-w-sm bg-white"
+      />
+      {/* ✅ NOU: Select per a l'estat */}
+      <Select value={status} onValueChange={onStatusChange}>
+        <SelectTrigger className="w-[180px] bg-white">
+          <SelectValue placeholder={t('filter.allStatuses')} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{t('filter.allStatuses')}</SelectItem>
+          {statuses.map(s => (
+            <SelectItem key={s} value={s}>{t(`status.${s}`)}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
-);
+  );
+}
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/actions.ts ===================
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpensesClient.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/_components/expenses-client.tsx
+"use client";
+
+import { useMemo } from 'react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Plus, Edit } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useLocale, useTranslations } from 'next-intl';
+
+// ❌ Pas 1: Eliminem les importacions de paginació
+// import {
+//   Pagination,
+//   PaginationContent,
+//   PaginationEllipsis,
+//   PaginationItem,
+//   PaginationLink,
+//   PaginationNext,
+//   PaginationPrevious,
+// } from "@/components/ui/pagination";
+
+import { type ExpenseWithContact } from '@/types/finances/expenses';
+import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
+import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
+import { useExpenses } from '../_hooks/useExpenses';
+import { formatCurrency, formatLocalizedDate } from '@/lib/utils/formatters';
+import { ExpenseFilters } from './ExpenseFilters';
+import { type PaginatedExpensesResponse } from '../actions';
+
+export function ExpensesClient({ initialData }: { initialData: PaginatedExpensesResponse }) {
+  const locale = useLocale();
+  const t = useTranslations('ExpensesPage');
+  const tShared = useTranslations('Shared');
+
+  // ... (useMemo d'allColumns no canvia)
+    const allColumns = useMemo<ColumnDef<ExpenseWithContact>[]>(() => [
+        {
+            accessorKey: "invoice_number",
+            header: t('table.number'),
+            enableSorting: true,
+            cell: (row) => row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`,
+        },
+        {
+            accessorKey: "suppliers.nom",
+            header: t('table.supplier'),
+            enableSorting: true,
+            cell: (row) => row.suppliers?.nom || t('noSupplier'),
+        },
+        {
+            accessorKey: "description",
+            header: t('table.description'),
+            enableSorting: false,
+            cell: (row) => <span className="max-w-[150px] truncate">{row.description}</span>,
+        },
+        {
+            accessorKey: "expense_date",
+            header: t('table.date'),
+            enableSorting: true,
+            cell: (row) => formatLocalizedDate(row.expense_date, "PPP", locale),
+        },
+        {
+            accessorKey: "total_amount",
+            header: t('table.total'),
+            enableSorting: true,
+            cell: (row) => formatCurrency(row.total_amount),
+        },
+        {
+            accessorKey: "category",
+            header: t('table.category'),
+            enableSorting: true,
+            cell: (row) => row.category || t('noCategory'),
+        },
+        {
+            accessorKey: 'status',
+            header: t('table.status'),
+            enableSorting: true,
+            cell: (row) => (
+                <Badge variant={row.status === 'paid' ? 'success' :
+                    row.status === 'overdue' ? 'destructive' :
+                        'secondary'} className={undefined}>
+                    {t(`status.${row.status}`)}
+                </Badge>
+            )
+        },
+        {
+            accessorKey: "actions_edit",
+            header: "",
+            enableSorting: false,
+            cell: (row) => (
+                <Link href={`/${locale}/finances/expenses/${row.id}`} title={tShared('actions.edit')}>
+                    <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
+                </Link>
+            ),
+        }
+    ], [locale, t, tShared]);
+
+  const {
+    isPending,
+    expenses,
+    expenseToDelete,
+    setExpenseToDelete,
+    handleDelete,
+    handleSort,
+    currentSortColumn,
+    currentSortOrder,
+    searchTerm,
+    filters,
+    handleSearchChange,
+    handleCategoryChange,
+    columnVisibility,
+    toggleColumnVisibility,
+    handleStatusChange,
+    page,
+    totalPages,
+    handlePageChange,
+  } = useExpenses({ initialData, allColumns });
+
+  const visibleColumns = useMemo(
+    () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
+    [allColumns, columnVisibility]
+  );
+
+  const deleteDescription = (
+    <>
+      {tShared('deleteDialog.description1')} <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
+      <br />
+      {tShared('deleteDialog.description2')}
+    </>
+  );
+
+  // ❌ Pas 2: Eliminem tot el component 'PaginationControls'
+  // const PaginationControls = () => { ... }
+
+  return (
+    <div className="h-full flex flex-col"> 
+      {/* ... (Header i Filtres sense canvis) ... */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
+        <Button asChild>
+          <Link href={`/${locale}/finances/despeses/new`}>
+            <Plus className="w-4 h-4 " /> {t('newExpenseButton')}
+          </Link>
+        </Button>
+      </div>
+
+      <div className="flex justify-between items-center ">
+        <ExpenseFilters
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          category={filters.category}
+          onCategoryChange={handleCategoryChange}
+          status={filters.status}
+          onStatusChange={handleStatusChange}
+        />
+        <ColumnToggleButton
+          allColumns={allColumns}
+          columnVisibility={columnVisibility}
+          toggleColumnVisibility={toggleColumnVisibility}
+        />
+      </div>
+
+      {/* ✅ Pas 3: Passem les propietats de paginació a GenericDataTable */}
+      <GenericDataTable
+        className="flex-grow overflow-hidden" 
+        data={expenses}
+        columns={visibleColumns}
+        onSort={handleSort}
+        currentSortColumn={currentSortColumn}
+        currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
+        isPending={isPending}
+        onDelete={handleDelete}
+        deleteItem={expenseToDelete}
+        setDeleteItem={setExpenseToDelete}
+        deleteTitleKey='deleteDialog.title'
+        deleteDescription={deleteDescription}
+        emptyStateMessage={t('emptyState')}
+        
+        // Propietats de paginació
+        page={page}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+
+
+    </div>
+  );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpensesData.tsx ===================
+
+// src/app/[locale]/(app)/finances/despeses/_components/ExpensesData.tsx
+import { redirect } from 'next/navigation';
+import { ExpensesClient } from './ExpensesClient';
+// ✅ Importem la nova funció
+import { fetchPaginatedExpenses } from '../actions';
+import { getTranslations } from 'next-intl/server';
+import { createClient as createServerActionClient } from '@/lib/supabase/server'; 
+
+export async function ExpensesData() {
+    const supabase = createServerActionClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        redirect('/login'); 
+    }
+    
+    const t = await getTranslations('ExpensesPage');
+    
+    try {
+        // ✅ Cridem la nova funció de paginació
+        const initialData = await fetchPaginatedExpenses({
+            searchTerm: '',
+            category: 'all',
+            status: 'all', // Assegura't de passar el filtre d'estat
+            sortBy: 'expense_date',
+            sortOrder: 'desc',
+            limit: 50,
+            offset: 0,
+        });
+
+        // ✅ Passem les dades inicials completes al client
+        return <ExpensesClient initialData={initialData} />;
+        
+    } catch (error) {
+        console.error("Error durant la càrrega de ExpensesData:", error);
+        throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
+    }
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpensesSkeleton.tsx ===================
+
+import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+
+const SKELETON_ROWS = 8;
+
+/**
+ * Esquelet de càrrega professional per a la llista de Despeses.
+ * * ✅ El Per Què: Assegura un Time To Interactive (TTI) ràpid mostrant 
+ * una previsualització de la interfície mentre el Server Component obté les dades.
+ */
+export function ExpensesSkeleton() {
+    return (
+        <div className="space-y-8 p-4">
+            {/* Capçalera - Títol i Botó de Creació */}
+            <div className="flex justify-between items-center mb-8">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
+            </div>
+
+            <Card className="shadow-lg border border-border overflow-hidden">
+                <CardContent className="p-0">
+                    {/* Fila d'Header (simulació de TableHeader) */}
+                    <div className="flex items-center bg-muted/50 p-4 border-b">
+                        <Skeleton className="h-4 w-[10%]" /> {/* Número */}
+                        <Skeleton className="h-4 w-[20%] ml-4" /> {/* Proveïdor */}
+                        <Skeleton className="h-4 w-[30%] ml-4" /> {/* Descripció */}
+                        <Skeleton className="h-4 w-[10%] ml-4" /> {/* Data */}
+                        <Skeleton className="h-4 w-[10%] ml-4" /> {/* Total */}
+                        <Skeleton className="h-4 w-[10%] ml-4" /> {/* Estatus */}
+                        <Skeleton className="h-4 w-[5%] ml-4" /> {/* Accions */}
+                    </div>
+
+                    {/* Fila de Dades (Simulació de TableRow) */}
+                    {Array.from({ length: SKELETON_ROWS }).map((_, index) => (
+                        <div key={index} className="flex items-center p-4 border-b last:border-b-0 min-h-[58px]">
+                            {/* Número de factura */}
+                            <div className="w-[10%]"><Skeleton className="h-4 w-[70px]" /></div>
+                            {/* Proveïdor */}
+                            <div className="w-[20%] ml-4"><Skeleton className="h-4 w-[120px]" /></div>
+                            {/* Descripció */}
+                            <div className="w-[30%] ml-4"><Skeleton className="h-4 w-[95%]" /></div>
+                            {/* Data */}
+                            <div className="w-[10%] ml-4"><Skeleton className="h-4 w-[80px]" /></div>
+                            {/* Total */}
+                            <div className="w-[10%] ml-4"><Skeleton className="h-4 w-[70px]" /></div>
+                            {/* Estatus */}
+                            <div className="w-[10%] ml-4"><Skeleton className="h-6 w-[70px] rounded-full" /></div>
+                            {/* Accions */}
+                            <div className="w-[5%] flex justify-end gap-2 ml-4">
+                                <Skeleton className="h-8 w-8 rounded-full" />
+                            </div>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/StatCard.tsx ===================
+
+
+
+// =================== FILE: src/app/[locale]/(app)/finances/expenses/_hooks/useExpenses.ts ===================
+
+// src/app/[locale]/(app)/finances/despeses/_hooks/useExpenses.ts
+import { useState, useEffect, useTransition, useRef } from 'react'; 
+import { useDebounce } from 'use-debounce';
+// ✅ Importem la nova funció i tipus
+import { fetchPaginatedExpenses, type ExpenseFilters, type PaginatedExpensesResponse, deleteExpense } from '../actions';
+import { type ExpenseWithContact } from '@/types/finances/expenses';
+import { useTranslations } from 'next-intl';
+import { toast } from 'sonner';
+import { type ColumnDef } from '@/components/shared/GenericDataTable'; 
+
+interface UseExpensesProps {
+  // ✅ Rebem les dades inicials paginades
+  initialData: PaginatedExpensesResponse;
+  allColumns: ColumnDef<ExpenseWithContact>[];
+}
+const PAGE_LIMIT = 15;
+
+export function useExpenses({ initialData, allColumns }: UseExpensesProps) {
+  const t = useTranslations('ExpensesPage');
+  const tShared = useTranslations('Shared');
+  const [isPending, startTransition] = useTransition();
+
+  // ✅ Estats per la paginació
+  const [expenses, setExpenses] = useState<ExpenseWithContact[]>(initialData.data);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(
+    Math.ceil(initialData.count / PAGE_LIMIT)
+  );
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState({ category: 'all', status: 'all' });
+  const [sorting, setSorting] = useState({ column: 'expense_date', order: 'desc' });
+  const [debouncedSearchTerm] = useDebounce(searchTerm, 500);
+  
+  // Ref per evitar la recàrrega inicial (ja tenim initialData)
+  const isInitialMount = useRef(true);
+
+  // Gestió de visibilitat de columnes (sense canvis)
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+      const initialState: Record<string, boolean> = {};
+      allColumns.forEach(col => {
+        initialState[col.accessorKey.toString()] = true;
+      });
+      return initialState;
+  });
+
+  const toggleColumnVisibility = (columnKey: string) => {
+      setColumnVisibility(prev => ({
+        ...prev,
+        [columnKey]: !prev[columnKey],
+      }));
+  };
+
+  // ✅ useEffect per Canvis de Filtre/Ordre (reseteja la paginació)
+  // Quan un filtre canvia, forcem anar a la pàgina 1
+  useEffect(() => {
+      if (isInitialMount.current) return;
+      setPage(1);
+  }, [debouncedSearchTerm, filters.category, filters.status, sorting]); 
+
+  // ✅ useEffect per Càrrega de Dades (quan la pàgina o filtres canvien)
+  // Aquest és l'únic lloc que crida a la Server Action
+  useEffect(() => {
+      // Evitem el 'fetch' inicial perquè ja tenim 'initialData'
+      if (isInitialMount.current) {
+          isInitialMount.current = false;
+          return;
+      }
+
+      startTransition(async () => {
+          const offset = (page - 1) * PAGE_LIMIT;
+
+          const serverFilters: ExpenseFilters = {
+              searchTerm: debouncedSearchTerm,
+              category: filters.category,
+              status: filters.status, 
+              sortBy: sorting.column,
+              sortOrder: sorting.order as 'asc' | 'desc',
+              limit: PAGE_LIMIT,
+              offset: offset,
+          };
+          
+          const result = await fetchPaginatedExpenses(serverFilters);
+
+          // ✅ Ja no afegim, substituïm
+          setExpenses(result.data);
+          // ✅ Actualitzem el total de pàgines
+          setTotalPages(Math.ceil(result.count / PAGE_LIMIT));
+      });
+  // Afegim 'page' a les dependències
+  }, [page, debouncedSearchTerm, filters, sorting]); 
+
+  
+  // Gestors de canvi (sense canvis)
+  const handleStatusChange = (value: string) => {
+      setFilters(prev => ({ ...prev, status: value }));
+  };
+  
+  const handleSort = (columnKey: string) => {
+      setSorting(prev => {
+          const isSameColumn = prev.column === columnKey;
+          const newOrder = isSameColumn && prev.order === 'asc' ? 'desc' : 'asc';
+          return { column: columnKey, order: newOrder };
+      });
+  };
+
+  const handleSearchChange = (value: string) => {
+      setSearchTerm(value);
+  };
+
+  const handleCategoryChange = (value: string) => {
+      setFilters(prev => ({ ...prev, category: value }));
+  };
+
+  // ✅ NOU: Gestor de canvi de pàgina
+  const handlePageChange = (newPage: number) => {
+      if (newPage > 0 && newPage <= totalPages) {
+          setPage(newPage);
+          window.scrollTo(0, 0); // Opcional: puja a dalt de tot
+      }
+  };
+  
+  // Gestió d'eliminació
+  const [expenseToDelete, setExpenseToDelete] = useState<ExpenseWithContact | null>(null);
+
+  const handleDelete = () => {
+      if (!expenseToDelete) return;
+
+      startTransition(async () => {
+          const result = await deleteExpense(expenseToDelete.id as number);
+          if (result.success) {
+              toast.success(result.message);
+              setExpenseToDelete(null);
+
+              // ✅ Recàrrega de dades
+              // Forcem un 'refetch' de la pàgina actual
+              // Si la pàgina actual queda buida, hauríem d'anar a l'anterior
+              if (expenses.length === 1 && page > 1) {
+                  setPage(prev => prev - 1);
+              } else {
+                  // Re-executem l'efecte de càrrega
+                  isInitialMount.current = false;
+                  // Creem una nova instància de filtres per forçar el 'useEffect'
+                  setFilters(f => ({...f})); 
+              }
+
+          } else {
+              toast.error(result.message);
+          }
+      });
+  };
+
+  return {
+      isPending,
+      expenses,
+      searchTerm,
+      filters,
+      handleSearchChange,
+      handleCategoryChange,
+      handleStatusChange,
+      handleSort,
+      currentSortColumn: sorting.column,
+      currentSortOrder: sorting.order,
+      expenseToDelete,
+      setExpenseToDelete,
+      handleDelete,
+      t,
+      tShared,
+      columnVisibility,
+      toggleColumnVisibility,
+      
+      // ✅ Propietats de paginació
+      page,
+      totalPages,
+      handlePageChange,
+  };
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/invoices/actions.ts ===================
 
 "use server";
 
@@ -17972,7 +18569,7 @@ export async function issueInvoiceAction(draftInvoiceId: string) {
     }
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/page.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/invoices/page.tsx ===================
 
 // /app/[locale]/(app)/finances/facturacio/page.tsx
 
@@ -17995,7 +18592,7 @@ export default function FacturacioPage() {
   );
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/_components/FacturacioClient.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/invoices/_components/FacturacioClient.tsx ===================
 
 // /app/finances/facturacio/_components/FacturacioClient.tsx
 "use client";
@@ -18320,7 +18917,7 @@ export function FacturacioClient({ initialInvoices, initialContacts, initialProd
     );
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/_components/FacturacioData.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/invoices/_components/FacturacioData.tsx ===================
 
 // /app/[locale]/finances/facturacio/_components/FacturacioData.tsx
 
@@ -18392,7 +18989,7 @@ export async function FacturacioData() {
     return <FacturacioClient initialInvoices={invoices} initialContacts={contacts} initialProducts={products} />;
 }
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/_components/FacturacioSkeleton.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/invoices/_components/FacturacioSkeleton.tsx ===================
 
 /**
  * @file FacturacioSkeleton.tsx
@@ -18419,7 +19016,7 @@ export const FacturacioSkeleton: React.FC = () => (
     </div>
 );
 
-// =================== FILE: src/app/[locale]/(app)/finances/facturacio/_components/InvoiceDialog.tsx ===================
+// =================== FILE: src/app/[locale]/(app)/finances/invoices/_components/InvoiceDialog.tsx ===================
 
 "use client";
 
@@ -18671,6 +19268,34 @@ export function InvoiceDialog({ isOpen, onClose, contacts, products, initialInvo
             </DialogContent>
         </Dialog>
     );
+}
+
+// =================== FILE: src/app/[locale]/(app)/finances/proveidors/actions.ts ===================
+
+// src/app/[locale]/(app)/finances/proveidors/actions.ts
+"use server";
+
+import { createClient as createServerActionClient } from "@/lib/supabase/server";
+import { Supplier } from "@/types/finances/suppliers";
+
+/**
+ * Obté la llista completa de proveïdors.
+ * @returns Un array de proveïdors (només id i nom per eficiència).
+ */
+export async function fetchSuppliers(): Promise<Pick<Supplier, 'id' | 'nom'>[]> {
+    const supabase = createServerActionClient();
+
+    const { data, error } = await supabase
+        .from('suppliers')
+        .select('id, nom')
+        .order('nom', { ascending: true });
+
+    if (error) {
+        console.error("Error en carregar els proveïdors:", error.message);
+        throw new Error("No s'han pogut carregar els proveïdors.");
+    }
+
+    return data || [];
 }
 
 // =================== FILE: src/app/[locale]/(app)/layout.tsx ===================
@@ -25167,6 +25792,65 @@ export async function GET(request: NextRequest) {
 }
 
 
+// =================== FILE: src/app/[locale]/global-error.tsx ===================
+
+// src/app/[locale]/global-error.tsx
+'use client';
+
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+
+export default function GlobalError({
+  error,
+  reset,
+}: {
+  error: Error & { digest?: string };
+  reset: () => void;
+}) {
+  useEffect(() => {
+    // Aquí és on podríes enviar l'error a un servei de monitorització
+    // com Sentry, LogRocket, etc.
+    console.error('S_ha produït un error global no controlat:', error);
+  }, [error]);
+
+  return (
+    <html>
+      <body>
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background text-foreground">
+          <div className="mx-auto max-w-md text-center">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+              Ups! Alguna cosa ha fallat.
+            </h1>
+            <p className="mt-4 text-lg text-muted-foreground">
+              El nostre equip tècnic ja ha estat notificat. Estem treballant
+              per solucionar-ho el més aviat possible.
+            </p>
+            <div className="mt-8">
+              <Button
+                onClick={
+                  // Intenta recuperar-te renderitzant de nou el segment
+                  () => reset()
+                }
+                size="lg"
+              >
+                Torna-ho a intentar
+              </Button>
+            </div>
+            {/* En desenvolupament, pots mostrar detalls de l'error si vols, 
+                tot i que Next.js ja mostra el seu overlay. */}
+            {process.env.NODE_ENV === 'development' && (
+              <pre className="mt-4 rounded-md bg-muted p-4 text-left text-sm">
+                <code>{error?.message}</code>
+                <code>{error?.stack}</code>
+              </pre>
+            )}
+          </div>
+        </div>
+      </body>
+    </html>
+  );
+}
+
 // =================== FILE: src/app/[locale]/invitation/accept/page.tsx ===================
 
 // /app/[locale]/invitation/accept/page.tsx (VERSIÓ FINAL)
@@ -27955,6 +28639,8 @@ export function TaskFormView({ task, onSetViewMode, onTaskMutation, contacts, de
 
 // =================== FILE: src/components/LanguageSwitcher.tsx ===================
 
+// src/components/LanguageSwitcher.tsx (CORREGIT)
+
 "use client";
 
 import { useLocale, useTranslations } from 'next-intl';
@@ -27962,7 +28648,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 
-import { cn } from '@/lib/utils/utils'; // Importem 'cn' per combinar classes
+import { cn } from '@/lib/utils/utils';
+// 🚀 NOU: Importem la Server Action per a persistència forçada
+import { setLocalePersistence } from '@/app/actions/localeActions'; 
+// Assumim que la llista d'idiomes es pot extreure o definir aquí si no és possible importar-la directament
+// const languages = [{ code: 'ca', label: 'Català' }, { code: 'es', label: 'Espanyol' }, { code: 'en', label: 'Anglès' }];
 
 export function LanguageSwitcher() {
   const t = useTranslations('LanguageSwitcher');
@@ -27971,39 +28661,39 @@ export function LanguageSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   
-  const handleLanguageChange = (nextLocale: string) => {
-    if (locale === nextLocale || isPending) return;
-    
-    startTransition(() => {
-      const newPath = pathname.replace(`/${locale}`, `/${nextLocale}`);
-      router.replace(newPath);
-    });
-  };
-
   const languages = [
     { code: 'ca', label: t('catalan') },
     { code: 'es', label: t('spanish') },
     { code: 'en', label: t('english') },
   ];
+  
+  const handleLanguageChange = (nextLocale: string) => {
+    if (locale === nextLocale || isPending) return;
+    
+    startTransition(async () => {
+      // 🔑 PAS CLAU: Forcem l'establiment de la cookie persistent.
+      await setLocalePersistence(nextLocale);
+      
+      // Després de fixar la cookie, naveguem a la nova ruta
+      const newPath = pathname.replace(`/${locale}`, `/${nextLocale}`);
+      router.replace(newPath);
+    });
+  };
 
   return (
-    // ✅ NOU: Agrupem els botons i els donem un fons i vores per a un millor disseny
     <div className="flex space-x-1 p-1 bg-muted rounded-lg">
       {languages.map((lang) => (
         <Button 
           key={lang.code}
-          // ✅ CORRECCIÓ: Eliminem 'variant' i gestionem l'estil amb 'className'
           onClick={() => handleLanguageChange(lang.code)} 
           disabled={isPending}
-          // ✅ La clau és aquí: utilitzem 'cn' per aplicar les classes condicionalment
           className={cn(
             "text-xs px-2 py-1 h-auto transition-all duration-300",
             locale === lang.code 
-              ? 'bg-gradient-to-r from-green-400 to-cyan-400 text-black font-semibold shadow-md' // Estil actiu (com el botó Accedir)
-              : 'bg-transparent text-muted-foreground hover:bg-background/50' // Estil inactiu
+              ? 'bg-gradient-to-r from-green-400 to-cyan-400 text-black font-semibold shadow-md'
+              : 'bg-transparent text-muted-foreground hover:bg-background/50' 
           )}
         >
-          {/* Mostrem el loader només al botó que s'està activant */}
           {isPending && locale !== lang.code }
           {lang.label}
         </Button>
@@ -28069,6 +28759,64 @@ export const ActivityItem: FC<ActivityItemProps> = ({ icon: Icon, tone, title, m
   </Link>
 );
 
+// =================== FILE: src/components/shared/ColumnToggleButton.tsx ===================
+
+// src/components/shared/ColumnToggleButton.tsx
+'use client';
+
+import { SlidersHorizontal } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { type ColumnDef } from './GenericDataTable'; // Assumint que el tipus està aquí
+
+interface ColumnToggleButtonProps<TData> {
+  allColumns: ColumnDef<TData>[];
+  columnVisibility: Record<string, boolean>;
+  toggleColumnVisibility: (columnKey: string) => void;
+}
+
+export function ColumnToggleButton<TData>({
+  allColumns,
+  columnVisibility,
+  toggleColumnVisibility,
+}: ColumnToggleButtonProps<TData>) {
+  const t = useTranslations('Shared.table');
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="h-9 bg-white">
+          <SlidersHorizontal className="mr-2 h-4 w-4 " />
+          {t('view')}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>{t('toggleColumns')}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {allColumns
+          // Opcional: Filtrem columnes que no volem que l'usuari pugui amagar (com les accions)
+          .filter(column => column.accessorKey !== 'actions_edit')
+          .map((column) => {
+            const columnKey = column.accessorKey.toString();
+            return (
+              <DropdownMenuCheckboxItem
+                key={columnKey}
+                className="capitalize"
+                checked={columnVisibility[columnKey] ?? true}
+                onCheckedChange={() => toggleColumnVisibility(columnKey)}
+              >
+                {/* Intentem obtenir el header com a string, si no, fem servir la clau */}
+                {typeof column.header === 'string' ? column.header : columnKey}
+              </DropdownMenuCheckboxItem>
+            );
+          })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // =================== FILE: src/components/shared/EmptyState.tsx ===================
 
 import { FC } from 'react';
@@ -28076,6 +28824,353 @@ import { FC } from 'react';
 export const EmptyState: FC<{ message: string }> = ({ message }) => (
     <p className="text-center text-muted-foreground py-8">{message}</p>
 );
+
+// =================== FILE: src/components/shared/GenericDataTable.tsx ===================
+
+// src/components/shared/GenericDataTable.tsx
+"use client";
+
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Button } from '@/components/ui/button';
+import { Loader2, Trash2, ArrowUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils/utils';
+import { useTranslations } from 'next-intl';
+
+// ✅ Pas 1: Importem els components de paginació i les icones
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+} from "@/components/ui/pagination";
+import { ChevronLeftIcon, ChevronRightIcon } from '@radix-ui/react-icons';
+
+export type ColumnDef<TData> = {
+    accessorKey: keyof TData | string;
+    header: React.ReactNode | string;
+    cell: (row: TData) => React.ReactNode;
+    enableSorting?: boolean;
+    cellClassName?: string;
+    headerClassName?: string;
+};
+
+// ✅ Pas 2: Afegim les noves propietats de paginació a la interfície
+interface GenericDataTableProps<TData extends { id: string | number }> {
+    data: TData[];
+    columns: ColumnDef<TData>[];
+    onSort: (column: string) => void;
+    currentSortColumn: string | null;
+    currentSortOrder: 'asc' | 'desc' | null;
+    isPending: boolean;
+    onDelete: () => void;
+    deleteItem: TData | null;
+    setDeleteItem: (item: TData | null) => void;
+    deleteTitleKey: string; 
+    deleteDescription: React.ReactNode; 
+    emptyStateMessage: string;
+    className?: string;
+    
+    // Noves propietats per a la paginació
+    page: number;
+    totalPages: number;
+    onPageChange: (newPage: number) => void;
+}
+
+export function GenericDataTable<TData extends { id: string | number }>({
+    data,
+    columns,
+    onSort,
+    currentSortColumn,
+    currentSortOrder,
+    isPending,
+    onDelete,
+    deleteItem,
+    setDeleteItem,
+    deleteTitleKey,
+    deleteDescription,
+    emptyStateMessage,
+    className,
+    page,
+    totalPages,
+    onPageChange,
+}: GenericDataTableProps<TData>): React.ReactElement {
+    const t = useTranslations('Shared'); 
+
+    // ... (Component intern SortableHeader no canvia)
+    const SortableHeader = ({ column }: { column: ColumnDef<TData> }) => {
+        const key = column.accessorKey.toString();
+        const isCurrentSort = currentSortColumn === key;
+
+        return (
+            <TableHead 
+                onClick={column.enableSorting ? () => onSort(key) : undefined} 
+                className={cn(column.enableSorting ? "cursor-pointer hover:bg-muted/50 transition-colors" : "", column.headerClassName)}
+            >
+                <div className="flex items-center gap-2">
+                    {column.header}
+                    {column.enableSorting && (
+                        isCurrentSort ? (
+                            <span className="text-foreground text-xs">{currentSortOrder === 'asc' ? '▲' : '▼'}</span>
+                        ) : (
+                            <ArrowUpDown className="w-4 h-4 text-muted-foreground/30" />
+                        )
+                    )}
+                </div>
+            </TableHead>
+        );
+    };
+
+    // ✅ Pas 3: Creem el sub-component de paginació DINS de la taula
+    const PaginationControls = () => {
+        if (totalPages <= 1) return null;
+
+        const handlePageClick = (e: React.MouseEvent<HTMLAnchorElement>, newPage: number) => {
+            e.preventDefault();
+            onPageChange(newPage);
+        };
+
+        const renderPaginationItems = () => {
+            const items = [];
+            const maxPagesToShow = 3; 
+            const startPage = Math.max(2, page - Math.floor(maxPagesToShow / 2));
+            const endPage = Math.min(totalPages - 1, page + Math.floor(maxPagesToShow / 2));
+
+            // Primera pàgina
+            items.push(
+                <PaginationItem key={1}>
+                    <PaginationLink 
+                        href="#" 
+                        onClick={(e) => handlePageClick(e, 1)}
+                        isActive={page === 1}
+                    >
+                        1
+                    </PaginationLink>
+                </PaginationItem>
+            );
+
+            if (startPage > 2) items.push(<PaginationEllipsis key="start-ellipsis" />);
+
+            // Pàgines del mig
+            for (let i = startPage; i <= endPage; i++) {
+                items.push(
+                    <PaginationItem key={i}>
+                        <PaginationLink 
+                            href="#" 
+                            onClick={(e) => handlePageClick(e, i)}
+                            isActive={page === i}
+                        >
+                            {i}
+                        </PaginationLink>
+                    </PaginationItem>
+                );
+            }
+
+            if (endPage < totalPages - 1) items.push(<PaginationEllipsis key="end-ellipsis" />);
+
+            // Última pàgina
+            if (totalPages > 1) {
+                items.push(
+                    <PaginationItem key={totalPages}>
+                        <PaginationLink 
+                            href="#" 
+                            onClick={(e) => handlePageClick(e, totalPages)}
+                            isActive={page === totalPages}
+                        >
+                            {totalPages}
+                        </PaginationLink>
+                    </PaginationItem>
+                );
+            }
+            return items;
+        };
+
+        return (
+            <Pagination className="mt-4">
+                <PaginationContent>
+                    {/* ✅ Pas 4: Botó "Previous" NOMÉS amb fletxa */}
+                    <PaginationItem>
+                        <PaginationLink
+                            href="#"
+                            size="icon" // <-- La clau és aquí
+                            onClick={(e) => handlePageClick(e, page - 1)}
+                            className={page === 1 ? "pointer-events-none opacity-50" : undefined}
+                            aria-label={t('pagination.previous') || 'Go to previous page'}
+                        >
+                            <ChevronLeftIcon className="h-4 w-4" />
+                        </PaginationLink>
+                    </PaginationItem>
+                    
+                    {renderPaginationItems()}
+                    
+                    {/* ✅ Pas 4: Botó "Next" NOMÉS amb fletxa */}
+                    <PaginationItem>
+                        <PaginationLink
+                            href="#"
+                            size="icon" // <-- La clau és aquí
+                            onClick={(e) => handlePageClick(e, page + 1)}
+                            className={page === totalPages ? "pointer-events-none opacity-50" : undefined}
+                            aria-label={t('pagination.next') || 'Go to next page'}
+                        >
+                            <ChevronRightIcon className="h-4 w-4" />
+                        </PaginationLink>
+                    </PaginationItem>
+                </PaginationContent>
+            </Pagination>
+        );
+    };
+
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className={cn("relative h-full flex flex-col", className, isPending && "opacity-50 pointer-events-none")} 
+        >
+            {isPending && (<div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20"><Loader2 className="w-8 h-8 animate-spin" /></div>)}
+
+            {/* Contingut de la Taula (Scrollable Area) */}
+            <div className="flex-grow overflow-y-auto bg-card rounded-xl shadow-lg border border-border min-h-0"> 
+                <Table className="relative">
+                    {/* ... (TableHeader i TableBody no canvien) ... */}
+                    <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+                        <TableRow>
+                            {columns.map((column, index) => (<SortableHeader key={index} column={column} />))}
+                            <TableHead className="text-right">{t('table.actions')}</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {data.length > 0 ? data.map(row => (
+                            <TableRow key={row.id}>
+                                {columns.map((column, index) => (
+                                    <TableCell key={index} className={cn("py-1", column.cellClassName)}>
+                                        {column.cell(row)}
+                                    </TableCell>
+                                ))}
+                                <TableCell className="text-right py-1">
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        title={t('actions.delete')} 
+                                        onClick={() => setDeleteItem(row)} 
+                                        disabled={isPending}
+                                    >
+                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                    </Button>
+                                </TableCell>
+                            </TableRow>
+                        )) : (
+                            <TableRow>
+                                <TableCell colSpan={columns.length + 1} className="text-center h-24">{emptyStateMessage}</TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </div>
+            
+            {/* ✅ Pas 5: Renderitzem la paginació al final */}
+            <PaginationControls />
+
+            {/* Diàleg d'Eliminació (Sense canvis) */}
+            <AlertDialog open={!!deleteItem} onOpenChange={() => setDeleteItem(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{t(deleteTitleKey)}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {deleteDescription}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isPending}>{t('deleteDialog.cancelButton')}</AlertDialogCancel>
+                        <AlertDialogAction onClick={onDelete} className="bg-destructive hover:bg-destructive/90" disabled={isPending}>
+                            {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            {isPending ? t('deleteDialog.deleting') : t('deleteDialog.confirmButton')}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </motion.div>
+    );
+}
+
+// =================== FILE: src/components/shared/PaginationBar.tsx ===================
+
+// src/components/shared/PaginationBar.tsx
+"use client";
+
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useTranslations } from 'next-intl';
+
+interface PaginationBarProps {
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+    totalItems: number;
+    itemsPerPage: number;
+    isLoading: boolean;
+    resourceName: string; // Nom del recurs (e.g., 'despeses', 'factures')
+}
+
+/**
+ * Component reutilitzable per a la barra de paginació.
+ * ✅ El Per Què: Encapsula la lògica de navegació i visualització de rang,
+ * mantenint la consistència a tota l'aplicació (Quotes, Expenses, Invoices).
+ */
+export function PaginationBar({
+    currentPage,
+    totalPages,
+    onPageChange,
+    totalItems,
+    itemsPerPage,
+    isLoading,
+    resourceName
+}: PaginationBarProps) {
+    const t = useTranslations('Shared.Pagination'); // Assumint una clau d'i18n
+
+    const startItem = (currentPage - 1) * itemsPerPage + 1;
+    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+        <div className="flex items-center justify-between space-x-6 text-sm text-muted-foreground p-2">
+            {/* Informació de Rang */}
+            <div className="flex items-center gap-2">
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                <span>
+                    {t('showing')} {startItem}-{endItem} {t('of')} {totalItems} {resourceName}
+                </span>
+            </div>
+
+            {/* Controls de Navegació */}
+            <div className="flex items-center space-x-2">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage <= 1 || isLoading}
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                <span className="font-medium text-foreground">
+                    {currentPage} / {totalPages}
+                </span>
+                
+                <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage >= totalPages || isLoading}
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
+}
 
 // =================== FILE: src/components/shared/StatCard.tsx ===================
 
@@ -29819,6 +30914,126 @@ function Label({
 export { Label }
 
 
+// =================== FILE: src/components/ui/pagination.tsx ===================
+
+import * as React from "react"
+import { cn } from "@/lib/utils/utils"
+import { ButtonProps, buttonVariants } from "@/components/ui/button"
+import { ChevronLeftIcon, ChevronRightIcon, DotsHorizontalIcon } from "@radix-ui/react-icons"
+
+const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
+  <nav
+    role="navigation"
+    aria-label="pagination"
+    className={cn("mx-auto flex w-full justify-center", className)}
+    {...props}
+  />
+)
+Pagination.displayName = "Pagination"
+
+const PaginationContent = React.forwardRef<
+  HTMLUListElement,
+  React.ComponentProps<"ul">
+>(({ className, ...props }, ref) => (
+  <ul
+    ref={ref}
+    className={cn("flex flex-row items-center gap-1", className)}
+    {...props}
+  />
+))
+PaginationContent.displayName = "PaginationContent"
+
+const PaginationItem = React.forwardRef<
+  HTMLLIElement,
+  React.ComponentProps<"li">
+>(({ className, ...props }, ref) => (
+  <li ref={ref} className={cn("", className)} {...props} />
+))
+PaginationItem.displayName = "PaginationItem"
+
+type PaginationLinkProps = {
+  isActive?: boolean
+} & Pick<ButtonProps, "size"> &
+  React.ComponentProps<"a">
+
+const PaginationLink = ({
+  className,
+  isActive,
+  size = "icon",
+  ...props
+}: PaginationLinkProps) => (
+  <a
+    aria-current={isActive ? "page" : undefined}
+    className={cn(
+      buttonVariants({
+        variant: isActive ? "outline" : "ghost",
+        size,
+      }),
+      className
+    )}
+    {...props}
+  />
+)
+PaginationLink.displayName = "PaginationLink"
+
+const PaginationPrevious = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) => (
+  <PaginationLink
+    aria-label="Go to previous page"
+    size="default"
+    className={cn("gap-1 pl-2.5", className)}
+    {...props}
+  >
+    <ChevronLeftIcon className="h-4 w-4" />
+    <span>Previous</span>
+  </PaginationLink>
+)
+PaginationPrevious.displayName = "PaginationPrevious"
+
+const PaginationNext = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof PaginationLink>) => (
+  <PaginationLink
+    aria-label="Go to next page"
+    size="default"
+    className={cn("gap-1 pr-2.5", className)}
+    {...props}
+  >
+    <span>Next</span>
+    <ChevronRightIcon className="h-4 w-4" />
+  </PaginationLink>
+)
+PaginationNext.displayName = "PaginationNext"
+
+const PaginationEllipsis = ({
+  className,
+  ...props
+}: React.ComponentProps<"span">) => (
+  <span
+    aria-hidden
+    className={cn("flex h-9 w-9 items-center justify-center", className)}
+    {...props}
+  >
+    <DotsHorizontalIcon className="h-4 w-4" />
+    <span className="sr-only">More pages</span>
+  </span>
+)
+PaginationEllipsis.displayName = "PaginationEllipsis"
+
+export {
+  Pagination,
+  PaginationContent,
+  PaginationLink,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+}
+
+
 // =================== FILE: src/components/ui/popover.tsx ===================
 
 "use client"
@@ -30831,11 +32046,11 @@ export const navModules: NavItem[] = [
     labelKey: 'finances', // ✅ Canviat
     icon: Landmark,
     basePath: '/finances',
-    path: '/finances/facturacio',
+    path: '/finances/invoices',
     isSingle: false,
     children: [
-      { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/facturacio', isSingle: true },
-      { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/despeses', isSingle: true },
+      { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/invoices', isSingle: true },
+      { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/expenses', isSingle: true },
     ]
   },
   {
@@ -31647,17 +32862,32 @@ export function formatLocalizedDate(
     return format(new Date(date), formatString, { locale });
 }
 
-/**
- * Formata un número com a moneda en Euros.
- * @param amount El número a formatar.
- * @returns La quantitat formatada (ex: "1.234,56 €").
- */
-export function formatCurrency(amount: number | null | undefined): string {
-    const num = amount || 0;
-    return new Intl.NumberFormat('es-ES', {
-        style: 'currency',
-        currency: 'EUR',
-    }).format(num);
+/** Formata una data a un format localitzat (e.g., dd/mm/yyyy) */
+export function formatDate(dateStr: string | number | Date, locale: string = 'ca'): string {
+    if (!dateStr) return '';
+    try {
+        return new Date(dateStr).toLocaleDateString(locale, {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        });
+    } catch {
+        return String(dateStr);
+    }
+}
+
+/** Formata una quantitat amb la moneda (e.g., € 1.234,56) */
+export function formatCurrency(amount: number | null | undefined, currency: string = 'EUR', locale: string = 'ca'): string {
+    if (amount === null || amount === undefined) return '€ 0,00';
+    try {
+        return amount.toLocaleString(locale, {
+            style: 'currency',
+            currency: currency,
+            minimumFractionDigits: 2,
+        });
+    } catch {
+        return `${currency} ${amount.toFixed(2)}`;
+    }
 }
 
 // =================== FILE: src/lib/utils/media.ts ===================
@@ -31768,18 +32998,61 @@ export function sanitizeHtml(html: string | null | undefined, options?: DOMPurif
 
 // =================== FILE: src/middleware.ts ===================
 
-import { createServerClient} from '@supabase/ssr';
+// src/middleware.ts (FIX FINAL DE BUCLE I PERSISTÈNCIA)
+
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 import { locales, defaultLocale } from './i18n';
 
+const LOCALE_COOKIE_NAME = 'NEXT_LOCALE';
+const isProduction = process.env.NODE_ENV === 'production';
+type AppLocale = typeof locales[number];
+
 export async function middleware(request: NextRequest) {
-    const handleI18nRouting = createIntlMiddleware({ locales, defaultLocale });
+
+    const allCookies = request.cookies.getAll();
+    const localeCookie = allCookies.find(c => c.name === LOCALE_COOKIE_NAME);
+    const storedLocale = localeCookie?.value;
+
+    // 🔑 CLAU FIX 1 (TypeScript): Determinem el locale per a la redirecció d'Auth. 
+    // Utilitzem la cookie si és un idioma suportat, altrament el default.
+    const authRedirectLocale: AppLocale = (storedLocale && locales.includes(storedLocale as AppLocale))
+        ? (storedLocale as AppLocale)
+        : defaultLocale;
+
+    // 1. Next-intl processa la petició
+    const handleI18nRouting = createIntlMiddleware({
+        locales,
+        defaultLocale,
+        localeDetection: true, // Mantenim la detecció de la cookie
+        localePrefix: 'always',
+        localeCookie: {
+            name: LOCALE_COOKIE_NAME,
+            path: '/',
+            maxAge: 60 * 60 * 24 * 365,
+            sameSite: 'lax',
+            secure: isProduction,
+        }
+    });
+
     const response = handleI18nRouting(request);
 
-    const pathname = request.nextUrl.pathname.replace(new RegExp(`^/(${locales.join('|')})`), '') || '/';
-    const localePrefix = request.nextUrl.pathname.split('/')[1] || defaultLocale;
-    
+    // ----------------------------------------------------------------
+    // 🔑 CLAU FIX 2: ATURAR EL BUCLE. Si next-intl ja ha decidit redirigir (canviant l'idioma), 
+    // hem d'aturar la nostra lògica d'Auth i deixar que next-intl executi la seva redirecció.
+    // ----------------------------------------------------------------
+    if (response.headers.get('Location')) {
+        // En aquest punt, next-intl ha determinat que l'usuari ha de ser redirigit a un altre URL
+        // (p. ex., de / a /ca o de /es a /ca, o viceversa). Deixem que la redirecció es produeixi.
+        return response;
+    }
+    // ----------------------------------------------------------------
+
+    // 2. Extreure dades i executar la lògica de Supabase
+    const pathnameWithoutLocale = request.nextUrl.pathname.replace(new RegExp(`^/(${locales.join('|')})`), '') || '/';
+
+    // Cridem Supabase per obtenir l'usuari (necessari per a la redirecció d'Auth)
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -31794,24 +33067,25 @@ export async function middleware(request: NextRequest) {
     );
     const { data: { user } } = await supabase.auth.getUser();
 
-    // ✅ CORRECCIÓ DEFINITIVA:
-    // Separem els prefixos de la pàgina principal per a una comprovació més precisa.
+
+    // 3. Lògica de Redirecció (Auth) - Utilitza el locale fiable
     const publicPrefixes = ['/login', '/signup', '/auth', '/accept-invite', '/quote', '/invitation/accept'];
-    
-    // Una ruta és pública si és EXACTAMENT la pàgina principal ('/') o si comença amb un dels altres prefixos.
-    const isPublicPath = pathname === '/' || publicPrefixes.some(p => pathname.startsWith(p));
+    const isPublicPath = pathnameWithoutLocale === '/' || publicPrefixes.some(p => pathnameWithoutLocale.startsWith(p));
     const isAppPath = !isPublicPath;
 
     // --- REGLA 1: Usuari NO autenticat ---
     if (!user && isAppPath) {
-        return NextResponse.redirect(new URL(`/${localePrefix}/login`, request.url));
+        // Redirigim a /<locale_cookie>/login
+        return NextResponse.redirect(new URL(`/${authRedirectLocale}/login`, request.url));
     }
 
     // --- REGLA 2: Usuari SÍ ESTÀ AUTENTICAT ---
     if (user && isPublicPath) {
-        return NextResponse.redirect(new URL(`/${localePrefix}/dashboard`, request.url));
+        // Redirigim de la ruta pública (com / o /login) a /<locale_cookie>/dashboard
+        return NextResponse.redirect(new URL(`/${authRedirectLocale}/dashboard`, request.url));
     }
-    
+
+    // Si no hi ha cap redirecció d'Auth, retornem la resposta de next-intl (que farà el rewrite).
     return response;
 }
 
@@ -32094,6 +33368,7 @@ type ContactStatusCode = typeof CONTACT_STATUS_MAP[number]['code'];
 export type Contact = {
   id: string;
   nom: string;
+  nif?: string | null;
   empresa: string | null;
   created_at?: string;
   email?: string | null;
@@ -32538,85 +33813,94 @@ declare module 'imap-simple';
 
 // =================== FILE: src/types/finances/expenses.ts ===================
 
-/**
- * @file types.ts
- * @summary Tipos centralizados para el módulo de gastos.
- */
+// src/types/finances/expenses.ts (Versió consolidada i tipada)
 
-export type Supplier = {
-  id: string;
-  nom: string;
-};
+import { Contact } from '@/types/crm/contacts'; // Per a la relació amb el Proveïdor
+// import { Database } from '@/types/supabase'; // Si l'SDK ho genera automàticament
+
+// --- 1. Tipus d'Elements (Basats en les teves definicions) ---
 
 export type ExpenseItem = {
-  description: string;
-  quantity: number;
-  unit_price: number;
+    id?: number; // bigint (opcional per a la creació, present per a l'actualització)
+    expense_id: number; // Clau forana, afegida aquí per claredat en la sincronització
+    description: string;
+    quantity: number;
+    unit_price: number;
+    total: number; // Afegit per consistència amb el càlcul
 };
 
 export type ExpenseAttachment = {
-  id: string;
-  file_path: string;
-  filename: string;
-  mime_type: string;
+    id: string; // UUID de l'adjunt
+    file_path: string;
+    filename: string;
+    mime_type: string;
+    expense_id: number;
 };
 
-// Tipus base de despesa
-export type Expense = {
-  id?: string; // ✅ Opcional (cuando es nueva)
-  created_at?: string;
-  user_id?: string;
-  supplier_id: string | null;
-  invoice_number: string | null;
-  expense_date: string;
-  category: string | null;
-  description: string;
-  subtotal: number;
-  total_amount: number;
-  suppliers: Pick<Supplier, 'nom'> | null; // 👈 solo se usa para mostrar nombre
-  expense_items: ExpenseItem[];
-  expense_attachments: ExpenseAttachment[];
-  notes?: string | null;
-  discount_amount?: number | null;
-  tax_rate?: number | null;
-  tax_amount?: number | null;
-};
+// --- 2. Tipus Base de Despesa (Taula `expenses`) ---
 
-// Estat del formulari (per components React)
-export type ExpenseFormState = Omit<Expense, 'suppliers'>;
+// ✅ NOU: Definim el tipus per a l'estat de la despesa, basat en l'ENUM de la DB
+export type ExpenseStatus = 'pending' | 'paid' | 'overdue' | 'cancelled';
 
-// Props del diàleg principal
-export interface ExpenseDialogProps {
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  initialData: Expense | null;
-  suppliers: Supplier[];
+export interface Expense {
+    id: number;
+    user_id: string;
+    team_id: string;
+    description: string;
+    total_amount: number;
+    expense_date: string; // format YYYY-MM-DD
+    category: string | null;
+    created_at: string;
+    invoice_number: string | null;
+    tax_amount: number | null;
+    subtotal: number | null;
+    discount_amount: number | null;
+    notes: string | null;
+    tax_rate: number | null;
+    supplier_id: string | null;
+    
+    // ✅ NOU: Camps afegits
+    status: ExpenseStatus;
+    payment_date: string | null; // format YYYY-MM-DD
+    payment_method: string | null;
+    is_billable: boolean;
+    project_id: string | null;
+    is_reimbursable: boolean;
 }
+// --- 3. Tipus Compostos (per a les vistes i accions) ---
 
-// Tipus que enviem al servidor amb les accions
+// Tipus usat a la llista (només amb el nom del proveïdor)
+export type ExpenseWithContact = Expense & {
+    suppliers: Pick<Contact, 'id' | 'nom'> | null; 
+};
+
+// Tipus per a la vista de detall (totes les dades relacionals)
+export type ExpenseDetail = ExpenseWithContact & {
+    suppliers: Pick<Contact, 'id' | 'nom' | 'nif'> | null; // Tipus de detall del proveïdor
+    expense_items: ExpenseItem[];
+    expense_attachments: ExpenseAttachment[];
+};
+
+
+// Tipus que s'envia a `saveExpenseAction`
+// Exclou camps de DB auto-generats/gestionats per la sessió (user_id, team_id, created_at)
+// Exclou camps de relació que no van a la taula principal (suppliers, attachments)
 export type ExpenseFormDataForAction = Omit<
   Expense,
-  'id' | 'created_at' | 'user_id' | 'team_id'
+  'id' | 'created_at' | 'user_id' | 'team_id' | 'suppliers' // 'suppliers' s'elimina
 > & {
-  id?: string | null;
-  expense_items?: ExpenseItem[];
-  expense_attachments?: ExpenseAttachment[];
-  suppliers?: Pick<Supplier, 'nom'> | null; // 👈 tipus igual que a Expense
+    id?: string | number | null; // L'ID pot ser opcional o string/number
+    expense_items?: ExpenseItem[]; // Els ítems venen separats
 };
 
-// Dades que provenen de l'OCR
-export type OcrExpenseData = {
-  expense_items?: Array<{
-    description?: string;
-    quantity?: number | string;
-    unit_price?: number | string;
-  }>;
-  issue_date?: string;
-  description?: string;
-  invoice_number?: string;
-  [key: string]: unknown;
-};
 
+// Mapeig d'Estatus de Despeses (configuració d'UI, utilitzat a ExpensesClient)
+export const EXPENSE_STATUS_MAP = [
+    { dbValue: 'pending', key: 'pending', colorClass: 'bg-yellow-100' },
+    { dbValue: 'paid', key: 'paid', colorClass: 'bg-green-600' },
+    { dbValue: 'reimbursed', key: 'reimbursed', colorClass: 'bg-blue-100' },
+    { dbValue: 'rejected', key: 'rejected', colorClass: 'bg-red-600' },
+];
 
 // =================== FILE: src/types/finances/index.ts ===================
 
@@ -32707,6 +33991,29 @@ export const expenseSchema = z.object({
 
 // Definim el tipus de TypeScript a partir de l'esquema per poder-lo reutilitzar
 export type ExpenseFormData = z.infer<typeof expenseSchema>;
+
+// =================== FILE: src/types/finances/suppliers.ts ===================
+
+// src/types/finances/suppliers.ts
+
+/**
+ * Representa l'estructura completa d'un proveïdor, tal com està a la base de dades.
+ */
+export interface Supplier {
+  id: string; // Correspon al tipus 'uuid' de Supabase
+  user_id: string;
+  team_id: string;
+  nom: string;
+  email?: string | null;
+  telefon?: string | null;
+  nif?: string | null;
+  created_at: string; // Correspon al tipus 'timestamp with time zone'
+}
+
+/**
+ * Un tipus més simple per a llistes o selectors, per optimitzar les dades que es transfereixen.
+ */
+export type SupplierForSelector = Pick<Supplier, 'id' | 'nom'>;
 
 // =================== FILE: src/types/network/network.ts ===================
 

@@ -22,6 +22,17 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
+CREATE TYPE "public"."expense_status" AS ENUM (
+    'pending',
+    'paid',
+    'overdue',
+    'cancelled'
+);
+
+
+ALTER TYPE "public"."expense_status" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."invoice_status" AS ENUM (
     'Draft',
     'Sent',
@@ -1209,7 +1220,13 @@ CREATE TABLE IF NOT EXISTS "public"."expenses" (
     "discount_amount" numeric,
     "notes" "text",
     "tax_rate" numeric,
-    "team_id" "uuid"
+    "team_id" "uuid",
+    "status" "public"."expense_status" DEFAULT 'pending'::"public"."expense_status" NOT NULL,
+    "payment_date" "date",
+    "payment_method" "text",
+    "is_billable" boolean DEFAULT false NOT NULL,
+    "project_id" "uuid",
+    "is_reimbursable" boolean DEFAULT false NOT NULL
 );
 
 
@@ -1307,6 +1324,140 @@ $$;
 
 
 ALTER FUNCTION "public"."save_refresh_token"("provider_name" "text", "refresh_token_value" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text" DEFAULT NULL::"text", "p_category" "text" DEFAULT NULL::"text", "p_sort_by" "text" DEFAULT 'expense_date'::"text", "p_sort_order" "text" DEFAULT 'desc'::"text") RETURNS TABLE("id" bigint, "invoice_number" "text", "expense_date" "date", "total_amount" numeric, "category" "text", "description" "text", "supplier_id" "uuid", "supplier_nom" "text")
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    -- Validació per evitar SQL Injection
+    IF p_sort_order NOT IN ('asc', 'desc') THEN
+        p_sort_order := 'desc';
+    END IF;
+
+    IF p_sort_by NOT IN ('expense_date', 'suppliers.nom', 'total_amount', 'category', 'invoice_number') THEN
+        p_sort_by := 'expense_date';
+    END IF;
+
+    -- Construïm la consulta de forma dinàmica i segura
+    RETURN QUERY EXECUTE format(
+        'SELECT
+            e.id,
+            e.invoice_number,
+            e.expense_date,
+            e.total_amount,
+            e.category,
+            e.description,
+            s.id as supplier_id,
+            s.nom as supplier_nom
+        FROM
+            public.expenses e
+        LEFT JOIN
+            public.suppliers s ON e.supplier_id = s.id
+        WHERE
+            e.team_id = %L
+            AND (
+                %L IS NULL OR 
+                e.description ILIKE %L OR 
+                s.nom ILIKE %L OR
+                e.invoice_number ILIKE %L -- ✅ MILLORA AFEGIDA AQUÍ
+            )
+            AND (%L IS NULL OR %L = ''all'' OR e.category = %L)
+        ORDER BY %I %s',
+        p_team_id,
+        p_search_term, 
+        '%' || p_search_term || '%', 
+        '%' || p_search_term || '%',
+        '%' || p_search_term || '%', -- Paràmetre per a invoice_number
+        p_category, p_category, p_category,
+        CASE 
+            WHEN p_sort_by = 'suppliers.nom' THEN 'supplier_nom' 
+            ELSE p_sort_by 
+        END,
+        p_sort_order
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text" DEFAULT NULL::"text", "p_category" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_sort_by" "text" DEFAULT 'expense_date'::"text", "p_sort_order" "text" DEFAULT 'desc'::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "invoice_number" "text", "expense_date" "date", "total_amount" numeric, "category" "text", "description" "text", "supplier_id" "uuid", "supplier_nom" "text", "status" "text", "payment_date" "date", "is_billable" boolean, "project_id" "uuid", "is_reimbursable" boolean)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    sort_col TEXT;
+    sort_dir TEXT;
+BEGIN
+    -- 1. Validació i normalització de l'ordenació
+    IF p_sort_order NOT IN ('asc', 'desc') THEN
+        p_sort_order := 'desc';
+    END IF;
+    
+    -- Calculem la columna per ordenar de forma segura
+    sort_col := CASE p_sort_by
+        WHEN 'suppliers.nom' THEN 's.nom' 
+        WHEN 'total_amount' THEN 'e.total_amount'
+        WHEN 'category' THEN 'e.category'
+        WHEN 'invoice_number' THEN 'e.invoice_number'
+        ELSE 'e.expense_date' -- Per defecte
+    END;
+
+    sort_dir := p_sort_order; -- Ja validat
+
+    -- 2. Execució de la consulta amb la sintaxi EXECUTE FORMAT
+    RETURN QUERY EXECUTE format(
+        'SELECT
+            e.id,
+            e.invoice_number,
+            e.expense_date,
+            e.total_amount,
+            e.category,
+            e.description,
+            e.supplier_id,
+            s.nom AS supplier_nom,
+            e.status::text,          -- Cast a text
+            e.payment_date,
+            e.is_billable,
+            e.project_id,
+            e.is_reimbursable
+        FROM
+            public.expenses e
+        LEFT JOIN
+            public.suppliers s ON e.supplier_id = s.id
+        WHERE
+            e.team_id = %L
+            -- Filtre de Cerca (descripció, num. factura, nom proveïdor)
+            AND (
+                %L IS NULL OR 
+                e.description ILIKE %L OR 
+                s.nom ILIKE %L OR
+                e.invoice_number ILIKE %L
+            )
+            -- Filtre de Categoria
+            AND (%L IS NULL OR %L = ''all'' OR e.category = %L)
+            -- Filtre d''Estat
+            AND (%L IS NULL OR %L = ''all'' OR e.status::text = %L) 
+        ORDER BY %s %s
+        LIMIT %L OFFSET %L',
+        p_team_id,
+        p_search_term, 
+        '%%' || p_search_term || '%%', 
+        '%%' || p_search_term || '%%',
+        '%%' || p_search_term || '%%',
+        p_category, p_category, p_category,
+        p_status, p_status, p_status,
+        sort_col,
+        sort_dir,
+        p_limit,
+        p_offset
+    );
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) RETURNS "void"
@@ -2221,6 +2372,21 @@ ALTER TABLE "public"."project_layouts" ALTER COLUMN "id" ADD GENERATED BY DEFAUL
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."projects" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "status" "text",
+    "start_date" "date",
+    "end_date" "date",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."projects" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."quote_items" (
     "id" bigint NOT NULL,
     "quote_id" bigint NOT NULL,
@@ -2724,6 +2890,11 @@ ALTER TABLE ONLY "public"."project_layouts"
 
 
 
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."quote_items"
     ADD CONSTRAINT "quote_items_pkey" PRIMARY KEY ("id");
 
@@ -2999,6 +3170,11 @@ ALTER TABLE ONLY "public"."expense_items"
 
 
 ALTER TABLE ONLY "public"."expenses"
+    ADD CONSTRAINT "expenses_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."expenses"
     ADD CONSTRAINT "expenses_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE SET NULL;
 
 
@@ -3145,6 +3321,11 @@ ALTER TABLE ONLY "public"."profiles"
 
 ALTER TABLE ONLY "public"."project_layouts"
     ADD CONSTRAINT "project_layouts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."projects"
+    ADD CONSTRAINT "projects_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -3399,6 +3580,10 @@ CREATE POLICY "Els usuaris gestionen els adjunts de despesa del seu equip" ON "p
 
 
 CREATE POLICY "Els usuaris gestionen els productes del seu equip actiu" ON "public"."products" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els usuaris gestionen els projectes del seu equip actiu" ON "public"."projects" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
 
 
 
@@ -3771,6 +3956,9 @@ ALTER TABLE "public"."profiles" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."project_layouts" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."projects" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."quote_items" ENABLE ROW LEVEL SECURITY;
 
 
@@ -4086,6 +4274,18 @@ GRANT ALL ON FUNCTION "public"."save_refresh_token"("provider_name" "text", "ref
 
 
 
+GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "service_role";
@@ -4359,6 +4559,12 @@ GRANT ALL ON TABLE "public"."project_layouts" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."project_layouts_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."project_layouts_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."project_layouts_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."projects" TO "anon";
+GRANT ALL ON TABLE "public"."projects" TO "authenticated";
+GRANT ALL ON TABLE "public"."projects" TO "service_role";
 
 
 

@@ -1,20 +1,20 @@
-// src/app/[locale]/(app)/finances/despeses/[expenseId]/_hooks/useExpenseDetail.ts
 import { useState, useEffect, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 import { type ExpenseDetail, type ExpenseFormDataForAction, type ExpenseItem } from '@/types/finances/expenses';
-import { type Supplier } from '@/types/finances/suppliers';
-import { saveExpenseAction } from '../../actions';
+// ❌ 'Supplier' ja no és necessari aquí
+import { saveExpenseAction } from '../actions';
 
 interface UseExpenseDetailProps {
     initialData: ExpenseDetail | null;
     isNew: boolean;
-    allSuppliers: Pick<Supplier, 'id' | 'nom'>[];
+    // ❌ 'allSuppliers' eliminat, és redundant.
+    // La informació del proveïdor inicial ja ve a 'initialData.suppliers'.
 }
 
-// ✅ Hem eliminat 'status' per alinear-ho amb la DB i els tipus corregits.
+// ✅ Hem afegit tots els camps que falten segons l'esquema de la BD
 const defaultInitialData: Omit<ExpenseFormDataForAction, 'status'> = {
     id: 'new',
     description: '',
@@ -28,11 +28,18 @@ const defaultInitialData: Omit<ExpenseFormDataForAction, 'status'> = {
     notes: null,
     tax_rate: 21,
     supplier_id: null,
+    // ✅ CAMPS AFEGITS PER CORREGIR L'ERROR DE TIPATGE
+    payment_method: null,
+    payment_date: null,
+    is_billable: false,
+    project_id: null,
+    is_reimbursable: false,
+    // ---
     expense_items: [],
 };
 
-// ✅ Hem afegit 'allSuppliers' a la desestructuració.
-export function useExpenseDetail({ initialData, isNew, allSuppliers }: UseExpenseDetailProps) {
+// ❌ 'allSuppliers' eliminat de la desestructuració
+export function useExpenseDetail({ initialData, isNew }: UseExpenseDetailProps) {
     const t = useTranslations('ExpenseDetailPage');
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -103,7 +110,7 @@ export function useExpenseDetail({ initialData, isNew, allSuppliers }: UseExpens
             const result = await saveExpenseAction(formData, isNew ? null : (formData.id ?? null));
             if (result.success) {
                 toast.success(t('toast.saveSuccess'));
-                router.push('/finances/despeses');
+                router.push('/finances/expenses'); // <-- Canviat a /expenses (despeses)
                 router.refresh();
             } else {
                 toast.error(result.message || t('toast.saveError'));
@@ -120,7 +127,6 @@ export function useExpenseDetail({ initialData, isNew, allSuppliers }: UseExpens
         handleAddItem,
         handleRemoveItem,
         t,
-        // Pots retornar 'allSuppliers' si el component client el necessita directament
-        allSuppliers
+        // ❌ 'allSuppliers' eliminat del return
     };
 }

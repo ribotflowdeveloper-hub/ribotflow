@@ -22,7 +22,7 @@ export function ExpenseItemsEditor({ items, onItemChange, onRemoveItem, isSaving
                 <span className="col-span-6">{t('description')}</span>
                 <span className="col-span-2 text-right">{t('quantity')}</span>
                 <span className="col-span-2 text-right">{t('unitPrice')}</span>
-                <span className="col-span-2 text-right">{t('total')}</span>
+                <span className="col-span-2 px-10 text-right">{t('total')}</span>
                 <span className="w-8"></span> {/* Columna buida per al botó d'esborrar */}
             </div>
 
@@ -66,12 +66,8 @@ export function ExpenseItemsEditor({ items, onItemChange, onRemoveItem, isSaving
 
                     {/* Total (Lectura) */}
                     <div className="col-span-2 text-right font-medium">
-                        {item.total ? item.total.toFixed(2) : '0.00'}
-                    </div>
-
-                    {/* Botó d'Esborrar */}
-                    <div className="col-span-0 flex justify-end">
-                        <Button
+                        {item.total ? item.total.toFixed(2) : '0.00'}              
+                         <Button
                             type="button"
                             variant="ghost"
                             size="icon"
@@ -82,6 +78,7 @@ export function ExpenseItemsEditor({ items, onItemChange, onRemoveItem, isSaving
                             <Trash2 className="w-4 h-4" />
                         </Button>
                     </div>
+
                 </div>
             ))}
 

@@ -87,7 +87,7 @@ export function ExpensesClient({ initialData }: { initialData: PaginatedExpenses
             header: "",
             enableSorting: false,
             cell: (row) => (
-                <Link href={`/${locale}/finances/despeses/${row.id}`} title={tShared('actions.edit')}>
+                <Link href={`/${locale}/finances/expenses/${row.id}`} title={tShared('actions.edit')}>
                     <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
                 </Link>
             ),
@@ -128,16 +128,13 @@ export function ExpensesClient({ initialData }: { initialData: PaginatedExpenses
     </>
   );
 
-  // ❌ Pas 2: Eliminem tot el component 'PaginationControls'
-  // const PaginationControls = () => { ... }
-
   return (
     <div className="h-full flex flex-col"> 
       {/* ... (Header i Filtres sense canvis) ... */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold">{t('title')}</h1>
         <Button asChild>
-          <Link href={`/${locale}/finances/despeses/new`}>
+          <Link href={`/${locale}/finances/expenses/new`}>
             <Plus className="w-4 h-4 " /> {t('newExpenseButton')}
           </Link>
         </Button>

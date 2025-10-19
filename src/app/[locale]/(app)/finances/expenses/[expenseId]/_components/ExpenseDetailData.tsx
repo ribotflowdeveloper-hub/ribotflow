@@ -1,6 +1,6 @@
 // src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseDetailData.tsx
 import { notFound } from 'next/navigation';
-import { fetchExpenseDetail } from '../../actions'; 
+import { fetchExpenseDetail } from '../actions'; 
 // ❌ Línia antiga
 // import { fetchContacts } from '@/app/[locale]/(app)/crm/contactes/actions'; 
 // ✅ Línia nova i correcta

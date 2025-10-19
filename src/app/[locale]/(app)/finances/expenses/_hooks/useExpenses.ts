@@ -2,7 +2,8 @@
 import { useState, useEffect, useTransition, useRef } from 'react'; 
 import { useDebounce } from 'use-debounce';
 // ✅ Importem la nova funció i tipus
-import { fetchPaginatedExpenses, type ExpenseFilters, type PaginatedExpensesResponse, deleteExpense } from '../actions';
+import { fetchPaginatedExpenses, type ExpenseFilters, type PaginatedExpensesResponse} from '../actions';
+import { deleteExpense } from '../[expenseId]/actions';
 import { type ExpenseWithContact } from '@/types/finances/expenses';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
