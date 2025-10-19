@@ -17,6 +17,7 @@ import {
   Activity,
   CalendarDays, // ✅ Importem la nova icona
 
+  Truck
 } from 'lucide-react';
 
 
@@ -42,8 +43,6 @@ export const navModules: NavItem[] = [
       { id: 'general_crm', labelKey: 'crmGeneral', icon: Briefcase, path: '/crm/general', isSingle: true },
       { id: 'contactes', labelKey: 'contacts', icon: Contact, path: '/crm/contactes', isSingle: true },
       { id: 'pipeline', labelKey: 'pipeline', icon: Columns, path: '/crm/pipeline', isSingle: true },
-      { id: 'pressupostos', labelKey: 'quotes', icon: FileText, path: '/crm/quotes', isSingle: true },
-      { id: 'conceptes', labelKey: 'concepts', icon: BookPlus, path: '/crm/products', isSingle: true },
       { id: 'activitats', labelKey: 'activities', icon: Activity, path: '/crm/activitats', isSingle: true },
       { id: 'calendari', labelKey: 'calendar', icon: CalendarDays, path: '/crm/calendari', isSingle: true }
 
@@ -57,8 +56,12 @@ export const navModules: NavItem[] = [
     path: '/finances/invoices',
     isSingle: false,
     children: [
+      { id: 'pressupostos', labelKey: 'quotes', icon: FileText, path: '/crm/quotes', isSingle: true },
+      { id: 'conceptes', labelKey: 'concepts', icon: BookPlus, path: '/crm/products', isSingle: true },
       { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/invoices', isSingle: true },
       { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/expenses', isSingle: true },
+      { id: 'proveïdors', labelKey: 'suppliers', icon: Truck, path: '/finances/suppliers', isSingle: true },
+
     ]
   },
   {

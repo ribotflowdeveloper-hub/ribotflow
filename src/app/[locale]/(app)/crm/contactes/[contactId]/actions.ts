@@ -1,29 +1,72 @@
-// /app/[locale]/crm/contactes/[contactId]/actions.ts (CORREGIT)
-
 "use server";
 
 import { revalidatePath } from "next/cache";
-// ✅ 1. Importem la definició de la base de dades.
-import { type Database } from "@/types/supabase";
-import { validateUserSession } from "@/lib/supabase/session";
+import { type Database } from "@/types/supabase"; // Ja ho tens
+import { validateUserSession } from "@/lib/supabase/session"; // Ja ho tens
 
-// ✅ 2. Definim el tipus a partir de la BD.
-type Contact = Database['public']['Tables']['contacts']['Row'];
+// --- Tipus ---
 
+// Tipus base de la fila
+type ContactRow = Database['public']['Tables']['contacts']['Row'];
+
+// ✅ NOU: Tipus de detall que inclou el proveïdor (pel JOIN)
+export type ContactDetail = Omit<ContactRow, 'suppliers'> & {
+  suppliers: Database['public']['Tables']['suppliers']['Row'] | null;
+};
+
+// --- Accions ---
+
+/**
+ * ✅ NOVA FUNCIÓ
+ * Obté el detall d'un contacte, incloent l'empresa (supplier) associada.
+ */
+export async function fetchContactDetail(contactId: number): Promise<ContactDetail | null> {
+  const session = await validateUserSession();
+  if ("error" in session) return null;
+  const { supabase, activeTeamId } = session;
+
+  const { data, error } = await supabase
+    .from("contacts")
+    // Aquí fem el JOIN per obtenir el 'nom' del proveïdor
+    .select(`
+      *, 
+      suppliers (id, nom)
+    `)
+    .eq("id", contactId)
+    .eq("team_id", activeTeamId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching contact detail:", error.message);
+    return null;
+  }
+  
+  // Fem un 'cast' al nostre nou tipus
+  return data as unknown as ContactDetail;
+}
+
+
+/**
+ * ✅ ACCIÓ MODIFICADA
+ * Actualitza un contacte a partir de FormData.
+ */
 export async function updateContactAction(
-    // ✅ 3. L'ID del contacte és un NÚMERO.
     contactId: number, 
     formData: FormData
-): Promise<{ data: Contact | null; error: { message: string } | null }> {
+): Promise<{ data: ContactDetail | null; error: { message: string } | null }> {
     const session = await validateUserSession();
     if ('error' in session) return { data: null, error: session.error };
     const { supabase, activeTeamId } = session;
 
-    // El processament del formulari estava correcte.
     const hobbiesValue = formData.get('hobbies') as string;
+    
+    // ✅ CANVI: Llegim 'supplier_id' i el posem a null si està buit.
+    const supplierId = formData.get('supplier_id') as string;
+
     const dataToUpdate = {
         nom: formData.get('nom') as string,
-        empresa: formData.get('empresa') as string,
+        // ❌ 'empresa' HA DESAPAREGUT
+        supplier_id: supplierId || null, // ✅ 'supplier_id' ÉS LA NOVA CLAU
         email: formData.get('email') as string,
         telefon: formData.get('telefon') as string,
         estat: formData.get('estat') as string,
@@ -46,9 +89,12 @@ export async function updateContactAction(
     const { data, error } = await supabase
         .from('contacts')
         .update(dataToUpdate)
-        .eq('id', contactId) // La comparació ara és number === number.
+        .eq('id', contactId)
         .eq('team_id', activeTeamId)
-        .select()
+        .select(`
+          *, 
+          suppliers (id, nom)
+        `) // ✅ Retornem les dades amb el JOIN
         .single();
 
     if (error) {
@@ -57,14 +103,14 @@ export async function updateContactAction(
     }
 
     revalidatePath(`/crm/contactes/${contactId}`);
-    return { data, error: null };
+    return { data: data as unknown as ContactDetail, error: null };
 }
 
+// ✅ Aquesta funció es queda igual
 export async function deleteContactAction(
-    // ✅ 4. L'ID del contacte és un NÚMERO.
     contactId: number
 ): Promise<{ success: boolean; message: string }> {
-    const session = await validateUserSession();
+   const session = await validateUserSession();
     if ('error' in session) {
         return { success: false, message: session.error.message };
     }
@@ -73,7 +119,7 @@ export async function deleteContactAction(
     const { error } = await supabase
         .from('contacts')
         .delete()
-        .eq('id', contactId) // La comparació ara és number === number.
+        .eq('id', contactId)
         .eq('team_id', activeTeamId);
 
     if (error) {

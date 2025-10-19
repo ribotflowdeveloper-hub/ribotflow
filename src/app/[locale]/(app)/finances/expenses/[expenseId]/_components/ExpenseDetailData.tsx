@@ -4,7 +4,7 @@ import { fetchExpenseDetail } from '../actions';
 // ❌ Línia antiga
 // import { fetchContacts } from '@/app/[locale]/(app)/crm/contactes/actions'; 
 // ✅ Línia nova i correcta
-import { fetchSuppliers } from '@/app/[locale]/(app)/finances/proveidors/actions'; 
+import { fetchSuppliers } from '@/app/[locale]/(app)/finances/suppliers/actions'; 
 import { ExpenseDetailClient } from './ExpenseDetailClient';
 
 interface ExpenseDetailDataProps {

@@ -8,54 +8,88 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { type Supplier } from '@/types/finances/suppliers';
 import { useTranslations } from "next-intl";
-import { searchSuppliers } from "@/app/[locale]/(app)/finances/suppliers/actions"; // <-- ✅ Ara funciona
+// ✅ Assegura't que la ruta d'importació ara apunta a la nova ubicació (suppliers)
+import { searchSuppliers } from "@/app/[locale]/(app)/finances/suppliers/actions"; 
 
 interface SupplierComboboxProps {
-    value: string | null;
-    onChange: (value: string | null) => void;
+    // ✅ Props per a Formularis NO CONTROLATS (com el de contactes)
+    name?: string; // Per al camp 'hidden' que recollirà FormData
+    defaultValue?: string | null; // El valor inicial (supplier_id)
+
+    // ✅ Props per a Formularis CONTROLATS (com el de despeses)
+    value?: string | null;
+    onChange?: (value: string | null) => void;
+    
+    // Props generals
     initialSupplier: Pick<Supplier, 'id' | 'nom'> | null;
     disabled?: boolean;
 }
 
-export function SupplierCombobox({ value, onChange, initialSupplier, disabled }: SupplierComboboxProps) {
-    const t = useTranslations('ExpenseDetailPage');
+export function SupplierCombobox({ 
+    name, 
+    defaultValue, 
+    value: controlledValue, 
+    onChange: controlledOnChange, 
+    initialSupplier, 
+    disabled 
+}: SupplierComboboxProps) {
+    
+    const t = useTranslations('ExpenseDetailPage'); // Pots canviar el context de traducció si vols
     const [open, setOpen] = React.useState(false);
     
-    // Llista de proveïdors trobats en la cerca
+    // --- Lògica d'estat (Controlat vs. No Controlat) ---
+    // Si 'defaultValue' existeix, el component gestiona el seu propi estat (no controlat)
+    const [internalValue, setInternalValue] = React.useState(defaultValue ?? null);
+    
+    const isControlled = controlledValue !== undefined;
+    const value = isControlled ? controlledValue : internalValue;
+    
+    const setValue = (newValue: string | null) => {
+        if (isControlled) {
+            controlledOnChange?.(newValue);
+        } else {
+            setInternalValue(newValue);
+        }
+    };
+    // --- Fi Lògica d'estat ---
+
     const [suppliers, setSuppliers] = React.useState<Pick<Supplier, 'id' | 'nom'>[]>(
         initialSupplier ? [initialSupplier] : []
     );
     
-    // El proveïdor seleccionat (objecte)
+    // Troba el proveïdor seleccionat (objecte)
     const selectedSupplier = suppliers.find(s => s.id === value) || null;
     
-    const [searchTerm, setSearchTerm] = React.useState("");
+    const [searchTerm, setSearchTerm] = React.useState(initialSupplier?.nom ?? "");
 
-    // Cerca asíncrona
+    // Cerca asíncrona (es queda igual que abans)
     React.useEffect(() => {
         if (!open) return;
-
         const fetchSuppliers = async () => {
-            // Crida a la Server Action
-            const results = await searchSuppliers(searchTerm); // ✅ Aquesta acció ara existeix
-            
-            // Assegurem que el proveïdor inicial (si està seleccionat) es mantingui a la llista
-            // per si la cerca nova no el retorna.
+            const results = await searchSuppliers(searchTerm);
             if (initialSupplier && !results.find(s => s.id === initialSupplier.id)) {
                  setSuppliers([initialSupplier, ...results]);
             } else {
                  setSuppliers(results);
             }
         };
-        
-        // Un petit debounce
         const timer = setTimeout(fetchSuppliers, 300);
         return () => clearTimeout(timer);
-
     }, [searchTerm, open, initialSupplier]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
+            
+            {/* ✅ AQUESTA ÉS LA PART CLAU PER A FormData */}
+            {/* Un camp ocult que desa l'ID seleccionat. El <form> el llegirà. */}
+            {name && (
+                <input 
+                    type="hidden" 
+                    name={name} 
+                    value={value ?? ""} 
+                />
+            )}
+
             <PopoverTrigger asChild>
                 <Button
                     variant="outline"
@@ -79,10 +113,9 @@ export function SupplierCombobox({ value, onChange, initialSupplier, disabled }:
                     <CommandList>
                         <CommandEmpty>{t('select.noSupplierFound')}</CommandEmpty>
                         <CommandGroup>
-                            {/* Opció per netejar */}
                             <CommandItem
                                 onSelect={() => {
-                                    onChange(null);
+                                    setValue(null); // Utilitzem el nostre 'setValue'
                                     setOpen(false);
                                 }}
                             >
@@ -92,10 +125,9 @@ export function SupplierCombobox({ value, onChange, initialSupplier, disabled }:
                             {suppliers.map((supplier) => (
                                 <CommandItem
                                     key={supplier.id}
-                                    value={supplier.nom} // Cerquem per nom
+                                    value={supplier.nom}
                                     onSelect={() => {
-                                        // ✅ Canvi: .toString() eliminat. 'supplier.id' ja és string (uuid)
-                                        onChange(supplier.id);
+                                        setValue(supplier.id); // Utilitzem el nostre 'setValue'
                                         setOpen(false);
                                     }}
                                 >

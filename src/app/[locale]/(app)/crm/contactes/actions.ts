@@ -102,3 +102,35 @@ export async function createContactAction(
     return { data, error: null };
 }
 
+
+/**
+ * ✅ NOVA FUNCIÓ
+ * Obté tots els contactes (persones) associats a un proveïdor (empresa) específic.
+ * S'utilitzarà a la pàgina de detall del proveïdor per a la Visió 360.
+ */
+export async function fetchContactsForSupplier(supplierId: string) {
+  const session = await validateUserSession();
+  if ("error" in session) {
+    console.error("Session error in fetchContactsForSupplier:", session.error);
+    return [];
+  }
+  const { supabase, activeTeamId } = session;
+
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id, nom, job_title, email, telefon')
+    .eq('supplier_id', supplierId) // El filtre clau
+    .eq('team_id', activeTeamId)
+    .order('nom', { ascending: true });
+
+  if (error) {
+    console.error("Error fetching contacts for supplier:", error.message);
+    return [];
+  }
+
+  return data;
+}
+
+// Tipus per a la resposta d'aquesta funció (opcional però recomanat)
+export type ContactForSupplier = Awaited<ReturnType<typeof fetchContactsForSupplier>>[0];
+

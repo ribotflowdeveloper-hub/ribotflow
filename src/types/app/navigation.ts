@@ -10,7 +10,7 @@ export const NAVIGATION_KEYS = [
   'dashboard', 'crm', 'finances', 'communication', 'network', 'architecture',
   'crmGeneral', 'contacts', 'pipeline', 'quotes', 'concepts', 'activities', // ✅ 'concepts' i 'activities' afegits
   'invoicing', 'expenses', 'inbox', 'templates', 'marketing', 'profile', 'customization',
-  'ai', 'settings', 'planner', 'calendar'
+  'ai', 'settings', 'planner', 'calendar', 'projects', 'tasks', 'reports', 'suppliers' // ✅ 'suppliers' afegit
 ] as const;
 
 /**

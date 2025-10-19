@@ -27,6 +27,7 @@
     "calendar": "Calendari",
     "invoicing": "Facturació",
     "expenses": "Despeses",
+    "suppliers": "Proveïdors",
     "inbox": "Safata d'Entrada",
     "templates": "Plantilles",
     "marketing": "Màrqueting",
@@ -47,6 +48,7 @@
     "excel": "Excel",
     "CrearTemplate": "Crear plantilla",
     "LoadFile": "Carregar fitxer"
+
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -1566,6 +1568,26 @@
       "to": "a",
       "of": "de",
       "entries": "registres"
+    }
+  },
+  "SuppliersPage": {
+    "title": "Proveïdors",
+    "description": "Gestiona els teus proveïdors i entitats.",
+    "newButton": "Nou Proveïdor",
+    "searchPlaceholder": "Cerca per nom, NIF o email...",
+    "emptyState": "No s'han trobat proveïdors.",
+    "table": {
+      "name": "Nom",
+      "email": "Email",
+      "phone": "Telèfon",
+      "created": "Data de creació"
+    },
+    "deleteDialog": {
+      "title": "Vols esborrar aquest proveïdor?"
+    },
+    "toast": {
+      "deleteSuccess": "Proveïdor esborrat amb èxit.",
+      "deleteError": "No s'ha pogut esborrar el proveïdor."
     }
   }
 }
