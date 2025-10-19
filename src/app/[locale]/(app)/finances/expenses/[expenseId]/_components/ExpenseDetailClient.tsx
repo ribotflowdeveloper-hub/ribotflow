@@ -11,19 +11,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Save, X, FileText } from 'lucide-react';
 // ✅ Importem els tipus base
 import { ExpenseDetail } from '@/types/finances/expenses';
-import { Supplier } from '@/types/finances/suppliers';
 import { useExpenseDetail } from '../_hooks/useExpenseDetail';
 import { ExpenseItemsEditor } from './ExpenseItemsEditor';
 import { ExpenseAttachmentCard } from './ExpenseAttachmentCard'; // ✅ Import corregit
 import { formatCurrency, formatDate } from '@/lib/utils/formatters'; // ✅ Import corregit
+import { SupplierCombobox } from '@/components/shared/SupplierCombobox';
 
 interface ExpenseDetailClientProps {
     initialData: ExpenseDetail | null;
     isNew: boolean;
-    allSuppliers: Pick<Supplier, 'id' | 'nom'>[];
 }
 
-export function ExpenseDetailClient({ initialData, isNew, allSuppliers }: ExpenseDetailClientProps) {
+export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientProps) {
     const {
         isPending,
         formData,
@@ -75,20 +74,17 @@ export function ExpenseDetailClient({ initialData, isNew, allSuppliers }: Expens
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {/* Proveïdor (Selector) */}
+                                {/* ✅ Substituïm el <select> pel SupplierCombobox */}
                                 <div className="space-y-2">
                                     <Label htmlFor="supplier_id">{t('field.supplier')}</Label>
-                                    <select
-                                        id="supplier_id"
-                                        value={formData.supplier_id || ''}
-                                        onChange={(e) => handleFieldChange('supplier_id', e.target.value || null)}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    <SupplierCombobox
+                                        value={formData.supplier_id}
+                                        onChange={(value) => handleFieldChange('supplier_id', value)}
+                                        // Passem el proveïdor inicial si existeix a les dades carregades
+                                        initialSupplier={initialData?.suppliers ? { id: initialData.suppliers.id, nom: initialData.suppliers.nom } : null}
                                         disabled={isSaving}
-                                    >
-                                        <option value="">{t('select.selectSupplier')}</option>
-                                        {allSuppliers.map(supplier => (
-                                            <option key={supplier.id} value={supplier.id}>{supplier.nom}</option>
-                                        ))}
-                                    </select>
+                                    // name="supplier_id" // Només si fos un formulari no controlat
+                                    />
                                 </div>
                                 {/* Data de la Despesa */}
                                 <div className="space-y-2">
