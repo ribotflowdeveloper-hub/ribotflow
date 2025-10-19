@@ -203,3 +203,30 @@ export async function deleteExpense(expenseId: number): Promise<ActionResult> {
     revalidatePath("/finances/despeses");
     return { success: true, message: `Despesa eliminada correctament.` };
 }
+
+// Dins de .../expenses/[expenseId]/actions.ts
+import { createAdminClient } from '@/lib/supabase/admin'; // Important: Admin client!
+
+export async function getAttachmentSignedUrl(filePath: string): Promise<ActionResult<{ signedUrl: string }>> {
+    // Validació de sessió i permisos aquí...
+    const session = await validateUserSession(); 
+    if ("error" in session) return { success: false, message: session.error.message };
+
+    // Comprovació addicional: L'usuari té permís per accedir a aquest fitxer específic?
+    // (Ex: Verificant que el team_id a filePath coincideix amb l'activeTeamId de l'usuari)
+    const userTeamId = session.activeTeamId;
+    const fileTeamId = filePath.split('/')[0]; // Assumeix que la ruta comença amb teamId
+    if (userTeamId !== fileTeamId) {
+         return { success: false, message: "Accés denegat." };
+    }
+
+    const supabaseAdmin = createAdminClient(); // Necessites credencials d'admin per signar URLs
+    const { data, error } = await supabaseAdmin.storage
+        .from('despeses-adjunts')
+        .createSignedUrl(filePath, 60); // URL vàlida per 60 segons
+
+    if (error) {
+        return { success: false, message: error.message };
+    }
+    return { success: true, message: "URL signada generada correctament.", data: { signedUrl: data.signedUrl } };
+}
