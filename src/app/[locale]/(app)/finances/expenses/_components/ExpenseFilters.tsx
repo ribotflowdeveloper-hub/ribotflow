@@ -30,11 +30,11 @@ export function ExpenseFilters({
         placeholder="Busca per descripció o proveïdor..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
-        className="max-w-sm"
+        className="max-w-sm bg-white"
       />
       {/* ✅ NOU: Select per a l'estat */}
       <Select value={status} onValueChange={onStatusChange}>
-        <SelectTrigger className="w-[180px]">
+        <SelectTrigger className="w-[180px] bg-white">
           <SelectValue placeholder={t('filter.allStatuses')} />
         </SelectTrigger>
         <SelectContent>

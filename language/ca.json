@@ -1558,6 +1558,14 @@
       "confirmButton": "Sí, esborra",
       "cancelButton": "Cancel·la",
       "deleting": "S'està esborrant..."
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Següent",
+      "showing": "Mostrant",
+      "to": "a",
+      "of": "de",
+      "entries": "registres"
     }
   }
 }

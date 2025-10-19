@@ -1510,6 +1510,14 @@
       "confirmButton": "Yes, delete",
       "cancelButton": "Cancel",
       "deleting": "Deleting..."
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "showing": "Showing",
+      "to": "to",
+      "of": "of",
+      "entries": "entries"
     }
   }
 }

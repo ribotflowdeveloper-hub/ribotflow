@@ -1502,6 +1502,14 @@
       "confirmButton": "Sí, eliminar",
       "cancelButton": "Cancelar",
       "deleting": "Eliminando..."
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "showing": "Mostrando",
+      "to": "a",
+      "of": "de",
+      "entries": "registros"
     }
   }
 }

@@ -1,54 +1,21 @@
 // src/app/[locale]/(app)/finances/despeses/page.tsx
-import { fetchExpenses } from './actions';
-import { ExpensesClient } from './_components/ExpensesClient';
-
-interface ExpensesPageProps {
-    searchParams: {
-        page?: string;
-        limit?: string;
-        // Filtres
-        searchTerm?: string;
-        category?: string;
-        status?: string;
-        sortBy?: string;
-        sortOrder?: string;
-    };
-}
+import { Suspense } from 'react';
+import { ExpensesData } from './_components/ExpensesData';
+import { ExpensesSkeleton } from './_components/ExpensesSkeleton';
 
 /**
  * Pàgina principal (Server Component) per a la gestió de despeses.
- * La seva responsabilitat és carregar les dades i l'estat de la UI des dels searchParams.
+ * * ✅ ARQUITECTURA CORRECTA:
+ * 1. La Pàgina (page.tsx) no ha de contenir lògica de dades.
+ * 2. Utilitzem <Suspense> per gestionar l'estat de càrrega.
+ * 3. <ExpensesData> és el Server Component que s'encarrega de l'autenticació
+ * i de la càrrega de dades inicial (les primeres 50).
+ * 4. <ExpensesSkeleton> es mostra mentre <ExpensesData> està carregant.
  */
-export default async function ExpensesPage({ searchParams }: ExpensesPageProps) {
-    // 1. Parsejar els paràmetres des de l'URL (searchParams)
-    const filters = {
-        page: parseInt(searchParams.page || '1', 10),
-        limit: parseInt(searchParams.limit || '50', 10),
-        searchTerm: searchParams.searchTerm || undefined,
-        category: searchParams.category || undefined,
-        status: searchParams.status || undefined,
-        sortBy: searchParams.sortBy || 'expense_date',
-        sortOrder: searchParams.sortOrder as 'asc' | 'desc' || 'desc',
-    };
-    
-    // 2. Càrrega de dades amb paginació i filtres
-    try {
-        // ✅ CORRECCIÓ: Cridem fetchExpenses amb els filtres obtinguts
-        const paginatedData = await fetchExpenses(filters);
-
-        // Passem només l'array de despeses al client
-        return (
-            <ExpensesClient 
-                initialExpenses={paginatedData.data} 
-                paginationInfo={{
-                    totalCount: paginatedData.totalCount,
-                    pageSize: paginatedData.pageSize,
-                    currentPage: paginatedData.currentPage,
-                }}
-            />
-        );
-    } catch (error) {
-        // L'error.tsx de Next.js s'encarregarà d'això
-        throw error;
-    }
+export default async function ExpensesPage() {
+    return (
+        <Suspense fallback={<ExpensesSkeleton />}>
+            <ExpensesData />
+        </Suspense>
+    );
 }

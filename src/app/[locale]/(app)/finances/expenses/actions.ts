@@ -1,15 +1,14 @@
 // src/app/[locale]/(app)/finances/despeses/actions.ts
-
 "use server";
 
 import { revalidatePath } from "next/cache";
 import {
-  type Expense,
-  type ExpenseItem,
-  type ExpenseWithContact,
-  type ExpenseDetail,
-  type ExpenseFormDataForAction,
-  type ExpenseStatus // <-- Added import for ExpenseStatus
+    type Expense,
+    type ExpenseItem,
+    type ExpenseWithContact,
+    type ExpenseDetail,
+    type ExpenseFormDataForAction,
+    type ExpenseStatus 
 } from "@/types/finances/expenses";
 import { type ActionResult } from "@/types/shared/index";
 import { validateUserSession } from "@/lib/supabase/session";
@@ -17,91 +16,133 @@ import { createClient as createServerActionClient } from "@/lib/supabase/server"
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
 
 export interface ExpenseFilters {
-  searchTerm?: string;
-  category?: string;
-  sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
-  status?: string; // ✅ NOU
+    searchTerm?: string;
+    category?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    status?: string; 
+    limit?: number; 
+    offset?: number; 
 }
 
-/**
- * ✅ PAS 1: Definim un tipus per al resultat que retorna la nostra funció RPC.
- * Aquest tipus ha de coincidir amb les columnes del 'RETURNS TABLE' de la funció SQL.
- */
+// ✅ NOU: Tipus de resposta per a la paginació
+export interface PaginatedExpensesResponse {
+    data: ExpenseWithContact[];
+    count: number;
+}
+
 type RpcSearchResult = {
-  id: number;
-  invoice_number: string | null;
-  expense_date: string;
-  total_amount: number;
-  category: string | null;
-  description: string;
-  supplier_id: string | null;
-  supplier_nom: string | null;
-  status: ExpenseStatus;
-  payment_date: string | null;
-  is_billable: boolean;
-  project_id: string | null;
+    id: number;
+    invoice_number: string | null;
+    expense_date: string;
+    total_amount: number;
+    category: string | null;
+    description: string;
+    supplier_id: string | null;
+    supplier_nom: string | null;
+    status: ExpenseStatus;
+    payment_date: string | null;
+    is_billable: boolean;
+    project_id: string | null;
 };
 
-export async function fetchExpenses(filters: ExpenseFilters): Promise<ExpenseWithContact[]> {
-  const session = await validateUserSession();
-  if ("error" in session) {
-    console.error("Session error in fetchExpenses:", session.error);
-    return [];
-  }
-  const { supabase, activeTeamId } = session;
+/**
+ * ✅ NOU: Funció principal per a la paginació.
+ * Obté les dades i el recompte total.
+ */
+export async function fetchPaginatedExpenses(filters: ExpenseFilters): Promise<PaginatedExpensesResponse> {
+    const session = await validateUserSession();
+    if ("error" in session) {
+        console.error("Session error in fetchPaginatedExpenses:", session.error);
+        return { data: [], count: 0 };
+    }
+    const { supabase, activeTeamId } = session;
 
-  // ✅ NOU: Passem el nou filtre 'p_status' a la crida RPC
-  const { data, error } = await supabase.rpc('search_expenses', {
-    p_team_id: activeTeamId,
-    p_search_term: filters.searchTerm || null,
-    p_category: filters.category || null,
-    p_status: filters.status || null, // <-- AFEGIT
-    p_sort_by: filters.sortBy || 'expense_date',
-    p_sort_order: filters.sortOrder || 'desc'
-  });
+    // --- 1. Consulta de Dades (RPC, com abans) ---
+    const { data: rpcData, error: rpcError } = await supabase.rpc('search_expenses', {
+        p_team_id: activeTeamId,
+        p_search_term: filters.searchTerm || null,
+        p_category: filters.category || null,
+        p_status: filters.status || null, 
+        p_sort_by: filters.sortBy || 'expense_date',
+        p_sort_order: filters.sortOrder || 'desc',
+        p_limit: filters.limit ?? 50,
+        p_offset: filters.offset ?? 0,
+    });
 
-  if (error) {
-    console.error("Error calling RPC search_expenses:", error.message);
-    throw new Error("Error en carregar les dades de despeses.");
-  }
+    if (rpcError) {
+        console.error("Error calling RPC search_expenses:", rpcError.message);
+        throw new Error("Error en carregar les dades de despeses.");
+    }
 
-  if (!data) {
-    return [];
-  }
+    const formattedData = (rpcData || []).map((item: RpcSearchResult) => ({
+        ...item,
+        suppliers: item.supplier_id ? {
+            id: item.supplier_id,
+            nom: item.supplier_nom,
+        } : null,
+    }));
 
-  // ✅ PAS 2: Apliquem el nostre tipus al paràmetre 'item' del .map()
-  const formattedData = data.map((item: RpcSearchResult) => ({
-    ...item,
-    suppliers: item.supplier_id ? {
-      id: item.supplier_id,
-      nom: item.supplier_nom,
-    } : null,
-  }));
+    // --- 2. Consulta de Recompte Total ---
+    // El Per Què: Necessitem una segona consulta que utilitzi ELS MATEIXOS FILTRES
+    // que l'RPC, però sense límit ni offset, per saber el total de registres.
+    
+    let countQuery = supabase
+        .from('expenses')
+        .select('id', { count: 'exact', head: true })
+        .eq('team_id', activeTeamId);
 
-  return formattedData as unknown as ExpenseWithContact[];
+    // Apliquem els mateixos filtres que l'RPC
+    if (filters.status && filters.status !== 'all') {
+        countQuery = countQuery.eq('status', filters.status);
+    }
+    if (filters.category && filters.category !== 'all') {
+        countQuery = countQuery.eq('category', filters.category);
+    }
+    if (filters.searchTerm) {
+        // Assumim que l'RPC busca en 'description' i 'invoice_number'
+        // Ajusta-ho si l'RPC busca en més camps.
+        countQuery = countQuery.or(
+            `description.ilike.%${filters.searchTerm}%,invoice_number.ilike.%${filters.searchTerm}%`
+        );
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) {
+        console.error("Error fetching expenses count:", countError.message);
+        throw new Error("Error en obtenir el recompte de despeses.");
+    }
+
+    return { 
+        data: formattedData as unknown as ExpenseWithContact[], 
+        count: count ?? 0 
+    };
 }
 
-export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDetail | null> {
-  const supabase = createServerActionClient();
 
-  const { data, error } = await supabase
-    .from('expenses')
-    .select(`
+// (Mantenim les altres funcions d'abans, com fetchExpenseDetail, per no trencar res)
+
+export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDetail | null> {
+    const supabase = createServerActionClient();
+
+    const { data, error } = await supabase
+        .from('expenses')
+        .select(`
             *,
             suppliers (id, nom, nif),
             expense_items (*),
             expense_attachments (*)
         `)
-    .eq('id', expenseId)
-    .single();
+        .eq('id', expenseId)
+        .single();
 
-  if (error) {
-    console.error("Error fetching expense detail:", error.message);
-    return null;
-  }
+    if (error) {
+        console.error("Error fetching expense detail:", error.message);
+        return null;
+    }
 
-  return data as unknown as ExpenseDetail;
+    return data as unknown as ExpenseDetail;
 }
 
 // --- Helpers Interns (La resta del fitxer no canvia) ---

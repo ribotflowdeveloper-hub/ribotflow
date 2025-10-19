@@ -1,18 +1,12 @@
 // src/app/[locale]/(app)/finances/despeses/_components/ExpensesData.tsx
-
 import { redirect } from 'next/navigation';
 import { ExpensesClient } from './ExpensesClient';
-import { fetchExpenses } from '../actions'; // ✅ Funció Server Action
+// ✅ Importem la nova funció
+import { fetchPaginatedExpenses } from '../actions';
 import { getTranslations } from 'next-intl/server';
 import { createClient as createServerActionClient } from '@/lib/supabase/server'; 
 
-/**
- * Server Component: Capa de Dades per a la llista de Despeses.
- * * ✅ El Per Què: Centralitza l'autenticació i l'obtenció de dades. 
- * Si la càrrega falla, activa el mecanisme d'error de Next.js (error.tsx).
- */
 export async function ExpensesData() {
-    // 1. Validació de Sessió (Patró de Next.js/Supabase)
     const supabase = createServerActionClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -21,24 +15,22 @@ export async function ExpensesData() {
     
     const t = await getTranslations('ExpensesPage');
     
-    // 2. Càrrega de Dades
     try {
-        // Obtenim les despeses (amb el nom del proveïdor)
-        const initialExpenses = await fetchExpenses({
+        // ✅ Cridem la nova funció de paginació
+        const initialData = await fetchPaginatedExpenses({
             searchTerm: '',
             category: 'all',
+            status: 'all', // Assegura't de passar el filtre d'estat
             sortBy: 'expense_date',
-            sortOrder: 'desc'
+            sortOrder: 'desc',
+            limit: 50,
+            offset: 0,
         });
 
-        // 3. Renderitzat del Client Component
-        // ✅ NOMÉS passem les despeses. La llista de proveïdors (si cal) es carregarà
-        // només a la vista de detall/creació.
-        return <ExpensesClient initialExpenses={initialExpenses || []} />;
+        // ✅ Passem les dades inicials completes al client
+        return <ExpensesClient initialData={initialData} />;
         
     } catch (error) {
-        // En cas d'error de Supabase a fetchExpenses, l'error ja s'ha llançat.
-        // Aquí ens assegurem que el missatge sigui comprensible.
         console.error("Error durant la càrrega de ExpensesData:", error);
         throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
     }
