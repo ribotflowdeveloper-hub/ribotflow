@@ -990,88 +990,95 @@
       "download": "Descarregar"
     }
   },
-  "InvoicingPage": {
+  "InvoicesPage": {
     "title": "Facturació",
-    "newDraftButton": "Nou Esborrany",
-    "filterByStatus": "Filtrar per estat",
-    "allStatuses": "Tots els estats",
-    "searchProductPlaceholder": "Cerca un producte...",
-    "noProductFound": "No s'ha trobat cap producte.",
-    "table": {
-      "invoiceNo": "Nº Factura",
-      "client": "Client",
-      "issueDate": "Data Emissió",
-      "amount": "Import",
-      "status": "Estat",
-      "actions": "Accions"
-    },
-    "statuses": {
-      "issued": "Emesa",
-      "paid": "Pagada",
-      "overdue": "Vençuda",
-      "draft": "Esborrany",
-      "unknown": "Desconegut"
-    },
-    "noClient": "N/A",
+    "description": "Gestiona les teves factures emeses.",
+    "newButton": "Crear Factura",
+    "searchPlaceholder": "Cerca per número o client...",
     "emptyState": "Encara no has creat cap factura.",
-    "issueButton": "Emetre",
-    "deleteDialog": {
-      "title": "Estàs segur?",
-      "description": "Aquesta acció no es pot desfer.",
-      "cancelButton": "Cancel·lar",
-      "confirmButton": "Sí, elimina'l"
-    },
-    "issueDialog": {
-      "title": "Emetre Factura Legal?",
-      "description": "Aquesta acció és irreversible. Es generarà una factura legal amb número oficial. Un cop emesa, no podràs editar-la ni eliminar-la.",
-      "confirmButton": "Sí, emetre factura"
-    },
-    "formDialog": {
-      "editTitle": "Editar Esborrany",
-      "createTitle": "Crear Nou Esborrany",
-      "description": "Afegeix o modifica els detalls de la factura.",
-      "clientLabel": "Client",
-      "selectClientPlaceholder": "Selecciona...",
-      "noClientFound": "No s'ha trobat.",
-      "issueDateLabel": "Data d'Emissió",
-      "dueDateLabel": "Data de Venciment",
-      "pickDate": "Tria data",
-      "itemsTitle": "Conceptes",
-      "itemDescriptionPlaceholder": "Descripció del concepte",
-      "itemQtyPlaceholder": "Quant.",
-      "itemPricePlaceholder": "Preu",
-      "addItemButton": "Afegir concepte",
-      "notesLabel": "Notes Addicionals",
-      "notesPlaceholder": "Termes de pagament, agraïments, etc.",
-      "subtotal": "Subtotal",
-      "vat": "IVA (21%)",
+
+    "table": {
+      "number": "Número",
+      "client": "Client",
+      "invoiceDate": "Data Factura",
+      "dueDate": "Venciment",
       "total": "Total",
-      "saveChanges": "Desar Canvis",
-      "createDraft": "Crear Esborrany",
-      "cancelButton": "Cancelar",
-      "searchProductPlaceholder": "Cerca un producte...",
-      "noProductFound": "No s'ha trobat cap producte.",
-      "itemDescriptionLabel": "Descripció",
-      "itemQtyLabel": "Quantitat",
-      "itemTaxLabel": "Impost",
-      "itemPriceLabel": "Preu",
-      "itemTotalLabel": "Total",
-      "error": "An error has occurred",
-      "success": "Èxit!"
+      "status": "Estat"
+    },
+    "deleteDialog": {
+      "title": "Esborrar Factura?"
+   
     },
     "toast": {
-      "notAllowed": "Acció no permesa",
-      "notAllowedDesc": "Les factures emeses o pagades no es poden editar.",
-      "issueSuccess": "Factura Emesa Correctament!",
-      "issueSuccessDesc": "S'ha generat la factura legal {invoiceNumber}.",
-      "issueError": "Error en emetre la factura",
-      "deleteSuccess": "Èxit!",
-      "deleteError": "Error en eliminar",
-      "missingData": "Falten dades",
-      "missingDataDesc": "Si us plau, selecciona un client i una data d'emissió.",
-      "error": "An error has occurred"
+        "deleteSuccess": "Factura esborrada correctament.",
+        "deleteError": "Error en esborrar la factura."
+    },
+    "filters": { 
+      "searchPlaceholder": "Número o client...",
+      "statusLabel": "Estat",
+      "statusPlaceholder": "Tots els estats",
+      "allStatuses": "Tots els estats",
+      "searchLabel": "Cerca",
+   
+      "status": {
+        "Draft": "Esborrany",
+        "Sent": "Enviada",
+        "Paid": "Pagada",
+        "Overdue": "Vençuda",
+        "Cancelled": "Cancel·lada"
+      }
+
+    }
+
+  },
+  "InvoiceDetailPage": {
+    "createTitle": "Crear Nova Factura",
+    "editTitle": "Editar Factura {number}",
+    "createDescription": "Completa les dades per generar una nova factura.",
+    "editDescription": "Modifica els detalls de la factura.",
+    "title": {
+        "new": "Nova Factura",
+        "invoice": "Factura"
+    },
+    "button": {
+      "save": "Desar Factura",
+      "saving": "Desant...",
+      "addItem": "Afegir Línia"
+
+    },
+    "card": {
+      "customerDetails": "Dades del Client",
+      "invoiceItems": "Conceptes de la Factura",
+      "invoiceMeta": "Detalls de la Factura",
+      "notes": "Notes / Comentaris",
+      "totals": "Totals",
+      "metadata": "Informació Addicional"
+    },
+    "field": {
+      "customer": "Client",
+      "invoiceNumber": "Número de Factura",
+      "invoiceDate": "Data d'Emissió",
+      "dueDate": "Data de Venciment",
+      "status": "Estat"
+ 
+    },
+    "placeholder": {
+        "autoGenerated": "(generat automàticament)",
+        "notes": "Afegeix notes addicionals, termes de pagament, etc."
+ 
+    },
+    "label": {
+        "subtotal": "Subtotal",
+        "tax": "Impostos", 
+        "total": "Total"
+    },
+    "toast": {
+        "saveSuccess": "Factura desada correctament.",
+        "saveError": "Error en desar la factura.",
+        "validationError": "Si us plau, revisa els camps marcats."
     }
   },
+
   "NetworkPage": {
     "mapboxError": "Error: La clau d'API de Mapbox no està configurada correctament.",
     "logoAltText": "Logo de {companyName}",
@@ -1584,6 +1591,17 @@
       "to": "a",
       "of": "de",
       "entries": "registres"
+    },
+    "InvoicesPage": {
+      "status": {
+        "paid": "Pagada",
+        "unpaid": "No pagada",
+        "overdue": "Vencida",
+        "draft": "Esborrany"
+      },
+      "deleteDialog": {
+        "title": "Estàs segur que vols esborrar aquesta factura?"
+      }
     }
   },
   "SuppliersPage": {

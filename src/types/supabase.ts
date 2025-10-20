@@ -2727,30 +2727,34 @@ export type Database = {
               p_visible_user_ids: string[]
             }
           | {
+              p_active_filter?: Database["public"]["Enums"]["ticket_filter"]
               p_limit: number
               p_offset: number
-              p_search_term: string
+              p_search_term?: string
+              p_sender_emails?: string[]
               p_team_id: string
               p_user_id: string
               p_visible_user_ids: string[]
             }
         Returns: {
-          assignment: Json
           attachments: Json
           body: string
+          contact_email: string
           contact_id: number
-          contacts: Json
+          contact_nom: string
           created_at: string
           id: number
           preview: string
+          profile_avatar_url: string
+          profile_full_name: string
           provider: string
           provider_message_id: string
           sender_email: string
           sender_name: string
           sent_at: string
-          status: string
+          status: Database["public"]["Enums"]["ticket_status"]
           subject: string
-          type: string
+          type: Database["public"]["Enums"]["ticket_type"]
           user_id: string
         }[]
       }
@@ -3123,6 +3127,29 @@ export type Database = {
           status: string
           supplier_id: string
           supplier_nom: string
+          total_amount: number
+        }[]
+      }
+      search_invoices: {
+        Args: {
+          p_contact_id?: number
+          p_limit?: number
+          p_offset?: number
+          p_search_term?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: Database["public"]["Enums"]["invoice_status"]
+          p_team_id: string
+        }
+        Returns: {
+          client_name: string
+          contact_id: number
+          contact_nom: string
+          due_date: string
+          id: number
+          invoice_number: string
+          issue_date: string
+          status: Database["public"]["Enums"]["invoice_status"]
           total_amount: number
         }[]
       }
@@ -4272,12 +4299,14 @@ export type Database = {
         | "Perdut"
       quote_status: "Draft" | "Sent" | "Accepted" | "Declined" | "Invoiced"
       task_priority: "Baixa" | "Mitjana" | "Alta"
+      ticket_filter: "tots" | "rebuts" | "enviats" | "noLlegits"
       ticket_status:
         | "Obert"
         | "En progr├®s"
         | "Esperant resposta"
         | "Tancat"
         | "Llegit"
+      ticket_type: "rebut" | "enviat"
     }
     CompositeTypes: {
       geometry_dump: {
@@ -4428,6 +4457,7 @@ export const Constants = {
       ],
       quote_status: ["Draft", "Sent", "Accepted", "Declined", "Invoiced"],
       task_priority: ["Baixa", "Mitjana", "Alta"],
+      ticket_filter: ["tots", "rebuts", "enviats", "noLlegits"],
       ticket_status: [
         "Obert",
         "En progr├®s",
@@ -4435,6 +4465,7 @@ export const Constants = {
         "Tancat",
         "Llegit",
       ],
+      ticket_type: ["rebut", "enviat"],
     },
   },
 } as const

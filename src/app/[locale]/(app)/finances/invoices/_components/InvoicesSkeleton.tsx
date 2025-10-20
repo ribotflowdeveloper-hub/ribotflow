@@ -7,7 +7,7 @@
 import React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export const FacturacioSkeleton: React.FC = () => (
+export const InvoicesSkeleton: React.FC = () => (
     <div className="space-y-8 animate-pulse">
         <div className="flex justify-between items-center">
             <Skeleton className="h-9 w-1/3" />

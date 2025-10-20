@@ -1,126 +1,96 @@
 "use server";
 
+import { validateUserSession } from "@/lib/supabase/session";
+import {
+  type PaginatedInvoicesResponse,
+  type InvoiceFilters,
+  type InvoiceListRow,
+  type InvoiceStatus,
+} from '@/types/finances/invoices';
 
-import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session"; // ✅ 1. Importem la funció
-
-
-// El tipus de dades que rebem del formulari del client
-type InvoiceItemData = {
-    description: string | null;
-    quantity: number | null;
-    unit_price: number | null;
-    product_id?: string | null;
-    tax_rate?: number | null;
-};
-
-export type InvoiceFormData = {
-    id?: string | null;
-    contact_id: string;
-    issue_date: string;
-    due_date: string | null;
-    status: 'Draft';
-    subtotal: number;
-    tax_amount: number;
-    total_amount: number;
-    notes: string | null;
-    invoice_items: InvoiceItemData[];
-};
-
-/**
- * Crea o actualitza una factura. La política RLS de la base de dades
- * s'encarregarà de verificar que l'operació pertany a l'equip actiu.
- */
-export async function createOrUpdateInvoiceAction(invoiceData: InvoiceFormData) {
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase, user, activeTeamId } = session;
-
-    try {
-        const { invoice_items, ...invoiceFields } = invoiceData;
-
-        // Simplement cridem la funció RPC amb les dades.
-        // La base de dades s'encarrega de la transacció.
-        const { error } = await supabase.rpc('upsert_invoice_with_items', {
-            invoice_data: invoiceFields,
-            items_data: invoice_items,
-            user_id: user.id,
-            team_id: activeTeamId
-        });
-
-        if (error) throw error;
-
-        revalidatePath('/finances/facturacio');
-        return { success: true, message: `Esborrany ${invoiceData.id ? 'actualitzat' : 'creat'} correctament.` };
-
-    } catch (error) {
-        console.error("Error a upsert_invoice_with_items:", error);
-        const message = error instanceof Error ? error.message : "Error desconegut en desar la factura.";
-        return { success: false, message };
-    }
+// ✅ Definició de tipus per a la resposta de la funció RPC
+// Això reflecteix exactament el 'RETURNS TABLE' de la nostra funció SQL.
+interface RpcInvoiceRow {
+  id: number;
+  invoice_number: string; // o text
+  issue_date: string; // o date
+  due_date: string | null; // o date
+  total_amount: number; // o numeric
+  status: InvoiceStatus; // o public.invoice_status
+  client_name: string; // o text
+  contact_id: number | null;
+  contact_nom: string | null; // Columna del JOIN
+  total_count: number; // o bigint
 }
 
 /**
- * Elimina un esborrany de factura. La RLS s'encarregarà de la seguretat.
+ * Obté factures paginades usant una funció RPC de Supabase per a cerca avançada.
  */
-export async function deleteInvoiceAction(invoiceId: string) {
-    // 2. Validem la sessió. Aquesta funció ens retorna o la sessió validada o un objecte d'error.
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase } = session; // Obtenim el client de supabase validat
+export async function fetchPaginatedInvoices(
+  filters: InvoiceFilters
+): Promise<PaginatedInvoicesResponse> {
+  const session = await validateUserSession();
+  if ("error" in session) return { data: [], count: 0 };
+  const { supabase, activeTeamId } = session;
 
-    try {
-        const { data: existingInvoice } = await supabase
-            .from('invoices')
-            .select('status')
-            .eq('id', invoiceId)
-            .single();
+  const {
+    searchTerm, status, contactId,
+    sortBy = 'issue_date', sortOrder = 'desc',
+    limit = 10, offset = 0
+  } = filters;
 
-        if (existingInvoice && existingInvoice.status !== 'Draft') {
-            return { success: false, message: "Error: No es pot eliminar una factura que ja ha estat emesa." };
-        }
+  const params = {
+    team_id_param: activeTeamId,
+    search_term_param: searchTerm || null,
+    status_param: (status === 'all' || !status) ? null : status,
+    contact_id_param: (contactId === 'all' || !contactId) ? 0 : Number(contactId),
+    sort_by_param: sortBy,
+    sort_order_param: sortOrder,
+    limit_param: limit,
+    offset_param: offset,
+  };
 
-        const { error } = await supabase.from('invoices').delete().eq('id', invoiceId);
-        if (error) throw error;
+  // Crida a la funció RPC
+  // ✅ CORRECCIÓ: Tipem la resposta esperada de .rpc()
+  const { data, error } = await supabase
+    .rpc('search_paginated_invoices', params)
+    .returns<RpcInvoiceRow[]>(); // 👈 Especifiquem el tipus de retorn
 
-        revalidatePath('/finances/facturacio');
-        return { success: true, message: "Esborrany eliminat." };
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { success: false, message };
-    }
-}
+  if (error) {
+    console.error(
+      "Error calling search_paginated_invoices RPC:", 
+      error, 
+      "Amb paràmetres:", 
+      params
+    );
+    return { data: [], count: 0 };
+  }
 
-/**
- * Emet una factura legal (Veri*factu). La RLS s'encarregarà de la seguretat.
- */
-export async function issueInvoiceAction(draftInvoiceId: string) {
-    // 2. Validem la sessió. Aquesta funció ens retorna o la sessió validada o un objecte d'error.
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase } = session; // Obtenim el client de supabase validat
+  // ✅ 'data' ara és 'RpcInvoiceRow[] | null | { Error: ... }'
+  if (!Array.isArray(data) || data.length === 0) {
+    return { data: [], count: 0 };
+  }
 
+  // El recompte total ve a cada fila, l'agafem de la primera
+  const totalCount = data[0].total_count ?? 0;
 
-    // La RLS ja s'haurà assegurat que l'usuari té accés a aquesta factura
-    // abans de cridar l'acció, per la qual cosa no cal una doble comprovació aquí.
-    try {
-        const { data, error } = await supabase.functions.invoke('issue-verifactu-invoice', {
-            body: { draft_invoice_id: draftInvoiceId },
-        });
+  // ✅ CORRECCIÓ: Eliminem 'any'. 'row' ara és del tipus 'RpcInvoiceRow'
+  const mappedData: InvoiceListRow[] = data.map((row: RpcInvoiceRow): InvoiceListRow => {
+    return {
+      id: row.id,
+      invoice_number: row.invoice_number,
+      issue_date: row.issue_date,
+      due_date: row.due_date,
+      total_amount: row.total_amount,
+      status: row.status, // El tipus ja coincideix
+      client_name: row.client_name,
+      contact_id: row.contact_id,
+      contacts: row.contact_id ? { nom: row.contact_nom || null } : null,
+    };
+  });
 
-        if (error) throw (error);
-
-        revalidatePath('/finances/facturacio');
-        return { success: true, message: "Factura emesa correctament.", invoice: data };
-    } catch (error) {
-        const typedError = error as (Error & { context?: { errorMessage?: string } });
-        const errorMessage = typedError.context?.errorMessage || typedError.message;
-        return { success: false, message: errorMessage };
-    }
+  return {
+    data: mappedData,
+    count: totalCount
+  };
 }
