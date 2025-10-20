@@ -415,7 +415,8 @@
         "linkedin": "LinkedIn",
         "children": "Children",
         "partnerName": "Partner Name",
-        "hobbies": "Hobbies"
+        "hobbies": "Hobbies",
+        "company": "Company"
       }
     },
     "status": {

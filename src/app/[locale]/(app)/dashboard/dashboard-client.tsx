@@ -20,6 +20,7 @@ import { Tables } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { ServerActivityItem } from "@/lib/data/dashboard";
 
 const MONTHLY_GOAL = 50_000;
 
@@ -43,6 +44,7 @@ interface DashboardClientProps {
     overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
     attentionContacts: Tables<'contacts'>[];
     notifications: Tables<'notifications'>[];
+    recentActivities: ServerActivityItem[]; // ✅ Correcció aplicada aquí
   };
   teamMembers: Tables<'team_members_with_profiles'>[];
   children: React.ReactNode;
@@ -71,11 +73,13 @@ export function DashboardClient({
   }, [initialData.tasks]);
 
   const pendingCount = useMemo(() => tasks.filter(t => !t.is_completed && !t.user_asign_id).length, [tasks]);
+  
   const assignedCount = useMemo(() => {
     const baseFilter = (t: EnrichedTask) => t.user_asign_id !== null && !t.is_completed;
     if (showAllTeamTasks) return tasks.filter(baseFilter).length;
     return tasks.filter(t => baseFilter(t) && t.user_asign_id === userId).length;
   }, [tasks, userId, showAllTeamTasks]);
+
   const completedCount = useMemo(() => {
     const baseFilter = (t: EnrichedTask) => t.is_completed;
     if (showAllTeamTasks) return tasks.filter(baseFilter).length;
@@ -125,15 +129,9 @@ export function DashboardClient({
     return result;
   }, [tasks, taskFilter, departmentFilter, searchTerm, userId, showAllTeamTasks]);
 
-  // ✅ SOLUCIÓ: Modifiquem la funció per ser explícita amb els tipus.
   const handleTaskMutation = useCallback((options: { closeDialog?: boolean } = {}) => {
-    // Establim el valor per defecte de 'closeDialog' a 'true' a dins.
     const { closeDialog = true } = options;
-
-    // 1. Sempre refresquem les dades.
     router.refresh();
-
-    // 2. Només tanquem el diàleg si l'opció és 'true'.
     if (closeDialog) {
       setIsDialogOpen(false);
     }
@@ -159,7 +157,7 @@ export function DashboardClient({
           <SalesPerformance stats={initialData.stats} percentGoal={Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)} monthlyGoal={MONTHLY_GOAL} />
         </DashboardCard>
         <DashboardCard title={t('recentActivities')} icon={Activity}>
-          <RecentActivities overdueInvoices={initialData.overdueInvoices} tasks={initialData.tasks} contacts={initialData.contacts} />
+          <RecentActivities activities={initialData.recentActivities} />
         </DashboardCard>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -169,13 +167,7 @@ export function DashboardClient({
           className="lg:col-span-2 h-full flex flex-col"
           actions={
             <div className="flex items-center space-x-4">
-              {/* 🔑 NOU: BOTÓ DE CALENDARI PER RENVIAR AL CALENDARI COMPLET */}
-              <Button
-                asChild
-                variant="outline"
-                size="icon"
-                className="flex-shrink-0"
-              >
+              <Button asChild variant="outline" size="icon" className="flex-shrink-0">
                 <Link href="/crm/calendari" aria-label={"Calendar"}>
                   <Calendar className="h-5 w-5" />
                 </Link>
@@ -209,6 +201,7 @@ export function DashboardClient({
         </DashboardCard>
         <div className="space-y-6">
           <DashboardCard title={t('radar')} icon={RadarIcon}>
+       
             <Radar attentionContacts={initialData.attentionContacts} overdueInvoices={initialData.overdueInvoices} notifications={initialData.notifications} />
           </DashboardCard>
           {children}

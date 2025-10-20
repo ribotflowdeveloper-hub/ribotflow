@@ -1,58 +1,37 @@
+// src/app/[locale]/(app)/dashboard/_components/RecentActivities.tsx
+
 "use client";
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslations } from 'next-intl';
-import { FileWarning, CheckCircle2, Clock3, Users } from 'lucide-react';
 import { ActivityItem } from '@/components/shared/ActivityItem';
-import { Tables } from '@/types/supabase';
-import { TaskWithContact } from '@/types/dashboard/types';
+import { ServerActivityItem, ServerActivityIcon } from '@/lib/data/dashboard';
+import { FileWarning, CheckCircle2, Clock3, Users, LucideIcon } from 'lucide-react';
+
+const iconMap: Record<ServerActivityIcon, LucideIcon> = {
+  fileWarning: FileWarning,
+  checkCircle: CheckCircle2,
+  clock: Clock3,
+  users: Users,
+};
 
 interface RecentActivitiesProps {
-  overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
-  tasks: TaskWithContact[]; // Utilitzem el tipus enriquit
-  contacts: Tables<'contacts'>[];
+  activities: ServerActivityItem[];
 }
 
-export function RecentActivities({ overdueInvoices, tasks, contacts }: RecentActivitiesProps) {
+export function RecentActivities({ activities }: RecentActivitiesProps) {
   const t = useTranslations('DashboardClient');
 
-  const activities = useMemo(() => {
-    const a: React.ComponentProps<typeof ActivityItem>[] = [];
-    
-    overdueInvoices.forEach((inv) => a.push({ 
-      icon: FileWarning, 
-      tone: { bg: 'bg-destructive/10', text: 'text-destructive' }, 
-      title: t('overdueInvoice', { clientName: inv.contacts?.nom ?? 'client' }), 
-      meta: inv.due_date ? t('dueDate', { dueDate: new Date(inv.due_date).toLocaleDateString() }) : '',
-      href: '/finances/facturacio' 
-    }));
-    
-    // Mostrem les tasques més recents, independentment del seu estat
-    tasks.slice(0, 2).forEach((task) => a.push({ 
-      icon: task.is_completed ? CheckCircle2 : Clock3, 
-      tone: { bg: task.is_completed ? 'bg-success/10' : 'bg-yellow-500/10', text: task.is_completed ? 'text-success' : 'text-yellow-600' }, 
-      title: task.title, 
-      meta: task.created_at ? new Date(task.created_at).toLocaleString() : '', 
-      href: '/dashboard' 
-    }));
-
-    contacts.slice(0, 2).forEach((c) => a.push({ 
-      icon: Users, 
-      tone: { bg: 'bg-primary/10', text: 'text-primary' }, 
-      title: t('newContact', { contactName: c.nom }), 
-      meta: c.created_at ? new Date(c.created_at).toLocaleDateString() : '', 
-      href: '/crm/contactes' 
-    }));
-
-    // Ordenem per data si tenim una manera consistent de fer-ho
-    return a.slice(0, 5);
-  }, [overdueInvoices, tasks, contacts, t]);
-
-  // ✅ HEM ELIMINAT EL 'div' contenidor i el 'h2'. Retornem directament la llista.
   return (
-    <div className="space-y-4">
-      {activities.length > 0 
-        ? activities.map((act, idx) => <ActivityItem key={idx} {...act} />) 
+    // ✅ CORRECCIÓ: Apliquem una alçada màxima i activem l'overflow per al scroll.
+    // Els valors de padding (pr) i marge (mr) negatiu són per amagar la barra de scroll
+    // i que només aparegui en fer hover, un truc visual comú.
+    <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 -mr-2">
+      {activities.length > 0
+        ? activities.map((act, idx) => {
+            const IconComponent = iconMap[act.icon];
+            return <ActivityItem key={idx} {...act} icon={IconComponent} />;
+          })
         : <p className="text-sm text-muted-foreground">{t('noActivities')}</p>
       }
     </div>

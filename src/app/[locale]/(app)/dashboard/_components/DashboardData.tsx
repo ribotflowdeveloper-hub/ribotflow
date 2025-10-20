@@ -1,85 +1,51 @@
-import { DashboardClient } from '../dashboard-client';
+// src/app/[locale]/(app)/dashboard/DashboardData.tsx
+
 import React from 'react';
 import { validatePageSession } from '@/lib/supabase/session';
-import { getActiveTeam } from '@/lib/supabase/teams'; // Correció #2: Importem la funció per obtenir l'equip
-import { Database } from '@/types/supabase';
-import { Tables } from '@/types/supabase';
-import { SupabaseClient } from '@supabase/supabase-js'; // Correció #1: Importem el tipus SupabaseClient
-import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager'; // Importem el tipus unificat
+import { getActiveTeam } from '@/lib/supabase/teams';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database, Tables } from '@/types/supabase';
+import { DashboardClient } from '../dashboard-client';
+
+// ✅ CORRECCIÓ: Hem eliminat la importació de 'EnrichedTask' perquè ja no es necessita aquí.
+// El tipus s'infereix correctament de la funció getTasks.
+
+import {
+    getStats,
+    getTasks,
+    getOverdueInvoices,
+    getRecentContacts,
+    getRecentActivities,
+} from '@/lib/data/dashboard';
 
 const calculatePercentageChange = (current: number, previous: number): string => {
     if (previous === 0) return current > 0 ? '+100%' : '0%';
     const change = ((current - previous) / previous) * 100;
-    if (Math.abs(change) > 999) return change > 0 ? '+999%' : '-999%';
     return `${change >= 0 ? '+' : ''}${change.toFixed(0)}% vs mes anterior`;
 };
 
-type DashboardStats = {
-    total_contacts: number;
-    active_clients: number;
-    opportunities: number;
-    invoiced_current_month: number;
-    invoiced_previous_month: number;
-    pending_total: number;
-    expenses_current_month: number;
-    expenses_previous_month: number;
-};
-
-
 export async function DashboardData({ children }: { children: React.ReactNode }) {
-    // La validació de sessió retorna supabase i user
     const { supabase, user } = await validatePageSession();
-
-    // Obtenim l'equip actiu per separat
     const team = await getActiveTeam();
 
     if (!team) {
         return <div>No s'ha trobat un equip actiu.</div>;
     }
 
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-    // Tipem el client de Supabase (ara funciona perquè hem importat SupabaseClient)
     const typedSupabase = supabase as SupabaseClient<Database>;
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [statsRes, tasksRes, overdueInvoicesRes, contactsRes, notificationsRes, departmentsRes, teamMembersRes] = await Promise.all([
-        typedSupabase.rpc('get_dashboard_stats'),
-        // Fem les consultes utilitzant l'ID de l'equip que hem obtingut
-        // ✅ CORRECCIÓ: Fem un "join" per obtenir el nom del contacte associat a cada tasca
-        typedSupabase.from('tasks').select('*, contacts(id, nom), departments(id, name), profiles:user_asign_id (id, full_name, avatar_url)')
-            .eq('team_id', team.id)
-            .order('is_completed, created_at'), typedSupabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString()),
-        typedSupabase.from('contacts').select('*').eq('team_id', team.id).order('created_at', { ascending: false }),
-        typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
-        typedSupabase.from('departments').select('*').eq('team_id', team.id),
-        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id) // ✅ AFEGIM LA CONSULTA DELS MEMBRES DE L'EQUIP
-
+    const [statsData, tasksData, overdueInvoicesData, contactsData, notificationsData, departmentsData, teamMembersData] = await Promise.all([
+        getStats(typedSupabase),
+        getTasks(typedSupabase, team.id),
+        getOverdueInvoices(typedSupabase),
+        getRecentContacts(typedSupabase, team.id),
+        typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false).then(res => res.data ?? []),
+        typedSupabase.from('departments').select('*').eq('team_id', team.id).then(res => res.data ?? []),
+        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id).then(res => res.data ?? []),
     ]);
-
-    const departmentsData: Tables<'departments'>[] = departmentsRes.data ?? [];
-
-    const statsData: DashboardStats = statsRes.data?.[0] || {
-        total_contacts: 0,
-        active_clients: 0,
-        opportunities: 0,
-        invoiced_current_month: 0,
-        invoiced_previous_month: 0,
-        pending_total: 0,
-        expenses_current_month: 0,
-        expenses_previous_month: 0,
-    };
-
-    const tasksData: EnrichedTask[] = tasksRes.data as unknown as EnrichedTask[];
-    const contactsData: Tables<'contacts'>[] = contactsRes.data ?? [];
-    const notificationsData: Tables<'notifications'>[] = notificationsRes.data ?? [];
-    const teamMembersData: Tables<'team_members_with_profiles'>[] = teamMembersRes.data ?? []; // ✅ PROCESSEM LES DADES DELS MEMBRES
-
-    const overdueInvoicesData: (Tables<'invoices'> & { contacts: { nom: string } | null })[] = overdueInvoicesRes.data ?? [];
-
-    const transformedOverdueInvoices = overdueInvoicesData.map(invoice => ({
-        ...invoice,
-        contacts: invoice.contacts
-    }));
+    
+    const recentActivities = getRecentActivities(overdueInvoicesData, tasksData, contactsData);
 
     const initialData = {
         stats: {
@@ -95,20 +61,19 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             expensesIsPositive: statsData.expenses_current_month <= statsData.expenses_previous_month,
         },
         tasks: tasksData,
-        departments: departmentsData, // Passem els departaments al client
+        departments: departmentsData,
         contacts: contactsData,
-        overdueInvoices: transformedOverdueInvoices,
-        attentionContacts: contactsData
-            .filter((c) => c.last_interaction_at && new Date(c.last_interaction_at) < sevenDaysAgo)
-            .slice(0, 5),
+        overdueInvoices: overdueInvoicesData,
+        attentionContacts: contactsData.filter((c) => c.last_interaction_at && new Date(c.last_interaction_at).toISOString() < sevenDaysAgo).slice(0, 5),
         notifications: notificationsData,
+        recentActivities: recentActivities,
     };
 
     return (
         <DashboardClient
             initialData={initialData}
-            teamMembers={teamMembersData}
-            userId={user.id} // ✅ Passem l'ID de l'usuari al client
+            teamMembers={teamMembersData as Tables<'team_members_with_profiles'>[]}
+            userId={user.id}
         >
             {children}
         </DashboardClient>

@@ -410,7 +410,8 @@
         "linkedin": "LinkedIn",
         "children": "Hijos",
         "partnerName": "Nombre de la pareja",
-        "hobbies": "Hobbies"
+        "hobbies": "Hobbies",
+        "company": "Empresa"
       }
     },
     "status": {
