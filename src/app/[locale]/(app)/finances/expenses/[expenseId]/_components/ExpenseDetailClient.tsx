@@ -1,21 +1,23 @@
-// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseDetailClient.tsx
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react'; // ✅ Importem useState
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Save, X, FileText } from 'lucide-react';
-// ✅ Importem els tipus base
-import { ExpenseDetail } from '@/types/finances/expenses';
+import { Loader2, Plus, Save, X, FileText, AlertTriangle } from 'lucide-react';
+// ✅ Importem els tipus
+import { type ExpenseDetail, type ExpenseAttachment } from '@/types/finances/expenses';
 import { useExpenseDetail } from '../_hooks/useExpenseDetail';
 import { ExpenseItemsEditor } from './ExpenseItemsEditor';
-import { ExpenseAttachmentCard } from './ExpenseAttachmentCard'; // ✅ Import corregit
-import { formatCurrency, formatDate } from '@/lib/utils/formatters'; // ✅ Import corregit
+import { ExpenseAttachmentCard } from './ExpenseAttachmentCard';
+import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { SupplierCombobox } from '@/components/shared/SupplierCombobox';
+import { ExpenseAttachmentUploader } from './ExpenseAttachmentUploader'; // ✅ Importem l'Uploader
+// ✅ CORRECCIÓ: La importació ha de ser 'alert-dialog'
+import {AlertDialog,AlertDialogDescription,AlertDialogTitle} from "@/components/ui/alert-dialog"; // <-- Ruta corregida
 
 interface ExpenseDetailClientProps {
     initialData: ExpenseDetail | null;
@@ -34,12 +36,27 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
         t,
     } = useExpenseDetail({ initialData, isNew });
 
+    // ✅ Creem un estat local per als adjunts
+    const [attachments, setAttachments] = useState<ExpenseAttachment[]>(
+        initialData?.expense_attachments || []
+    );
+
     const isSaving = isPending;
     const expenseTitle = isNew
         ? t('title.new')
         : formData.invoice_number || `Despesa #${initialData?.id}`;
 
     const locale = 'ca'; // Hardcoded o obtenir de useLocale
+
+    // ✅ Funció per afegir un nou adjunt a l'estat
+    const handleUploadSuccess = (newAttachment: ExpenseAttachment) => {
+        setAttachments((prev) => [...prev, newAttachment]);
+    };
+
+    // ✅ Funció per esborrar un adjunt de l'estat
+    const handleDeleteSuccess = (attachmentId: string) => {
+        setAttachments((prev) => prev.filter(att => att.id !== attachmentId));
+    };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -64,26 +81,21 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
 
             {/* Contingut Principal: Grid (2/3 + 1/3) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
                 {/* Columna Esquerra (Formulari Principal) - 2/3 */}
                 <div className="lg:col-span-2 space-y-3">
-
                     {/* Targeta 1: Detalls Bàsics */}
                     <Card>
                         <CardHeader><CardTitle>{t('card.generalDetails')}</CardTitle></CardHeader>
                         <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4"> {/* Gap augmentat */}
                                 {/* Proveïdor (Selector) */}
-                                {/* ✅ Substituïm el <select> pel SupplierCombobox */}
                                 <div className="space-y-2">
                                     <Label htmlFor="supplier_id">{t('field.supplier')}</Label>
                                     <SupplierCombobox
                                         value={formData.supplier_id}
                                         onChange={(value) => handleFieldChange('supplier_id', value)}
-                                        // Passem el proveïdor inicial si existeix a les dades carregades
                                         initialSupplier={initialData?.suppliers ? { id: initialData.suppliers.id, nom: initialData.suppliers.nom } : null}
                                         disabled={isSaving}
-                                    // name="supplier_id" // Només si fos un formulari no controlat
                                     />
                                 </div>
                                 {/* Data de la Despesa */}
@@ -158,17 +170,14 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
                             />
                         </CardContent>
                     </Card>
-
                 </div>
 
                 {/* Columna Dreta (Metadades i Totals) - 1/3 */}
                 <div className="lg:col-span-1 space-y-3">
-
                     {/* Targeta 4: Totals i Impostos */}
                     <Card>
                         <CardHeader><CardTitle>{t('card.totals')}</CardTitle></CardHeader>
                         <CardContent className="space-y-3">
-
                             {/* Subtotal */}
                             <div className="flex justify-between items-center">
                                 <Label>{t('label.subtotal')}</Label>
@@ -200,7 +209,7 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
                                         disabled={isSaving}
                                         step="0.01"
                                     />
-                                    <span className='font-mono'>({formatCurrency(formData.tax_amount, 'EUR', locale)})</span>
+                                    <span className='font-mono text-sm text-muted-foreground'>({formatCurrency(formData.tax_amount, 'EUR', locale)})</span>
                                 </div>
                             </div>
 
@@ -216,24 +225,39 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
                     <Card>
                         <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />{t('card.attachments')}</CardTitle></CardHeader>
                         <CardContent className="space-y-3">
-                            {/* ✅ CORRECCIÓ: Utilitzem !isNew i initialData per fer-lo segur */}
-                            {!isNew && initialData?.expense_attachments?.map(attachment => (
-                                <ExpenseAttachmentCard
-                                    key={attachment.id}
-                                    attachment={attachment}
-                                    expenseId={initialData.id}
-                                />
-                            ))}
+                            {/* Llista d'adjunts existents (des de l'estat local) */}
+                            {attachments.length > 0 ? (
+                                attachments.map(attachment => (
+                                    <ExpenseAttachmentCard
+                                        key={attachment.id}
+                                        attachment={attachment}
+                                        // ✅ Passem la funció per actualitzar l'estat local
+                                        onDeleteSuccess={handleDeleteSuccess}
+                                    />
+                                ))
+                            ) : (
+                                !isNew && <p className="text-sm text-muted-foreground">No hi ha adjunts.</p>
+                            )}
+
                             {/* Àrea de pujada */}
-                            <div className="border-2 border-dashed p-4 text-center rounded-lg">
-                                <p className="text-sm text-muted-foreground">{t('upload.dragAndDrop')}</p>
-                                {/* El botó de pujada i l'OCR s'integrarien aquí amb useExpenseDetail hook */}
-                            </div>
+                            {isNew ? (
+                                <AlertDialog>
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertDialogTitle>Desa la despesa</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Primer has de desar la despesa abans de poder pujar adjunts.
+                                    </AlertDialogDescription>
+                                </AlertDialog>
+                            ) : (
+                                <ExpenseAttachmentUploader
+                                    expenseId={initialData!.id} // Si no és 'isNew', initialData.id existeix
+                                    onUploadSuccess={handleUploadSuccess}
+                                />
+                            )}
                         </CardContent>
                     </Card>
 
                     {/* Targeta 6: Informació de Creació (Solo mode Edició) */}
-                    {/* ✅ CORRECCIÓ: Utilitzem !isNew i initialData per fer-lo segur */}
                     {!isNew && initialData && (
                         <Card>
                             <CardHeader><CardTitle>{t('card.metadata')}</CardTitle></CardHeader>
@@ -244,7 +268,6 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
                             </CardContent>
                         </Card>
                     )}
-
                 </div>
             </div>
         </form>
