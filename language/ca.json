@@ -416,7 +416,8 @@
         "linkedin": "LinkedIn",
         "children": "Fills",
         "partnerName": "Nom de la parella",
-        "hobbies": "Hobbies"
+        "hobbies": "Hobbies",
+        "company": "Empresa"
       }
     },
     "status": {
@@ -976,18 +977,18 @@
       "emptyState": "No hi ha cap concepte afegit."
     }
   },
-  "ExpenseDetail": { 
-      "attachments": {
-          "title": "Adjunts",
-          "description": "Fitxers associats a aquesta despesa.",
-          "uploadButton": "Pujar Fitxer",
-          "empty": "No hi ha fitxers adjunts.",
-          "deleteConfirmTitle": "Vols eliminar aquest adjunt?",
-          "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
-          "fileSize": "Mida",
-          "uploadDate": "Pujat el",
-          "download": "Descarregar"
-      }
+  "ExpenseDetail": {
+    "attachments": {
+      "title": "Adjunts",
+      "description": "Fitxers associats a aquesta despesa.",
+      "uploadButton": "Pujar Fitxer",
+      "empty": "No hi ha fitxers adjunts.",
+      "deleteConfirmTitle": "Vols eliminar aquest adjunt?",
+      "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
+      "fileSize": "Mida",
+      "uploadDate": "Pujat el",
+      "download": "Descarregar"
+    }
   },
   "InvoicingPage": {
     "title": "Facturació",
@@ -1625,12 +1626,27 @@
       "title": "Contactes",
       "description": "Persones assignades a aquest proveïdor.",
       "newButton": "Nou Contacte",
+      "linkButton": "Vincular Existent",
       "table": {
         "name": "Nom",
         "email": "Email",
         "phone": "Telèfon"
       },
-      "empty": "Encara no hi ha contactes assignats a aquest proveïdor."
+      "empty": "Encara no hi ha contactes assignats a aquest proveïdor.",
+      "linkDialog": {
+        "title": "Vincular Contacte Existent",
+        "description": "Cerca un contacte existent per vincular-lo a aquest proveïdor. Només apareixeran contactes que no estiguin ja assignats.",
+        "searchPlaceholder": "Cerca per nom...",
+        "noResults": "No s'han trobat contactes o ja estan tots vinculats.",
+        "linkButton": "Vincular",
+        "cancelButton": "Cancel·lar",
+        "toastSuccess": "Contacte vinculat correctament.",
+        "toastError": "Error en vincular el contacte."
+      },
+      "unlinkDialog": {
+        "title": "Desvincular Contacte",
+        "description": "Estàs segur que vols desvincular {contactName} d'aquest proveïdor? El contacte no s'esborrarà, només es tallarà l'associació."
+      }
     },
     "validation": {
       "nameRequired": "El nom de l'empresa és obligatori."
@@ -1640,15 +1656,30 @@
     },
     "expensesCard": {
       "title": "Despeses",
-      "description": "Despeses registrades per a aquest proveïdor.",
-      "newButton": "Nova Despesa",
+      "description": "Visualitza les despeses associades a aquest proveïdor.",
+      "newButton": "Crear Despesa",
+      "linkButton": "Vincular Existent",
+      "empty": "Aquest proveïdor encara no té despeses assignades.",
+      "linkDialog": {
+        "title": "Vincular Despesa Existent",
+        "description": "Cerca una despesa existent per vincular-la a aquest proveïdor. Només apareixeran despeses que no estiguin ja assignades.",
+        "searchPlaceholder": "Cerca per descripció...",
+        "noResults": "No s'han trobat despeses o ja estan totes vinculades.",
+        "linkButton": "Vincular",
+        "cancelButton": "Cancel·lar",
+        "toastSuccess": "Despesa vinculada correctament.",
+        "toastError": "Error en vincular la despesa."
+      },
+      "unlinkDialog": {
+        "title": "Desvincular Despesa",
+        "description": "Estàs segur que vols desvincular aquesta despesa d'aquest proveïdor? La despesa no s'esborrarà, només es tallarà l'associació."
+      },
       "table": {
         "date": "Data",
         "description": "Descripció",
         "amount": "Import",
         "status": "Estat"
-      },
-      "empty": "No hi ha despeses registrades per a aquest proveïdor."
+      }
     },
     "ticketsCard": {
       "title": "Comunicacions",

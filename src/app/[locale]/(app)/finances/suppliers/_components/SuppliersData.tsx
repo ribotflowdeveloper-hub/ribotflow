@@ -1,32 +1,31 @@
 // src/app/[locale]/(app)/finances/suppliers/_components/SuppliersData.tsx
-// ✅ Importem SupplierFilters de nou
 import { fetchPaginatedSuppliers, type SupplierFilters } from '../actions';
 import { SuppliersClient } from './SuppliersClient';
 
-// ✅ Definim les noves props que rep aquest component
+// ✅ Definim les props per rebre 'searchParams'
 interface SuppliersDataProps {
-  page: string;
-  pageSize: string;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: string;
+  searchParams: {
+    page?: string;
+    pageSize?: string;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  };
 }
 
-export async function SuppliersData({
-  page: pageProp,
-  pageSize: pageSizeProp,
-  search,
-  sortBy: sortByProp,
-  sortOrder: sortOrderProp,
-}: SuppliersDataProps) {
+// Aquest component és 'async'
+export async function SuppliersData({ searchParams }: SuppliersDataProps) {
 
-  // ✅ Parsegem els valors rebuts com a props
-  const page = parseInt(pageProp, 10);
-  const pageSize = parseInt(pageSizeProp, 10);
-  const sortBy = sortByProp || 'nom';
-  const sortOrder = (sortOrderProp === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
+  // ✅ Parsegem els valors AQUÍ.
+  // Com que 'SuppliersData' té una 'key' única i està
+  // dins de <Suspense>, Next.js ara ho gestionarà correctament.
+  const page = parseInt(searchParams?.page ?? '1', 10);
+  const pageSize = parseInt(searchParams?.pageSize ?? '10', 10);
+  const search = searchParams?.search;
+  const sortBy = searchParams?.sortBy || 'nom';
+  const sortOrder = (searchParams?.sortOrder === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
 
-  // ✅ Reconstruïm l'objecte 'filters'
+  // Reconstruïm l'objecte 'filters'
   const filters: SupplierFilters = {
     searchTerm: search || undefined,
     sortBy,
@@ -35,12 +34,10 @@ export async function SuppliersData({
     offset: (page - 1) * pageSize,
   };
 
-  console.log('SuppliersData - Calling action with filters:', filters);
+  console.log('SuppliersData (amb key) - Calling action with filters:', filters);
 
-  // ✅ Cridem l'acció amb l'objecte 'filters'
+  // Cridem l'acció
   const initialData = await fetchPaginatedSuppliers(filters);
-
-  console.log('SuppliersData - Received initialData:', initialData);
 
   return (
     <SuppliersClient initialData={initialData} />

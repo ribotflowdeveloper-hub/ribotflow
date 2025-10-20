@@ -15,6 +15,7 @@ interface ContactDetailPageProps {
 export async function generateMetadata(props: ContactDetailPageProps): Promise<Metadata> {
   // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
   const { contactId } = await props.params;
+  const contactIdNumber = Number(contactId);
 
   const supabase = createClient()
 ;
@@ -22,7 +23,7 @@ export async function generateMetadata(props: ContactDetailPageProps): Promise<M
   const { data: contact } = await supabase
     .from('contacts')
     .select('nom')
-    .eq('id', contactId)
+    .eq('id', contactIdNumber)
     .single();
 
   return { title: `${contact?.nom || 'Contacte'} | Ribot` };

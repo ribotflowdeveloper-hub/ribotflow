@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { Contact } from '@/types/crm/contacts'; // Assegurem que s'importa el tipus Contact correctament
 import { validateUserSession } from "@/lib/supabase/session"; 
-
+import { type ActionResult } from "@/types/shared/index";
 // ----------------------------------------------------
 // ACCIONS DE LLISTA/FETCHING
 // ----------------------------------------------------
@@ -134,3 +134,120 @@ export async function fetchContactsForSupplier(supplierId: string) {
 // Tipus per a la resposta d'aquesta funció (opcional però recomanat)
 export type ContactForSupplier = Awaited<ReturnType<typeof fetchContactsForSupplier>>[0];
 
+/**
+ * Cerca contactes que NO estan vinculats a cap proveïdor.
+ */
+export async function searchContactsForLinking(
+  searchTerm: string
+): Promise<Pick<Contact, 'id' | 'nom' | 'email'>[]> {
+  const session = await validateUserSession();
+  if ("error" in session) return [];
+  const { supabase, activeTeamId } = session;
+
+  let query = supabase
+    .from('contacts')
+    .select('id, nom, email')
+    .eq('team_id', activeTeamId)
+    .is('supplier_id', null) // ✅ Clau: Només contactes no vinculats
+    .limit(10);
+
+  if (searchTerm) {
+    query = query.ilike('nom', `%${searchTerm}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error searching contacts for linking:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Vincula un contacte existent a un proveïdor.
+ * ✅ MODIFICAT: Ara també actualitza el nom de l'empresa.
+ */
+export async function linkContactToSupplier(
+  contactId: string,
+  supplierId: string
+): Promise<ActionResult<Contact>> {
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
+
+  // 1. ✅ NOU: Obtenim el nom del proveïdor
+  const { data: supplierData, error: supplierError } = await supabase
+    .from('suppliers')
+    .select('nom')
+    .eq('id', supplierId)
+    .eq('team_id', activeTeamId)
+    .single();
+
+  if (supplierError || !supplierData) {
+    console.error("Error fetching supplier name:", supplierError);
+    return { success: false, message: "No s'ha pogut trobar el proveïdor." };
+  }
+  
+  const supplierName = supplierData.nom;
+
+  // 2. Actualitzem el contacte
+  const { data, error } = await supabase
+    .from('contacts')
+    .update({ 
+      supplier_id: supplierId,
+      estat: 'P',
+      empresa: supplierName // ✅ NOU: Assignem el nom del proveïdor a l'empresa
+    })
+    .eq('id', contactId)
+    .eq('team_id', activeTeamId) // Seguretat
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error linking contact:", error);
+    return { success: false, message: `Error en vincular el contacte: ${error.message}` };
+  }
+
+  revalidatePath(`/finances/suppliers/${supplierId}`);
+  revalidatePath(`/crm/contactes/${contactId}`);
+
+  return { success: true, message: "Contacte vinculat.", data: data as Contact };
+}
+
+
+/**
+ * ✅ NOU: Desvincula un contacte d'un proveïdor.
+ * (No l'esborra, només elimina l'associació)
+ */
+export async function unlinkContactFromSupplier(
+  contactId: string,
+  supplierId: string // Per revalidar
+): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
+
+  // Revertim l'estat a 'Lead' (o el que consideris per defecte)
+  // i posem 'supplier_id' i 'empresa' a null.
+  const { error } = await supabase
+    .from('contacts')
+    .update({ 
+      supplier_id: null,
+      estat: 'Lead', // O 'Prospecte', o el teu estat per defecte
+      empresa: null
+    })
+    .eq('id', contactId)
+    .eq('team_id', activeTeamId); // Seguretat
+
+  if (error) {
+    console.error("Error unlinking contact:", error);
+    return { success: false, message: `Error en desvincular el contacte: ${error.message}` };
+  }
+
+  // Revalidem les pàgines afectades
+  revalidatePath(`/finances/suppliers/${supplierId}`);
+  revalidatePath(`/crm/contactes/${contactId}`);
+
+  return { success: true, message: "Contacte desvinculat." };
+}
