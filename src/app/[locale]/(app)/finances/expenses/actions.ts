@@ -7,7 +7,8 @@ import {
 } from "@/types/finances/expenses";
 import { type ActionResult } from "@/types/shared/index";
 import { validateUserSession } from "@/lib/supabase/session";
-
+import { type Expense } from "@/types/finances/expenses";
+import { revalidatePath } from "next/cache";
 export interface ExpenseFilters {
     searchTerm?: string;
     category?: string;
@@ -151,3 +152,100 @@ export async function fetchExpensesForSupplier(supplierId: string) {
 
 // Tipus per a la resposta (opcional)
 export type ExpenseForSupplier = Awaited<ReturnType<typeof fetchExpensesForSupplier>>[0];
+
+/**
+ * Cerca despeses que NO estan vinculades a cap proveïdor.
+ */
+export async function searchExpensesForLinking(
+  searchTerm: string
+): Promise<Pick<Expense, 'id' | 'description' | 'expense_date' | 'total_amount'>[]> {
+  const session = await validateUserSession();
+  if ("error" in session) return [];
+  const { supabase, activeTeamId } = session;
+
+  let query = supabase
+    .from('expenses')
+    .select('id, description, expense_date, total_amount')
+    .eq('team_id', activeTeamId)
+    .is('supplier_id', null) // ✅ Clau: Només despeses no vinculades
+    .order('expense_date', { ascending: false }) // Ordenem per data recent
+    .limit(10);
+
+  if (searchTerm) {
+    // Cerca per descripció o número de factura (si el tens)
+    query = query.ilike('description', `%${searchTerm}%`);
+    // Si tens 'invoice_number', afegeix-lo a la cerca:
+    // query = query.or(`description.ilike.%${searchTerm}%,invoice_number.ilike.%${searchTerm}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Error searching expenses for linking:", error.message);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Vincula una despesa existent a un proveïdor.
+ */
+export async function linkExpenseToSupplier(
+  expenseId: number, // Les IDs de despesa són números
+  supplierId: string
+): Promise<ActionResult<Expense>> { // Retorna la despesa actualitzada
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
+
+  // Actualitzem la despesa
+  const { data, error } = await supabase
+    .from('expenses')
+    .update({ supplier_id: supplierId })
+    .eq('id', expenseId)
+    .eq('team_id', activeTeamId) // Seguretat
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Error linking expense:", error);
+    return { success: false, message: `Error en vincular la despesa: ${error.message}` };
+  }
+
+  // Revalidem les pàgines afectades
+  revalidatePath(`/finances/suppliers/${supplierId}`);
+  revalidatePath(`/finances/expenses/${expenseId}`);
+
+  return { success: true, message: "Despesa vinculada.", data: data as Expense };
+}
+
+/**
+ * Desvincula una despesa d'un proveïdor.
+ */
+export async function unlinkExpenseFromSupplier(
+  expenseId: number,
+  supplierId: string // Per revalidar
+): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
+
+  // Posem 'supplier_id' a null.
+  const { error } = await supabase
+    .from('expenses')
+    .update({ supplier_id: null })
+    .eq('id', expenseId)
+    .eq('team_id', activeTeamId); // Seguretat
+
+  if (error) {
+    console.error("Error unlinking expense:", error);
+    return { success: false, message: `Error en desvincular la despesa: ${error.message}` };
+  }
+
+  // Revalidem les pàgines afectades
+  revalidatePath(`/finances/suppliers/${supplierId}`);
+  revalidatePath(`/finances/expenses/${expenseId}`);
+
+  return { success: true, message: "Despesa desvinculada." };
+}
+

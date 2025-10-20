@@ -2,24 +2,24 @@ import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SupplierDetailData } from './_components/SupplierDetailData';
 
-// El tipus PageProps ja inclou params: { supplierId: string }
 type SupplierDetailPageProps = {
   params: { supplierId: string };
 };
 
-// Aquest component només fa de contenidor i passa els params
-export default function SupplierDetailPage({ params }: SupplierDetailPageProps) {
-  // ❌ NO ACCEDIR a params.supplierId AQUÍ ❌
-  // const isNewPage = params.supplierId === 'new'; // <--- ELIMINAR AQUESTA LÍNIA
-  // const t = await getTranslations...; // <--- ELIMINAR AQUESTA LÍNIA
-  // const title = ...; // <--- ELIMINAR AQUESTA LÍNIA
-  // const description = ...; // <--- ELIMINAR AQUESTA LÍNIA
-
+// Mantenim 'async'
+export default async function SupplierDetailPage({ params }: SupplierDetailPageProps) {
   return (
-    // Suspense envolta el component que fa la càrrega de dades
     <Suspense fallback={<SupplierDetailSkeleton />}>
-      {/* Passem params directament a SupplierDetailData per complir la interfície */}
-      <SupplierDetailData params={params} />
+      {/* ✅ SOLUCIÓ DEFINITIVA: 
+        1. Passem els 'params' com a prop.
+        2. Afegim una 'key' única basada en el 'supplierId'. 
+        
+        Això força React a recrear el component 'SupplierDetailData' 
+        si l'ID canvia (p.ex. navegant de 'new' a un ID), 
+        la qual cosa fa que 'Suspense' i la lectura de 'params' 
+        dins del fill funcionin correctament.
+      */}
+      <SupplierDetailData key={params.supplierId} params={params} />
     </Suspense>
   );
 }
