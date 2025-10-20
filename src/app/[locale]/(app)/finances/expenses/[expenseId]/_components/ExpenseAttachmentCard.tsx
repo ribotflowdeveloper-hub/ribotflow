@@ -1,56 +1,121 @@
-// src/app/[locale]/(app)/finances/despeses/[expenseId]/_components/ExpenseAttachmentCard.tsx
 "use client";
 
-import React from 'react';
-import { FileText, Download, Trash2 } from 'lucide-react';
+import { type ExpenseAttachment } from '@/types/finances/expenses';
 import { Button } from '@/components/ui/button';
-import { ExpenseAttachment } from '@/types/finances/expenses';
-import { useTranslations } from 'next-intl';
+import { Download, Trash2, FileText, Loader2 } from 'lucide-react'; // 'AlertTriangle' no s'utilitza aquí, es pot treure
+import { useTransition } from 'react';
+import { toast } from 'sonner';
+import { getAttachmentSignedUrl, deleteAttachmentAction } from '../actions';
+
+// ✅ CORRECCIÓ: La importació ha de ser 'alert-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"; // <-- Ruta corregida
 
 interface ExpenseAttachmentCardProps {
-    attachment: ExpenseAttachment;
-    // L'ID de la despesa és útil per a la lògica d'eliminació/descàrrega
-    expenseId: number; 
-    // Assumim una funció d'eliminació passada com a prop o injectada amb un hook
-    onDelete?: (attachmentId: string) => void;
+  attachment: ExpenseAttachment;
+  onDeleteSuccess: (attachmentId: string) => void; 
 }
 
-/**
- * Component per visualitzar i gestionar un adjunt d'una despesa.
- * ✅ El Per Què: Centralitza la lògica de previsualització, descàrrega i eliminació 
- * d'adjunts de Supabase Storage, mantenint net el component pare.
- */
-export function ExpenseAttachmentCard({ attachment, onDelete }: ExpenseAttachmentCardProps) {
-    const t = useTranslations('ExpenseDetail.attachments');
-    
-    // URL simulada de Supabase Storage
-    const downloadUrl = `/api/attachments/download?path=${attachment.file_path}&filename=${attachment.filename}`; 
+export function ExpenseAttachmentCard({ attachment, onDeleteSuccess }: ExpenseAttachmentCardProps) {
+  const [isDownloading, startDownloadTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
+  
+  const handleDownload = () => {
+    startDownloadTransition(async () => {
+      const result = await getAttachmentSignedUrl(attachment.file_path);
+      
+      if (result.success && result.data?.signedUrl) {
+        // Obrim la URL signada en una nova pestanya
+        window.open(result.data.signedUrl, '_blank');
+      } else {
+        toast.error(result.message || "Error en obtenir l'enllaç de descàrrega.");
+      }
+    });
+  };
 
-    return (
-        <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-            <div className="flex items-center space-x-3 truncate">
-                <FileText className="w-5 h-5 text-primary shrink-0" />
-                <span className="text-sm font-medium truncate" title={attachment.filename}>
-                    {attachment.filename}
-                </span>
-            </div>
-            <div className="flex space-x-2 shrink-0">
-                <Button asChild variant="ghost" size="icon" title={t('download')}>
-                    <a href={downloadUrl} download>
-                        <Download className="w-4 h-4" />
-                    </a>
-                </Button>
-                {onDelete && (
-                    <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        title={t('delete')} 
-                        onClick={() => onDelete(attachment.id)}
-                    >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
-                )}
-            </div>
+  const handleDelete = () => {
+    startDeleteTransition(async () => {
+      const result = await deleteAttachmentAction(attachment.id, attachment.file_path);
+      
+      if (result.success) {
+        toast.success("Adjunt eliminat correctament.");
+        onDeleteSuccess(attachment.id); // Notifiquem al pare
+      } else {
+        toast.error(result.message || "Error eliminant l'adjunt.");
+      }
+    });
+  };
+
+  return (
+    <div className="flex items-center justify-between p-3 border rounded-md bg-muted/50">
+      <div className="flex items-center gap-3 overflow-hidden">
+        <FileText className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+        <div className="flex flex-col overflow-hidden">
+          <span className="text-sm font-medium truncate" title={attachment.filename}>
+            {attachment.filename}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {attachment.mime_type}
+          </span>
         </div>
-    );
+      </div>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Botó de Descàrrega (amb Server Action) */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleDownload}
+          disabled={isDownloading}
+          aria-label={`Descarregar ${attachment.filename}`}
+        >
+          {isDownloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+        </Button>
+        
+        {/* Botó d'Esborrar (amb Diàleg de Confirmació) */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              disabled={isDeleting}
+              aria-label={`Esborrar ${attachment.filename}`}
+            >
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Estàs segur?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Aquesta acció no es pot desfer. S'esborrarà permanentment
+                el fitxer <span className="font-medium">{attachment.filename}</span>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel·lar</AlertDialogCancel>
+              {/* ✅ Assegurem que el botó d'esborrar té l'estil correcte */}
+              <AlertDialogAction 
+                onClick={handleDelete} 
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Esborrar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+      </div>
+    </div>
+  );
 }

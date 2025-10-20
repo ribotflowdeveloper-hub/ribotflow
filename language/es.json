@@ -938,7 +938,10 @@
       "notes": "Cualquier detalle adicional..."
     },
     "select": {
-      "selectSupplier": "Selecciona un proveedor..."
+      "selectSupplier": "Selecciona un proveedor...",
+      "searchSupplier": "Buscar un proveedor...",
+      "noSupplierFound": "No se ha encontrado ningún proveedor.",
+      "noSupplier": "Sin proveedor"
     },
     "label": {
       "subtotal": "Subtotal",
@@ -965,6 +968,19 @@
         "description": "Concepto del servicio o producto"
       },
       "emptyState": "No hay ningún concepto añadido."
+    }
+  },
+  "ExpenseDetail": {
+    "attachments": {
+      "title": "Adjuntos",
+      "description": "Archivos asociados a este gasto.",
+      "uploadButton": "Subir Archivo",
+      "empty": "No hay archivos adjuntos.",
+      "deleteConfirmTitle": "¿Quieres eliminar este adjunto?",
+      "deleteConfirmDescription": "Esta acción no se puede deshacer.",
+      "fileSize": "Tamaño",
+      "uploadDate": "Subido el",
+      "download": "Descargar"
     }
   },
   "InvoicingPage": {
@@ -1511,6 +1527,85 @@
       "to": "a",
       "of": "de",
       "entries": "registros"
+    }
+  },
+  "SuppliersPage": {
+    "title": "Proveedores",
+    "description": "Gestiona tus proveedores y entidades.",
+    "newButton": "Nuevo Proveedor",
+    "searchPlaceholder": "Buscar por nombre, NIF o correo electrónico...",
+    "emptyState": "No se han encontrado proveedores.",
+    "table": {
+      "name": "Nombre",
+      "email": "Correo electrónico",
+      "phone": "Teléfono",
+      "created": "Fecha de creación"
+    },
+    "deleteDialog": {
+      "title": "¿Quieres eliminar este proveedor?"
+    },
+    "toast": {
+      "deleteSuccess": "Proveedor eliminado con éxito.",
+      "deleteError": "No se ha podido eliminar el proveedor."
+    }
+  },
+  "SupplierDetailPage": {
+    "createTitle": "Crear Proveedor",
+    "editTitle": "Editar Proveedor",
+    "createDescription": "Añade un nuevo proveedor (entidad) al sistema.",
+    "editDescription": "Edita los detalles de este proveedor.",
+    "loadingCreate": "Cargando creador de proveedores...",
+    "detailsCardTitle": "Detalles del Proveedor",
+    "detailsCardDescription": "Información principal del proveedor.",
+    "form": {
+      "name": "Nombre de la empresa",
+      "nif": "NIF / CIF",
+      "email": "Correo principal (facturación)",
+      "phone": "Teléfono principal",
+      "saving": "Guardando...",
+      "save": "Guardar Cambios"
+    },
+    "contactsCard": {
+      "title": "Contactos",
+      "description": "Personas asignadas a este proveedor.",
+      "newButton": "Nuevo Contacto",
+      "table": {
+        "name": "Nombre",
+        "email": "Correo electrónico",
+        "phone": "Teléfono"
+      },
+      "empty": "Aún no hay contactos asignados a este proveedor."
+    },
+    "validation": {
+      "nameRequired": "El nombre de la empresa es obligatorio."
+    },
+    "toast": {
+      "saveError": "Ha ocurrido un error al guardar el proveedor."
+    },
+    "expensesCard": {
+      "title": "Gastos",
+      "description": "Gastos registrados para este proveedor.",
+      "newButton": "Nuevo Gasto",
+      "table": {
+        "date": "Fecha",
+        "description": "Descripción",
+        "amount": "Importe",
+        "status": "Estado"
+      },
+      "empty": "No hay gastos registrados para este proveedor."
+    },
+    "ticketsCard": {
+      "title": "Comunicaciones",
+      "description": "Correos y tickets relacionados con los contactos de este proveedor.",
+      "newButton": "Nuevo Contacto",
+      "searchInboxButton": "Buscar en la Bandeja de Entrada",
+      "table": {
+        "subject": "Asunto",
+        "lastActivity": "Última Actividad",
+        "status": "Estado"
+      },
+      "empty": "No se han encontrado comunicaciones relacionadas.",
+      "noSubject": "(Sin Asunto)"
     }
   }
 }

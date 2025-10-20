@@ -939,11 +939,14 @@
     },
     "placeholder": {
       "invoiceNumber": "Ex: F-2024-123",
-      "description": "Short description of the expense...",
+      "description": "Brief description of the expense...",
       "notes": "Any additional details..."
     },
     "select": {
-      "selectSupplier": "Select a supplier..."
+      "selectSupplier": "Select a supplier...",
+      "searchSupplier": "Search for a supplier...",
+      "noSupplierFound": "No supplier found.",
+      "noSupplier": "No supplier"
     },
     "label": {
       "subtotal": "Subtotal",
@@ -969,7 +972,20 @@
       "placeholder": {
         "description": "Service or product concept"
       },
-      "emptyState": "No items added yet."
+      "emptyState": "No items added."
+    }
+  },
+  "ExpenseDetail": {
+    "attachments": {
+      "title": "Attachments",
+      "description": "Files associated with this expense.",
+      "uploadButton": "Upload File",
+      "empty": "No attachments available.",
+      "deleteConfirmTitle": "Do you want to delete this attachment?",
+      "deleteConfirmDescription": "This action cannot be undone.",
+      "fileSize": "Size",
+      "uploadDate": "Uploaded on",
+      "download": "Download"
     }
   },
   "InvoicingPage": {
@@ -1519,6 +1535,85 @@
       "to": "to",
       "of": "of",
       "entries": "entries"
+    }
+  },
+  "SuppliersPage": {
+    "title": "Suppliers",
+    "description": "Manage your suppliers and entities.",
+    "newButton": "New Supplier",
+    "searchPlaceholder": "Search by name, VAT ID or email...",
+    "emptyState": "No suppliers found.",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "created": "Creation Date"
+    },
+    "deleteDialog": {
+      "title": "Do you want to delete this supplier?"
+    },
+    "toast": {
+      "deleteSuccess": "Supplier deleted successfully.",
+      "deleteError": "Failed to delete the supplier."
+    }
+  },
+  "SupplierDetailPage": {
+    "createTitle": "Create Supplier",
+    "editTitle": "Edit Supplier",
+    "createDescription": "Add a new supplier (entity) to the system.",
+    "editDescription": "Edit this supplier's details.",
+    "loadingCreate": "Loading supplier creator...",
+    "detailsCardTitle": "Supplier Details",
+    "detailsCardDescription": "Main information about the supplier.",
+    "form": {
+      "name": "Company Name",
+      "nif": "VAT / Tax ID",
+      "email": "Primary Email (Billing)",
+      "phone": "Primary Phone",
+      "saving": "Saving...",
+      "save": "Save Changes"
+    },
+    "contactsCard": {
+      "title": "Contacts",
+      "description": "People assigned to this supplier.",
+      "newButton": "New Contact",
+      "table": {
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone"
+      },
+      "empty": "No contacts assigned to this supplier yet."
+    },
+    "validation": {
+      "nameRequired": "Company name is required."
+    },
+    "toast": {
+      "saveError": "An error occurred while saving the supplier."
+    },
+    "expensesCard": {
+      "title": "Expenses",
+      "description": "Expenses recorded for this supplier.",
+      "newButton": "New Expense",
+      "table": {
+        "date": "Date",
+        "description": "Description",
+        "amount": "Amount",
+        "status": "Status"
+      },
+      "empty": "No expenses recorded for this supplier."
+    },
+    "ticketsCard": {
+      "title": "Communications",
+      "description": "Emails and tickets related to this supplier's contacts.",
+      "newButton": "New Contact",
+      "searchInboxButton": "Search Inbox",
+      "table": {
+        "subject": "Subject",
+        "lastActivity": "Last Activity",
+        "status": "Status"
+      },
+      "empty": "No related communications found.",
+      "noSubject": "(No Subject)"
     }
   }
 }
