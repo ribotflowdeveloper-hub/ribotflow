@@ -10,31 +10,35 @@ import {
   Columns,
   Receipt,
   Bot,
-  BookPlus,
   Settings,
   Users,
   Workflow,
   Activity,
-  CalendarDays, // ✅ Importem la nova icona
-
-  Truck
+  CalendarDays,
+  Truck,
+  BookPlus,
+  // ✅ 1. Importem les icones que necessitarem per als nous submenús
+  User,
+  CreditCard,
+  Puzzle,
+  Wrench,
+  ShieldOff,
+  KeyRound,
+  Download
 } from 'lucide-react';
-
-
-// ✅ PAS 1: Importem la interfície des del nostre nou fitxer de tipus.
 import type { NavItem } from '@/types/app/navigation';
 
 export const navModules: NavItem[] = [
   {
     id: 'dashboard',
-    labelKey: 'dashboard', // ✅ Canviat
+    labelKey: 'dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
     isSingle: true
   },
   {
     id: 'crm',
-    labelKey: 'crm', // ✅ Canviat
+    labelKey: 'crm',
     icon: Briefcase,
     basePath: '/crm',
     path: '/crm/general',
@@ -45,12 +49,11 @@ export const navModules: NavItem[] = [
       { id: 'pipeline', labelKey: 'pipeline', icon: Columns, path: '/crm/pipeline', isSingle: true },
       { id: 'activitats', labelKey: 'activities', icon: Activity, path: '/crm/activitats', isSingle: true },
       { id: 'calendari', labelKey: 'calendar', icon: CalendarDays, path: '/crm/calendari', isSingle: true }
-
     ]
   },
   {
     id: 'finances',
-    labelKey: 'finances', // ✅ Canviat
+    labelKey: 'finances',
     icon: Landmark,
     basePath: '/finances',
     path: '/finances/invoices',
@@ -61,12 +64,11 @@ export const navModules: NavItem[] = [
       { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/invoices', isSingle: true },
       { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/expenses', isSingle: true },
       { id: 'proveïdors', labelKey: 'suppliers', icon: Truck, path: '/finances/suppliers', isSingle: true },
-
     ]
   },
   {
     id: 'comunicacio',
-    labelKey: 'communication', // ✅ Canviat
+    labelKey: 'communication',
     icon: Headphones,
     basePath: '/comunicacio',
     path: '/comunicacio/inbox',
@@ -80,7 +82,6 @@ export const navModules: NavItem[] = [
         labelKey: 'planner',
         icon: CalendarDays,
         path: '/comunicacio/planificador',
-        // ✅ AQUÍ ESTÀ LA MÀGIA: Especifiquem els plans que tenen accés
         requiredPlan: ['plus', 'premium'],
         isSingle: false
       },
@@ -88,15 +89,14 @@ export const navModules: NavItem[] = [
   },
   {
     id: 'network',
-    labelKey: 'network', // ✅ Canviat
+    labelKey: 'network',
     icon: Users,
     path: '/network',
     isSingle: true
   },
-
   {
     id: 'projectStrocture',
-    labelKey: 'architecture', // ✅ Canviat
+    labelKey: 'architecture',
     icon: Workflow,
     path: '/projectStrocture',
     isSingle: true
@@ -105,5 +105,24 @@ export const navModules: NavItem[] = [
 
 export const bottomItems: NavItem[] = [
   { id: 'ai', labelKey: 'ai', icon: Bot, path: '#', isSingle: true, notImplemented: true },
-  { id: 'settings', labelKey: 'settings', icon: Settings, path: '/settings/profile', isSingle: true },
+  // ✅ 2. Modifiquem l'element 'settings' per a què tingui submenús.
+  {
+    id: 'settings',
+    labelKey: 'settings',
+    icon: Settings,
+    basePath: '/settings', // Important per saber quan mostrar els fills
+    path: '/settings/profile', // La ruta per defecte en clicar
+    isSingle: false, // Ara no és un enllaç únic, té fills
+    children: [
+      // ✅ 3. Afegim aquí tots els elements que abans estaven a 'SettingsNav.tsx'.
+      { id: 'profile', labelKey: 'profile', icon: User, path: '/settings/profile', isSingle: true },
+      { id: 'billing', labelKey: 'billing', icon: CreditCard, path: '/settings/billing', isSingle: true },
+      { id: 'team', labelKey: 'team', icon: Users, path: '/settings/team', isSingle: true },
+      { id: 'integrations', labelKey: 'integrations', icon: Puzzle, path: '/settings/integrations', isSingle: true },
+      { id: 'blacklist', labelKey: 'blacklist', icon: ShieldOff, path: '/settings/blacklist', isSingle: true },
+      { id: 'customization', labelKey: 'customization', icon: Wrench, path: '/settings/customization', isSingle: true },
+      { id: 'install', labelKey: 'install', icon: Download, path: '/settings/install', isSingle: true },
+      { id: 'permissions', labelKey: 'permissions', icon: KeyRound, path: '/settings/permissions', isSingle: true },
+    ]
+  },
 ];

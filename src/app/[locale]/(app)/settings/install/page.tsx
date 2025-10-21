@@ -21,10 +21,7 @@ export default async function InstallPage() {
             ios_title: t('ios_title'),
             ios_instructions: t('ios_instructions'),
             already_installed: t('already_installed'),
-            
-            // ✅ CORRECCIÓ: Canviem 'manual_install_title' pel nom correcte 'connect_device_title'.
-            // També ens assegurem d'utilitzar la clau de traducció corresponent.
-            connect_device_title: t('connect_device_title'),
+            connect_device_title: t('manual_install_title'),
           }}
         />
       </div>

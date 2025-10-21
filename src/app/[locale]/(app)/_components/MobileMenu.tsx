@@ -17,11 +17,9 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
     const [isOpen, setIsOpen] = useState(false);
     const t = useTranslations('Navigation');
 
-    // Funció que crida a handleNavigation i tanca el menú
     const createClickHandler = (item: NavItem) => () => {
         handleNavigation(item);
-        // Tanquem el menú si és un enllaç simple o si és un sub-ítem
-        if (item.isSingle !== false) { // isSingle pot ser true o undefined
+        if (item.isSingle !== false) {
             setIsOpen(false);
         }
     };
@@ -29,10 +27,12 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden"><Menu className="h-6 w-6" /></Button>
+                <Button variant="ghost" size="icon" className="md:hidden"><Menu className="h-6 w-6" /></Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-full sm:w-[320px] p-0 flex flex-col">
                 <SheetHeader className="p-4 border-b"><SheetTitle>{t('menuTitle')}</SheetTitle></SheetHeader>
+                
+                {/* Aquesta part es queda igual */}
                 <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                     {navModules.map(module => (
                         module.isSingle ? (
@@ -59,15 +59,41 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
                         )
                     ))}
                 </nav>
+
+                {/* ✅ CORRECCIÓ: Apliquem la mateixa lògica d'acordió als 'bottomItems' */}
                 <div className="p-4 border-t mt-auto space-y-1">
-                    {bottomItems.map(item =>
-                        item.notImplemented ? (
-                            <Button key={item.id} variant="ghost" className="w-full justify-start ..." onClick={onNotImplementedClick}>{/* ... */}</Button>
+                    {bottomItems.map(item => (
+                        item.isSingle ? (
+                            // Gestiona 'AI' i altres enllaços simples
+                            <Button
+                                key={item.id}
+                                variant="ghost"
+                                className="w-full justify-start gap-3 px-4 py-3 text-base font-medium"
+                                onClick={item.notImplemented ? onNotImplementedClick : createClickHandler(item)}
+                            >
+                                <item.icon className="w-5 h-5" /> {t(item.labelKey)}
+                            </Button>
                         ) : (
-                            <Button key={item.id} variant="ghost" className="w-full justify-start ..." onClick={createClickHandler(item)}>{/* ... */}</Button>
+                            // Gestiona 'Settings', que ara té fills
+                            <Accordion key={item.id} type="single" collapsible className="w-full">
+                                <AccordionItem value={item.id} className="border-b-0">
+                                    <AccordionTrigger className="px-4 py-3 text-base font-medium hover:no-underline hover:bg-muted rounded-lg">
+                                        <div className="flex items-center gap-3"><item.icon className="w-5 h-5" />{t(item.labelKey)}</div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pl-8 pt-2 pb-1">
+                                        <div className="flex flex-col gap-1">
+                                            {item.children?.map((child: NavItem) => (
+                                                <Button key={child.id} variant="ghost" className="w-full justify-start gap-3 px-4 py-2 text-muted-foreground hover:text-foreground" onClick={createClickHandler(child)}>
+                                                    <child.icon className="w-4 h-4" />{t(child.labelKey)}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
                         )
-                    )}
-                    <Button variant="ghost" className="w-full justify-start ... text-red-500" onClick={onOpenSignOutDialog}>
+                    ))}
+                    <Button variant="ghost" className="w-full justify-start gap-3 px-4 py-3 text-base font-medium text-red-500 hover:text-red-600" onClick={onOpenSignOutDialog}>
                         <LogOut className="w-5 h-5" /> {t('signOut')}
                     </Button>
                 </div>
