@@ -334,45 +334,49 @@ export async function getTicketByIdAction(ticketId: number): Promise<{ data: Enr
 }
 
 /**
- * ✅ NOVA FUNCIÓ (SIMPLIFICADA)
- * Obté els tiquets/emails relacionats amb els contactes d'un proveïdor.
- * ATENCIÓ: Aquesta consulta pot ser lenta si hi ha molts contactes.
- * Podria necessitar optimització o una taula/vista específica.
+ * ✅ FUNCIÓ CORREGIDA (o afegida si faltava)
+ * Obté els tiquets associats als contactes d'un proveïdor.
  */
-export async function fetchTicketsForSupplierContacts(supplierId: string) {
-    const session = await validateUserSession();
-    if ("error" in session) return [];
-    const { supabase, activeTeamId } = session;
+export async function fetchTicketsForSupplierContacts(
+  supplierId: string
+): Promise<EnrichedTicket[]> { 
+  const session = await validateUserSession();
+  if ('error' in session) return [];
+  const { supabase, activeTeamId } = session;
 
-    // 1. Trobar els emails dels contactes d'aquest proveïdor
-    const { data: contacts, error: contactsError } = await supabase
-        .from('contacts')
-        .select('email')
-        .eq('supplier_id', supplierId)
-        .eq('team_id', activeTeamId)
-        .not('email', 'is', null); // Només contactes amb email
+  // 1. Obtenir els IDs dels contactes d'aquest proveïdor
+  const { data: contacts, error: contactsError } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('team_id', activeTeamId)
+    .eq('supplier_id', supplierId);
 
-    if (contactsError || !contacts || contacts.length === 0) {
-        return [];
-    }
+  if (contactsError) {
+    console.error("Error fetching contacts for supplier:", contactsError.message);
+    return [];
+  }
 
-    const contactEmails = contacts.map(c => c.email);
+  if (!contacts || contacts.length === 0) {
+    return []; // No hi ha contactes, no hi ha tiquets
+  }
 
-    // 2. Cercar tiquets on el remitent o destinatari sigui un d'aquests emails
-    const { data: tickets, error: ticketsError } = await supabase
-        .from('tickets') // O la taula que correspongui
-        .select('id, subject, created_at, last_message_at, status, sender_email, recipient_email')
-        .in('sender_email', contactEmails) // O bé 'or(`sender_email.in.(${...}),recipient_email.in.(${...})`)' si vols ambdós
-        .eq('team_id', activeTeamId)
-        .order('last_message_at', { ascending: false })
-        .limit(50);
+  const contactIds = contacts.map(c => c.id);
 
-    if (ticketsError) {
-        console.error("Error fetching tickets for supplier contacts:", ticketsError.message);
-        return [];
-    }
-    return tickets;
+  // 2. Obtenir els tiquets d'aquests contactes
+  // ✅ CORRECCIÓ: L'error era "column tickets.last_message_at does not exist".
+  // Canviem l'ordenació per 'sent_at', que sí existeix a 'enriched_tickets'.
+  const { data: tickets, error: ticketsError } = await supabase
+    .from('enriched_tickets') // Consultem la vista enriquida
+    .select('*')
+    .in('contact_id', contactIds)
+    .order('sent_at', { ascending: false }) // ✅ FIX: Canviat de 'last_message_at' a 'sent_at'
+    .limit(20); // Limitem el número de tiquets a la vista de detall
+
+  if (ticketsError) {
+    // Aquesta és la línia que et donava l'error al log
+    console.error("Error fetching tickets for supplier contacts:", ticketsError.message); 
+    return [];
+  }
+  
+  return tickets as EnrichedTicket[];
 }
-
-// Tipus per a la resposta (opcional)
-export type TicketForSupplier = Awaited<ReturnType<typeof fetchTicketsForSupplierContacts>>[0];

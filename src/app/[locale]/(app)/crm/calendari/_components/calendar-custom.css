@@ -1,0 +1,47 @@
+/* * Assegura que el contenidor de la columna de dia tingui posició relativa
+ * perquè els esdeveniments posicionats de forma absoluta es mantinguin dins.
+*/
+.rbc-day-slot .rbc-event-content {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+.rbc-day-slot .rbc-event,
+.rbc-day-slot .rbc-background-event {
+    position: relative !important;
+    width: 95% !important;
+    margin-bottom: 5px !important;
+    left: 2.5% !important;
+    right: 2.5% !important;
+    top: auto !important;
+    height: auto !important;
+    min-height: 25px; /* Una alçada mínima per a esdeveniments curts */
+}
+
+/* * Elimina l'alçada fixa de les files de temps per permetre que creixin 
+ * verticalment segons el contingut.
+*/
+.rbc-time-content > .rbc-time-slot,
+.rbc-time-slot {
+    height: auto !important;
+    min-height: 40px; /* Mantenim una alçada mínima per a les hores buides */
+}
+
+/* * Assegura que el contenidor que agrupa els esdeveniments en una mateixa
+ * franja horària sigui flexible i organitzi els fills en columna.
+*/
+.rbc-day-slot .rbc-events-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px; /* Espai entre esdeveniments */
+    position: relative !important;
+    width: 100% !important;
+    top: 0 !important;
+    left: 0 !important;
+}
+
+/* * Ajusta l'estil de l'indicador "now" (la línia de l'hora actual)
+ * per assegurar que es mostri correctament amb la nova estructura flexible.
+*/
+.rbc-time-view .rbc-current-time-indicator {
+    z-index: 1;
+}

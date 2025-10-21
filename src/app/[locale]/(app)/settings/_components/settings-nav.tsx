@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { User, CreditCard, Users, Puzzle, Wrench, ShieldOff ,KeyRound} from 'lucide-react';
+import { User, CreditCard, Users, Puzzle, Wrench, ShieldOff ,KeyRound, Download} from 'lucide-react';
 import { cn, getCleanPathname } from '@/lib/utils/utils';
 
 const settingsNavItems = [
@@ -18,6 +18,7 @@ const settingsNavItems = [
   { id: 'integrations', labelKey: 'integrations', icon: Puzzle, path: '/settings/integrations' },
   { id: 'blacklist', labelKey: 'blacklist', icon: ShieldOff, path: '/settings/blacklist' },
   { id: 'customization', labelKey: 'customization', icon: Wrench, path: '/settings/customization' },
+  { id: 'install', labelKey: 'install', icon: Download, path: '/settings/install' },
   { id: 'permissions', labelKey: 'permissions', icon: KeyRound, path: '/settings/permissions' },
 ];
 

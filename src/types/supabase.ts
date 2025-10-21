@@ -759,10 +759,13 @@ export type Database = {
         Row: {
           created_at: string | null
           description: string
+          discount_amount: number | null
+          discount_percentage: number | null
           id: string
           invoice_id: number
           product_id: number | null
           quantity: number
+          reference_sku: string | null
           tax_rate: number | null
           team_id: string | null
           total: number | null
@@ -772,10 +775,13 @@ export type Database = {
         Insert: {
           created_at?: string | null
           description: string
+          discount_amount?: number | null
+          discount_percentage?: number | null
           id?: string
           invoice_id: number
           product_id?: number | null
           quantity?: number
+          reference_sku?: string | null
           tax_rate?: number | null
           team_id?: string | null
           total?: number | null
@@ -785,10 +791,13 @@ export type Database = {
         Update: {
           created_at?: string | null
           description?: string
+          discount_amount?: number | null
+          discount_percentage?: number | null
           id?: string
           invoice_id?: number
           product_id?: number | null
           quantity?: number
+          reference_sku?: string | null
           tax_rate?: number | null
           team_id?: string | null
           total?: number | null
@@ -825,13 +834,16 @@ export type Database = {
           client_address: string | null
           client_email: string | null
           client_name: string | null
+          client_reference: string | null
           client_tax_id: string | null
           company_address: string | null
           company_email: string | null
+          company_logo_url: string | null
           company_name: string | null
           company_tax_id: string | null
           contact_id: number | null
           created_at: string
+          currency: string
           discount: number | null
           discount_amount: number | null
           due_date: string | null
@@ -839,14 +851,21 @@ export type Database = {
           id: number
           invoice_number: string | null
           issue_date: string
+          language: string
           notes: string | null
+          paid_at: string | null
+          payment_details: string | null
+          project_id: string | null
           quote_id: number | null
+          sent_at: string | null
+          shipping_cost: number | null
           status: string
           subtotal: number | null
           tax: number | null
           tax_amount: number | null
           tax_rate: number | null
           team_id: string | null
+          terms: string | null
           total_amount: number
           updated_at: string | null
           user_id: string
@@ -860,13 +879,16 @@ export type Database = {
           client_address?: string | null
           client_email?: string | null
           client_name?: string | null
+          client_reference?: string | null
           client_tax_id?: string | null
           company_address?: string | null
           company_email?: string | null
+          company_logo_url?: string | null
           company_name?: string | null
           company_tax_id?: string | null
           contact_id?: number | null
           created_at?: string
+          currency?: string
           discount?: number | null
           discount_amount?: number | null
           due_date?: string | null
@@ -874,14 +896,21 @@ export type Database = {
           id?: number
           invoice_number?: string | null
           issue_date: string
+          language?: string
           notes?: string | null
+          paid_at?: string | null
+          payment_details?: string | null
+          project_id?: string | null
           quote_id?: number | null
+          sent_at?: string | null
+          shipping_cost?: number | null
           status: string
           subtotal?: number | null
           tax?: number | null
           tax_amount?: number | null
           tax_rate?: number | null
           team_id?: string | null
+          terms?: string | null
           total_amount: number
           updated_at?: string | null
           user_id: string
@@ -895,13 +924,16 @@ export type Database = {
           client_address?: string | null
           client_email?: string | null
           client_name?: string | null
+          client_reference?: string | null
           client_tax_id?: string | null
           company_address?: string | null
           company_email?: string | null
+          company_logo_url?: string | null
           company_name?: string | null
           company_tax_id?: string | null
           contact_id?: number | null
           created_at?: string
+          currency?: string
           discount?: number | null
           discount_amount?: number | null
           due_date?: string | null
@@ -909,14 +941,21 @@ export type Database = {
           id?: number
           invoice_number?: string | null
           issue_date?: string
+          language?: string
           notes?: string | null
+          paid_at?: string | null
+          payment_details?: string | null
+          project_id?: string | null
           quote_id?: number | null
+          sent_at?: string | null
+          shipping_cost?: number | null
           status?: string
           subtotal?: number | null
           tax?: number | null
           tax_amount?: number | null
           tax_rate?: number | null
           team_id?: string | null
+          terms?: string | null
           total_amount?: number
           updated_at?: string | null
           user_id?: string
@@ -945,6 +984,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -1679,6 +1725,7 @@ export type Database = {
           is_completed: boolean
           priority: Database["public"]["Enums"]["task_priority"] | null
           team_id: string | null
+          time_tracking_log: Json | null
           title: string
           user_asign_id: string | null
           user_id: string
@@ -1696,6 +1743,7 @@ export type Database = {
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
+          time_tracking_log?: Json | null
           title: string
           user_asign_id?: string | null
           user_id: string
@@ -1713,6 +1761,7 @@ export type Database = {
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
+          time_tracking_log?: Json | null
           title?: string
           user_asign_id?: string | null
           user_id?: string
@@ -2716,26 +2765,15 @@ export type Database = {
         Returns: number
       }
       get_inbox_tickets: {
-        Args:
-          | {
-              p_active_filter: string
-              p_limit: number
-              p_offset: number
-              p_search_term: string
-              p_team_id: string
-              p_user_id: string
-              p_visible_user_ids: string[]
-            }
-          | {
-              p_active_filter?: Database["public"]["Enums"]["ticket_filter"]
-              p_limit: number
-              p_offset: number
-              p_search_term?: string
-              p_sender_emails?: string[]
-              p_team_id: string
-              p_user_id: string
-              p_visible_user_ids: string[]
-            }
+        Args: {
+          p_active_filter: string
+          p_limit: number
+          p_offset: number
+          p_search_term: string
+          p_team_id: string
+          p_user_id: string
+          p_visible_user_ids: string[]
+        }
         Returns: {
           attachments: Json
           body: string
@@ -2752,9 +2790,9 @@ export type Database = {
           sender_email: string
           sender_name: string
           sent_at: string
-          status: Database["public"]["Enums"]["ticket_status"]
+          status: string
           subject: string
-          type: Database["public"]["Enums"]["ticket_type"]
+          type: string
           user_id: string
         }[]
       }
@@ -3130,16 +3168,16 @@ export type Database = {
           total_amount: number
         }[]
       }
-      search_invoices: {
+      search_paginated_invoices: {
         Args: {
-          p_contact_id?: number
-          p_limit?: number
-          p_offset?: number
-          p_search_term?: string
-          p_sort_by?: string
-          p_sort_order?: string
-          p_status?: Database["public"]["Enums"]["invoice_status"]
-          p_team_id: string
+          contact_id_param: number
+          limit_param: number
+          offset_param: number
+          search_term_param: string
+          sort_by_param: string
+          sort_order_param: string
+          status_param: string
+          team_id_param: string
         }
         Returns: {
           client_name: string
@@ -3149,8 +3187,9 @@ export type Database = {
           id: number
           invoice_number: string
           issue_date: string
-          status: Database["public"]["Enums"]["invoice_status"]
+          status: string
           total_amount: number
+          total_count: number
         }[]
       }
       spheroid_in: {

@@ -5,7 +5,6 @@ import { InvoiceDetailClient } from './InvoiceDetailClient';
 // Podries necessitar altres accions per carregar dades relacionades (ex: clients, productes)
 // import { fetchActiveClients } from '@/app/[locale]/(app)/crm/contactes/actions';
 // import { fetchActiveProducts } from '@/app/[locale]/(app)/crm/products/actions';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { getTranslations } from 'next-intl/server';
 
 // ISP: Rep només els paràmetres que necessita (invoiceId)
@@ -18,51 +17,48 @@ interface InvoiceDetailDataProps {
 export async function InvoiceDetailData({ params }: InvoiceDetailDataProps) {
   const invoiceIdParam = params.invoiceId;
   const isNew = invoiceIdParam === 'new';
-  // Validem i convertim a número només si NO és 'new'
   const invoiceId = isNew ? null : parseInt(invoiceIdParam, 10);
 
-  // Validació bàsica de l'ID
   if (!isNew && (isNaN(invoiceId as number) || invoiceId === null)) {
-      console.error("Invalid invoice ID:", invoiceIdParam);
-      notFound();
+    console.error("Invalid invoice ID:", invoiceIdParam);
+    notFound();
   }
 
-  const t = await getTranslations('InvoiceDetailPage'); // Namespace per a traduccions
+  const t = await getTranslations('InvoiceDetailPage');
 
-  // Carreguem les dades només si estem editant una factura existent
   let invoiceData = null;
   if (!isNew && invoiceId !== null) {
     invoiceData = await fetchInvoiceDetail(invoiceId);
-    // Si no trobem la factura, mostrem 404
     if (!invoiceData) {
       notFound();
     }
   }
 
-  // TODO: Carregar dades addicionals necessàries per al formulari (ex: llista de clients, productes)
-  // const clients = await fetchActiveClients(); // Exemple
-  // const products = await fetchActiveProducts(); // Exemple
+  // TODO: Carregar dades addicionals (clients, products, projects...)
+  // const clients = await fetchActiveClients();
+  // const products = await fetchActiveProducts();
+  // const projects = await fetchProjects(); // Exemple
 
+  // ✅ Calculem títol i descripció per passar-los al client
   const title = isNew
     ? t('createTitle')
     : t('editTitle', { number: invoiceData?.invoice_number ?? invoiceId ?? '' });
   const description = isNew ? t('createDescription') : t('editDescription');
 
   return (
-    // Estructura opcional amb PageHeader (similar a Suppliers)
-    <div className="flex flex-col gap-6">
-       <PageHeader
-        title={title}
-        description={description}
-        showBackButton={true} // El botó de tornar el gestionarà el Client
-      />
-      <InvoiceDetailClient
-        initialData={invoiceData} // Pot ser null si isNew és true
-        isNew={isNew}
-        // Passa les dades addicionals carregades
-        // clients={clients}
-        // products={products}
-      />
-    </div>
+    // ❗ Eliminem el PageHeader i el div contenidor si ja no és necessari
+    // <div className="flex flex-col gap-6">
+    //    <PageHeader ... />
+        <InvoiceDetailClient
+            initialData={invoiceData}
+            isNew={isNew}
+            title={title} // ✅ Passem title com a prop
+            description={description} // ✅ Passem description com a prop
+            // Passa les dades addicionals carregades
+            // clients={clients}
+            // products={products}
+            // projects={projects}
+        />
+    // </div>
   );
 }

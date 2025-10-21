@@ -9,11 +9,12 @@ import { useTranslations } from 'next-intl';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
+// NOU: Importem el nou fitxer de estils personalitzats
+import './calendar-custom.css';
+
 import { CalendarEvent } from '@/types/crm';
-// 🔑 Imports afegits per la coherència de tipus (fetchCalendarDataAction)
 import { fetchCalendarData } from '../_hooks/calendarFetch';
 import { ActiveSources } from '@/types/crm/calendar';
-// ----------------------------------------------------------------------
 import { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCalendar } from './CalendarData';
 import { TaskDialogManager } from '@/components/features/tasks/TaskDialogManager';
 import { Tables } from '@/types/supabase';
@@ -26,7 +27,6 @@ import { useCalendarController } from '../_hooks/useCalendarController';
 import { useCalendarDialogs } from '../_hooks/useCalendarDialog';
 import CalendarSkeletonEvent from './CalendarSkeletonEvent';
 
-// 🔑 FIX: Exportem el tipus EventSourcesState
 export type EventSourcesState = ActiveSources;
 
 const locales = { es };
@@ -97,7 +97,6 @@ export default function CalendarClient(props: CalendarClientProps) {
         handleMoveTask,
         setEventSources,
         updateDateAndData,
-       
     } = useCalendarController(props);
 
     const {
@@ -117,6 +116,12 @@ export default function CalendarClient(props: CalendarClientProps) {
     } = useCalendarDialogs({ updateDateAndData });
 
     const { handleMoveEvent } = useCalendar(tasks, handleMoveTask);
+    
+    // NOU: Lògica per gestionar el clic a "+X més"
+    const handleShowMore = useCallback((events: CalendarEvent[], date: Date) => {
+        handleViewChange('day');
+        handleToolbarNavigation('DATE', date);
+    }, [handleViewChange, handleToolbarNavigation]);
 
     const messages = useMemo(() => ({
         allDay: t('allDay'),
@@ -146,27 +151,17 @@ export default function CalendarClient(props: CalendarClientProps) {
         return format(date, dateFormat, { locale: es }).replace(/^\w/, c => c.toUpperCase());
     }, [date, view]);
     
-    // -------------------------------------------------------------------------
-    // 🔑 ADAPTADOR 1: Per a react-big-calendar (envia newDate, view, action)
-    // -------------------------------------------------------------------------
     const handleCalendarNavigate: CalendarProps<CalendarEvent>['onNavigate'] = useCallback((newDate: Date, view: View, action: NavigateAction) => {
-        // BigCalendar ha calculat la newDate. La passem al hook.
         handleToolbarNavigation(action, newDate);
     }, [handleToolbarNavigation]);
     
-    // -------------------------------------------------------------------------
-    // 🔑 ADAPTADOR 2: Per a CalendarToolbar (envia només action)
-    // -------------------------------------------------------------------------
     const handleToolbarAction = useCallback((action: NavigateAction) => {
-        // La Toolbar només envia l'acció. Passem 'undefined' com a newDate, 
-        // forçant que el hook la calculi.
         handleToolbarNavigation(action, undefined);
     }, [handleToolbarNavigation]);
 
 
     const toolbarProps = useMemo(() => ({
         label: formattedLabel,
-        // 🔑 Utilitzem l'adaptador simple per la Toolbar
         onNavigate: handleToolbarAction, 
         onView: handleViewChange,
         view: view,
@@ -174,45 +169,44 @@ export default function CalendarClient(props: CalendarClientProps) {
         date: date,
         localizer: localizer,
         onEventSourcesChange: setEventSources,
-        eventSources: eventSources, // Fix: Ensure eventSources is passed here
+        eventSources: eventSources,
         onCreateTask: handleOpenNewTaskDialog,
     }), [formattedLabel, handleViewChange, view, date, eventSources, setEventSources, handleOpenNewTaskDialog, handleToolbarAction]);
 
     return (
         <div>
             <CalendarToolbar {...toolbarProps} />
-
-           
-                <DragAndDropCalendar
-                    localizer={localizer}
-                    events={filteredEvents}
-                    startAccessor="start"
-                    endAccessor="end"
-                    style={{ height: 'calc(100vh - 150px)', borderRadius: '0 0 0.5rem 0.5rem' }}
-                    selectable
-                    onSelectSlot={handleSelectSlot}
-                    onSelectEvent={handleSelectEvent}
-                    onEventDrop={handleMoveEvent}
-                    eventPropGetter={eventStyleGetter}
-                    messages={messages}
-                    culture="es"
-                    view={view}
-                    date={date}
-                    onView={handleViewChange}
-                    // 🔑 Utilitzem l'adaptador que BigCalendar espera
-                    onNavigate={handleCalendarNavigate}
-                    className={cn('rbc-calendar-force-light-theme')}
-                    components={{
-                        toolbar: () => null,
-                        event: (props) =>
-                            props.event.eventType === 'skeleton' ? (
-                                <CalendarSkeletonEvent {...props} />
-                            ) : (
-                                <div className="rbc-event-content">{props.title}</div>
-                            ),
-                    }}
-                />
-           
+            
+            <DragAndDropCalendar
+                localizer={localizer}
+                events={filteredEvents}
+                startAccessor="start"
+                endAccessor="end"
+                style={{ height: 'calc(100vh - 150px)', borderRadius: '0 0 0.5rem 0.5rem' }}
+                selectable
+                onSelectSlot={handleSelectSlot}
+                onSelectEvent={handleSelectEvent}
+                onEventDrop={handleMoveEvent}
+                eventPropGetter={eventStyleGetter}
+                messages={messages}
+                culture="es"
+                view={view}
+                date={date}
+                onView={handleViewChange}
+                onNavigate={handleCalendarNavigate}
+                // NOU: Afegim el gestor per a la vista de setmana i mes
+                onShowMore={handleShowMore}
+                className={cn('rbc-calendar-force-light-theme')}
+                components={{
+                    toolbar: () => null,
+                    event: (props) =>
+                        props.event.eventType === 'skeleton' ? (
+                            <CalendarSkeletonEvent {...props} />
+                        ) : (
+                            <div className="rbc-event-content">{props.title}</div>
+                        ),
+                }}
+            />
 
             <TaskDialogManager
                 task={selectedTask ? { ...selectedTask, user_id: selectedTask.user_id ?? '' } : null}

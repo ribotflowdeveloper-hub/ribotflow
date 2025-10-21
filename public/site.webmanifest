@@ -1,7 +1,7 @@
 {
     "name": "Ribotflow",
     "short_name": "Ribotflow",
-    "description": "Plataforma automatizada per ajudar a petites empreses i autonoms",
+    "description": "Plataforma automatizada per ajudar a petites empreses i autònoms.",
     "icons": [
         {
             "src": "/android-chrome-192x192.png",
@@ -15,9 +15,9 @@
         }
     ],
     "theme_color": "#1a1a1a",
-    "start_url": "/?source=pwa",
-    "scope": "/",
     "background_color": "#1a1a1a",
+    "start_url": "/dashboard?source=pwa",
+    "scope": "/",
     "display": "standalone",
     "orientation": "portrait-primary"
 }

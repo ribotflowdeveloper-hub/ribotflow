@@ -9,6 +9,8 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
+// NOU: Component per registrar el Service Worker de forma segura al client
+import { PWARegistration } from '@/components/PWARegistration';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -54,6 +56,8 @@ export default async function LocaleLayout(props: LocaleLayoutProps) {
             {children}
           </ThemeProvider>
           <Toaster position="bottom-right" richColors closeButton />
+          {/* NOU: Afegim el component de registre del SW */}
+          <PWARegistration />
         </NextIntlClientProvider>
       </body>
     </html>
