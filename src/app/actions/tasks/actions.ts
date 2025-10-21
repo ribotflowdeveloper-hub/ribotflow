@@ -176,3 +176,32 @@ export async function updateSimpleTask(taskId: number, updatedData: Partial<Tabl
   revalidatePath('/[locale]/(app)/dashboard', 'layout');
   return { error: null };
 }
+
+export async function setTaskActiveStatus(taskId: number, newStatus: boolean) {
+  console.log(`--- [Server Action] Canviant estat de la tasca ${taskId} a ${newStatus} ---`);
+
+  const session = await validateUserSession();
+  // Retornem un objecte d'error coherent amb les altres funcions
+  if ('error' in session) {
+    return { error: { message: session.error.message } };
+  }
+  const { supabase } = session;
+
+  // Cridem la funció 'log_task_activity' que hem creat a la base de dades
+  const { error } = await supabase.rpc('log_task_activity', {
+    task_id_input: taskId,
+    new_status_input: newStatus
+  });
+
+  if (error) {
+    console.error("Error en RPC 'log_task_activity':", error);
+    return { error: { message: error.message } };
+  }
+
+  // Revalidem les rutes per refrescar la UI, igual que a les altres accions
+  revalidatePath('/[locale]/(app)/crm/calendari', 'layout');
+  revalidatePath('/[locale]/(app)/dashboard', 'layout');
+
+  // Retornem èxit
+  return { data: { success: true } };
+}
