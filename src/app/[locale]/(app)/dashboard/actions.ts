@@ -24,6 +24,7 @@ export async function addTask(taskData: NewTaskPayload) {
         ...taskData,
         user_id: user.id,
         team_id: activeTeamId,
+        is_active: false
     }]);
 
   if (error) {

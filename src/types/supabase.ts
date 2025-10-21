@@ -1725,7 +1725,6 @@ export type Database = {
           is_completed: boolean
           priority: Database["public"]["Enums"]["task_priority"] | null
           team_id: string | null
-          time_tracking_log: Json | null
           title: string
           user_asign_id: string | null
           user_id: string
@@ -1745,7 +1744,6 @@ export type Database = {
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
-          time_tracking_log?: Json | null
           title: string
           user_asign_id?: string | null
           user_id: string
@@ -1765,7 +1763,6 @@ export type Database = {
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
-          time_tracking_log?: Json | null
           title?: string
           user_asign_id?: string | null
           user_id?: string

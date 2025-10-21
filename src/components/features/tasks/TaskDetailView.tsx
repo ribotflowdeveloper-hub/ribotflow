@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 // Importem 'Clock'
-import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Contact, Building, Activity, Clock } from "lucide-react";
+import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Activity, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTranslations } from "next-intl";
 import { deleteTask, updateSimpleTask,setTaskActiveStatus } from '@/app/actions/tasks/actions';

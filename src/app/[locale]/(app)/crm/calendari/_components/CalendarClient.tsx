@@ -16,7 +16,7 @@ import { CalendarEvent } from '@/types/crm';
 import { fetchCalendarData } from '../_hooks/calendarFetch';
 import { ActiveSources } from '@/types/crm/calendar';
 import { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCalendar } from './CalendarData';
-import { TaskDialogManager } from '@/components/features/tasks/TaskDialogManager';
+import { EnrichedTask, TaskDialogManager } from '@/components/features/tasks/TaskDialogManager';
 import { Tables } from '@/types/supabase';
 import CalendarToolbar from './CalendarToolbar';
 import useCalendar from '../_hooks/useCalendar';
@@ -116,7 +116,7 @@ export default function CalendarClient(props: CalendarClientProps) {
     } = useCalendarDialogs({ updateDateAndData });
 
     const { handleMoveEvent } = useCalendar(tasks, handleMoveTask);
-    
+
     // NOU: Lògica per gestionar el clic a "+X més"
     const handleShowMore = useCallback((events: CalendarEvent[], date: Date) => {
         handleViewChange('day');
@@ -150,11 +150,11 @@ export default function CalendarClient(props: CalendarClientProps) {
         }
         return format(date, dateFormat, { locale: es }).replace(/^\w/, c => c.toUpperCase());
     }, [date, view]);
-    
+
     const handleCalendarNavigate: CalendarProps<CalendarEvent>['onNavigate'] = useCallback((newDate: Date, view: View, action: NavigateAction) => {
         handleToolbarNavigation(action, newDate);
     }, [handleToolbarNavigation]);
-    
+
     const handleToolbarAction = useCallback((action: NavigateAction) => {
         handleToolbarNavigation(action, undefined);
     }, [handleToolbarNavigation]);
@@ -162,7 +162,7 @@ export default function CalendarClient(props: CalendarClientProps) {
 
     const toolbarProps = useMemo(() => ({
         label: formattedLabel,
-        onNavigate: handleToolbarAction, 
+        onNavigate: handleToolbarAction,
         onView: handleViewChange,
         view: view,
         views: CALENDAR_VIEWS,
@@ -176,7 +176,7 @@ export default function CalendarClient(props: CalendarClientProps) {
     return (
         <div>
             <CalendarToolbar {...toolbarProps} />
-            
+
             <DragAndDropCalendar
                 localizer={localizer}
                 events={filteredEvents}
@@ -209,7 +209,11 @@ export default function CalendarClient(props: CalendarClientProps) {
             />
 
             <TaskDialogManager
-                task={selectedTask ? { ...selectedTask, user_id: selectedTask.user_id ?? '' } : null}
+                task={selectedTask ? {
+                    ...selectedTask,
+                    user_id: selectedTask.user_id ?? '',
+                    time_tracking_log: selectedTask.time_tracking_log ?? null // <-- AFEGEIX AQUESTA LÍNIA
+                } as EnrichedTask: null}
                 open={isTaskDialogOpen}
                 onOpenChange={setIsTaskDialogOpen}
                 contacts={props.contacts}
