@@ -2,21 +2,20 @@
 
 import { FC } from 'react';
 // ✅ 1. Importem el tipus directament de la definició de la BD.
-import { type Database } from '@/types/supabase';
 import { GeneralInfoSection } from './GeneralInfoSection';
 import { PersonalInfoSection } from './PersonalInfoSection';
 import { NotesSection } from './NotesSection';
 import { Locale } from 'date-fns'; // Corregit l'import des de date-fns
+import { type ContactDetail } from '../../actions'; // Importem el tipus correcte
 
 // ✅ 2. Definim el tipus per a la fila de la taula 'contacts'.
-type Contact = Database['public']['Tables']['contacts']['Row'];
-
 interface Props {
-    contact: Contact;
+    contact: ContactDetail;
     isEditing: boolean;
     dateLocale: Locale;
     getStatusLabel: (code?: string | null) => string; // Permetem que el codi sigui null
 }
+
 
 export const DetailsTab: FC<Props> = ({ contact, isEditing, dateLocale, getStatusLabel }) => {
     return (

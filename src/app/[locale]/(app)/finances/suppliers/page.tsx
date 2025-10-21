@@ -1,45 +1,54 @@
-// src/app/[locale]/(app)/finances/suppliers/page.tsx
 import { Suspense } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { SuppliersData } from './_components/SuppliersData';
+import { z } from 'zod'; // Recomanat per a validació
 
-// El tipus de props per a la pàgina
-type SuppliersPageProps = {
-  searchParams: {
+// (Opcional però recomanat) Zod schema per validar els paràmetres
+const searchParamsSchema = z.object({
+  page: z.string().optional().default('1'),
+  pageSize: z.string().optional().default('10'),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.string().optional(),
+});
+
+// -------------------------------------------------------------------
+// ✅ CORRECCIÓ: Definim el tipus de les props amb 'searchParams' com a Promise
+// -------------------------------------------------------------------
+interface SuppliersPageProps {
+  searchParams: Promise<{
     page?: string;
     pageSize?: string;
     search?: string;
     sortBy?: string;
     sortOrder?: string;
-  };
-};
+  }>;
+}
 
-// 'async' aquí és correcte
-export default async function SuppliersListPage({ searchParams }: SuppliersPageProps) {
+/**
+ * Component de pàgina per a la llista de proveïdors.
+ */
+export default async function SuppliersListPage(props: SuppliersPageProps) {
   
-  // ⛔ NO LLEGIM els 'searchParams' aquí.
+  // ✅ Resolem la promesa per obtenir els paràmetres de cerca
+  const resolvedSearchParams = await props.searchParams;
 
-  /**
-   * ✅ SOLUCIÓ DEFINITIVA:
-   * 1. Passem l'objecte 'searchParams' sencer al component fill.
-   * 2. Afegim una 'key' única (basada en els searchParams) a 'SuppliersData'.
-   * * Això és crucial. La 'key' li diu a React que si els 'searchParams' 
-   * canvien, ha de tractar 'SuppliersData' com un component completament 
-   * nou. Això fa que 'Suspense' s'activi correctament i el component
-   * fill ('SuppliersData') torni a executar la seva lògica 'async'
-   * per anar a buscar les noves dades.
-   */
-  const key = JSON.stringify(searchParams);
+  // ✅ (Recomanat) Validem els paràmetres amb Zod
+  const validatedSearchParams = searchParamsSchema.parse(resolvedSearchParams);
+  
+  // La 'key' única és crucial per al bon funcionament de Suspense
+  const suspenseKey = JSON.stringify(validatedSearchParams);
 
   return (
     <Suspense fallback={<SuppliersListSkeleton />}>
-      <SuppliersData key={key} searchParams={searchParams} />
+      {/* Passem l'objecte de paràmetres sencer, ja resolt i validat */}
+      <SuppliersData key={suspenseKey} searchParams={validatedSearchParams} />
     </Suspense>
   );
 }
 
-// El Skeleton es queda igual
+// El Skeleton es queda igual, no cal fer-hi canvis
 function SuppliersListSkeleton() {
   return (
     <div className="flex flex-col gap-6">

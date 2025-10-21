@@ -1,11 +1,11 @@
-// @/app/[locale]/(app)/crm/contactes/[id]/_components/ContactDetailTabs.tsx (CORREGIT)
 "use client";
 
 import { useTranslations, useLocale } from 'next-intl';
 import { ca, es, enUS } from 'date-fns/locale';
-// ✅ 1. Importem la definició de la BD i la constant des de /config.
 import { type Database } from '@/types/supabase';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
+// ✅ 1. Importem el tipus 'ContactDetail' des de la font original.
+import { type ContactDetail } from '../actions';
 import { Tabs, TabsContent, TabsList } from "@/components/ui/tabs";
 import { Briefcase, FileText, Receipt, Activity as ActivityIcon, Edit } from 'lucide-react';
 
@@ -14,16 +14,15 @@ import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { RelatedDataTable } from './tabs/RelatedDataTable';
 import { DetailsTab } from './tabs/DetailsTab';
 
-// ✅ 2. Definim tots els tipus necessaris a partir de la BD.
-// AQUEST ERA L'ERROR: abans apuntaven a tipus incorrectes.
-type Contact = Database['public']['Tables']['contacts']['Row'];
+// Definicions de tipus base (es queden igual)
 type Quote = Database['public']['Tables']['quotes']['Row'];
 type Opportunity = Database['public']['Tables']['opportunities']['Row'];
 type Invoice = Database['public']['Tables']['invoices']['Row'];
 type Activity = Database['public']['Tables']['activities']['Row'];
 
 interface Props {
-    contact: Contact;
+    // ✅ 2. Usem 'ContactDetail' directament. Això resol la discrepància.
+    contact: ContactDetail;
     relatedData: { 
         quotes: Quote[]; 
         opportunities: Opportunity[]; 
@@ -45,7 +44,6 @@ export function ContactDetailTabs({ contact, relatedData, isEditing }: Props) {
     };
 
     return (
-        // El JSX es manté igual, ara simplement rebrà els tipus correctes.
         <div className="glass-card p-4 md:p-6 mt-8">
             <Tabs defaultValue="activitats" className="w-full">
                 <div className="overflow-x-auto -mx-4 px-4 pb-px">
@@ -58,27 +56,29 @@ export function ContactDetailTabs({ contact, relatedData, isEditing }: Props) {
                     </TabsList>
                 </div>
                 
+                <TabsContent value="oportunitats" className="pt-6">
+                    <h3 className="text-2xl font-bold mb-6">{t('opportunities.title')}</h3>
+                    <RelatedDataTable data={relatedData.opportunities} columns={[{ key: 'name', label: t('opportunities.table.name') }, { key: 'stage', label: t('opportunities.table.status') }, { key: 'value', label: t('opportunities.table.value') }]} linkPath="/crm/pipeline" emptyMessage={t('opportunities.empty')} />
+                </TabsContent>
+                
+                {/* ... la resta de TabsContent es queden igual ... */}
                 <TabsContent value="activitats" className="pt-6">
                     <h3 className="text-2xl font-bold mb-6">{t('activities.title')}</h3>
                     <ActivitiesTab activities={relatedData.activities} dateLocale={dateLocale} emptyMessage={t('activities.empty')}/>
                 </TabsContent>
-                
-                <TabsContent value="oportunitats" className="pt-6">
-                    <h3 className="text-2xl font-bold mb-6">{t('opportunities.title')}</h3>
-                    <RelatedDataTable data={relatedData.opportunities} columns={[{ key: 'name', label: t('opportunities.table.name') }, { key: 'status', label: t('opportunities.table.status') }, { key: 'total', label: t('opportunities.table.value') }]} linkPath="/crm/pipeline" emptyMessage={t('opportunities.empty')} />
-                </TabsContent>
-                
+
                 <TabsContent value="pressupostos" className="pt-6">
                     <h3 className="text-2xl font-bold mb-6">{t('quotes.title')}</h3>
-                    <RelatedDataTable data={relatedData.quotes} columns={[{ key: 'number', label: t('quotes.table.number') }, { key: 'status', label: t('quotes.table.status') }, { key: 'total', label: t('quotes.table.total') }]} linkPath="/crm/quotes" emptyMessage={t('quotes.empty')} />
+                    <RelatedDataTable data={relatedData.quotes} columns={[{ key: 'quote_number', label: t('quotes.table.number') }, { key: 'status', label: t('quotes.table.status') }, { key: 'total_amount', label: t('quotes.table.total') }]} linkPath="/crm/quotes" emptyMessage={t('quotes.empty')} />
                 </TabsContent>
-                
+
                 <TabsContent value="factures" className="pt-6">
                     <h3 className="text-2xl font-bold mb-6">{t('invoices.title')}</h3>
-                    <RelatedDataTable data={relatedData.invoices} columns={[{ key: 'number', label: t('invoices.table.number') }, { key: 'status', label: t('invoices.table.status') }, { key: 'total', label: t('invoices.table.total') }]} emptyMessage={t('invoices.empty')} />
+                    <RelatedDataTable data={relatedData.invoices} columns={[{ key: 'invoice_number', label: t('invoices.table.number') }, { key: 'status', label: t('invoices.table.status') }, { key: 'total_amount', label: t('invoices.table.total') }]} emptyMessage={t('invoices.empty')} />
                 </TabsContent>
-                
+
                 <TabsContent value="detalls" className="pt-6">
+                    {/* Ara 'contact' és del tipus correcte ('ContactDetail') que DetailsTab espera. */}
                     <DetailsTab contact={contact} isEditing={isEditing} dateLocale={dateLocale} getStatusLabel={getStatusLabel} />
                 </TabsContent>
             </Tabs>

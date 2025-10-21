@@ -82,5 +82,6 @@ export type QuoteDataFromServer = Quote & {
   team: CompanyProfile | null;
   quote_items: QuoteItem[];
   secure_id: string;
+ 
 };
 

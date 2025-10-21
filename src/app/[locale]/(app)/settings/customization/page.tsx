@@ -7,8 +7,9 @@ export const metadata: Metadata = {
   title: 'Personalització | Ribot',
 };
 
-export type Stage = { id: string; name: string; };
-export type Tag = { id: string; name: string; color: string; };
+// ❗ Eliminem les definicions de Stage i Tag d'aquí
+// export type Stage = { id: string; name: string; };
+// export type Tag = { id: string; name: string; color: string; };
 
 export default function CustomizationPage() {
   return (

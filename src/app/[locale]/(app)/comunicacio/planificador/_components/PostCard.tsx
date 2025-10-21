@@ -15,7 +15,7 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, isDragging, onDelete, t, children }: PostCardProps) {
-    const statusStyles: { [key: string]: { border: string; icon: JSX.Element | null; text: string } } = {
+    const statusStyles: { [key: string]: { border: string; icon: React.ReactNode | null; text: string } } = {
         scheduled: { border: 'border-primary/50', icon: <Clock size={12} />, text: 'text-primary' },
         published: { border: 'border-green-500', icon: <CheckCircle size={12} />, text: 'text-green-600' },
         failed: { border: 'border-destructive', icon: <XCircle size={12} />, text: 'text-destructive' },

@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Inbox } from 'lucide-react'; // Importa Search
+import { Search, Inbox } from 'lucide-react';
 import { type TicketForSupplier } from '@/app/[locale]/(app)/comunicacio/inbox/actions';
 import { formatDate } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -27,9 +27,9 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
         </div>
         {supplierEmail && (
           <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => router.push(`/comunicacio/inbox?search=${encodeURIComponent(supplierEmail)}`)}
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.push(`/comunicacio/inbox?search=${encodeURIComponent(supplierEmail)}`)}
           >
             <Search className="h-4 w-4 mr-2" />
             {t('ticketsCard.searchInboxButton')}
@@ -50,12 +50,14 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
               {tickets.map((ticket) => (
                 <TableRow key={ticket.id}>
                   <TableCell>
-                    {/* Hauries d'afegir un enllaç a /comunicacio/inbox?ticketId=... si la teva UI ho suporta */}
                     {ticket.subject || t('ticketsCard.noSubject')}
                   </TableCell>
-                  {/* Ajusta el segon argument de formatDate si no vols la hora */}
-                  <TableCell>{formatDate(ticket.last_message_at, "true")}</TableCell> 
-                   {/* Assumeix que StatusBadge accepta 'ticket.status' */}
+                  {/* ✅ CORRECCIÓ: Utilitzem 'sent_at' i mantenim el control de nuls. */}
+                  <TableCell>
+                    {ticket.sent_at 
+                      ? formatDate(ticket.sent_at, "true") 
+                      : 'N/A'}
+                  </TableCell>
                   <TableCell><StatusBadge status={ticket.status} /></TableCell>
                 </TableRow>
               ))}

@@ -2,11 +2,11 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-interface DocumentMatch {
+interface SupabaseDocumentMatch {
   id: number;
-  metadata: Record<string, unknown>;
-  embedding: number[]; // Tipus ajustat per reflectir la resposta de l'API
+  metadata: Record<string, unknown> | null;
   content: string;
+  similarity: number;
 }
 
 export async function chatbotAction(question: string): Promise<{ data: string | null, error: string | null }> {
@@ -19,7 +19,7 @@ export async function chatbotAction(question: string): Promise<{ data: string | 
     const supabase = createClient();
 
     const { data: matches, error: dbError } = await supabase.rpc("match_documents", {
-      query_embedding: await embedQuestion(question),
+      query_embedding: JSON.stringify(await embedQuestion(question)),
       match_threshold: 0.7,
       match_count: 3,
     });
@@ -28,15 +28,14 @@ export async function chatbotAction(question: string): Promise<{ data: string | 
 
     console.log("[Chatbot] Documents trobats:", matches?.length);
 
-    const context = matches?.map((doc: DocumentMatch) => doc.content).join("\n\n") || "";
-    console.log("[Chatbot] Context generat:", context);
+    console.log("[Chatbot] Context generat:");
 
     // 🔹 2. Preparem el prompt per a Gemini
     const prompt = `
       Ets un assistent útil.
       Pregunta de l'usuari: "${question}"
       Context de la base de dades:
-      ${context}
+      
       Respon en català, de manera clara i concisa.
     `;
 

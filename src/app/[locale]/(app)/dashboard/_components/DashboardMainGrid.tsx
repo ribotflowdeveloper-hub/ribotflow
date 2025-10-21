@@ -4,13 +4,11 @@ import React, { memo } from "react";
 import { SalesPerformance } from "./SalesPerformance";
 import { RecentActivities } from "./RecentActivities";
 import { Tables } from "@/types/supabase";
+// ✅ 1. Importem la funció que ja sap com transformar les dades.
+import { getRecentActivities } from '@/lib/data/dashboard'; 
+// ✅ 2. Importem el tipus de tasca correcte que retorna la funció getTasks.
+import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 
-/**
- * @file DashboardMainGrid.tsx
- * @description Conté el bloc principal del dashboard: rendiment de vendes + activitats recents.
- */
-
-// ✅ CORRECCIÓ: Actualitzem les propietats per a què coincideixin amb les dades reals
 interface DashboardMainGridProps {
   stats: {
     invoiced: number;
@@ -23,13 +21,11 @@ interface DashboardMainGridProps {
   percentGoal: number;
   monthlyGoal: number;
   overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
-  tasks: Tables<'tasks'>[];
+  // ✅ 3. Assegurem que el tipus de 'tasks' sigui el correcte.
+  tasks: EnrichedTask[];
   contacts: Tables<'contacts'>[];
 }
 
-/**
- * ✅ Component memoitzat per optimitzar rendiment.
- */
 export const DashboardMainGrid = memo(
   ({
     stats,
@@ -39,6 +35,11 @@ export const DashboardMainGrid = memo(
     tasks,
     contacts,
   }: DashboardMainGridProps) => {
+
+    // ✅ 4. Utilitzem la funció importada per generar l'array d'activitats.
+    // Aquesta funció ja gestiona correctament els tipus, noms de propietats i valors nuls.
+    const activities = getRecentActivities(overdueInvoices, tasks, contacts);
+
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 🧭 Rendiment de vendes */}
@@ -49,11 +50,8 @@ export const DashboardMainGrid = memo(
         />
 
         {/* 🕒 Activitats recents */}
-        <RecentActivities
-          overdueInvoices={overdueInvoices}
-          tasks={tasks}
-          contacts={contacts}
-        />
+        {/* ✅ 5. Passem l'array 'activities' ja formatat i correctament tipat. */}
+        <RecentActivities activities={activities} />
       </div>
     );
   }

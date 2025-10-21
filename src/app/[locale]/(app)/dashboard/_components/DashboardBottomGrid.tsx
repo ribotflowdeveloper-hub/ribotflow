@@ -1,23 +1,19 @@
 "use client";
 
 import React, { memo } from "react";
-import { Agenda } from "./agenda/Agenda";
+import { Agenda, type TaskFilterStatus } from "./agenda/Agenda"; // ✅ 1. Importem el nou tipus de filtre
 import { Radar } from "./Radar";
 import { Tables } from "@/types/supabase";
-import { TaskWithContact } from "@/types/dashboard/types"; // ✅ 1. Importem el nostre tipus de tasca enriquida
-
-/**
- * @file DashboardBottomGrid.tsx
- * @description Renderitza la secció inferior del dashboard: Agenda, Radar i Oracle d’IA.
- */
+// ✅ 2. Importem el tipus de tasca més complet
+import { type EnrichedTask } from "@/components/features/tasks/TaskDialogManager";
 
 interface DashboardBottomGridProps {
-  tasks: TaskWithContact[]; // ✅ 2. Utilitzem el tipus correcte per a les tasques
-  activeFilter: 'pendents' | 'completes';
-  onFilterChange: (filter: 'pendents' | 'completes') => void;
+  tasks: EnrichedTask[]; // ✅ 3. Canviem al tipus EnrichedTask[]
+  activeFilter: TaskFilterStatus; // ✅ 4. Usem el tipus de filtre correcte
+  onFilterChange: (filter: TaskFilterStatus) => void; // ✅ 5. Usem el tipus de filtre correcte
   onOpenNewTask: () => void;
   onToggleTask: (taskId: number, currentStatus: boolean) => void;
-  onViewTask: (task: TaskWithContact) => void; // ✅ 3. Afegim la nova prop que faltava
+  onViewTask: (task: EnrichedTask) => void; // ✅ 6. Canviem al tipus EnrichedTask
   pendingCount: number;
   completedCount: number;
   attentionContacts: Tables<"contacts">[];
@@ -27,19 +23,21 @@ interface DashboardBottomGridProps {
   departments: Tables<'departments'>[];
   departmentFilter: number | 'all';
   onDepartmentFilterChange: (filter: number | 'all') => void;
+  
+  // ✅ 7. Afegim les props que falten per a la cerca i el comptador d'assignades
+  assignedCount: number;
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
 }
 
-/**
- * ✅ Component memoitzat per millorar rendiment.
- */
 export const DashboardBottomGrid = memo(
   ({
     tasks,
     activeFilter,
     onFilterChange,
     onToggleTask,
-    onOpenNewTask,
-    onViewTask, // Rebem la nova prop
+
+  onViewTask,
     pendingCount,
     completedCount,
     attentionContacts,
@@ -49,6 +47,10 @@ export const DashboardBottomGrid = memo(
     departments,
     departmentFilter,
     onDepartmentFilterChange,
+    // ✅ 8. Rebem les noves props
+    assignedCount,
+    searchTerm,
+    onSearchChange,
   }: DashboardBottomGridProps) => {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -58,13 +60,17 @@ export const DashboardBottomGrid = memo(
           activeFilter={activeFilter}
           onFilterChange={onFilterChange}
           onToggleTask={onToggleTask}
-          onOpenNewTask={onOpenNewTask}
-          onViewTask={onViewTask} // ✅ 4. La passem al component fill 'Agenda'
+          // onOpenNewTask={onOpenNewTask} // Aquesta prop no l'espera Agenda, però no fa mal
+          onViewTask={onViewTask}
           pendingCount={pendingCount}
           completedCount={completedCount}
           departments={departments}
           departmentFilter={departmentFilter}
           onDepartmentFilterChange={onDepartmentFilterChange}
+          // ✅ 9. Passem les noves props al component Agenda
+          assignedCount={assignedCount}
+          searchTerm={searchTerm}
+          onSearchChange={onSearchChange}
         />
 
         {/* 🎯 Radar + Oracle IA */}

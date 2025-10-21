@@ -1504,6 +1504,9 @@
     "feature1": "Centralize all your clients and communications.",
     "feature2": "Automate tasks and save dozens of hours each month.",
     "feature3": "Make smarter decisions with clear analytics.",
+    "acceptTermsPrefix": "I have read and accept the",
+    "acceptPrivacyPrefix": "I have read and understand the",
+    "acceptMarketing": "I want to receive updates and communications.",
     "errors": {
       "password_length": "Password should be at least 6 characters.",
       "email_invalid": "Please enter a valid email address.",
@@ -1717,6 +1720,302 @@
       },
       "empty": "No related communications found.",
       "noSubject": "(No Subject)"
+    }
+  },
+  "LegalPages": {
+    "PrivacyPolicy": {
+      "metaTitle": "Privacy Policy | Ribotflow",
+      "title": "Privacy Policy",
+      "lastUpdated": "Last updated: {date}",
+      "section1": {
+        "title": "1. Who is responsible for processing your data?",
+        "content": {
+          "p1": "The data controller of the personal data collected through the Ribotflow platform is {companyName}, with VAT number {companyVat}, registered address at {companyAddress}, and contact email {companyEmail}."
+        }
+      },
+      "section2": {
+        "title": "2. What data do we process and for what purpose?",
+        "content": {
+          "p1": "We collect and process different types of personal data depending on your interaction with Ribotflow:",
+          "item1": "Identification and contact data (name, surname, email, phone number) that you provide during registration or when contacting us.",
+          "item2": "Professional data (company name, job position) if provided.",
+          "item3": "Data you enter into the platform about your own clients, suppliers, invoices, quotes, opportunities, expenses, and other business management activities.",
+          "item4": "Technical and usage data (IP address, browser type, pages visited, usage time) automatically collected for the operation and improvement of the service.",
+          "item5": "Billing and payment data (if paid subscription plans apply).",
+          "p2": "The main purposes of data processing are:",
+          "purpose1": "To provide, manage, and maintain the Ribotflow service.",
+          "purpose2": "To communicate with you regarding service-related matters, technical support, or administrative information.",
+          "purpose3": "To improve the platform, analyze usage, and develop new features.",
+          "purpose4": "To ensure the security of the platform and prevent fraud.",
+          "purpose5": "To comply with our legal obligations."
+        }
+      },
+      "section3": {
+        "title": "3. What is the legal basis for processing?",
+        "content": {
+          "p1": "The legal basis that allows us to process your data depends on the purpose:",
+          "basis1": "The execution of the service contract that you accept upon registering and using Ribotflow.",
+          "basis2": "Your explicit consent for specific purposes, such as sending marketing communications (if applicable).",
+          "basis3": "Our legitimate interest in improving the service, ensuring security, or managing inquiries.",
+          "basis4": "Compliance with applicable legal obligations (e.g., billing)."
+        }
+      },
+      "section4": {
+        "title": "4. Our Role as Data Processor",
+        "content": {
+          "p1": "It is important to note that regarding personal data of your own clients, suppliers, or third parties that you enter and manage within Ribotflow (such as names, emails, billing data, etc.), you act as the Data Controller. We act solely as the Data Processor, following your instructions and processing such data exclusively to provide the contracted service.",
+          "p2": "Our obligations as Data Processor are detailed in the [Terms and Conditions of Service](link), which include the Data Processing Agreement (DPA) required under the GDPR."
+        }
+      },
+      "section5": {
+        "title": "5. With whom do we share your data?",
+        "content": {
+          "p1": "We do not sell or rent your personal data. We only share it with third parties when necessary to provide the service or to comply with legal obligations:",
+          "item1": "Technology service providers: we use {provider} as our cloud infrastructure provider (database, authentication, storage).",
+          "p2": "Some of these providers may be located outside the European Economic Area, but we ensure that adequate safeguards are in place to guarantee an equivalent level of data protection (e.g., Standard Contractual Clauses)."
+        }
+      },
+      "section6": {
+        "title": "6. How long do we retain your data?",
+        "content": {
+          "p1": "Your personal data will be retained for as long as your Ribotflow account remains active and, thereafter, for the legally required period to address any potential liabilities."
+        }
+      },
+      "section7": {
+        "title": "7. What are your rights and how to exercise them?",
+        "content": {
+          "p1": "You have the right to access, rectify, erase your data, as well as to restrict or object to its processing, and to data portability, as established by current legislation.",
+          "p2": "You can exercise these rights by sending an email to {email} and attaching a copy of your ID document.",
+          "p3": "You also have the right to file a complaint with the Spanish Data Protection Agency (www.aepd.es) if you believe your rights have not been properly addressed."
+        }
+      },
+      "section8": {
+        "title": "8. Security Measures",
+        "content": {
+          "p1": "We implement appropriate technical and organizational security measures to protect your personal data against loss, unauthorized access, or unlawful processing."
+        }
+      },
+      "section9": {
+        "title": "9. Changes to this Policy",
+        "content": {
+          "p1": "We may modify this Privacy Policy from time to time. Any changes will be published on this page and, if significant, we will notify you by email or through the platform."
+        }
+      }
+    },
+    "Common": {
+      "appName": "Ribotflow",
+      "lastUpdated": "Last updated: {date}",
+      "companyData": {
+        "name": "Your Name or Business Name",
+        "vat": "Your VAT Number",
+        "address": "Your Full Address",
+        "email": "your@email.com",
+        "registry": "(Optional: Commercial Registry Information)"
+      },
+      "privacyPolicyTitle": "Privacy Policy",
+      "cookiePolicyTitle": "Cookie Policy",
+      "legalNoticeTitle": "Legal Notice",
+      "termsConditionsTitle": "Terms and Conditions of Service",
+      "privacyPolicyLink": "/privacy-policy",
+      "cookiePolicyLink": "/cookie-policy",
+      "legalNoticeLink": "/legal-notice",
+      "termsConditionsLink": "/terms-conditions",
+      "and": "and"
+    },
+    "LegalNotice": {
+      "metaTitle": "Legal Notice | {appName}",
+      "title": "Legal Notice",
+      "section1": {
+        "title": "1. Identifying Information of the Owner",
+        "content": {
+          "p1": "In compliance with the information duty established in Law 34/2002 on Information Society Services and Electronic Commerce (LSSI-CE), the following details are provided: The owner of this website and the Ribotflow application is {companyName}, with VAT number {companyVat}, registered address at {companyAddress}, and contact email {companyEmail}. {companyRegistry}"
+        }
+      },
+      "section2": {
+        "title": "2. Purpose",
+        "content": {
+          "p1": "This Legal Notice governs the access and use of the {appName} website and application (hereinafter, the 'Platform'), which {companyName} makes available to Internet users."
+        }
+      },
+      "section3": {
+        "title": "3. Intellectual and Industrial Property",
+        "content": {
+          "p1": "All intellectual and industrial property rights of the {appName} Platform, including but not limited to its source code, graphic design, interfaces, texts, images, videos, sounds, trademarks, logos, and trade names, are the exclusive property of {companyName} or third parties who have authorized their use.",
+          "p2": "The user acknowledges that the data and information entered by them on the Platform are their sole property and responsibility. {companyName} acts solely as a custodian of this information within the framework of the service provision."
+        }
+      },
+      "section4": {
+        "title": "4. Terms of Use",
+        "content": {
+          "p1": "Access to and/or use of the Platform confers the status of User, who accepts, from that access and/or use, the general terms of use set forth herein.",
+          "p2": "The User agrees to make appropriate use of the content and services that {companyName} offers through its Platform and, by way of example but not limitation, not to use them to:",
+          "obligation1": "Engage in illegal activities or those contrary to good faith and public order.",
+          "obligation2": "Disseminate content or propaganda of a racist, xenophobic, pornographic-illegal nature, that promotes terrorism, or violates human rights.",
+          "obligation3": "Cause damage to the physical and logical systems of {companyName}, its suppliers, or third parties, introduce or spread computer viruses or any other physical or logical systems that could cause such damage."
+        }
+      },
+      "section5": {
+        "title": "5. Disclaimer of Liability",
+        "content": {
+          "p1": "{companyName} shall not be held liable, under any circumstances, for damages of any kind that may arise, including but not limited to: errors or omissions in content, lack of availability of the Platform, or the transmission of viruses or malicious or harmful programs in the content, despite having taken all necessary technological measures to prevent it.",
+          "p2": "The use that users may make of the data and information provided through the Platform is their sole and exclusive responsibility."
+        }
+      },
+      "section6": {
+        "title": "6. Links",
+        "content": {
+          "p1": "In the event that the Platform contains links or hyperlinks to other Internet sites, {companyName} will not exercise any control over such sites and content. Under no circumstances shall {companyName} assume any responsibility for the content of any link belonging to an external website."
+        }
+      },
+      "section7": {
+        "title": "7. Data Protection and Cookies",
+        "content": {
+          "p1": "The processing of personal data and the use of cookies on the Platform are governed by our"
+        }
+      },
+      "section8": {
+        "title": "8. Modifications",
+        "content": {
+          "p1": "{companyName} reserves the right to make any modifications it deems appropriate to its Platform without prior notice, including changing, deleting, or adding content and services provided through it, as well as the manner in which they are presented or located."
+        }
+      },
+      "section9": {
+        "title": "9. Applicable Law and Jurisdiction",
+        "content": {
+          "p1": "The relationship between {companyName} and the User shall be governed by current Spanish legislation, and any dispute shall be submitted to the Courts and Tribunals of the city of [Your city / as indicated by your lawyer]."
+        }
+      }
+    },
+    "TermsAndConditions": {
+      "metaTitle": "Terms and Conditions | {appName}",
+      "title": "Terms and Conditions of Service",
+      "section1": {
+        "title": "1. Acceptance of Terms",
+        "content": {
+          "p1": "These Terms and Conditions of Service (hereinafter, \"Terms\") govern the use of the {appName} platform (hereinafter, the \"Service\" or \"Platform\"), owned by {companyName}. By registering for or using the Service, you agree to be bound by these Terms.",
+          "p2": "Use of the Service also implies acceptance of our Privacy Policy."
+        }
+      },
+      "section2": {
+        "title": "2. Description of the Service",
+        "content": {
+          "p1": "{appName} is a business management platform offering tools for CRM, invoicing, expense management, communication, and other related functionalities. The specific features may vary depending on the plan contracted (if applicable)."
+        }
+      },
+      "section3": {
+        "title": "3. Access and User Account",
+        "content": {
+          "p1": "To use the Service, you must register by creating an account. You are responsible for maintaining the confidentiality of your password and for all activities that occur under your account.",
+          "p2": "You must provide true, accurate, and complete information during registration and keep it up to date.",
+          "p3": "We reserve the right to suspend or terminate accounts that violate these Terms."
+        }
+      },
+      "section4": {
+        "title": "4. User Obligations",
+        "content": {
+          "p1": "By using the Service, you agree to:",
+          "obligation1": "Use the Platform lawfully and in accordance with these Terms.",
+          "obligation2": "Not engage in activities that may damage, overload, or interfere with the normal operation of the Service.",
+          "obligation3": "Be solely responsible for the legality, accuracy, and ownership of the data you enter into the Platform.",
+          "obligation4": "Respect the intellectual property rights of {companyName} and third parties."
+        }
+      },
+      "section5": {
+        "title": "5. Financial Conditions",
+        "content": {
+          "p1": "[If free: The Service is provided free of charge under the conditions described herein. We reserve the right to introduce paid plans in the future.] / [If paid: Specify here the plans, prices, billing cycles, payment methods, refund policy, consequences of non-payment, etc. This section is CRITICAL and requires detailed legal review.]"
+        }
+      },
+      "section6": {
+        "title": "6. Intellectual Property",
+        "content": {
+          "p1": "The {appName} Platform and all of its content (excluding user-entered data) are the property of {companyName} and are protected by intellectual property laws.",
+          "p2": "The data you enter into the Platform is yours. You grant us a limited license to process this data solely for the purpose of providing the Service."
+        }
+      },
+      "section7": {
+        "title": "7. Data Protection and Processing Agreement (DPA)",
+        "content": {
+          "p1": "The processing of your personal data is governed by our",
+          "dpaTitle": "Role as Data Processor (Data Processing Agreement - DPA)",
+          "dpaP1": "Regarding the personal data of third parties (your clients, suppliers, etc.) that you enter into {appName}, you act as the Data Controller and we act as the Data Processor. These Terms constitute the Data Processing Agreement (DPA) required by applicable regulations.",
+          "dpaP2": "We commit to: (a) Process this data only following your instructions and for the provision of the Service. (b) Ensure the confidentiality of the data. (c) Implement appropriate security measures. (d) Not subcontract without your prior authorization. (e) Assist you in fulfilling your obligations as Controller (exercise of rights, breach notifications). (f) Delete the data once the service is terminated, in accordance with legal terms. (g) Make available the information necessary to demonstrate compliance."
+        }
+      },
+      "section8": {
+        "title": "8. Warranties and Limitation of Liability",
+        "content": {
+          "p1": "The Service is provided \"as is,\" without express or implied warranties of any kind. We do not guarantee that the Service will be uninterrupted, secure, or error-free.",
+          "p2": "To the maximum extent permitted by law, {companyName} shall not be liable for indirect, incidental, special, consequential, or punitive damages, nor for loss of profits or revenues, loss of data, or other intangible losses resulting from (i) your access to or use or inability to access or use the Service; (ii) any third-party conduct or content within the Service; (iii) any content obtained from the Service; and (iv) unauthorized access to, use, or alteration of your transmissions or content."
+        }
+      },
+      "section9": {
+        "title": "9. Modification of Terms",
+        "content": {
+          "p1": "We reserve the right to modify these Terms at any time. We will notify you of significant changes. Continued use of the Service after such modifications constitutes acceptance of the new Terms."
+        }
+      },
+      "section10": {
+        "title": "10. Duration and Termination",
+        "content": {
+          "p1": "These Terms remain in effect while you use the Service. You may cancel your account at any time.",
+          "p2": "We may suspend or terminate your access to the Service if you violate these Terms."
+        }
+      },
+      "section11": {
+        "title": "11. Governing Law and Jurisdiction",
+        "content": {
+          "p1": "These Terms shall be governed by and interpreted in accordance with the laws of Spain. Any dispute relating to these Terms shall be submitted to the exclusive jurisdiction of the courts of [Your city / as advised by your legal counsel]."
+        }
+      }
+    },
+    "CookiePolicy": {
+      "metaTitle": "Cookie Policy | {appName}",
+      "title": "Cookie Policy",
+      "section1": {
+        "title": "1. What Are Cookies?",
+        "content": {
+          "p1": "A cookie is a small text file that a website stores on your computer or mobile device when you visit the site. It allows the website to remember your actions and preferences (such as login, language, font size, and other display preferences) over a period of time, so you don’t have to re-enter them each time you return or navigate from one page to another."
+        }
+      },
+      "section2": {
+        "title": "2. What Types of Cookies Do We Use and Why?",
+        "content": {
+          "p1": "At {appName}, we primarily use the following types of cookies:",
+          "type1": {
+            "name": "Technical or Necessary Cookies",
+            "description": "These are essential for the proper functioning of the Platform. They enable navigation and use of its different options or services, such as controlling data traffic and communication, identifying sessions, accessing restricted areas, remembering items in a shopping cart, completing purchase processes, registering for events, using security elements during browsing, storing content for video or audio playback, or sharing content on social networks.",
+            "cookie1": "Authentication cookie (e.g., {name}): Keeps your session active.",
+            "cookie2": "Preference cookie (e.g., {name}): Remembers your selected language."
+          },
+          "type2": {
+            "name": "Analytics or Measurement Cookies",
+            "description": "(IF USED) These cookies allow us to quantify the number of users and perform statistical analysis of how users use the offered service. We analyze browsing behavior on our website to improve the products or services we offer.",
+            "cookie1": "Example: {name}.",
+            "thirdPartyInfo": "(IF THIRD-PARTY) The information is collected and processed by [Third-party name, e.g., Google Analytics]. You can find more information about how Google processes data in its privacy policy."
+          }
+        }
+      },
+      "section3": {
+        "title": "3. How Can You Manage Cookies?",
+        "content": {
+          "p1": "You can control and/or delete cookies as you wish. You can delete all cookies already on your computer and configure most browsers to prevent them from being installed.",
+          "p2": "Below, you will find links with information on how to set your preferences in major browsers:",
+          "p3": "Additionally, you can manage your consent for non-essential cookies through the cookie banner displayed when accessing our Platform [or a link to a management tool if implemented]."
+        }
+      },
+      "section4": {
+        "title": "4. More Information About Data Protection",
+        "content": {
+          "p1": "For more information on how we process your personal data, please refer to our"
+        }
+      },
+      "section5": {
+        "title": "5. Changes to the Cookie Policy",
+        "content": {
+          "p1": "We may update the Cookie Policy of our Platform; therefore, we recommend reviewing this policy each time you access our website to stay properly informed about how and for what purposes we use cookies."
+        }
+      }
     }
   }
 }

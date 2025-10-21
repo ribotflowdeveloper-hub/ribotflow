@@ -5,7 +5,7 @@
 import { useCallback } from "react";
 // Imports de shadcn/ui
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -32,10 +32,10 @@ import { TaskItem } from '@tiptap/extension-task-item';
 
 // Imports d'icones de Lucide React
 import {
-    Bold, Italic, Underline as UnderlineIcon, Strikethrough, List, ListOrdered, Quote, Code,
-    AlignLeft, AlignCenter, AlignRight, AlignJustify, Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
-    Highlighter, Link as LinkIcon, Image as ImageIcon, Youtube as YoutubeIcon,
-    Table as TableIcon, Undo, Redo, Heading1, Heading2, Heading3, Pilcrow,
+    Bold, Italic, Underline as UnderlineIcon, Strikethrough, List, ListOrdered, Quote,
+    AlignLeft, AlignCenter, AlignRight,
+    Link as LinkIcon, Image as ImageIcon, 
+    Table as  Undo, Redo, Heading1, Heading2, Heading3, Pilcrow,
     CaseSensitive, Type, Palette,
     CheckSquare,
     Star

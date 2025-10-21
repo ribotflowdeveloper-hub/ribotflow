@@ -1,30 +1,25 @@
-// /app/[locale]/(app)/crm/contactes/[contactId]/_hooks/useContactDetail.ts (CORREGIT)
 "use client";
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { type Database } from '@/types/supabase';
-import { updateContactAction, deleteContactAction } from '../actions';
-// ✅ 1. Importem el tipus directament de la llibreria next-intl.
+// ✅ 1. Importem el tipus 'ContactDetail' a més de l'acció
+import { updateContactAction, deleteContactAction, type ContactDetail } from '../actions';
 import { type useTranslations } from 'next-intl';
 
-type Contact = Database['public']['Tables']['contacts']['Row'];
-
-// ✅ 2. Definim TFunction com el tipus de retorn del hook useTranslations.
-// Aquesta és la manera més segura i precisa de fer-ho.
 type TFunction = ReturnType<typeof useTranslations<string>>;
 
 /**
  * Hook per gestionar la lògica de la pàgina de detall d'un contacte.
- * @param initialContact - L'objecte inicial del contacte.
- * @param t - La funció de traducció de next-intl.
  */
-export function useContactDetail(initialContact: Contact, t: TFunction) {
+// ✅ 2. Canviem el tipus del paràmetre d'entrada a 'ContactDetail'.
+export function useContactDetail(initialContact: ContactDetail, t: TFunction) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [isEditing, setIsEditing] = useState(false);
-    const [contact, setContact] = useState(initialContact);
+    
+    // ✅ 3. Assegurem que l'estat intern també sigui del tipus 'ContactDetail'.
+    const [contact, setContact] = useState<ContactDetail>(initialContact);
     const formRef = useRef<HTMLFormElement>(null);
 
     const handleSaveChanges = (formData: FormData) => {
@@ -34,7 +29,11 @@ export function useContactDetail(initialContact: Contact, t: TFunction) {
                 toast.error(t('toast.errorTitle'), { description: error.message });
             } else if (data) {
                 toast.success(t('toast.successTitle'), { description: t('toast.updateSuccess') });
-                setContact(data as Contact);
+
+                // ✅ 4. L'actualització de l'estat ara és segura.
+                // 'data' ja és del tipus 'ContactDetail', així que no cal fer 'as'.
+                setContact(data);
+                
                 setIsEditing(false);
             }
         });
@@ -54,6 +53,8 @@ export function useContactDetail(initialContact: Contact, t: TFunction) {
     };
 
     const handleCancelEdit = () => {
+        // ✅ 5. En cancel·lar, resetejem l'estat amb les dades inicials completes.
+        setContact(initialContact);
         setIsEditing(false);
         formRef.current?.reset();
     };

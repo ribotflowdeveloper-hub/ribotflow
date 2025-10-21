@@ -3,7 +3,7 @@
 
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session";
-
+import type { Database } from "@/types/supabase";
 // ✨ CANVI: Importem tots els tipus necessaris des de la nostra font de la veritat.
 import type { DbTableInsert, EnrichedTicket, TicketFilter } from '@/types/db';
 
@@ -12,6 +12,16 @@ interface ActionResult {
   message?: string;
 }
 
+
+// ✅ 1. Canviem la definició de 'type' a 'interface'.
+//    Això fa que l'extensió del tipus base sigui més clara per a TypeScript.
+export type TicketForSupplier = Database['public']['Tables']['tickets']['Row'] & {
+  contacts: {
+    id: number;
+    nom: string | null;
+    email: string | null;
+  } | null;
+};
 /**
  * Retorna el cos d'un tiquet.
  */
@@ -185,8 +195,6 @@ export async function loadMoreTicketsAction(page: number, filter: TicketFilter, 
     // El 'data' ja ve tipat correctament com a EnrichedTicket[] gràcies a la generació de tipus.
     return data || [];
 }
-
-
 /**
  * Afegeix un email a la llista negra.
  */
@@ -220,7 +228,6 @@ export async function addToBlacklistAction(emailToBlock: string): Promise<Action
     return { success: false, message };
   }
 }
-
 /**
  * Vincula tots els tiquets d'un remitent a un contacte existent.
  */
@@ -243,13 +250,9 @@ export async function linkTicketsToContactAction(contactId: number, senderEmail:
     return { success: false, message };
   }
 }
-
 /**
  * Carrega tiquets de forma paginada o per cerca.
  */
-// src/app/[locale]/(app)/comunicacio/inbox/actions.ts
-
-// ... (altres accions)
 
 export async function getTicketsAction(
   page: number, 
@@ -285,8 +288,6 @@ export async function getTicketsAction(
 
   return (data ?? []) as EnrichedTicket[];
 }
-
-
 /**
  * Carrega un tiquet específic pel seu ID.
  */
@@ -332,51 +333,38 @@ export async function getTicketByIdAction(ticketId: number): Promise<{ data: Enr
     return { data: null, error: `Error intern en carregar el tiquet: ${errorMessage}` };
   }
 }
-
 /**
- * ✅ FUNCIÓ CORREGIDA (o afegida si faltava)
- * Obté els tiquets associats als contactes d'un proveïdor.
+ * Obté els tickets dels contactes associats a un proveïdor.
  */
-export async function fetchTicketsForSupplierContacts(
-  supplierId: string
-): Promise<EnrichedTicket[]> { 
+export async function fetchTicketsForSupplierContacts(supplierId: string): Promise<TicketForSupplier[]> {
   const session = await validateUserSession();
-  if ('error' in session) return [];
+  if ("error" in session) return [];
   const { supabase, activeTeamId } = session;
 
-  // 1. Obtenir els IDs dels contactes d'aquest proveïdor
   const { data: contacts, error: contactsError } = await supabase
     .from('contacts')
     .select('id')
-    .eq('team_id', activeTeamId)
-    .eq('supplier_id', supplierId);
+    .eq('supplier_id', supplierId)
+    .eq('team_id', activeTeamId);
 
-  if (contactsError) {
-    console.error("Error fetching contacts for supplier:", contactsError.message);
+  if (contactsError || !contacts || contacts.length === 0) {
     return [];
-  }
-
-  if (!contacts || contacts.length === 0) {
-    return []; // No hi ha contactes, no hi ha tiquets
   }
 
   const contactIds = contacts.map(c => c.id);
 
-  // 2. Obtenir els tiquets d'aquests contactes
-  // ✅ CORRECCIÓ: L'error era "column tickets.last_message_at does not exist".
-  // Canviem l'ordenació per 'sent_at', que sí existeix a 'enriched_tickets'.
   const { data: tickets, error: ticketsError } = await supabase
-    .from('enriched_tickets') // Consultem la vista enriquida
-    .select('*')
+    .from('tickets')
+    .select('*, contacts(id, nom, email)')
     .in('contact_id', contactIds)
-    .order('sent_at', { ascending: false }) // ✅ FIX: Canviat de 'last_message_at' a 'sent_at'
-    .limit(20); // Limitem el número de tiquets a la vista de detall
+    .eq('team_id', activeTeamId)
+    .order('last_message_at', { ascending: false });
 
   if (ticketsError) {
-    // Aquesta és la línia que et donava l'error al log
-    console.error("Error fetching tickets for supplier contacts:", ticketsError.message); 
+    console.error("Error fetching tickets for supplier contacts:", ticketsError);
     return [];
   }
-  
-  return tickets as EnrichedTicket[];
+
+  // Fem un 'cast' per assegurar que les dades retornades compleixen amb la nostra interface.
+  return (tickets as TicketForSupplier[]) || [];
 }

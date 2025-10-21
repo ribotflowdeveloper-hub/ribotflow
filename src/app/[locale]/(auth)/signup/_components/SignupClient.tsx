@@ -14,6 +14,7 @@ import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react';
 
 // Lògica i components refactoritzats
 import { useSignupForm } from '../_hooks/useSignupForm';
+import { Checkbox } from '@radix-ui/react-checkbox';
 
 const ParticleBackground = dynamic(() => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground), { ssr: false });
 
@@ -39,6 +40,7 @@ const BrandingSection = () => {
 // ✅ JA NO REP PROPS
 export function SignupClient() {
     const t = useTranslations('SignupPage');
+    const commonLegalT = useTranslations('LegalPages.Common'); // 👈 Per als títols/enllaços
     // ✅ OBTENIM TOT DEL HOOK I JA NO PASSEM EL TOKEN COM A ARGUMENT
     const { 
         isPending, 
@@ -96,6 +98,28 @@ export function SignupClient() {
                                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                                     <Input id="password" name="password" type="password" required minLength={6} placeholder={t('passwordPlaceholder')} className="pl-10" />
                                 </div>
+                            </div>
+                            {/* --- Checkboxes Legals --- */}
+                            {/* ✅ Checkbox Termes i Condicions */}
+                            <div className="flex items-start space-x-2">
+                                <Checkbox id="terms" name="termsAccepted" required disabled={isPending || isGoogleLoading} />
+                                <Label htmlFor="terms" className="text-sm font-normal leading-snug text-muted-foreground">
+                                    {t('acceptTermsPrefix')}{" "}
+                                    <Link href={commonLegalT('termsConditionsLink')} target="_blank" className="underline hover:text-primary">
+                                        {commonLegalT('termsConditionsTitle')}
+                                    </Link>
+                                </Label>
+                            </div>
+
+                            {/* ✅ Checkbox Política de Privacitat */}
+                             <div className="flex items-start space-x-2">
+                                <Checkbox id="privacy" name="privacyAccepted" required disabled={isPending || isGoogleLoading} />
+                                <Label htmlFor="privacy" className="text-sm font-normal leading-snug text-muted-foreground">
+                                    {t('acceptPrivacyPrefix')}{" "}
+                                    <Link href={commonLegalT('privacyPolicyLink')} target="_blank" className="underline hover:text-primary">
+                                        {commonLegalT('privacyPolicyTitle')}
+                                    </Link>
+                                </Label>
                             </div>
                             <Button type="submit" className="w-full text-lg py-6" disabled={isPending || isGoogleLoading}>
                                 {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}

@@ -1,100 +1,80 @@
-// /app/crm/quotes/_components/QuotesData.tsx
-
 import { QuotesClient } from './QuotesClient';
-import type { QuoteWithContact, QuotesSearchParams } from '../page';
-import { validatePageSession } from "@/lib/supabase/session"; 
-// ❌ Eliminem l'import de PostgrestResponse i la definició de QuotesResult
-// ja que no són necessaris amb la nova estructura.
+import { validatePageSession } from "@/lib/supabase/session";
+import type { Database } from '@/types/supabase';
 
-// -------------------------------------------------------------
-// ✅ NOU TIPATGE D'ARGUMENTS DE LA FUNCIÓ
-// -------------------------------------------------------------
-export async function QuotesData({ searchParams }: {
-    searchParams: QuotesSearchParams;
-}) {
-    // ❌ Eliminem la definició de 'QuotesResult' ja que no s'utilitza.
+// ✅ 1. Definim els tipus necessaris localment, eliminant la dependència amb 'page.tsx'.
+type Quote = Database['public']['Tables']['quotes']['Row'];
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
-    try {
-      const { supabase } = await validatePageSession();
-      
-      // -------------------------------------------------------------
-      // ✅ INICI DE LA CONSULTA (Manté la capacitat d'afegir filtres)
-      // -------------------------------------------------------------
-      // El .select() retorna un PostgrestFilterBuilder que exposa 
-      // els mètodes de filtratge (eq, gte, lte).
-      let query = supabase
-          .from('quotes')
-          .select('*, contacts(nom, empresa)'); 
+type QuoteWithContact = Quote & {
+  contacts: Pick<Contact, 'nom' | 'empresa'> | null;
+};
 
-        
-        // Aplicació de filtres
-        for (const key in searchParams) {
-             const value = searchParams[key];
-             if (value && typeof value === 'string') {
-                 
-                 if (key === 'status') {
-                     // Utilitzem un string literal typecast basat en l'enum de la DB (quote_status)
-                     type QuoteStatus = "Draft" | "Sent" | "Accepted" | "Declined" | "Invoiced";
-                     const allowedStatuses: QuoteStatus[] = ["Draft", "Sent", "Accepted", "Declined", "Invoiced"];
-                     if (allowedStatuses.includes(value as QuoteStatus)) {
-                         // ✅ query.eq és ara vàlid
-                         query = query.eq('status', value as QuoteStatus);
-                     }
-                 }
-                 if (key === 'issue_date_from') {
-                     // ✅ query.gte és ara vàlid
-                     query = query.gte('issue_date', value);
-                 }
-                 if (key === 'issue_date_to') {
-                     // ✅ query.lte és ara vàlid
-                     query = query.lte('issue_date', value);
-                 }
-             }
-          }
+// Aquest és el tipus de dades que la pàgina realment passa després de validar amb Zod.
+// És més segur i explícit.
+interface QuotesDataProps {
+  searchParams: {
+    page: string;
+    limit: string;
+    query?: string;
+    status?: string;
+    // Podries afegir aquí altres filtres si els necessites, com dates o sortBy
+    // issue_date_from?: string;
+    // sortBy?: string;
+  };
+}
 
-          // Aplicació de l'ordenació
-          let sortApplied = false;
-          for (const key in searchParams) {
-              if (key.startsWith('sortBy-')) {
-                  const column = key.substring(7);
-                  const order = searchParams[key] as string;
+/**
+ * Component Server-Side que carrega les dades dels pressupostos.
+ */
+export async function QuotesData({ searchParams }: QuotesDataProps) {
+  try {
+    const { supabase, activeTeamId } = await validatePageSession();
+    
+    // Comencem la consulta base.
+    let query = supabase
+      .from('quotes')
+      .select('*, contacts(nom, empresa)')
+      .eq('team_id', activeTeamId);
 
-                  if (column && (order === 'asc' || order === 'desc')) {
-                      sortApplied = true;
-                      const ascending = order === 'asc';
-                      if (column.includes('.')) {
-                          const [referencedTable, referencedColumn] = column.split('.');
-                          query = query.order(referencedColumn, { referencedTable, ascending });
-                      } else {
-                          // Definim una llista de columnes permeses per evitar 'any'
-                          const allowedColumns = ['issue_date', 'status', 'total', 'id', 'contact_id'] as const;
-                          type AllowedColumn = typeof allowedColumns[number];
-                          if (allowedColumns.includes(column as AllowedColumn)) {
-                              query = query.order(column as AllowedColumn, { ascending });
-                          }
-                      }
-                  }
-              }
-          }
-
-        if (!sortApplied) {
-            query = query.order('issue_date', { ascending: false });
-        }
-
-        // -------------------------------------------------------------
-        // ✅ APLICACIÓ DEL TIPUS FINAL I EXECUCIÓ DE LA CONSULTA
-        // S'aplica .returns<T>() just abans de l'await per tancar la cadena.
-        // -------------------------------------------------------------
-        const { data: quotes, error } = await query.returns<QuoteWithContact[]>();
-        if (error) throw error;
-        
-        // El tipus de quotes és QuoteWithContact[] | null, ja que Postgrest.data
-        // sempre pot ser null si no hi ha resultats.
-        return <QuotesClient initialQuotes={quotes || []} />;
-
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
-        console.error("Error loading quotes:", errorMessage);
-        return <div className="p-8 text-center text-destructive">Error loading quotes.</div>;
+    // ✅ 2. Apliquem filtres de manera segura i directa.
+    if (searchParams.status) {
+      const allowedStatuses = ["Draft", "Sent", "Accepted", "Declined", "Invoiced"] as const;
+      type Status = typeof allowedStatuses[number];
+      const status = allowedStatuses.find(s => s === searchParams.status) as Status | undefined;
+      if (status) {
+        query = query.eq('status', status);
+      }
     }
+
+    if (searchParams.query) {
+      // Busca en múltiples camps si és necessari (exemple)
+      query = query.or(
+        `quote_number.ilike.%${searchParams.query}%,` +
+        `contacts.nom.ilike.%${searchParams.query}%`
+      );
+    }
+    
+    // Ordenació per defecte (pots fer-la dinàmica si afegeixes sortBy a les props)
+    query = query.order('issue_date', { ascending: false });
+
+    // Paginació
+    const page = parseInt(searchParams.page, 10);
+    const limit = parseInt(searchParams.limit, 10);
+    const offset = (page - 1) * limit;
+    query = query.range(offset, offset + limit - 1);
+    
+    // ✅ 3. Executem la consulta amb el tipus de retorn esperat.
+    const { data: quotes, error } = await query.returns<QuoteWithContact[]>();
+    
+    if (error) throw error;
+    
+    // Passem les dades al component client.
+    return <QuotesClient initialQuotes={quotes || []} />;
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error loading quotes:", errorMessage);
+    return <div className="p-8 text-center text-destructive">Error loading quotes.</div>;
+  }
 }

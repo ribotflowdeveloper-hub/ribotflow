@@ -1,41 +1,42 @@
-// src/app/[locale]/(app)/crm/quotes/[id]/page.tsx
-
 import { Suspense } from 'react';
 import { type Metadata } from 'next';
 import { QuoteEditorData } from './_components/QuoteEditorData';
 import { QuoteEditorSkeleton } from './_components/QuoteEditorSkeleton';
 
+// -------------------------------------------------------------------
+// ✅ CORRECCIÓ: Definim el tipus de les props amb 'params' com una Promise
+// -------------------------------------------------------------------
 interface QuoteEditorPageProps {
-    params: { id: string; locale: string };
+    params: Promise<{ id: string; locale: string }>;
 }
 
-// -------------------------------------------------------------------
-// ✅ CORRECCIÓ generateMetadata: Resolem params abans d'accedir a .id
-// -------------------------------------------------------------------
-export async function generateMetadata({ params }: QuoteEditorPageProps): Promise<Metadata> {
-    // Ús del patró segur d'await Promise.resolve per evitar l'error 'sync-dynamic-apis'.
-    const resolvedParams = await Promise.resolve(params);
-    
-    if (resolvedParams.id === 'new') {
+/**
+ * Funció per generar metadades dinàmiques.
+ */
+export async function generateMetadata(props: QuoteEditorPageProps): Promise<Metadata> {
+    // Resolem la promesa per accedir als paràmetres
+    const { id } = await props.params;
+
+    if (id === 'new') {
         return { title: 'Nou Pressupost | Ribot' };
     }
-    return { title: 'Editar Pressupost | Ribot' };
+    return { title: `Editar Pressupost | Ribot` };
 }
 
+/**
+ * Component de la pàgina per editar o crear un pressupost.
+ */
 // -------------------------------------------------------------------
-// ✅ CORRECCIÓ Component de Pàgina: Esdevé async i resol params
+// ✅ CORRECCIÓ: El component de pàgina esdevé 'async' i espera 'props.params'
 // -------------------------------------------------------------------
-// El Server Component ha de ser async per fer l'await.
-export default async function QuoteEditorPage({ params }: QuoteEditorPageProps) {
-    
-    // ⚠️ CORRECCIÓ CLAU: Aquesta línia satisfà la validació de Next.js
-    // i ens proporciona un objecte pla amb les propietats.
-    const { id, locale } = await Promise.resolve(params);
+export default async function QuoteEditorPage(props: QuoteEditorPageProps) {
+    // Resolem la promesa per obtenir els valors de 'id' i 'locale'
+    const { id, locale } = await props.params;
 
     return (
         <div className="h-full">
             <Suspense fallback={<QuoteEditorSkeleton />}>
-                {/* Passem les variables resoltes (id, locale) al component de dades */}
+                {/* Passem les variables ja resoltes al component de dades */}
                 <QuoteEditorData quoteId={id} locale={locale} />
             </Suspense>
         </div>

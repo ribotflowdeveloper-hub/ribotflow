@@ -32,5 +32,5 @@ export async function getQuoteDataBySecureId(secureId: string): Promise<QuoteDat
     }
     
     // Assegurem que el tipus de retorn coincideix amb la interfície esperada
-    return quoteData as QuoteDataFromServer;
+    return quoteData as unknown as QuoteDataFromServer;
 }

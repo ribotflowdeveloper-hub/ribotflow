@@ -20,6 +20,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.resolve.alias.vertx = false;
+    return config;
+  },
 };
 
 // ✅ 2. Embolcalla la teva configuració amb withNextIntl

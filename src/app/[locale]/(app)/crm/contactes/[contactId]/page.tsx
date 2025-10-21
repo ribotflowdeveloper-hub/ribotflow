@@ -4,42 +4,31 @@ import type { Metadata } from 'next';
 import { ContactDetailData } from './_components/ContactDetailData';
 import { ContactDetailSkeleton } from './_components/ContactDetailSkeleton';
 
-// Definim el tipus de les propietats, que ara poden arribar com una promesa
 interface ContactDetailPageProps {
-  params: Promise<{ contactId: string }>;
+    params: Promise<{ contactId: string }>;
 }
 
-/**
- * Funció per generar metadades dinàmiques.
- */
 export async function generateMetadata(props: ContactDetailPageProps): Promise<Metadata> {
-  // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
-  const { contactId } = await props.params;
-  const contactIdNumber = Number(contactId);
+    const { contactId } = await props.params;
+    const contactIdNumber = Number(contactId);
+    const supabase = createClient();
+    
+    const { data: contact } = await supabase
+        .from('contacts')
+        .select('nom')
+        .eq('id', contactIdNumber)
+        .single();
 
-  const supabase = createClient()
-;
-  
-  const { data: contact } = await supabase
-    .from('contacts')
-    .select('nom')
-    .eq('id', contactIdNumber)
-    .single();
-
-  return { title: `${contact?.nom || 'Contacte'} | Ribot` };
+    return { title: `${contact?.nom || 'Contacte'} | Ribot` };
 }
 
-/**
- * La pàgina principal de detall de contacte.
- */
 export default async function ContactDetailPage(props: ContactDetailPageProps) {
-  // ✅ CORRECCIÓ: Esperem que la promesa dels paràmetres es resolgui
-  const { contactId } = await props.params;
+    const { contactId } = await props.params;
 
-  return (
-    <Suspense fallback={<ContactDetailSkeleton />}>
-      {/* Passem l'ID ja resolt al component de dades */}
-      <ContactDetailData contactId={contactId} />
-    </Suspense>
-  );
+    return (
+        <Suspense fallback={<ContactDetailSkeleton />}>
+            {/* ✅ CORRECCIÓ: Embolcallem 'contactId' dins d'un objecte 'params'. */}
+            <ContactDetailData params={{ contactId: contactId }} />
+        </Suspense>
+    );
 }

@@ -1,40 +1,39 @@
-// /app/[locale]/crm/contactes/[contactId]/_components/ContactDetailData.tsx (CORREGIT)
-
+// /app/[locale]/(app)/crm/contactes/[contactId]/_components/ContactDetailData.tsx
 import { notFound } from 'next/navigation';
+// ✅ Importem fetchContactDetail
+import { fetchContactDetail } from '../actions';
 import { ContactDetailClient } from './contact-detail-client';
 import { validatePageSession } from "@/lib/supabase/session";
 import { type Database } from '@/types/supabase';
 
-type Contact = Database['public']['Tables']['contacts']['Row'];
+// Tipus per a dades relacionades
 type Quote = Database['public']['Tables']['quotes']['Row'];
 type Opportunity = Database['public']['Tables']['opportunities']['Row'];
 type Invoice = Database['public']['Tables']['invoices']['Row'];
 type Activity = Database['public']['Tables']['activities']['Row'];
 
-export async function ContactDetailData({ contactId }: { contactId: string }) {
-    const { supabase, activeTeamId } = await validatePageSession();
+interface ContactDetailDataProps {
+    params: { contactId: string };
+}
 
-    // ✅ SOLUCIÓ: Convertim el contactId de string a number.
+export async function ContactDetailData({ params }: ContactDetailDataProps) {
+    const { supabase, activeTeamId } = await validatePageSession();
+    const contactId = params.contactId;
+
     const numericContactId = parseInt(contactId, 10);
     if (isNaN(numericContactId)) {
-        // Si l'ID no és un número vàlid, no el trobarem.
         notFound();
     }
 
-    const { data: contact, error } = await supabase
-        .from('contacts')
-        .select('*')
-        // Utilitzem l'ID numèric a la consulta.
-        .eq('id', numericContactId)
-        .eq('team_id', activeTeamId)
-        .single();
-    
-    if (error || !contact) {
-        notFound(); 
+    // ✅ Cridem a fetchContactDetail
+    const contactData = await fetchContactDetail(numericContactId);
+
+    if (!contactData) {
+        notFound();
     }
 
+    // Carreguem dades relacionades
     const [quotesRes, oppsRes, invoicesRes, activitiesRes] = await Promise.all([
-        // Utilitzem l'ID numèric a totes les consultes relacionades.
         supabase.from('quotes').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
         supabase.from('opportunities').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
         supabase.from('invoices').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
@@ -48,5 +47,6 @@ export async function ContactDetailData({ contactId }: { contactId: string }) {
         activities: (activitiesRes.data as Activity[]) || []
     };
 
-    return <ContactDetailClient initialContact={contact as Contact} initialRelatedData={relatedData} />;
+    // ✅ Passem contactData (tipus ContactDetail) a initialContact
+    return <ContactDetailClient initialContact={contactData} initialRelatedData={relatedData} />;
 }

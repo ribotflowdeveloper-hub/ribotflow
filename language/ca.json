@@ -1098,20 +1098,20 @@
       "saveError": "Error en desar la factura.",
       "validationError": "Si us plau, revisa els camps marcats."
     },
-    "preview": {  
-        "title": "Previsualització de la Factura",
-        "defaultCompanyName": "La Teva Empresa",
-        "invoiceTitle": "Factura",
-        "pending": "(Pendent)",
-        "notApplicable": "(N/A)",
-        "billTo": "Facturar a:",
-        "noClient": "(Client no especificat)",
-        "itemDescription": "Descripció",
-        "itemQuantity": "Quant.",
-        "itemUnitPrice": "Preu Unit.",
-        "itemDiscount": "Desc.",
-        "itemTotal": "Total",
-        "noItems": "Sense conceptes"
+    "preview": {
+      "title": "Previsualització de la Factura",
+      "defaultCompanyName": "La Teva Empresa",
+      "invoiceTitle": "Factura",
+      "pending": "(Pendent)",
+      "notApplicable": "(N/A)",
+      "billTo": "Facturar a:",
+      "noClient": "(Client no especificat)",
+      "itemDescription": "Descripció",
+      "itemQuantity": "Quant.",
+      "itemUnitPrice": "Preu Unit.",
+      "itemDiscount": "Desc.",
+      "itemTotal": "Total",
+      "noItems": "Sense conceptes"
     }
   },
   "NetworkPage": {
@@ -1501,6 +1501,9 @@
     "toastErrorDescription": "No s'ha pogut crear el compte.",
     "welcomeTitle": "Comença a transformar el teu negoci avui mateix.",
     "welcomeSubtitle": "Uneix-te a centenars de professionals que ja estan optimitzant el seu temps i maximitzant els seus resultats.",
+    "acceptTermsPrefix": "He llegit i accepto els", 
+    "acceptPrivacyPrefix": "He llegit i entès la", 
+    "acceptMarketing": "Vull rebre comunicacions i novetats.",
     "feature1": "Centralitza tots els teus clients i comunicacions.",
     "feature2": "Automatitza tasques i estalvia desenes d'hores cada mes.",
     "feature3": "Pren decisions més intel·ligents amb analítiques clares.",
@@ -1760,6 +1763,304 @@
       },
       "empty": "No s'han trobat comunicacions relacionades.",
       "noSubject": "(Sense Assumpte)"
+    }
+  },
+  "LegalPages": {
+    "PrivacyPolicy": {
+      "metaTitle": "Política de Privacitat | Ribotflow",
+      "title": "Política de Privacitat",
+      "lastUpdated": "Darrera actualització: {date}",
+      "section1": {
+        "title": "1. Qui és el Responsable del tractament de les teves dades?",
+        "content": {
+          "p1": "El responsable del tractament de les dades personals recollides a través de la plataforma Ribotflow és {companyName}, amb NIF {companyVat}, domicili a {companyAddress} i correu electrònic de contacte {companyEmail}."
+        }
+      },
+      "section2": {
+        "title": "2. Quines dades tractem i amb quina finalitat?",
+        "content": {
+          "p1": "Recopilem i tractem diferents tipus de dades personals segons la teva interacció amb Ribotflow:",
+          "item1": "Dades d'identificació i contacte (nom, cognoms, email, telèfon) que ens proporciones durant el registre o en contactar-nos.",
+          "item2": "Dades professionals (nom de l'empresa, càrrec) si les proporciones.",
+          "item3": "Dades que introdueixes a la plataforma sobre els teus propis clients, proveïdors, factures, pressupostos, oportunitats, despeses i altres activitats relacionades amb la gestió del teu negoci.",
+          "item4": "Dades tècniques i d'ús (adreça IP, tipus de navegador, pàgines visitades, temps d'ús) recollides automàticament per al funcionament i millora del servei.",
+          "item5": "Dades de facturació i pagament (si apliquen plans de subscripció de pagament).",
+          "p2": "Les finalitats principals del tractament són:",
+          "purpose1": "Prestar, gestionar i mantenir el servei de Ribotflow.",
+          "purpose2": "Comunicar-nos amb tu per a qüestions relacionades amb el servei, suport tècnic o informació administrativa.",
+          "purpose3": "Millorar la plataforma, analitzar l'ús i desenvolupar noves funcionalitats.",
+          "purpose4": "Garantir la seguretat de la plataforma i prevenir fraus.",
+          "purpose5": "Complir amb les nostres obligacions legals."
+        }
+      },
+      "section3": {
+        "title": "3. Quina és la base legal per al tractament?",
+        "content": {
+          "p1": "La base legal que ens permet tractar les teves dades varia segons la finalitat:",
+          "basis1": "L'execució del contracte de servei que acceptes en registrar-te i utilitzar Ribotflow.",
+          "basis2": "El teu consentiment explícit per a finalitats específiques, com l'enviament de comunicacions comercials (si s'escau).",
+          "basis3": "El nostre interès legítim per millorar el servei, garantir la seguretat o gestionar consultes.",
+          "basis4": "El compliment d'obligacions legals aplicables (ex: facturació)."
+        }
+      },
+      "section4": {
+        "title": "4. El nostre Rol com a Encarregat del Tractament",
+        "content": {
+          "p1": "És important destacar que respecte a les dades personals dels teus propis clients, proveïdors o tercers que tu introdueixes i gestiones a Ribotflow (com noms, emails, dades de facturació, etc.), tu ets el Responsable del Tractament. Nosaltres actuem únicament com a Encarregats del Tractament, seguint les teves instruccions i tractant aquestes dades exclusivament per prestar-te el servei contractat.",
+          "p2": "Les nostres obligacions com a Encarregat del Tractament estan detallades als [Termes i Condicions del Servei](enllaç), que inclouen l'acord de tractament de dades (DPA - Data Processing Agreement) requerit pel GDPR."
+        }
+      },
+      "section5": {
+        "title": "5. Amb qui compartim les teves dades?",
+        "content": {
+          "p1": "No venem ni lloguem les teves dades personals. Només les compartim amb tercers quan és necessari per prestar el servei o per obligació legal:",
+          "item1": "Proveïdors de serveis tecnològics: Utilitzem {provider} com a proveïdor d'infraestructura cloud (base de dades, autenticació, emmagatzematge).",
+          "p2": "Alguns d'aquests proveïdors poden estar ubicats fora de l'Espai Econòmic Europeu, però garantim que s'adopten les mesures adequades per assegurar un nivell de protecció equivalent (ex: Clàusules Contractuals Tipus)."
+        }
+      },
+      "section6": {
+        "title": "6. Durant quant temps conservem les teves dades?",
+        "content": {
+          "p1": "Les teves dades personals es conservaran mentre mantinguis el teu compte actiu a Ribotflow i, posteriorment, durant els terminis legalment establerts per atendre possibles responsabilitats."
+        }
+      },
+      "section7": {
+        "title": "7. Quins són els teus drets i com exercir-los?",
+        "content": {
+          "p1": "Tens dret a accedir, rectificar, suprimir les teves dades, així com a limitar-ne o oposar-te al seu tractament, i a la portabilitat de les mateixes, en els termes que estableix la legislació vigent.",
+          "p2": "Pots exercir aquests drets enviant un correu electrònic a {email} adjuntant una còpia del teu document d'identitat.",
+          "p3": "També tens dret a presentar una reclamació davant l'Agencia Española de Protección de Datos (www.aepd.es) si consideres que els teus drets no han estat degudament atesos."
+        }
+      },
+      "section8": {
+        "title": "8. Mesures de Seguretat",
+        "content": {
+          "p1": "Implementem mesures de seguretat tècniques i organitzatives adequades per protegir les teves dades personals contra pèrdua, accés no autoritzat o tractament il·lícit."
+        }
+      },
+      "section9": {
+        "title": "9. Canvis en aquesta Política",
+        "content": {
+          "p1": "Podem modificar aquesta Política de Privacitat ocasionalment. Qualsevol canvi serà publicat en aquesta pàgina i, si són significatius, t'ho notificarem per correu electrònic o a través de la plataforma."
+        }
+      }
+    },
+    "Common": {
+      "appName": "Ribotflow",
+      "lastUpdated": "Darrera actualització: {date}",
+      "companyData": {
+        "name": "El Teu Nom o Raó Social",
+        "vat": "El Teu NIF/CIF",
+        "address": "La Teva Adreça Completa",
+        "email": "el-teu@email.com",
+        "registry": "(Opcional: Dades Registre Mercantil)"
+      },
+      "privacyPolicyTitle": "Política de Privacitat",
+      "cookiePolicyTitle": "Política de Cookies",
+      "legalNoticeTitle": "Avís Legal",
+      "termsConditionsTitle": "Termes i Condicions del Servei",
+      "privacyPolicyLink": "/politica-privacitat",
+      "cookiePolicyLink": "/politica-cookies",
+      "legalNoticeLink": "/avis-legal",
+      "termsConditionsLink": "/termes-condicions",
+      "and": "i"
+    },
+    "LegalNotice": {
+      "metaTitle": "Avís Legal | {appName}",
+      "title": "Avís Legal",
+      "section1": {
+        "title": "1. Dades Identificatives del Titular",
+        "content": {
+          "p1": "En compliment del deure d'informació estipulat a la Llei 34/2002 de Serveis de la Societat de la Informació i del Comerç Electrònic (LSSI-CE), a continuació es faciliten les següents dades: El titular d'aquest lloc web i de l'aplicació Ribotflow és {companyName}, amb NIF {companyVat}, domicili a {companyAddress} i correu electrònic de contacte {companyEmail}. {companyRegistry}"
+        }
+      },
+      "section2": {
+        "title": "2. Objecte",
+        "content": {
+          "p1": "Aquest Avís Legal regula l'accés i ús del lloc web i de l'aplicació {appName} (en endavant, la \"Plataforma\"), que {companyName} posa a disposició dels usuaris d'Internet."
+        }
+      },
+      "section3": {
+        "title": "3. Propietat Intel·lectual i Industrial",
+        "content": {
+          "p1": "Tots els drets de propietat intel·lectual i industrial de la Plataforma ({appName}), incloent-hi, a títol enunciatiu però no limitatiu, el seu codi font, disseny gràfic, interfícies, textos, imatges, vídeos, sons, marques, logotips i noms comercials, són propietat exclusiva de {companyName} o de tercers que n'han autoritzat l'ús.",
+          "p2": "L'usuari reconeix que les dades i la informació introduïdes per ell a la Plataforma són de la seva exclusiva propietat i responsabilitat. {companyName} actua com a mer dipositari d'aquesta informació en el marc de la prestació del servei."
+        }
+      },
+      "section4": {
+        "title": "4. Condicions d'Ús",
+        "content": {
+          "p1": "L'accés i/o ús de la Plataforma atribueix la condició d'Usuari, que accepta, des d'aquest accés i/o ús, les condicions generals d'ús aquí reflectides.",
+          "p2": "L'Usuari es compromet a fer un ús adequat dels continguts i serveis que {companyName} ofereix a través de la seva Plataforma i, amb caràcter enunciatiu però no limitatiu, a no emprar-los per a:",
+          "obligation1": "Incórrer en activitats il·lícites, il·legals o contràries a la bona fe i a l'ordre públic.",
+          "obligation2": "Difondre continguts o propaganda de caràcter racista, xenòfob, pornogràfic-il·legal, d'apologia del terrorisme o atemptatori contra els drets humans.",
+          "obligation3": "Provocar danys en els sistemes físics i lògics de {companyName}, dels seus proveïdors o de terceres persones, introduir o difondre a la xarxa virus informàtics o qualssevol altres sistemes físics o lògics que siguin susceptibles de provocar els danys anteriorment esmentats."
+        }
+      },
+      "section5": {
+        "title": "5. Exclusió de Responsabilitat",
+        "content": {
+          "p1": "{companyName} no es fa responsable, en cap cas, dels danys i perjudicis de qualsevol naturalesa que poguessin ocasionar, a títol enunciatiu: errors o omissions en els continguts, falta de disponibilitat de la Plataforma o la transmissió de virus o programes maliciosos o lesius en els continguts, malgrat haver adoptat totes les mesures tecnològiques necessàries per evitar-ho.",
+          "p2": "L'ús que els usuaris puguin fer de les dades i informació subministrada a través de la Plataforma es realitza sota la seva única i exclusiva responsabilitat."
+        }
+      },
+      "section6": {
+        "title": "6. Enllaços",
+        "content": {
+          "p1": "En el cas que a la Plataforma es disposessin enllaços o hipervincles cap a altres llocs d'Internet, {companyName} no exercirà cap tipus de control sobre aquests llocs i continguts. En cap cas {companyName} assumirà responsabilitat alguna pels continguts d'algun enllaç pertanyent a un lloc web aliè."
+        }
+      },
+      "section7": {
+        "title": "7. Protecció de Dades i Cookies",
+        "content": {
+          "p1": "El tractament de les dades personals i l'ús de cookies a la Plataforma es regeixen per les nostres"
+        }
+      },
+      "section8": {
+        "title": "8. Modificacions",
+        "content": {
+          "p1": "{companyName} es reserva el dret d'efectuar sense previ avís les modificacions que consideri oportunes a la seva Plataforma, podent canviar, suprimir o afegir tant els continguts i serveis que es prestin a través d'aquesta com la forma en què aquests apareguin presentats o localitzats."
+        }
+      },
+      "section9": {
+        "title": "9. Llei Aplicable i Jurisdicció",
+        "content": {
+          "p1": "La relació entre {companyName} i l'Usuari es regirà per la normativa espanyola vigent i qualsevol controvèrsia se sotmetrà als Jutjats i tribunals de la ciutat de [La teva ciutat / la que indiqui l'advocat]."
+        }
+      }
+    },
+    "TermsAndConditions": {
+      "metaTitle": "Termes i Condicions | {appName}",
+      "title": "Termes i Condicions del Servei",
+      "section1": {
+        "title": "1. Acceptació dels Termes",
+        "content": {
+          "p1": "Aquests Termes i Condicions del Servei (en endavant, \"Termes\") regulen l'ús de la plataforma {appName} (en endavant, \"Servei\" o \"Plataforma\"), propietat de {companyName}. En registrar-te o utilitzar el Servei, acceptes quedar vinculat per aquests Termes.",
+          "p2": "L'ús del Servei també implica l'acceptació de la nostra Política de Privacitat."
+        }
+      },
+      "section2": {
+        "title": "2. Descripció del Servei",
+        "content": {
+          "p1": "{appName} és una plataforma de gestió empresarial que ofereix eines per a CRM, facturació, gestió de despeses, comunicació i altres funcionalitats relacionades. Les característiques específiques poden variar segons el pla contractat (si aplica)."
+        }
+      },
+      "section3": {
+        "title": "3. Accés i Compte d'Usuari",
+        "content": {
+          "p1": "Per utilitzar el Servei, has de registrar-te creant un compte. Ets responsable de mantenir la confidencialitat de la teva contrasenya i de totes les activitats que ocorrin sota el teu compte.",
+          "p2": "Has de proporcionar informació veraç, exacta i completa durant el registre i mantenir-la actualitzada.",
+          "p3": "Ens reservem el dret de suspendre o cancel·lar comptes que violin aquests Termes."
+        }
+      },
+      "section4": {
+        "title": "4. Obligacions de l'Usuari",
+        "content": {
+          "p1": "En utilitzar el Servei, et compromets a:",
+          "obligation1": "Utilitzar la Plataforma de manera lícita i d'acord amb aquests Termes.",
+          "obligation2": "No realitzar activitats que puguin danyar, sobrecarregar o impedir el funcionament normal del Servei.",
+          "obligation3": "Ser l'únic responsable de la legalitat, exactitud i propietat de les dades que introdueixis a la Plataforma.",
+          "obligation4": "Respectar els drets de propietat intel·lectual de {companyName} i de tercers."
+        }
+      },
+      "section5": {
+        "title": "5. Condicions Econòmiques",
+        "content": {
+          "p1": "[Si és gratuït: El Servei es proporciona de forma gratuïta sota les condicions descrites aquí. Ens reservem el dret d'introduir plans de pagament en el futur.] / [Si és de pagament: Detallar aquí els plans, preus, cicles de facturació, mètodes de pagament, política de reemborsament, conseqüències d'impagament, etc. Aquesta secció és CRÍTICA i requereix assessorament legal detallat.]"
+        }
+      },
+      "section6": {
+        "title": "6. Propietat Intel·lectual",
+        "content": {
+          "p1": "La Plataforma {appName} i tot el seu contingut (excloent les dades introduïdes per l'usuari) són propietat de {companyName} i estan protegits per les lleis de propietat intel·lectual.",
+          "p2": "Les dades que introdueixes a la Plataforma són teves. Ens concedeixes una llicència limitada per processar aquestes dades únicament amb la finalitat de prestar-te el Servei."
+        }
+      },
+      "section7": {
+        "title": "7. Protecció de Dades i Acord de Tractament (DPA)",
+        "content": {
+          "p1": "El tractament de les teves dades personals es regeix per la nostra",
+          "dpaTitle": "Rol com a Encarregat del Tractament (Acord de Tractament de Dades - DPA)",
+          "dpaP1": "Respecte a les dades personals de tercers (els teus clients, proveïdors, etc.) que tu introdueixes a {appName}, tu actues com a Responsable del Tractament i nosaltres com a Encarregats del Tractament. Aquests Termes constitueixen l'Acord de Tractament de Dades (DPA) exigit per la normativa.",
+          "dpaP2": "Ens comprometem a: (a) Tractar aquestes dades únicament seguint les teves instruccions i per a la prestació del Servei. (b) Garantir la confidencialitat de les dades. (c) Implementar mesures de seguretat adequades. (d) No subcontractar sense la teva autorització prèvia. (e) Assistir-te en el compliment de les teves obligacions com a Responsable (exercici de drets, notificació de bretxes). (f) Suprimir les dades un cop finalitzat el servei, segons els termes legals. (g) Posar a la teva disposició la informació necessària per demostrar el compliment."
+        }
+      },
+      "section8": {
+        "title": "8. Garanties i Limitació de Responsabilitat",
+        "content": {
+          "p1": "El Servei es proporciona \"tal qual\", sense garanties expresses o implícites de cap tipus. No garantim que el Servei sigui ininterromput, segur o lliure d'errors.",
+          "p2": "En la mesura màxima permesa per la llei, {companyName} no serà responsable de danys indirectes, incidentals, especials, conseqüencials o punitius, ni de pèrdues de beneficis o ingressos, pèrdues de dades o altres pèrdues intangibles, resultants de (i) el teu accés o ús o incapacitat d'accés o ús del servei; (ii) qualsevol conducta o contingut de tercers al servei; (iii) qualsevol contingut obtingut del servei; i (iv) accés, ús o alteració no autoritzats de les teves transmissions o contingut."
+        }
+      },
+      "section9": {
+        "title": "9. Modificació dels Termes",
+        "content": {
+          "p1": "Ens reservem el dret de modificar aquests Termes en qualsevol moment. Et notificarem els canvis importants. Si continues utilitzant el Servei després de la modificació, s'entendrà que acceptes els nous Termes."
+        }
+      },
+      "section10": {
+        "title": "10. Durada i Terminació",
+        "content": {
+          "p1": "Aquests Termes romandran en vigor mentre utilitzis el Servei. Pots cancel·lar el teu compte en qualsevol moment.",
+          "p2": "Podem suspendre o cancel·lar el teu accés al Servei si incompleixes aquests Termes."
+        }
+      },
+      "section11": {
+        "title": "11. Llei Aplicable i Jurisdicció",
+        "content": {
+          "p1": "Aquests Termes es regiran i interpretaran d'acord amb les lleis d'Espanya. Qualsevol disputa relacionada amb aquests Termes se sotmetrà a la jurisdicció exclusiva dels tribunals de [La teva ciutat / la que indiqui l'advocat]."
+        }
+      }
+    },
+    "CookiePolicy": {
+      "metaTitle": "Política de Cookies | {appName}",
+      "title": "Política de Cookies",
+      "section1": {
+        "title": "1. Què són les Cookies?",
+        "content": {
+          "p1": "Una cookie és un petit fitxer de text que un lloc web emmagatzema al teu ordinador o dispositiu mòbil quan visites el lloc. Permet al lloc web recordar les teves accions i preferències (com l'inici de sessió, l'idioma, la mida de la lletra i altres preferències de visualització) durant un període de temps, perquè no hagis de tornar a introduir-les cada cop que tornis al lloc o naveguis d'una pàgina a una altra."
+        }
+      },
+      "section2": {
+        "title": "2. Quin tipus de Cookies utilitzem i per què?",
+        "content": {
+          "p1": "A {appName} utilitzem principalment els següents tipus de cookies:",
+          "type1": {
+            "name": "Cookies Tècniques o Necessàries",
+            "description": "Són essencials per al funcionament correcte de la Plataforma. Permeten la navegació i l'ús de les diferents opcions o serveis que hi existeixen, com, per exemple, controlar el trànsit i la comunicació de dades, identificar la sessió, accedir a parts d'accés restringit, recordar els elements que integren una comanda, realitzar el procés de compra d'una comanda, realitzar la sol·licitud d'inscripció o participació en un esdeveniment, utilitzar elements de seguretat durant la navegació, emmagatzemar continguts per a la difusió de vídeos o so o compartir continguts a través de xarxes socials.",
+            "cookie1": "Cookie d'autenticació (ex: {name}): Permet mantenir la teva sessió iniciada.",
+            "cookie2": "Cookie de preferències (ex: {name}): Recorda l'idioma seleccionat."
+      
+          },
+          "type2": {
+            "name": "Cookies d'Anàlisi o Mesurament",
+            "description": "(SI S'UTILITZEN) Aquestes cookies ens permeten quantificar el nombre d'usuaris i així realitzar el mesurament i anàlisi estadística de la utilització que fan els usuaris del servei ofert. Per a això s'analitza la seva navegació a la nostra pàgina web amb la finalitat de millorar l'oferta de productes o serveis que li oferim.",
+            "cookie1": "Exemple: {name}.",
+            "thirdPartyInfo": "(SI SÓN DE TERCERS) La informació és recollida i tractada per [Nom del tercer, ex: Google Analytics]. Pots trobar més informació sobre com Google tracta les dades a la seva política de privacitat."
+          }
+          
+        }
+      },
+      "section3": {
+        "title": "3. Com pots gestionar les Cookies?",
+        "content": {
+          "p1": "Pots controlar i/o eliminar les cookies com desitgis. Pots eliminar totes les cookies que ja estan al teu ordinador i pots configurar la majoria dels navegadors perquè impedeixin que s'instal·lin.",
+          "p2": "A continuació, et proporcionem enllaços on trobaràs informació sobre com configurar les teves preferències als principals navegadors:",
+          "p3": "A més, pots gestionar el consentiment de les cookies no essencials a través del banner de cookies que apareix en accedir a la nostra Plataforma [O enllaç a una eina de gestió si la implementes]."
+        }
+      },
+      "section4": {
+        "title": "4. Més informació sobre Protecció de Dades",
+        "content": {
+          "p1": "Per obtenir més informació sobre com tractem les teves dades personals, consulta la nostra" 
+        }
+      },
+      "section5": {
+        "title": "5. Canvis en la Política de Cookies",
+        "content": {
+          "p1": "Podem actualitzar la Política de Cookies de la nostra Plataforma, per la qual cosa et recomanem revisar aquesta política cada cop que accedeixis al nostre lloc web amb l'objectiu d'estar adequadament informat sobre com i per a què usem les cookies."
+        }
+      }
     }
   }
 }
