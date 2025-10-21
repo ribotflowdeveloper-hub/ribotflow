@@ -1,23 +1,29 @@
-import { LegalNoticeContent } from '../_components/LegalNoticeContent' // <-- Importa el nou component
+import { LegalNoticeContent } from '../_components/LegalNoticeContent'
 import { type Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 
+// ✅ 1. Modifiquem la interfície perquè 'params' sigui una Promise.
 interface PageProps {
-  params: { locale: string }
+  params: Promise<{ locale: string }>;
 }
 
-export async function generateMetadata({
-  params: { locale },
-}: PageProps): Promise<Metadata> {
-  const t = await getTranslations({ locale, namespace: 'LegalPages.LegalNotice' })
+/**
+ * Funció per generar les metadades de la pàgina.
+ */
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  // ✅ 2. Resolem la promesa per accedir al 'locale'.
+  const { locale } = await props.params;
+  const t = await getTranslations({ locale, namespace: 'LegalPages.LegalNotice' });
   return {
     title: t('metaTitle'),
-  }
+  };
 }
 
-// Ara la pàgina només renderitza el component de contingut
-export default async function LegalNoticeFallbackPage({
-  params: { locale },
-}: PageProps) {
-  return <LegalNoticeContent locale={locale} />
+/**
+ * Component de la pàgina, ara renderitza el component de contingut.
+ */
+// ✅ 3. Modifiquem la signatura per rebre 'props' i resoldre la promesa.
+export default async function LegalNoticeFallbackPage(props: PageProps) {
+  const { locale } = await props.params;
+  return <LegalNoticeContent locale={locale} />;
 }
