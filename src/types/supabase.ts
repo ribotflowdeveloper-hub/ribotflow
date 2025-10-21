@@ -1682,6 +1682,8 @@ export type Database = {
           title: string
           user_asign_id: string | null
           user_id: string
+          time_tracking_log?: Json | null
+          is_active: boolean
         }
         Insert: {
           asigned_date?: string | null
@@ -1699,6 +1701,8 @@ export type Database = {
           title: string
           user_asign_id?: string | null
           user_id: string
+          time_tracking_log?: Json | null
+          is_active: boolean
         }
         Update: {
           asigned_date?: string | null
@@ -1716,6 +1720,8 @@ export type Database = {
           title?: string
           user_asign_id?: string | null
           user_id?: string
+          time_tracking_log?: Json | null
+          is_active: boolean
         }
         Relationships: [
           {

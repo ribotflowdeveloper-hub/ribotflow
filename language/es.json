@@ -869,7 +869,8 @@
       "markAsPendingButton": "Marcar como pendiente",
       "markAsCompletedButton": "Marcar como completada",
       "limitDay": "Fecha límite: ",
-      "cancelButton": "Cancelar"
+      "cancelButton": "Cancelar",
+      "startTask": "Iniciar tarea"
     },
     "time": {
       "now": "Ahora mismo",

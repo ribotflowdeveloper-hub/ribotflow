@@ -6,6 +6,11 @@ import { TaskFormView } from './TaskFormView';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tables } from '@/types/supabase';
 
+interface TimeTrackingLogEntry {
+  status: 'active' | 'inactive';
+  timestamp: string;
+}
+
 // Aquest serà el nostre nou tipus de tasca universal
 export type EnrichedTask = Tables<'tasks'> & {
     contacts: { id: number; nom: string } | null;
@@ -15,6 +20,8 @@ export type EnrichedTask = Tables<'tasks'> & {
         avatar_url: string | null;
     } | null;
     departments: { id: number; name: string } | null;
+    time_tracking_log: TimeTrackingLogEntry[] | null;
+    is_active: boolean;
 };
 
 interface TaskDialogManagerProps {
