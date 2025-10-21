@@ -69,7 +69,11 @@ export async function middleware(request: NextRequest) {
 
 
     // 3. Lògica de Redirecció (Auth) - Utilitza el locale fiable
-    const publicPrefixes = ['/login', '/signup', '/auth', '/accept-invite', '/quote', '/invitation/accept'];
+    const publicPrefixes = ['/login', '/signup', '/auth', '/accept-invite', '/quote', '/invitation/accept',
+    '/politica-privacitat',
+    '/termes-condicions',
+    '/politica-cookies',];
+    
     const isPublicPath = pathnameWithoutLocale === '/' || publicPrefixes.some(p => pathnameWithoutLocale.startsWith(p));
     const isAppPath = !isPublicPath;
 

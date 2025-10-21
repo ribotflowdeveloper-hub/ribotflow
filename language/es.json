@@ -16,7 +16,6 @@
     "communication": "Comunicación",
     "settings": "Configuración",
     "architecture": "Arquitectura",
-    "profile": "Perfil",
     "customization": "Personalización",
     "crmGeneral": "CRM General",
     "contacts": "Contactos",
@@ -36,8 +35,8 @@
     "featureUnavailable": "🚧 Esta funcionalidad aún no está disponible.",
     "ai": "IA Automática",
     "signOut": "Cerrar Sesión",
-    "signOutConfirmTitle": "¿Estás seguro de que quieres cerrar la sesión?",
-    "signOutConfirmDescription": "Tendrás que volver a iniciar sesión para acceder a tu cuenta.",
+    "signOutConfirmTitle": "¿Estás seguro de que deseas cerrar la sesión?",
+    "signOutConfirmDescription": "Tendrás que iniciar sesión nuevamente para acceder a tu cuenta.",
     "cancel": "Cancelar",
     "confirmSignOut": "Sí, cerrar sesión",
     "menuTitle": "Menú",
@@ -47,7 +46,15 @@
     "mapView": "Mapa",
     "excel": "Excel",
     "CrearTemplate": "Crear plantilla",
-    "LoadFile": "Cargar fichero"
+    "LoadFile": "Cargar archivo",
+    "profile": "Perfil",
+    "billing": "Facturación",
+    "plans": "Planes y Precios",
+    "team": "Equipo",
+    "integrations": "Integraciones",
+    "blacklist": "Lista Negra",
+    "install": "Instalar Ribotflow",
+    "permissions": "Permisos de la Aplicación"
   },
   "InboxPage": {
     "composeDialogTitle": "Escribir un Correo",
@@ -1478,6 +1485,7 @@
   },
   "SignupPage": {
     "title": "Crea tu cuenta",
+    "metaTitle": "Regístrate en Ribotflow",
     "subtitle": "¿Ya tienes una?",
     "loginLink": "Inicia sesión",
     "googleButton": "Regístrate con Google",

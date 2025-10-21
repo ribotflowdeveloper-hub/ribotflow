@@ -9,14 +9,13 @@
     "loadingWorkspace": "Preparing your workspace..."
   },
   "Navigation": {
-    "dashboard": "Dashboard",
+    "dashboard": "Main Dashboard",
     "crm": "CRM",
     "finances": "Finances",
     "network": "Professional Network",
     "communication": "Communication",
     "settings": "Settings",
     "architecture": "Architecture",
-    "profile": "Profile",
     "customization": "Customization",
     "crmGeneral": "CRM General",
     "contacts": "Contacts",
@@ -42,12 +41,20 @@
     "confirmSignOut": "Yes, sign out",
     "menuTitle": "Menu",
     "planner": "Planner",
-    "networkTitle": "Profesional network",
+    "networkTitle": "Professional Network",
     "listView": "List",
     "mapView": "Map",
     "excel": "Excel",
-    "CrearTemplate": "Create template",
-    "LoadFile": "Load file"
+    "CrearTemplate": "Create Template",
+    "LoadFile": "Upload File",
+    "profile": "Profile",
+    "billing": "Billing",
+    "plans": "Plans and Pricing",
+    "team": "Team",
+    "integrations": "Integrations",
+    "blacklist": "Blacklist",
+    "install": "Install Ribotflow",
+    "permissions": "Application Permissions"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
@@ -1486,6 +1493,7 @@
   },
   "SignupPage": {
     "title": "Create Your Account",
+    "metaTitle": "Sign Up for Ribotflow",
     "subtitle": "Already have one?",
     "loginLink": "Log In",
     "googleButton": "Sign Up with Google",

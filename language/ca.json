@@ -16,7 +16,6 @@
     "communication": "Comunicació",
     "settings": "Configuració",
     "architecture": "Arquitectura",
-    "profile": "Perfil",
     "customization": "Personalització",
     "crmGeneral": "General CRM",
     "contacts": "Contactes",
@@ -47,7 +46,15 @@
     "mapView": "Mapa",
     "excel": "Excel",
     "CrearTemplate": "Crear plantilla",
-    "LoadFile": "Carregar fitxer"
+    "LoadFile": "Carregar fitxer",
+    "profile": "Perfil",
+    "billing": "Facturació",
+    "plans": "Plans i Preus",
+    "team": "Equip",
+    "integrations": "Integracions",
+    "blacklist": "Llista Negra",
+    "install": "Instal·lar Ribotflow",
+    "permissions": "Permisos d'Aplicació"
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -1486,6 +1493,7 @@
   },
   "SignupPage": {
     "title": "Crea el teu compte",
+    "metaTitle": "Registra't a Ribotflow Gratis",
     "subtitle": "Ja en tens un?",
     "loginLink": "Inicia sessió",
     "googleButton": "Registra't amb Google",
@@ -1501,8 +1509,8 @@
     "toastErrorDescription": "No s'ha pogut crear el compte.",
     "welcomeTitle": "Comença a transformar el teu negoci avui mateix.",
     "welcomeSubtitle": "Uneix-te a centenars de professionals que ja estan optimitzant el seu temps i maximitzant els seus resultats.",
-    "acceptTermsPrefix": "He llegit i accepto els", 
-    "acceptPrivacyPrefix": "He llegit i entès la", 
+    "acceptTermsPrefix": "He llegit i accepto els",
+    "acceptPrivacyPrefix": "He llegit i entès la",
     "acceptMarketing": "Vull rebre comunicacions i novetats.",
     "feature1": "Centralitza tots els teus clients i comunicacions.",
     "feature2": "Automatitza tasques i estalvia desenes d'hores cada mes.",
@@ -2030,7 +2038,6 @@
             "description": "Són essencials per al funcionament correcte de la Plataforma. Permeten la navegació i l'ús de les diferents opcions o serveis que hi existeixen, com, per exemple, controlar el trànsit i la comunicació de dades, identificar la sessió, accedir a parts d'accés restringit, recordar els elements que integren una comanda, realitzar el procés de compra d'una comanda, realitzar la sol·licitud d'inscripció o participació en un esdeveniment, utilitzar elements de seguretat durant la navegació, emmagatzemar continguts per a la difusió de vídeos o so o compartir continguts a través de xarxes socials.",
             "cookie1": "Cookie d'autenticació (ex: {name}): Permet mantenir la teva sessió iniciada.",
             "cookie2": "Cookie de preferències (ex: {name}): Recorda l'idioma seleccionat."
-      
           },
           "type2": {
             "name": "Cookies d'Anàlisi o Mesurament",
@@ -2038,7 +2045,6 @@
             "cookie1": "Exemple: {name}.",
             "thirdPartyInfo": "(SI SÓN DE TERCERS) La informació és recollida i tractada per [Nom del tercer, ex: Google Analytics]. Pots trobar més informació sobre com Google tracta les dades a la seva política de privacitat."
           }
-          
         }
       },
       "section3": {
@@ -2052,7 +2058,7 @@
       "section4": {
         "title": "4. Més informació sobre Protecció de Dades",
         "content": {
-          "p1": "Per obtenir més informació sobre com tractem les teves dades personals, consulta la nostra" 
+          "p1": "Per obtenir més informació sobre com tractem les teves dades personals, consulta la nostra"
         }
       },
       "section5": {
