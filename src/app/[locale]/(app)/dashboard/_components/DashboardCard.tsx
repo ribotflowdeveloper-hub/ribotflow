@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils/utils";
 
 // Defineix les variants de color per a la capçalera
 const cardHeaderVariants = cva(
-  "flex items-center justify-between p-3 text-primary-foreground rounded-t-xl",
+  "flex items-center justify-between p-2 text-primary-foreground rounded-t-xl",
   {
     variants: {
       variant: {

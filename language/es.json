@@ -538,7 +538,8 @@
     "saveButton": "Guardar",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "¡Éxito!",
-    "toastSuccessDescription": "La oportunidad se ha guardado correctamente."
+    "toastSuccessDescription": "La oportunidad se ha guardado correctamente.",
+    "noContact": "Sin contacto asignado"
   },
   "ProductsPage": {
     "title": "Conceptos",

@@ -544,7 +544,8 @@
     "saveButton": "Desar",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
-    "toastSuccessDescription": "L'oportunitat s'ha desat correctament."
+    "toastSuccessDescription": "L'oportunitat s'ha desat correctament.",
+    "noContact": "Sense contacte assignat"
   },
   "ProductsPage": {
     "title": "Conceptes",

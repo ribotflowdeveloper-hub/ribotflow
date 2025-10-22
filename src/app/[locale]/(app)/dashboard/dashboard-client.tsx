@@ -173,7 +173,7 @@ export function DashboardClient({
             title={t('agenda.title')}
             icon={ListChecks}
             variant="agenda"
-            className="h-full flex flex-col"
+            className=""
             actions={
               <div className="flex items-center space-x-4">
                 <Button asChild variant="outline" size="icon" className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">

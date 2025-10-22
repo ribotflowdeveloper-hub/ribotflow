@@ -2,123 +2,171 @@
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-import { LayoutGrid, Search } from 'lucide-react'; // Importem la icona de cerca
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { LayoutGrid, Search, ClipboardCheck } from 'lucide-react';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
+import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from '@/components/ui/input'; // Importem el component Input
+import { Input } from '@/components/ui/input';
 import { TaskCard } from './TaskCard';
 import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 import { Tables } from '@/types/supabase';
+import { cn } from '@/lib/utils/utils';
 
-// Definim el nou tipus per al filtre actiu
 export type TaskFilterStatus = 'pendents' | 'assignades' | 'completes';
 
 interface AgendaProps {
   tasks: EnrichedTask[];
-  activeFilter: TaskFilterStatus; // ✅ Canviat al nou tipus
+  activeFilter: TaskFilterStatus;
   onFilterChange: (filter: TaskFilterStatus) => void;
   onViewTask: (task: EnrichedTask) => void;
   pendingCount: number;
-  assignedCount: number; // ✅ Nou comptador per a les tasques assignades
+  assignedCount: number;
   completedCount: number;
   departments: Tables<'departments'>[];
   departmentFilter: number | 'all';
   onDepartmentFilterChange: (filter: number | 'all') => void;
-  searchTerm: string; // ✅ Nova prop per al terme de cerca
-  onSearchChange: (term: string) => void; // ✅ Nova prop per a gestionar canvis a la cerca
-  onToggleTask: (taskId: number, currentStatus: boolean) => void; // ✅ Afegeix aquesta prop
-
+  searchTerm: string;
+  onSearchChange: (term: string) => void;
+  onToggleTask: (taskId: number, currentStatus: boolean) => void;
 }
 
-export function Agenda({
-  tasks,
-  activeFilter,
-  onFilterChange,
-  onViewTask,
-  pendingCount,
-  assignedCount, // Nou
-  completedCount,
-  departments,
-  departmentFilter,
-  onDepartmentFilterChange,
-  searchTerm, // Nou
-  onSearchChange, // Nou
-  onToggleTask
-}: AgendaProps) {
+const filterOptions: { value: TaskFilterStatus; labelKey: string; count: (props: AgendaProps) => number }[] = [
+  { value: 'pendents', labelKey: 'pending', count: (props) => props.pendingCount },
+  { value: 'assignades', labelKey: 'assigned', count: (props) => props.assignedCount },
+  { value: 'completes', labelKey: 'completed', count: (props) => props.completedCount },
+];
+
+const itemVariants: Variants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: "spring", stiffness: 100 },
+  },
+  exit: {
+    y: -20,
+    opacity: 0,
+    transition: { duration: 0.2 }
+  }
+};
+
+export function Agenda(props: AgendaProps) {
+  const {
+    tasks,
+    activeFilter,
+    onFilterChange,
+    onViewTask,
+    departments,
+    departmentFilter,
+    onDepartmentFilterChange,
+    searchTerm,
+    onSearchChange,
+    onToggleTask
+  } = props;
   const t = useTranslations('DashboardClient.agenda');
 
   return (
-    <div>
-      {/* Grup de botons de filtre */}
-      <div className="flex gap-2 mb-4 flex-shrink-0">
+    <div className="flex flex-col h-full max-h-[70vh]">
+        {/* --- SECCIÓ DE FILTRES I CERCA (Contingut fix) --- */}
+      <div className="flex-shrink-0 space-y-4">
+        <div className="flex flex-col sm:flex-row gap-2">
 
-        <ToggleGroup
-          type="single"
-          value={activeFilter}
-          onValueChange={(value) => { if (value) onFilterChange(value as TaskFilterStatus); }}
-          className="grid grid-cols-3 flex-grow" // ✅ Canviat a 3 columnes
-        >
-          <ToggleGroupItem value="pendents" aria-label={t('filter.pendingAria')}>
-            {t('pending')} <span className="ml-2 text-xs text-muted-foreground">({pendingCount})</span>
-          </ToggleGroupItem>
+          {/* ✅ NOU DISSENY DE BOTONS DE FILTRE */}
+          <div className="grid grid-cols-3 gap-1  bg-green-300/10 rounded-lg flex-grow border border-green-500/20">
+            {filterOptions.map(option => (
+              <Button
+                key={option.value}
+                variant={activeFilter === option.value ? 'default' : 'ghost'}
 
-          {/* ✅ NOU BOTÓ "ASSIGNADES" */}
-          <ToggleGroupItem value="assignades" aria-label={t('filter.assignedAria')}>
-            {t('assigned')} <span className="ml-2 text-xs text-muted-foreground">({assignedCount})</span>
-          </ToggleGroupItem>
-
-          <ToggleGroupItem value="completes" aria-label={t('filter.completedAria')}>
-            {t('completed')} <span className="ml-2 text-xs text-muted-foreground">({completedCount})</span>
-          </ToggleGroupItem>
-        </ToggleGroup>
-        <Select
-          value={String(departmentFilter)}
-          onValueChange={(value) => onDepartmentFilterChange(value === 'all' ? 'all' : Number(value))}
-        >
-          <SelectTrigger className="w-auto sm:w-[180px]">
-            <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground hidden sm:block" />
-            <SelectValue placeholder={t('filter.departmentPlaceholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('filter.allDepartments')}</SelectItem>
-            {departments.map(dep => (
-              <SelectItem key={dep.id} value={String(dep.id)}>{dep.name}</SelectItem>
+                onClick={() => onFilterChange(option.value)}
+                className={cn(
+                  "w-full justify-center transition-all duration-200",
+                  activeFilter === option.value
+                    ? 'bg-green-600 text-white shadow hover:bg-green-700'
+                    : 'text-green-800 hover:bg-green-500/20 dark:text-green-300'
+                )}
+              >
+                {t(option.labelKey)}
+                <span className={cn(
+                  "ml-2 text-xs font-semibold rounded-full px-2 py-0.5",
+                  activeFilter === option.value
+                    ? "bg-white/20 text-white"
+                    : "bg-green-600/10 text-green-700 dark:bg-green-300/10 dark:text-green-300"
+                )}>
+                  {option.count(props)}
+                </span>
+              </Button>
             ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* ✅ NOU CAMP DE CERCA */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder={t('searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="pl-10 w-full"
-        />
-      </div>
-
-      {/* Llista de tasques (la lògica no canvia) */}
-      <div className="flex-1 space-y-3 overflow-y-auto pr-2 min-h-0">
-        {tasks.length > 0 ? (
-          tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onViewTask={onViewTask}
-              onToggleTask={onToggleTask} // ✅ Passa la funció a la TaskCard
-
-            />
-          ))
-        ) : (
-          <div className="flex items-center justify-center h-48">
-            <p className="text-sm text-muted-foreground text-center">
-              {t('noTasksFound')}
-            </p>
           </div>
-        )}
+
+          <Select
+            value={String(departmentFilter)}
+            onValueChange={(value) => onDepartmentFilterChange(value === 'all' ? 'all' : Number(value))}
+          >
+            <SelectTrigger className="w-full sm:w-[180px] bg-green-300/10 border-green-500/20 focus:ring-green-500">
+              <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground hidden sm:block" />
+              <SelectValue placeholder={t('filter.departmentPlaceholder')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('filter.allDepartments')}</SelectItem>
+              {departments.map(dep => (
+                <SelectItem key={dep.id} value={String(dep.id)}>{dep.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {/* ✅ NOU DISSENY DE LA BARRA DE CERCA */}
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-green-800/50 dark:text-green-300/50" />
+            <Input
+              type="search"
+              placeholder={t('searchPlaceholder')}
+              value={searchTerm}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-11 w-full bg-green-500/10 border-green-00/20 focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+            />
+          </div>
+        </div>
+
+
+      </div>
+
+      <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4 min-h-0 space-y-3">
+        {/* ✅ CORRECCIÓ DE L'ANIMACIÓ: AnimatePresence envolta directament el map o l'estat buit */}
+        <AnimatePresence mode="wait">
+          {tasks.length > 0 ? (
+            tasks.map((task) => (
+              <motion.div
+                key={task.id}
+                variants={itemVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                layout // Afegeix `layout` per animar canvis de posició
+              >
+                <TaskCard
+                  task={task}
+                  onViewTask={onViewTask}
+                  onToggleTask={onToggleTask}
+                />
+              </motion.div>
+            ))
+          ) : (
+            <motion.div
+              key="empty-state"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+              className="flex flex-col items-center justify-center h-full pt-10 text-center"
+            >
+              <ClipboardCheck className="w-16 h-16 text-green-500/30 mb-4" />
+              <h4 className="font-semibold text-lg text-foreground">Tot en ordre!</h4>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t('noTasksFound')}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -543,7 +543,8 @@
     "saveButton": "Save",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
-    "toastSuccessDescription": "The opportunity has been saved successfully."
+    "toastSuccessDescription": "The opportunity has been saved successfully.",
+    "noContact": "N/A"
   },
   "QuotesPage": {
     "title": "Quotes",

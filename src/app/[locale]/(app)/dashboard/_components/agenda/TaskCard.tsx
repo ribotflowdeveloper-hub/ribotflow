@@ -2,120 +2,172 @@
 
 import { useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 import { cn, sanitizeHtml } from "@/lib/utils/utils";
 import { format, isPast, isToday } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Contact as ContactIcon, User as UserIcon, Clock, Building } from "lucide-react";
+import { Calendar, Contact as ContactIcon, User as UserIcon, Building, ChevronDown } from "lucide-react";
 import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
-import { priorityStyles, TaskPriority } from '@/config/styles/task';
+import { TaskPriority } from '@/config/styles/task';
 
+// --- Helpers (Es mantenen iguals) ---
+const calculateElapsedTime = (startTime: string): number => new Date().getTime() - new Date(startTime).getTime();
+const formatDuration = (ms: number): string => { /* ... (mateixa implementació) */ 
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600).toString().padStart(2, '0');
+    const minutes = Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+};
+const useTaskTimer = (task: EnrichedTask): string => { /* ... (mateixa implementació) */ 
+    const [elapsedTime, setElapsedTime] = useState<number>(0);
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout | null = null;
+        if (task.is_active && task.time_tracking_log) {
+            type TimeTrackingLog = { status?: string; action?: string; timestamp: string; };
+            const lastActiveLog = [...task.time_tracking_log].reverse().find((log: TimeTrackingLog) => log.status === 'active' || log.action === 'actiu');
+            if (lastActiveLog) {
+                const startTime = lastActiveLog.timestamp;
+                setElapsedTime(calculateElapsedTime(startTime));
+                intervalId = setInterval(() => {
+                    setElapsedTime(calculateElapsedTime(startTime));
+                }, 1000);
+            }
+        }
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [task.is_active, task.time_tracking_log]);
+    return formatDuration(elapsedTime);
+};
+const generateHslColorFromString = (str: string | null | undefined) => {
+    if (!str) return null;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    const h = hash % 360;
+    return {
+        main: `hsl(${h}, 70%, 50%)`,
+        soft: `hsl(${h}, 80%, 95%)`,
+        darkSoft: `hsl(${h}, 80%, 10%)`
+    };
+};
+
+// --- Components UI ---
+function MetaItem({ icon: Icon, text, className }: { icon: React.ElementType, text: React.ReactNode, className?: string }) { /* ... (mateixa implementació) */ 
+    if (!text) return null;
+    return (
+        <div className={cn("flex items-center gap-2 text-sm text-muted-foreground", className)}>
+            <Icon className="w-4 h-4 flex-shrink-0" />
+            <span className="truncate">{text}</span>
+        </div>
+    );
+}
+const PriorityDot = ({ priority }: { priority: TaskPriority | null }) => { /* ... (mateixa implementació) */ 
+    const colorClass = {
+        'Alta': 'bg-red-500',
+        'Mitjana': 'bg-yellow-500',
+        'Baixa': 'bg-blue-500',
+    }[priority || 'Baixa'];
+    return <div className={cn("w-3 h-3 rounded-full flex-shrink-0", colorClass)} />;
+}
+
+// --- Component Principal ---
 interface TaskCardProps {
   task: EnrichedTask;
   onViewTask: (task: EnrichedTask) => void;
   onToggleTask: (taskId: number, currentStatus: boolean) => void;
 }
 
-const generateHslColorFromString = (str: string | null | undefined) => {
-    if (!str) return null;
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const h = hash % 360;
-    return { h, s: 60, l: 55 }; // Ajustem la lluminositat per a millor contrast
-};
-
-function MetaItem({ icon: Icon, text, className }: { icon: React.ElementType, text: React.ReactNode, className?: string }) {
-    if (!text) return null;
-    return (
-        <div className={cn("flex items-center gap-1.5 text-muted-foreground", className)}>
-            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="truncate">{text}</span>
-        </div>
-    );
-}
-
 export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const dueDate = task.due_date ? new Date(task.due_date) : null;
   const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
-
-  const dueDateColor = cn({
-    "text-red-500 dark:text-red-400 font-semibold": isOverdue,
-    "text-orange-500 dark:text-orange-400 font-semibold": dueDate && isToday(dueDate),
-  });
-
-  const userColor = generateHslColorFromString(task.user_asign_id);
-  const cardStyle = userColor
-    ? { borderLeftColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 1)` }
-    : { borderLeftColor: 'var(--border)' };
+  const formattedTimer = useTaskTimer(task);
   
   const [plainTextDescription, setPlainTextDescription] = useState('');
-
   useEffect(() => {
     setPlainTextDescription(sanitizeHtml(task.description));
   }, [task.description]);
 
+  const userColor = generateHslColorFromString(task.user_asign_id);
+  const cardStyle: React.CSSProperties = userColor ? {
+      '--user-color-main': userColor.main,
+      '--user-color-soft': userColor.soft,
+      '--user-color-dark-soft': userColor.darkSoft
+  } as React.CSSProperties : {};
+
   return (
-    <div 
-      className="flex items-start gap-3 p-3 rounded-lg bg-background border-l-4 transition-all duration-200 group hover:bg-muted/80 cursor-pointer shadow-sm"
-      style={cardStyle}
-      onClick={() => onViewTask(task)}
+    <Collapsible
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        className={cn(
+            "relative rounded-lg border-l-4 shadow-md transition-all duration-300 group",
+            "bg-[var(--user-color-soft)] border-[var(--user-color-main)] dark:bg-[var(--user-color-dark-soft)]",
+            task.is_completed && 'bg-gray-100 dark:bg-gray-800/50 opacity-70'
+        )}
+        style={cardStyle}
     >
-      <div className="pt-1">
-        <Checkbox
-          id={`task-${task.id}`}
-          checked={task.is_completed}
-          onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
-          onClick={(e) => e.stopPropagation()}
-        />
-      </div>
-
-      <div className="flex-1 min-w-0 space-y-2">
-        <div className="flex justify-between items-start gap-2">
-            <p className={cn("font-semibold leading-tight break-words pr-2 text-card-foreground", task.is_completed && "line-through text-muted-foreground")}>
-              {task.title}
-            </p>
-            <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                {task.priority && (
-                  <Badge variant="outline" className={cn("text-xs py-0.5 px-2", priorityStyles[task.priority as TaskPriority].badgeClasses)}>
-                    {task.priority}
-                  </Badge>
-                )}
-                <TooltipProvider delayDuration={150}>
-                    <Tooltip>
-                        <TooltipTrigger onClick={(e) => e.stopPropagation()}>
-                            <Avatar className="w-6 h-6 border">
-                                <AvatarImage src={task.profiles?.avatar_url || undefined} />
-                                <AvatarFallback className="text-xs">
-                                    {task.profiles ? task.profiles.full_name?.charAt(0) : <UserIcon className="w-3 h-3" />}
-                                </AvatarFallback>
-                            </Avatar>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{task.profiles ? `Assignat a ${task.profiles.full_name}` : 'Sense assignar'}</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
+        <div className="flex items-center gap-3 p-3">
+            <Checkbox
+                id={`task-${task.id}`}
+                checked={task.is_completed}
+                onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
+                onClick={(e) => e.stopPropagation()}
+                className="w-5 h-5"
+            />
+            
+            <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onViewTask(task)}>
+                <div className="flex items-center gap-2">
+                    <PriorityDot priority={task.priority} />
+                    <h3 className={cn("text-md font-semibold leading-tight truncate", task.is_completed && "line-through text-muted-foreground")}>
+                        {task.title}
+                    </h3>
+                </div>
             </div>
-        </div>
-
-        <div className="space-y-2">
-            {plainTextDescription && (
-              <p className="text-sm truncate text-muted-foreground">
-                {plainTextDescription}
-              </p>
+            
+            {task.is_active && (
+                <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 flex-shrink-0">
+                    <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span>
+                    <span className="font-mono text-sm font-semibold">{formattedTimer.substring(0, 5)}</span>
+                </div>
             )}
-            <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 text-xs">
-                {task.departments && <MetaItem icon={Building} text={task.departments.name} />}
-                {dueDate && <MetaItem icon={Calendar} text={format(dueDate, "d MMM yyyy", { locale: es })} className={dueDateColor} />}
-                {task.contacts && <MetaItem icon={ContactIcon} text={task.contacts.nom} />}
-                {task.duration && task.duration > 0 && <MetaItem icon={Clock} text={`${task.duration} min`} />}
-            </div>
+            
+            <TooltipProvider delayDuration={150}>
+                <Tooltip>
+                    <TooltipTrigger onClick={(e) => e.stopPropagation()}><Avatar className="w-8 h-8 border-2 border-white dark:border-slate-800"><AvatarImage src={task.profiles?.avatar_url || undefined} /><AvatarFallback className="text-xs font-bold">{task.profiles ? task.profiles.full_name?.charAt(0) : <UserIcon className="w-4 h-4" />}</AvatarFallback></Avatar></TooltipTrigger>
+                    <TooltipContent><p>{task.profiles ? `Assignat a ${task.profiles.full_name}` : 'Sense assignar'}</p></TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+
+            <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="icon" className="w-8 h-8">
+                    <ChevronDown className={cn("w-5 h-5 transition-transform", isOpen && "rotate-180")} />
+                </Button>
+            </CollapsibleTrigger>
         </div>
-      </div>
-    </div>
+
+        <CollapsibleContent>
+            <div className="border-t-2 border-black/5 dark:border-white/5 p-4 space-y-3">
+                {plainTextDescription && <p className="text-sm text-muted-foreground">{plainTextDescription}</p>}
+                
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        {task.contacts && <MetaItem icon={ContactIcon} text={task.contacts.nom} />}
+                        {task.departments && <MetaItem icon={Building} text={task.departments.name} />}
+                    </div>
+                    {dueDate && (
+                        <MetaItem 
+                            icon={Calendar} 
+                            text={format(dueDate, "d MMM", { locale: es })} 
+                            className={cn('font-semibold', {'text-red-600 dark:text-red-400': isOverdue, 'text-orange-600 dark:text-orange-400': isToday(dueDate)})} 
+                        />
+                    )}
+                </div>
+            </div>
+        </CollapsibleContent>
+    </Collapsible>
   );
 }
