@@ -1,117 +1,103 @@
 // src/app/api/sync-imap/route.ts
 
 import { NextResponse } from 'next/server';
-import imaps from 'imap-simple'; // Només importem el valor per defecte
-// Eliminem: import type { ImapSimple } from 'imap-simple';
+// ✅ Importem tipus addicionals de imapflow
+import { ImapFlow, FetchMessageObject } from 'imapflow';
 import { simpleParser, ParsedMail } from 'mailparser';
 import AES from 'crypto-js/aes';
 import Utf8 from 'crypto-js/enc-utf8';
-import { Buffer } from 'buffer'; // Importem Buffer explícitament per claredat
+import { Buffer } from 'buffer';
 
-// ✅ CORRECCIÓ PRINCIPAL: Derivar el tipus de la connexió
-// Obtenim el tipus del valor que retorna la promesa de 'imaps.connect'
-type ImapConnection = Awaited<ReturnType<typeof imaps.connect>>;
+// --- Interfícies ---
+interface NormalizedEmail { provider_message_id: string; subject: string; body: string; preview: string; sent_at: string; sender_name: string; sender_email: string; status: 'Llegit' | 'NoLlegit'; type: 'rebut' | 'enviat'; }
 
-// --- La resta de les interfícies es mantenen igual ---
-interface NormalizedEmail {
-  provider_message_id: string;
-  subject: string;
-  body: string;
-  preview: string;
-  sent_at: string; // ISO String
-  sender_name: string;
-  sender_email: string;
-  status: 'Llegit' | 'NoLlegit';
-  type: 'rebut' | 'enviat';
-}
+// ✅ Simplifiquem ImapSearchCriteria (ja no necessitem unir amb el tipus inexistent)
+// Aquest tipus descriu l'objecte que estem construint
+type ImapSearchCriteria = {
+  all: boolean;
+  since?: Date;
+  // Podríem afegir altres propietats si les féssim servir (ex: 'seen', 'from', etc.)
+};
 
-interface ImapPart {
-  which: string;
-  body: string;
-}
 
-interface ImapMessage {
-  attributes: {
-    uid: number;
-  };
-  parts: ImapPart[];
-}
+// Funció auxiliar per trobar el nom real de la bústia d'enviats amb imapflow
+async function getSentBoxNameFlow(client: ImapFlow): Promise<string> {
+  console.log('[API-IMAP-DEBUG] getSentBoxNameFlow: Cridant a client.list().');
+  try {
+    const mailboxes = await client.list();
+    console.log('[API-IMAP-DEBUG] getSentBoxNameFlow: Bústies obtingudes.');
 
-/**
- * Funció auxiliar per trobar el nom real de la bústia d'enviats.
- */
-// Utilitzem el nou tipus ImapConnection
-async function getSentBoxName(connection: ImapConnection): Promise<string> {
-  // Ara TypeScript hauria de conèixer els mètodes de 'connection'
-  const boxes = await connection.getBoxes();
+    const commonNames = ['Sent', 'Sent Items', 'Enviats', '[Gmail]/Sent Mail'];
 
-  const commonNames = ['Sent', 'Sent Items', 'Enviats', '[Gmail]/Sent Mail'];
-
-  for (const name of commonNames) {
-    if (boxes[name]) {
-      return name;
+    for (const name of commonNames) {
+      const found = mailboxes.find(box => box.name.toUpperCase() === name.toUpperCase());
+      if (found) {
+        console.log(`[API-IMAP-DEBUG] getSentBoxNameFlow: Trobada bústia comuna: ${found.path}`);
+        return found.path;
+      }
     }
+
+    const sentBox = mailboxes.find(box => box.specialUse === '\\Sent');
+    if (sentBox) {
+      console.log(`[API-IMAP-DEBUG] getSentBoxNameFlow: Trobada bústia amb flag \\Sent: ${sentBox.path}`);
+      return sentBox.path;
+    }
+
+  } catch (listError: unknown) {
+    console.error(`[API-IMAP-ERROR] getSentBoxNameFlow: Error obtenint llista de bústies: ${(listError as Error).message}`);
   }
 
-  for (const boxName in boxes) {
-    // Afegim una comprovació extra per a hasOwnProperty
-    if (Object.prototype.hasOwnProperty.call(boxes, boxName) && boxes[boxName] && boxes[boxName].attribs.includes('\\Sent')) {
-      return boxName;
-    }
-  }
-
+  console.warn('[API-IMAP-WARN] getSentBoxNameFlow: No s\'ha trobat cap bústia d\'enviats específica. Utilitzant "Sent" per defecte.');
   return 'Sent';
 }
 
-/**
- * Funció principal per obtenir i processar correus d'una bústia
- */
-async function fetchEmailsFromMailbox(
-  connection: ImapConnection, // <-- Utilitzem el nou tipus
+
+// Funció principal per obtenir i processar correus amb imapflow
+async function fetchEmailsFromMailboxFlow(
+  client: ImapFlow,
   boxName: string,
   type: 'rebut' | 'enviat',
   lastSyncDate: string | null
 ): Promise<NormalizedEmail[]> {
 
+  let lock;
   try {
-    await connection.openBox(boxName); // <-- TypeScript hauria de reconèixer 'openBox'
-    console.log(`[API-IMAP-FETCH] Bústia '${boxName}' oberta correctament.`);
+    console.log(`[API-IMAP-FETCH] Intentant obrir bústia '${boxName}'...`);
+    lock = await client.getMailboxLock(boxName);
+    console.log(`[API-IMAP-FETCH] Bústia '${boxName}' oberta i bloquejada.`);
 
-    const searchCriteria: (string | [string, Date])[] = ['ALL'];
-
-    let sinceDate: Date;
+    // ✅ Utilitzem el tipus ImapSearchCriteria
+    const searchCriteria: ImapSearchCriteria = { all: true };
     if (lastSyncDate) {
-      sinceDate = new Date(lastSyncDate);
+        searchCriteria.since = new Date(lastSyncDate);
     } else {
-      sinceDate = new Date();
-      sinceDate.setDate(sinceDate.getDate() - 7);
-    }
-    searchCriteria.push(['SINCE', sinceDate]);
-
-    const messages: ImapMessage[] = await connection.search(searchCriteria, { // <-- TypeScript hauria de reconèixer 'search'
-      bodies: ['HEADER', 'TEXT'],
-    });
-
-    if (messages.length === 0) {
-      console.log(`[API-IMAP-FETCH] No s'han trobat missatges nous a '${boxName}'.`);
-      return [];
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        searchCriteria.since = sevenDaysAgo;
     }
 
-    console.log(`[API-IMAP-FETCH] S'han trobat ${messages.length} missatges a '${boxName}'. Processant...`);
+    console.log(`[API-IMAP-FETCH] Criteris de cerca per a '${boxName}':`, searchCriteria);
 
-    const emailPromises = messages.map(async (item) => {
+    const messages: NormalizedEmail[] = [];
+    // ✅ Definim un tipus per a msg que inclogui les propietats que demanem
+    // Potser cal ajustar-lo si els tipus de FetchMessageObject no són exactes
+    interface FetchedMsg extends FetchMessageObject {
+        bodyPeek?: Buffer; // Marcat com opcional per si de cas
+        // envelope ja està definit a FetchMessageObject si es demana
+    }
+
+    // Usem fetch() per obtenir missatges
+    for await (const msg of client.fetch(searchCriteria, { uid: true, envelope: true, source: true }) as AsyncGenerator<FetchedMsg>) { // Asseveració de tipus aquí
       try {
-        const headerPart = item.parts.find((part) => part.which === 'HEADER');
-        const textPart = item.parts.find((part) => part.which === 'TEXT');
-        const id = item.attributes.uid;
+        console.log(`[API-IMAP-FETCH] Processant missatge UID ${msg.uid} de '${boxName}'`);
 
-        if (!headerPart?.body || !textPart?.body) {
-          console.warn(`[API-IMAP-PARSE] Missatge ${id} a '${boxName}' descartat per falta de HEADER o TEXT.`);
-          return null;
+        // ✅ Accedim a msg.bodyPeek (ara hauria d'existir gràcies a l'asseveració)
+        if (!msg.bodyPeek) {
+          console.warn(`[API-IMAP-PARSE] Missatge ${msg.uid} a '${boxName}' descartat per falta de bodyPeek.`);
+          continue;
         }
 
-        const rawEmail = `${headerPart.body}\r\n${textPart.body}`;
-        const parsed: ParsedMail = await simpleParser(rawEmail);
+        const parsed: ParsedMail = await simpleParser(msg.bodyPeek);
 
         let body = parsed.html || parsed.textAsHtml || parsed.text || '';
         if (parsed.attachments) {
@@ -127,109 +113,124 @@ async function fetchEmailsFromMailbox(
           }
         }
 
-        const from = parsed.from?.value[0];
-        const senderName = from?.name || 'Desconegut';
-        const senderEmail = (from?.address || 'unknown@domain.com').toLowerCase();
+        const fromHeader = parsed.from?.value[0]; // Preferim el 'From' parsejat si existeix
+        const envelopeFrom = msg.envelope?.from?.[0]; // Obtenim l'envelope de 'msg'
 
-        return {
-          provider_message_id: id.toString(),
-          subject: parsed.subject || '(Sense assumpte)',
+        // ✅ Corregim l'ús de msg.envelope per a senderName i senderEmail
+        const senderName = fromHeader?.name || envelopeFrom?.name || 'Desconegut';
+        const senderEmail = (fromHeader?.address || envelopeFrom?.address || 'unknown@domain.com').toLowerCase();
+
+        messages.push({
+          provider_message_id: msg.uid.toString(),
+           // ✅ Corregim l'ús de msg.envelope per a subject i sent_at
+          subject: parsed.subject || msg.envelope?.subject || '(Sense assumpte)',
           body: body,
           preview: (parsed.text || body.replace(/<[^>]*>?/gm, " ").replace(/\s+/g, " ")).trim().substring(0, 150),
-          sent_at: parsed.date?.toISOString() || new Date().toISOString(),
+          sent_at: (msg.envelope?.date || parsed.date || new Date()).toISOString(),
           sender_name: senderName,
           sender_email: senderEmail,
           status: 'NoLlegit',
           type: type,
-        };
+        });
       } catch (parseError: unknown) {
-        console.error(`[API-IMAP-PARSE] Error parsejant el missatge ${item.attributes.uid}:`, (parseError as Error).message);
-        return null;
+        console.error(`[API-IMAP-PARSE] Error parsejant el missatge UID ${msg.uid} a ${boxName}:`, (parseError as Error).message);
       }
-    });
+    }
 
-    const emails = await Promise.all(emailPromises);
-    return emails.filter((email): email is NormalizedEmail => email !== null);
+    console.log(`[API-IMAP-FETCH] Processats ${messages.length} missatges de '${boxName}'.`);
+    return messages;
 
   } catch (err: unknown) {
-    const message = typeof err === 'object' && err !== null && 'message' in err ? (err as { message: string }).message : String(err);
-    console.warn(`[API SYNC-IMAP] No s'ha pogut obrir o llegir la carpeta '${boxName}'. Missatge:`, message);
-    return [];
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`[API SYNC-IMAP] Error a fetchEmailsFromMailboxFlow per a '${boxName}'. Missatge:`, message);
+    if (message.toLowerCase().includes('mailbox does not exist') || message.toLowerCase().includes('no such mailbox')) {
+         console.log(`[API-IMAP-FETCH] La bústia '${boxName}' no existeix. Saltant...`);
+         return [];
+    }
+    throw err;
+  } finally {
+    if (lock) {
+      await lock.release();
+      console.log(`[API-IMAP-FETCH] Bloqueig de la bústia '${boxName}' alliberat.`);
+    }
   }
 }
 
+// Handler POST principal (sense canvis necessaris aquí per aquests errors)
 export async function POST(request: Request) {
   console.log('[API-IMAP-INICI] Petició rebuda.');
-  let connection: ImapConnection | undefined; // <-- Utilitzem el nou tipus
-
+  let client: ImapFlow | null = null;
   try {
-    // ... (la resta de la lògica de validació i connexió es manté igual)
     const functionsSecret = process.env.FUNCTIONS_SECRET;
     const authHeader = request.headers.get('Authorization');
     if (!functionsSecret || authHeader !== `Bearer ${functionsSecret}`) {
       console.error('[API-IMAP-ERROR] Autorització fallida.');
       return NextResponse.json({ error: "No autoritzat." }, { status: 401 });
     }
-
     const body = await request.json();
     const { config, encryptedPassword, lastSyncDate } = body;
-    if (!config || !encryptedPassword) {
-      return NextResponse.json({ error: "Falten credencials." }, { status: 400 });
+    if (!config || !config.imap || !encryptedPassword) {
+      return NextResponse.json({ error: "Falten credencials o configuració imap." }, { status: 400 });
     }
-
     const secretKey = process.env.ENCRYPTION_SECRET_KEY;
     if (!secretKey) {
       console.error("[API-IMAP-ERROR] ENCRYPTION_SECRET_KEY no configurada.");
-      return NextResponse.json({ error: "Error de configuració." }, { status: 500 });
+      return NextResponse.json({ error: "Error de configuració del servidor." }, { status: 500 });
     }
-
     const decryptedPassword = AES.decrypt(encryptedPassword, secretKey).toString(Utf8);
     if (!decryptedPassword) {
-      return NextResponse.json({ error: "No s'ha pogut desencriptar." }, { status: 500 });
+      return NextResponse.json({ error: "No s'ha pogut desencriptar la contrasenya." }, { status: 500 });
     }
 
-    const imapConfig = {
-      imap: {
-        user: config.imap.user,
-        password: decryptedPassword,
+    client = new ImapFlow({ /* ...configuració... */
         host: config.imap.host,
         port: config.imap.port,
-        tls: true,
-        authTimeout: 10000,
-        tlsOptions: { rejectUnauthorized: false }
-      }
-    };
+        secure: config.imap.tls ?? true,
+        auth: { user: config.imap.user, pass: decryptedPassword },
+        logger: false,
+        tls: { rejectUnauthorized: false },
+        socketTimeout: 60000,
+        connectionTimeout: 15000
+    });
 
-    console.log(`[API-IMAP-CONN] Intentant connectar a ${config.imap.host} per a l'usuari ${config.imap.user}`);
-    connection = await imaps.connect(imapConfig);
-    console.log(`[API-IMAP-CONN] Connexió amb ${config.imap.host} establerta.`);
+    console.log(`[API-IMAP-CONN] Intentant connectar (imapflow) a ${config.imap.host} per a l'usuari ${config.imap.user}`);
+    await client.connect();
+    console.log(`[API-IMAP-CONN] Connexió (imapflow) amb ${config.imap.host} establerta.`);
 
-    const sentBoxName = await getSentBoxName(connection);
-    console.log(`[API-IMAP-FETCH] Bústia d'enviats detectada: '${sentBoxName}'`);
+    const sentBoxName = await getSentBoxNameFlow(client);
+    console.log(`[API-IMAP-FETCH] Bústia d'enviats detectada/assignada: '${sentBoxName}'`);
 
-    const [inboxEmails, sentEmails] = await Promise.all([
-      fetchEmailsFromMailbox(connection, 'INBOX', 'rebut', lastSyncDate),
-      fetchEmailsFromMailbox(connection, sentBoxName, 'enviat', lastSyncDate)
-    ]);
+    console.log('[API-IMAP-FETCH] Obtenint correus de INBOX...');
+    const inboxEmails = await fetchEmailsFromMailboxFlow(client, 'INBOX', 'rebut', lastSyncDate);
+    console.log(`[API-IMAP-FETCH] Obtinguts ${inboxEmails.length} correus de INBOX.`);
+
+    console.log(`[API-IMAP-FETCH] Obtenint correus de ${sentBoxName}...`);
+    const sentEmails = await fetchEmailsFromMailboxFlow(client, sentBoxName, 'enviat', lastSyncDate);
+    console.log(`[API-IMAP-FETCH] Obtinguts ${sentEmails.length} correus de ${sentBoxName}.`);
 
     console.log(`[API-IMAP-COMPLET] S'han trobat ${inboxEmails.length} a INBOX i ${sentEmails.length} a ${sentBoxName}.`);
 
-    await connection.end(); // <-- TypeScript hauria de reconèixer 'end'
-    connection = undefined;
+    await client.logout();
+    console.log('[API-IMAP-CONN] Desconnectat (logout) del servidor IMAP.');
+    client = null;
 
     return NextResponse.json([...inboxEmails, ...sentEmails]);
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Error desconegut a l'API de sync-imap";
     console.error("[API SYNC-IMAP ERROR GENERAL]:", errorMessage);
+    console.error("[API SYNC-IMAP ERROR OBJECT]:", error);
 
-    if (connection) {
+    if (client && client.usable) {
       try {
-        await connection.end(); // <-- TypeScript hauria de reconèixer 'end'
-      } catch (closeErr: unknown) {
-        console.error("Error al tancar la connexió després d'un error:", (closeErr as Error).message);
+        console.log('[API-IMAP-CLEANUP] Intentant logout després d\'error...');
+        await client.logout();
+        console.log('[API-IMAP-CLEANUP] Logout amb èxit després d\'error.');
+      } catch (logoutErr: unknown) {
+        console.error("[API-IMAP-CLEANUP] Error durant el logout després d'un error:", (logoutErr as Error).message);
       }
     }
+    client = null;
 
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
