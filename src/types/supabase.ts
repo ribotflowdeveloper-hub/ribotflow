@@ -1722,9 +1722,11 @@ export type Database = {
           duration: number | null
           finish_date: string | null
           id: number
+          is_active: boolean | null
           is_completed: boolean
           priority: Database["public"]["Enums"]["task_priority"] | null
           team_id: string | null
+          time_tracking_log: Json | null
           title: string
           user_asign_id: string | null
           user_id: string
@@ -1741,9 +1743,11 @@ export type Database = {
           duration?: number | null
           finish_date?: string | null
           id?: number
+          is_active?: boolean | null
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
+          time_tracking_log?: Json | null
           title: string
           user_asign_id?: string | null
           user_id: string
@@ -1760,9 +1764,11 @@ export type Database = {
           duration?: number | null
           finish_date?: string | null
           id?: number
+          is_active?: boolean | null
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
+          time_tracking_log?: Json | null
           title?: string
           user_asign_id?: string | null
           user_id?: string
@@ -2891,6 +2897,10 @@ export type Database = {
       jsonb: {
         Args: { "": unknown }
         Returns: Json
+      }
+      log_task_activity: {
+        Args: { new_status_input: boolean; task_id_input: number }
+        Returns: undefined
       }
       longtransactionsenabled: {
         Args: Record<PropertyKey, never>

@@ -80,6 +80,17 @@ CREATE TYPE "public"."task_priority" AS ENUM (
 ALTER TYPE "public"."task_priority" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."ticket_filter" AS ENUM (
+    'tots',
+    'rebuts',
+    'enviats',
+    'noLlegits'
+);
+
+
+ALTER TYPE "public"."ticket_filter" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."ticket_status" AS ENUM (
     'Obert',
     'En progrés',
@@ -90,6 +101,15 @@ CREATE TYPE "public"."ticket_status" AS ENUM (
 
 
 ALTER TYPE "public"."ticket_status" OWNER TO "postgres";
+
+
+CREATE TYPE "public"."ticket_type" AS ENUM (
+    'rebut',
+    'enviat'
+);
+
+
+ALTER TYPE "public"."ticket_type" OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."accept_invitation"("invitation_token" "text") RETURNS "void"
@@ -680,50 +700,6 @@ $$;
 ALTER FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_inbox_tickets"("p_user_id" "uuid", "p_team_id" "uuid", "p_visible_user_ids" "uuid"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text") RETURNS TABLE("id" bigint, "user_id" "uuid", "subject" "text", "body" "text", "status" "text", "provider_message_id" "text", "type" "text", "preview" "text", "sent_at" timestamp with time zone, "sender_name" "text", "sender_email" "text", "created_at" timestamp with time zone, "contact_id" bigint, "provider" "text", "attachments" "jsonb", "contacts" json, "assignment" json)
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        t.id, t.user_id, t.subject, t.body, t.status, t.provider_message_id, t.type, t.preview,
-        t.sent_at, t.sender_name, t.sender_email, t.created_at, t.contact_id, t.provider, t.attachments,
-        
-        -- ✅ LÒGICA CORREGIDA AMB CASE: Si no hi ha contacte (c.id IS NULL), retorna NULL.
-        -- Si sí que n'hi ha, construeix l'objecte JSON.
-        CASE
-            WHEN c.id IS NOT NULL THEN
-                json_build_object('id', c.id, 'nom', c.nom, 'email', c.email, 'empresa', c.empresa)
-            ELSE
-                NULL
-        END AS contacts,
-        
-        json_build_object('deal_id', ta.deal_id) AS assignment
-    FROM
-        public.tickets AS t
-    LEFT JOIN
-        public.contacts AS c ON t.contact_id = c.id
-    LEFT JOIN
-        public.ticket_assignments AS ta ON t.id = ta.ticket_id AND ta.team_id = p_team_id
-    WHERE
-        t.user_id = ANY(p_visible_user_ids)
-        AND (
-            p_search_term IS NULL OR p_search_term = '' OR
-            t.subject ILIKE '%' || p_search_term || '%' OR
-            t.sender_name ILIKE '%' || p_search_term || '%' OR
-            t.sender_email ILIKE '%' || p_search_term || '%'
-        )
-    ORDER BY
-        t.sent_at DESC
-    LIMIT p_limit
-    OFFSET p_offset;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_inbox_tickets"("p_user_id" "uuid", "p_team_id" "uuid", "p_visible_user_ids" "uuid"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") RETURNS TABLE("id" bigint, "created_at" timestamp with time zone, "user_id" "uuid", "contact_id" bigint, "provider" "text", "provider_message_id" "text", "subject" "text", "body" "text", "sender_name" "text", "sender_email" "text", "sent_at" timestamp with time zone, "status" "text", "attachments" "jsonb", "preview" "text", "type" "text", "contact_nom" "text", "contact_email" "text", "profile_full_name" "text", "profile_avatar_url" "text")
     LANGUAGE "plpgsql"
     AS $$
@@ -1179,6 +1155,51 @@ $$;
 ALTER FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+    -- Variable per guardar l'objecte JSON que afegirem
+    new_log_entry jsonb;
+    -- Variable per guardar el text de l'acció
+    action_text text;
+    -- Obtenim l'ID de l'usuari que fa l'acció
+    current_user_id uuid := auth.uid();
+BEGIN
+    -- 1. Determinem el text de l'acció segons el nou estat
+    IF new_status_input = TRUE THEN
+        action_text := 'actiu';
+    ELSE
+        action_text := 'inactiu';
+    END IF;
+
+    -- 2. Creem el nou objecte JSON que volem afegir a l'històric
+    new_log_entry := jsonb_build_object(
+        'timestamp', now(),              -- Data i hora actuals
+        'action', action_text,           -- 'actiu' o 'inactiu'
+        'user_id', current_user_id       -- L'ID de l'usuari que ha fet el canvi
+    );
+
+    -- 3. Actualitzem la tasca amb la nova informació
+    UPDATE public.tasks
+    SET 
+        -- Canviem l'estat 'is_active'
+        is_active = new_status_input,
+        
+        -- Afegim la nova entrada a l'històric JSONb
+        -- COALESCE s'assegura que si el camp és NULL, el tracti com un array buit '[]'
+        -- L'operador '||' afegeix el nou objecte al final de l'array
+        time_tracking_log = COALESCE(time_tracking_log, '[]'::jsonb) || new_log_entry
+        
+    WHERE id = task_id_input;
+
+END;
+$$;
+
+
+ALTER FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) RETURNS TABLE("id" bigint, "content" "text", "metadata" "jsonb", "similarity" double precision)
     LANGUAGE "plpgsql"
     AS $$
@@ -1458,6 +1479,84 @@ $$;
 
 
 ALTER FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) RETURNS TABLE("id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "client_name" "text", "contact_id" bigint, "contact_nom" "text", "total_count" bigint)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    WITH filtered_invoices AS (
+        SELECT
+            i.id,
+            COALESCE(i.invoice_number, i.id::text) AS invoice_number,
+            i.issue_date,
+            i.due_date,
+            i.total_amount,
+            i.status,
+            i.client_name,
+            i.contact_id,
+            c.nom AS contact_nom
+        FROM
+            public.invoices i
+        LEFT JOIN
+            public.contacts c ON i.contact_id = c.id
+        WHERE
+            i.team_id = team_id_param
+            AND (
+                status_param IS NULL
+                OR status_param = 'all'
+                OR i.status = status_param
+            )
+            AND (
+                contact_id_param IS NULL
+                OR contact_id_param = 0
+                OR i.contact_id = contact_id_param
+            )
+            AND (
+                search_term_param IS NULL OR btrim(search_term_param) = ''
+                OR COALESCE(i.invoice_number, i.id::text) ILIKE '%' || btrim(search_term_param) || '%'
+                OR i.client_name ILIKE '%' || btrim(search_term_param) || '%'
+                OR c.nom ILIKE '%' || btrim(search_term_param) || '%'
+                OR CAST(i.id AS text) ILIKE '%' || btrim(search_term_param) || '%'
+            )
+    ),
+    counted_invoices AS (
+        SELECT *, COUNT(*) OVER() AS total_count
+        FROM filtered_invoices
+    )
+    SELECT
+        ci.id,
+        ci.invoice_number,
+        ci.issue_date,
+        ci.due_date,
+        ci.total_amount,
+        ci.status,
+        ci.client_name,
+        ci.contact_id,
+        ci.contact_nom,
+        ci.total_count
+    FROM counted_invoices ci
+    ORDER BY
+        CASE WHEN sort_by_param = 'invoice_number' AND sort_order_param = 'asc' THEN ci.invoice_number END ASC,
+        CASE WHEN sort_by_param = 'invoice_number' AND sort_order_param = 'desc' THEN ci.invoice_number END DESC,
+        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN ci.contact_nom END ASC,
+        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN ci.contact_nom END DESC,
+        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN ci.issue_date END ASC,
+        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN ci.issue_date END DESC NULLS LAST,
+        CASE WHEN sort_by_param = 'due_date' AND sort_order_param = 'asc' THEN ci.due_date END ASC,
+        CASE WHEN sort_by_param = 'due_date' AND sort_order_param = 'desc' THEN ci.due_date END DESC NULLS LAST,
+        CASE WHEN sort_by_param = 'total_amount' AND sort_order_param = 'asc' THEN ci.total_amount END ASC,
+        CASE WHEN sort_by_param = 'total_amount' AND sort_order_param = 'desc' THEN ci.total_amount END DESC,
+        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN ci.status END ASC,
+        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN ci.status END DESC
+    LIMIT limit_param
+    OFFSET offset_param;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) RETURNS "void"
@@ -1861,7 +1960,8 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "address" "jsonb",
     "children_count" smallint,
     "partner_name" "text",
-    "team_id" "uuid"
+    "team_id" "uuid",
+    "supplier_id" "uuid"
 );
 
 
@@ -2137,7 +2237,11 @@ CREATE TABLE IF NOT EXISTS "public"."invoice_items" (
     "product_id" bigint,
     "tax_rate" numeric DEFAULT 0.21,
     "team_id" "uuid",
-    "total" numeric
+    "total" numeric,
+    "discount_percentage" numeric DEFAULT 0,
+    "discount_amount" numeric DEFAULT 0,
+    "reference_sku" "text",
+    CONSTRAINT "invoice_items_discount_percentage_check" CHECK ((("discount_percentage" >= (0)::numeric) AND ("discount_percentage" <= (100)::numeric)))
 );
 
 
@@ -2178,6 +2282,16 @@ CREATE TABLE IF NOT EXISTS "public"."invoices" (
     "verifactu_previous_signature" "text",
     "team_id" "uuid",
     "updated_at" timestamp with time zone,
+    "project_id" "uuid",
+    "terms" "text",
+    "currency" character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
+    "language" character varying(5) DEFAULT 'ca'::character varying NOT NULL,
+    "paid_at" timestamp with time zone,
+    "sent_at" timestamp with time zone,
+    "shipping_cost" numeric DEFAULT 0,
+    "payment_details" "text",
+    "company_logo_url" "text",
+    "client_reference" "text",
     CONSTRAINT "invoices_status_check" CHECK (("status" = ANY (ARRAY['Draft'::"text", 'Issued'::"text", 'Paid'::"text", 'Cancelled'::"text", 'Overdue'::"text", 'Sent'::"text"])))
 );
 
@@ -2552,7 +2666,9 @@ CREATE TABLE IF NOT EXISTS "public"."tasks" (
     "user_asign_id" "uuid",
     "asigned_date" timestamp with time zone,
     "duration" numeric,
-    "finish_date" timestamp with time zone
+    "finish_date" timestamp with time zone,
+    "time_tracking_log" "jsonb" DEFAULT '[]'::"jsonb",
+    "is_active" boolean
 );
 
 
@@ -2572,6 +2688,10 @@ COMMENT ON COLUMN "public"."tasks"."duration" IS 'Duració';
 
 
 COMMENT ON COLUMN "public"."tasks"."finish_date" IS 'Finish Date';
+
+
+
+COMMENT ON COLUMN "public"."tasks"."is_active" IS 'Activa';
 
 
 
@@ -3030,6 +3150,10 @@ CREATE INDEX "idx_contacts_user_id_last_interaction" ON "public"."contacts" USIN
 
 
 
+CREATE INDEX "idx_invoices_project_id" ON "public"."invoices" USING "btree" ("project_id");
+
+
+
 CREATE INDEX "idx_invoices_user_id_status" ON "public"."invoices" USING "btree" ("user_id", "status");
 
 
@@ -3189,6 +3313,11 @@ ALTER TABLE ONLY "public"."expenses"
 
 
 
+ALTER TABLE ONLY "public"."contacts"
+    ADD CONSTRAINT "fk_contact_supplier" FOREIGN KEY ("supplier_id") REFERENCES "public"."suppliers"("id") ON DELETE SET NULL;
+
+
+
 ALTER TABLE ONLY "public"."invoices"
     ADD CONSTRAINT "fk_invoices_quote_id" FOREIGN KEY ("quote_id") REFERENCES "public"."quotes"("id") ON DELETE SET NULL;
 
@@ -3251,6 +3380,11 @@ ALTER TABLE ONLY "public"."invoices"
 
 ALTER TABLE ONLY "public"."invoices"
     ADD CONSTRAINT "invoices_contact_id_fkey" FOREIGN KEY ("contact_id") REFERENCES "public"."contacts"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."invoices"
+    ADD CONSTRAINT "invoices_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE SET NULL;
 
 
 
@@ -3539,12 +3673,6 @@ CREATE POLICY "Allow users full access to their own attachments" ON "public"."in
 
 
 
-CREATE POLICY "Allow users full access to their own expense attachments" ON "public"."expense_attachments" USING (("auth"."uid"() = ( SELECT "expenses"."user_id"
-   FROM "public"."expenses"
-  WHERE ("expenses"."id" = "expense_attachments"."expense_id"))));
-
-
-
 CREATE POLICY "Allow users full access to their own invoice items" ON "public"."invoice_items" USING (("auth"."uid"() = ( SELECT "invoices"."user_id"
    FROM "public"."invoices"
   WHERE ("invoices"."id" = "invoice_items"."invoice_id"))));
@@ -3686,6 +3814,12 @@ CREATE POLICY "La llista de serveis és pública i visible per a tothom" ON "pub
 CREATE POLICY "Owners and admins can manage inbox permissions." ON "public"."inbox_permissions" USING (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"]))))));
+
+
+
+CREATE POLICY "Permetre als usuaris accés complet als seus propis fitxers adj" ON "public"."expense_attachments" USING (("auth"."uid"() = ( SELECT "expenses"."user_id"
+   FROM "public"."expenses"
+  WHERE ("expenses"."id" = "expense_attachments"."expense_id"))));
 
 
 
@@ -4130,12 +4264,6 @@ GRANT ALL ON FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid
 
 
 
-GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "uuid", "p_team_id" "uuid", "p_visible_user_ids" "uuid"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "uuid", "p_team_id" "uuid", "p_visible_user_ids" "uuid"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "uuid", "p_team_id" "uuid", "p_visible_user_ids" "uuid"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") TO "service_role";
@@ -4250,6 +4378,12 @@ GRANT ALL ON FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") TO "s
 
 
 
+GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "service_role";
@@ -4283,6 +4417,12 @@ GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_t
 GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
 
 
 
