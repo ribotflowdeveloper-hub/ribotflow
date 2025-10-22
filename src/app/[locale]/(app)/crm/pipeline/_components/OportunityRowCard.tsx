@@ -1,3 +1,5 @@
+// /app/[locale]/(app)/crm/pipeline/_components/OportunityRowCard.tsx
+
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { cn } from '@/lib/utils/utils';
@@ -6,9 +8,9 @@ import { useTranslations, useLocale } from 'next-intl';
 import { type OpportunityWithContact } from './PipelineData';
 
 interface OpportunityRowCardProps {
-  op: OpportunityWithContact;
-  index: number;
-  onEdit: (op: OpportunityWithContact) => void;
+    op: OpportunityWithContact;
+    index: number;
+    onEdit: (op: OpportunityWithContact) => void;
 }
 
 export const OpportunityRowCard: React.FC<OpportunityRowCardProps> = ({ op, index, onEdit }) => {
@@ -24,9 +26,13 @@ export const OpportunityRowCard: React.FC<OpportunityRowCardProps> = ({ op, inde
                     {...provided.dragHandleProps}
                     onDoubleClick={() => onEdit(op)}
                     className={cn(
-                        "grid grid-cols-2 md:grid-cols-5 gap-4 px-4 py-3 items-center rounded-lg bg-card shadow-md transition-all cursor-pointer",
-                        "hover:shadow-lg hover:scale-[1.01]",
-                        snapshot.isDragging ? "border-l-4 border-primary shadow-xl" : "border-l-4 border-transparent"
+                        // ✅ Estils Base: bg-card ja funciona bé en ambdós modes. Afegim vora subtil per a light.
+                        "grid grid-cols-2 md:grid-cols-5 gap-4 px-4 py-3 items-center rounded-lg bg-card shadow-sm border border-border dark:border-transparent", // Afegit border i ajustat dark
+                        // ✅ Estils Hover: Lleuger canvi de fons amb 'muted' per a light mode
+                        "hover:shadow-lg hover:bg-muted/50 dark:hover:bg-muted/20 hover:scale-[1.01]", // Ajustat hover per a light/dark
+                        // Estils Draggable (Comuns)
+                        "transition-all cursor-pointer",
+                        snapshot.isDragging ? "border-l-4 border-primary shadow-xl scale-[1.03]" : "border-l-4 border-transparent" // Augmentat lleugerament scale en drag
                     )}
                 >
                     <div className="font-semibold text-base text-foreground col-span-2">{op.name}</div>
@@ -34,7 +40,8 @@ export const OpportunityRowCard: React.FC<OpportunityRowCardProps> = ({ op, inde
                         <User className="w-4 h-4 mr-2 text-primary" />
                         {op.contacts?.nom || t('noContact')}
                     </div>
-                    <div className="flex items-center text-sm font-medium text-green-600">
+                    {/* ✅ Color verd més fosc per a mode clar */}
+                    <div className="flex items-center text-sm font-medium text-emerald-700 dark:text-green-500">
                         <Euro className="w-4 h-4 mr-2" />
                         {op.value?.toLocaleString(locale) || "0"} €
                     </div>

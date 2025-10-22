@@ -1292,6 +1292,7 @@
       "placeholder": "ejemplo.com o spammer@ejemplo.com",
       "addButton": "Agregar",
       "emptyTitle": "La lista negra está vacía",
+      "searchPlaceholder": "Buscar en la lista negra...",
       "emptyDescription": "Cuando agregues reglas, aparecerán aquí.",
       "toast": {
         "error": "Error",

@@ -9,10 +9,10 @@ import { PIPELINE_STAGES_MAP } from '@/config/pipeline';
 import { OpportunityCard } from './OportunityCard';
 
 interface StageColumnProps {
-  stage: Stage;
-  opportunities: OpportunityWithContact[];
-  onEditOpportunity: (opportunity: OpportunityWithContact) => void;
-  onAddClick: () => void;
+    stage: Stage;
+    opportunities: OpportunityWithContact[];
+    onEditOpportunity: (opportunity: OpportunityWithContact) => void;
+    onAddClick: () => void;
 }
 
 export const StageColumn: React.FC<StageColumnProps> = ({ stage, opportunities, onEditOpportunity, onAddClick }) => {
@@ -23,7 +23,14 @@ export const StageColumn: React.FC<StageColumnProps> = ({ stage, opportunities, 
     const stageColors: Record<string, string> = { 'Prospecte': 'border-blue-500', 'Contactat': 'border-cyan-500', 'Proposta Enviada': 'border-purple-500', 'Negociació': 'border-yellow-500', 'Guanyat': 'border-green-500', 'Perdut': 'border-red-500' };
 
     return (
-        <div className="flex flex-col h-full bg-muted/20 rounded-xl overflow-hidden">
+        // ✅✅ CANVI PRINCIPAL: Ajustem fons i vores per light/dark ✅✅
+        <div className={cn(
+            "flex flex-col h-full rounded-xl overflow-hidden",
+            // Mode Clar: Fons 'card' (blanc/quasi blanc) amb vora
+            "bg-card border border-border",
+            // Mode Fosc: Mantenim el fons semi-transparent original, sense vora extra
+            "dark:bg-muted/20 dark:border-transparent"
+        )}>
             <div className={cn('p-4 border-t-4', stageColors[stage.name] || 'border-gray-500')}>
                 <div className="flex justify-between items-center">
                     <h3 className="font-bold text-lg text-foreground mb-1">{stageKey ? t(`stageNames.${stageKey}`) : stage.name}</h3>

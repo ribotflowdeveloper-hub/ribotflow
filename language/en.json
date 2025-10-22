@@ -1300,6 +1300,7 @@
       "addButton": "Add",
       "emptyTitle": "The blacklist is empty",
       "emptyDescription": "When you add rules, they will appear here.",
+      "searchPlaceholder": "Search rules...",
       "toast": {
         "error": "Error",
         "addSuccess": "Rule Added",

@@ -1245,6 +1245,7 @@
       "addButton": "Afegir",
       "emptyTitle": "La llista negra és buida",
       "emptyDescription": "Quan afegeixis regles, apareixeran aquí.",
+      "searchPlaceholder": "Cerca per domini o correu...",
       "toast": {
         "error": "Error",
         "addSuccess": "Regla Afegida",
