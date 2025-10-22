@@ -439,8 +439,13 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   └── page.tsx
 │       │   ├── politica-privacitat
 │       │   │   └── page.tsx
-│       │   └── termes-condicions
-│       │       └── page.tsx
+│       │   ├── termes-condicions
+│       │   │   └── page.tsx
+│       │   └── _components
+│       │       ├── CookiePolicyContent.tsx
+│       │       ├── LegalNoticeContent.tsx
+│       │       ├── PrivacyPolicyContent.tsx
+│       │       └── TermsContent.tsx
 │       ├── accept-invite
 │       │   └── route.ts
 │       ├── global-error.tsx
@@ -530,6 +535,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       ├── EditorWysiwyg.tsx
 │       ├── input.tsx
 │       ├── label.tsx
+│       ├── LegalModalTrigger.tsx
 │       ├── pagination.tsx
 │       ├── popover.tsx
 │       ├── progress.tsx
@@ -625,7 +631,9 @@ ESTRUCTURA DEL PROJECTE (./src)
     │   ├── index.ts
     │   └── notification.ts
     ├── socialPost
-    └── supabase.ts
+    ├── supabase.ts
+    └── tasks
+        └── task.ts
 
 
 CONTINGUT DELS FITXERS
@@ -1031,6 +1039,35 @@ export async function updateSimpleTask(taskId: number, updatedData: Partial<Tabl
   revalidatePath('/[locale]/(app)/crm/calendari', 'layout');
   revalidatePath('/[locale]/(app)/dashboard', 'layout');
   return { error: null };
+}
+
+export async function setTaskActiveStatus(taskId: number, newStatus: boolean) {
+  console.log(`--- [Server Action] Canviant estat de la tasca ${taskId} a ${newStatus} ---`);
+
+  const session = await validateUserSession();
+  // Retornem un objecte d'error coherent amb les altres funcions
+  if ('error' in session) {
+    return { error: { message: session.error.message } };
+  }
+  const { supabase } = session;
+
+  // Cridem la funció 'log_task_activity' que hem creat a la base de dades
+  const { error } = await supabase.rpc('log_task_activity', {
+    task_id_input: taskId,
+    new_status_input: newStatus
+  });
+
+  if (error) {
+    console.error("Error en RPC 'log_task_activity':", error);
+    return { error: { message: error.message } };
+  }
+
+  // Revalidem les rutes per refrescar la UI, igual que a les altres accions
+  revalidatePath('/[locale]/(app)/crm/calendari', 'layout');
+  revalidatePath('/[locale]/(app)/dashboard', 'layout');
+
+  // Retornem èxit
+  return { data: { success: true } };
 }
 
 // =================== FILE: src/app/api/chatbot/route.ts ===================
@@ -7456,7 +7493,7 @@ import { CalendarEvent } from '@/types/crm';
 import { fetchCalendarData } from '../_hooks/calendarFetch';
 import { ActiveSources } from '@/types/crm/calendar';
 import { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCalendar } from './CalendarData';
-import { TaskDialogManager } from '@/components/features/tasks/TaskDialogManager';
+import { EnrichedTask, TaskDialogManager } from '@/components/features/tasks/TaskDialogManager';
 import { Tables } from '@/types/supabase';
 import CalendarToolbar from './CalendarToolbar';
 import useCalendar from '../_hooks/useCalendar';
@@ -7556,7 +7593,7 @@ export default function CalendarClient(props: CalendarClientProps) {
     } = useCalendarDialogs({ updateDateAndData });
 
     const { handleMoveEvent } = useCalendar(tasks, handleMoveTask);
-    
+
     // NOU: Lògica per gestionar el clic a "+X més"
     const handleShowMore = useCallback((events: CalendarEvent[], date: Date) => {
         handleViewChange('day');
@@ -7590,11 +7627,11 @@ export default function CalendarClient(props: CalendarClientProps) {
         }
         return format(date, dateFormat, { locale: es }).replace(/^\w/, c => c.toUpperCase());
     }, [date, view]);
-    
+
     const handleCalendarNavigate: CalendarProps<CalendarEvent>['onNavigate'] = useCallback((newDate: Date, view: View, action: NavigateAction) => {
         handleToolbarNavigation(action, newDate);
     }, [handleToolbarNavigation]);
-    
+
     const handleToolbarAction = useCallback((action: NavigateAction) => {
         handleToolbarNavigation(action, undefined);
     }, [handleToolbarNavigation]);
@@ -7602,7 +7639,7 @@ export default function CalendarClient(props: CalendarClientProps) {
 
     const toolbarProps = useMemo(() => ({
         label: formattedLabel,
-        onNavigate: handleToolbarAction, 
+        onNavigate: handleToolbarAction,
         onView: handleViewChange,
         view: view,
         views: CALENDAR_VIEWS,
@@ -7616,7 +7653,7 @@ export default function CalendarClient(props: CalendarClientProps) {
     return (
         <div>
             <CalendarToolbar {...toolbarProps} />
-            
+
             <DragAndDropCalendar
                 localizer={localizer}
                 events={filteredEvents}
@@ -7649,7 +7686,11 @@ export default function CalendarClient(props: CalendarClientProps) {
             />
 
             <TaskDialogManager
-                task={selectedTask ? { ...selectedTask, user_id: selectedTask.user_id ?? '' } : null}
+                task={selectedTask ? {
+                    ...selectedTask,
+                    user_id: selectedTask.user_id ?? '',
+                    time_tracking_log: selectedTask.time_tracking_log ?? null // <-- AFEGEIX AQUESTA LÍNIA
+                } as EnrichedTask: null}
                 open={isTaskDialogOpen}
                 onOpenChange={setIsTaskDialogOpen}
                 contacts={props.contacts}
@@ -15286,6 +15327,7 @@ export async function addTask(taskData: NewTaskPayload) {
         ...taskData,
         user_id: user.id,
         team_id: activeTeamId,
+        is_active: false
     }]);
 
   if (error) {
@@ -25547,10 +25589,7 @@ export default async function InstallPage() {
             ios_title: t('ios_title'),
             ios_instructions: t('ios_instructions'),
             already_installed: t('already_installed'),
-            
-            // ✅ CORRECCIÓ: Canviem 'manual_install_title' pel nom correcte 'connect_device_title'.
-            // També ens assegurem d'utilitzar la clau de traducció corresponent.
-            connect_device_title: t('connect_device_title'),
+            connect_device_title: t('manual_install_title'),
           }}
         />
       </div>
@@ -26515,30 +26554,20 @@ export function IntegrationsSkeleton() {
 
 // =================== FILE: src/app/[locale]/(app)/settings/layout.tsx ===================
 
-import { SettingsNav } from "./_components/settings-nav";
+import React from 'react';
 
-// Aquest component de layout envoltarà totes les pàgines de la secció de configuració.
+// Aquest layout ja no necessita crear la seva pròpia estructura de columnes,
+// ja que el layout principal de l'aplicació ('AppClientLayout') s'encarrega dels sidebars.
 export default function SettingsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    // En pantalles grans (lg), creem una graella de dues columnes.
-    // En pantalles més petites, els elements es col·loquen un a sobre de l'altre.
-    <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-12 space-y-8 lg:space-y-0">
-      <aside className="lg:col-span-1">
-        {/* El menú de navegació */}
-        <SettingsNav />
-      </aside>
-      <main className="lg:col-span-1">
-        {/* Aquí es renderitzarà el contingut de cada pàgina (perfil, facturació, etc.) */}
-        {children}
-      </main>
-    </div>
-  );
+  // Simplement retornem el contingut de la pàgina. El layout de nivell superior
+  // el col·locarà automàticament a l'àrea de contingut principal.
+  // L'embolcallem en un 'div' per consistència.
+  return <div className="h-full">{children}</div>;
 }
-
 
 // =================== FILE: src/app/[locale]/(app)/settings/page.tsx ===================
 
@@ -29195,11 +29224,9 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
     const [isOpen, setIsOpen] = useState(false);
     const t = useTranslations('Navigation');
 
-    // Funció que crida a handleNavigation i tanca el menú
     const createClickHandler = (item: NavItem) => () => {
         handleNavigation(item);
-        // Tanquem el menú si és un enllaç simple o si és un sub-ítem
-        if (item.isSingle !== false) { // isSingle pot ser true o undefined
+        if (item.isSingle !== false) {
             setIsOpen(false);
         }
     };
@@ -29207,10 +29234,12 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
     return (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden"><Menu className="h-6 w-6" /></Button>
+                <Button variant="ghost" size="icon" className="md:hidden"><Menu className="h-6 w-6" /></Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-full sm:w-[320px] p-0 flex flex-col">
                 <SheetHeader className="p-4 border-b"><SheetTitle>{t('menuTitle')}</SheetTitle></SheetHeader>
+                
+                {/* Aquesta part es queda igual */}
                 <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                     {navModules.map(module => (
                         module.isSingle ? (
@@ -29237,15 +29266,41 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
                         )
                     ))}
                 </nav>
+
+                {/* ✅ CORRECCIÓ: Apliquem la mateixa lògica d'acordió als 'bottomItems' */}
                 <div className="p-4 border-t mt-auto space-y-1">
-                    {bottomItems.map(item =>
-                        item.notImplemented ? (
-                            <Button key={item.id} variant="ghost" className="w-full justify-start ..." onClick={onNotImplementedClick}>{/* ... */}</Button>
+                    {bottomItems.map(item => (
+                        item.isSingle ? (
+                            // Gestiona 'AI' i altres enllaços simples
+                            <Button
+                                key={item.id}
+                                variant="ghost"
+                                className="w-full justify-start gap-3 px-4 py-3 text-base font-medium"
+                                onClick={item.notImplemented ? onNotImplementedClick : createClickHandler(item)}
+                            >
+                                <item.icon className="w-5 h-5" /> {t(item.labelKey)}
+                            </Button>
                         ) : (
-                            <Button key={item.id} variant="ghost" className="w-full justify-start ..." onClick={createClickHandler(item)}>{/* ... */}</Button>
+                            // Gestiona 'Settings', que ara té fills
+                            <Accordion key={item.id} type="single" collapsible className="w-full">
+                                <AccordionItem value={item.id} className="border-b-0">
+                                    <AccordionTrigger className="px-4 py-3 text-base font-medium hover:no-underline hover:bg-muted rounded-lg">
+                                        <div className="flex items-center gap-3"><item.icon className="w-5 h-5" />{t(item.labelKey)}</div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pl-8 pt-2 pb-1">
+                                        <div className="flex flex-col gap-1">
+                                            {item.children?.map((child: NavItem) => (
+                                                <Button key={child.id} variant="ghost" className="w-full justify-start gap-3 px-4 py-2 text-muted-foreground hover:text-foreground" onClick={createClickHandler(child)}>
+                                                    <child.icon className="w-4 h-4" />{t(child.labelKey)}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
+                            </Accordion>
                         )
-                    )}
-                    <Button variant="ghost" className="w-full justify-start ... text-red-500" onClick={onOpenSignOutDialog}>
+                    ))}
+                    <Button variant="ghost" className="w-full justify-start gap-3 px-4 py-3 text-base font-medium text-red-500 hover:text-red-600" onClick={onOpenSignOutDialog}>
                         <LogOut className="w-5 h-5" /> {t('signOut')}
                     </Button>
                 </div>
@@ -30030,158 +30085,299 @@ export function useLoginForm() {
 
 // =================== FILE: src/app/[locale]/(auth)/signup/page.tsx ===================
 
-// /app/[locale]/(auth)/signup/page.tsx (VERSIÓ FINAL)
+import { SignupClient } from './_components/SignupClient'
+import { getTranslations } from 'next-intl/server'
+import { type Metadata } from 'next'
 
-import { Suspense } from 'react';
-import { SignupClient } from './_components/SignupClient';
+// Importem els components de contingut legal
+import { PrivacyPolicyContent } from '@/app/[locale]/(legal)/_components/PrivacyPolicyContent'
+import { TermsContent } from '@/app/[locale]/(legal)/_components/TermsContent' 
 
-// Ja no necessitem definir 'SignupPageProps' si no hi ha props.
-// La pàgina ja no necessita rebre 'searchParams'.
-export default async function SignupPage() {
-  return (
-    <Suspense>
-      <SignupClient />
-    </Suspense>
-  );
+// ✅ 1. Modifiquem la interfície per definir 'params' com una Promise.
+//    També apliquem el mateix a 'searchParams' per a consistència i evitar futurs errors.
+interface SignupPageProps {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+/**
+ * Funció per generar les metadades de la pàgina.
+ */
+export async function generateMetadata(props: SignupPageProps): Promise<Metadata> {
+  // ✅ 2. Resolem la promesa per accedir al 'locale'.
+  const { locale } = await props.params;
+  const t = await getTranslations({ locale, namespace: 'SignupPage' });
+  return {
+    title: t('metaTitle'),
+  };
+}
+
+/**
+ * Component de la pàgina de registre (Server Component).
+ */
+// ✅ 3. Convertim la pàgina a 'async' i resolem la promesa dels paràmetres.
+export default async function SignupPage(props: SignupPageProps) {
+  const { locale } = await props.params;
+
+  return (
+    <SignupClient
+      // Passem els Server Components ja renderitzats amb el 'locale' correcte.
+      privacyContent={<PrivacyPolicyContent locale={locale} />}
+      termsContent={<TermsContent locale={locale} />}
+    />
+  );
 }
 
 // =================== FILE: src/app/[locale]/(auth)/signup/_components/SignupClient.tsx ===================
 
-"use client";
+"use client"
 
-import Image from 'next/image';
-import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { useTranslations } from 'next-intl';
+import Image from 'next/image'
+// Importem el NOSTRE nou component modal
+import { LegalModalTrigger } from '@/components/ui/LegalModalTrigger' 
+import dynamic from 'next/dynamic'
+import { useTranslations } from 'next-intl'
+import Link from 'next/link' // Encara el fem servir per anar a /login
 
 // UI Components
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox' // Importa el Checkbox de shadcn/ui
 
-// Lògica i components refactoritzats
-import { useSignupForm } from '../_hooks/useSignupForm';
-import { Checkbox } from '@radix-ui/react-checkbox';
+// Lògica
+import { useSignupForm } from '../_hooks/useSignupForm'
 
-const ParticleBackground = dynamic(() => import('@/app/[locale]/_components/ParticleBackground').then(mod => mod.ParticleBackground), { ssr: false });
+const ParticleBackground = dynamic(
+  () =>
+    import('@/app/[locale]/_components/ParticleBackground').then(
+      (mod) => mod.ParticleBackground,
+    ),
+  { ssr: false },
+)
 
 // Component de presentació per a la secció de branding
 const BrandingSection = () => {
-    const t = useTranslations('SignupPage');
-    return (
-        <div className="hidden lg:flex flex-col items-center justify-center p-12 relative z-10">
-            <div className="text-center max-w-md">
-                <Image src="/android-chrome-192x192.png" alt="Logo de Ribotflow" width={60} height={60} className="mx-auto mb-8" />
-                <h1 className="text-4xl font-bold mb-6">{t('welcomeTitle')}</h1>
-                <p className="text-lg text-muted-foreground mb-8">{t('welcomeSubtitle')}</p>
-                <ul className="space-y-4 text-lg text-left">
-                    <li className="flex items-start"><Check className="w-6 h-6 text-primary mr-3 mt-1 shrink-0" /><span>{t('feature1')}</span></li>
-                    <li className="flex items-start"><Check className="w-6 h-6 text-primary mr-3 mt-1 shrink-0" /><span>{t('feature2')}</span></li>
-                    <li className="flex items-start"><Check className="w-6 h-6 text-primary mr-3 mt-1 shrink-0" /><span>{t('feature3')}</span></li>
-                </ul>
-            </div>
-        </div>
-    );
-};
-
-// ✅ JA NO REP PROPS
-export function SignupClient() {
-    const t = useTranslations('SignupPage');
-    const commonLegalT = useTranslations('LegalPages.Common'); // 👈 Per als títols/enllaços
-    // ✅ OBTENIM TOT DEL HOOK I JA NO PASSEM EL TOKEN COM A ARGUMENT
-    const { 
-        isPending, 
-        isGoogleLoading, 
-        errorMessage, 
-        handleEmailSignup, 
-        handleGoogleSignup,
-        invitedEmail // <-- Obtingut del hook
-    } = useSignupForm();
-
-    return (
-        <div className="w-full min-h-screen lg:grid lg:grid-cols-2 relative">
-            <ParticleBackground />
-            <BrandingSection />
-
-            <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center lg:text-left">
-                        <h2 className="text-3xl font-bold tracking-tight">{t('title')}</h2>
-                        <p className="mt-2 text-muted-foreground">
-                            {t('subtitle')}{" "}
-                            <Link href="/login" className="font-medium text-primary hover:underline">{t('loginLink')}</Link>
-                        </p>
-                    </div>
-
-                    <div className="space-y-6">
-                        <Button variant="outline" className="w-full text-lg py-6" onClick={handleGoogleSignup} disabled={isGoogleLoading || isPending}>
-                            {isGoogleLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Image className="w-5 h-5 mr-3" alt="Google logo" src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" width={20} height={20} />}
-                            <span>{t('googleButton')}</span>
-                        </Button>
-
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center"><Separator /></div>
-                            <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground">{t('separator')}</span></div>
-                        </div>
-
-                        <form action={handleEmailSignup} className="space-y-6">
-                            {errorMessage && (
-                                <div className="bg-destructive/10 text-destructive border border-destructive/30 p-3 rounded-md flex items-center gap-3 text-sm">
-                                    <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-                                    <p>{errorMessage}</p>
-                                </div>
-                            )}
-                            <div className="space-y-2">
-                                <Label htmlFor="email">{t('emailLabel')}</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input id="email" name="email" type="email" placeholder={t('emailPlaceholder')} required className="pl-10" defaultValue={invitedEmail ?? undefined} readOnly={!!invitedEmail} />
-                                </div>
-                                {invitedEmail && <p className="text-xs text-muted-foreground">Aquesta invitació és exclusiva per a aquest correu electrònic.</p>}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="password">{t('passwordLabel')}</Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                    <Input id="password" name="password" type="password" required minLength={6} placeholder={t('passwordPlaceholder')} className="pl-10" />
-                                </div>
-                            </div>
-                            {/* --- Checkboxes Legals --- */}
-                            {/* ✅ Checkbox Termes i Condicions */}
-                            <div className="flex items-start space-x-2">
-                                <Checkbox id="terms" name="termsAccepted" required disabled={isPending || isGoogleLoading} />
-                                <Label htmlFor="terms" className="text-sm font-normal leading-snug text-muted-foreground">
-                                    {t('acceptTermsPrefix')}{" "}
-                                    <Link href={commonLegalT('termsConditionsLink')} target="_blank" className="underline hover:text-primary">
-                                        {commonLegalT('termsConditionsTitle')}
-                                    </Link>
-                                </Label>
-                            </div>
-
-                            {/* ✅ Checkbox Política de Privacitat */}
-                             <div className="flex items-start space-x-2">
-                                <Checkbox id="privacy" name="privacyAccepted" required disabled={isPending || isGoogleLoading} />
-                                <Label htmlFor="privacy" className="text-sm font-normal leading-snug text-muted-foreground">
-                                    {t('acceptPrivacyPrefix')}{" "}
-                                    <Link href={commonLegalT('privacyPolicyLink')} target="_blank" className="underline hover:text-primary">
-                                        {commonLegalT('privacyPolicyTitle')}
-                                    </Link>
-                                </Label>
-                            </div>
-                            <Button type="submit" className="w-full text-lg py-6" disabled={isPending || isGoogleLoading}>
-                                {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
-                                {t('submitButton')}
-                            </Button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
+  const t = useTranslations('SignupPage')
+  return (
+    <div className="hidden lg:flex flex-col items-center justify-center p-12 relative z-10">
+      <div className="text-center max-w-md">
+        <Image
+          src="/android-chrome-192x192.png"
+          alt="Logo de Ribotflow"
+          width={60}
+          height={60}
+          className="mx-auto mb-8"
+        />
+        <h1 className="text-4xl font-bold mb-6">{t('welcomeTitle')}</h1>
+        <p className="text-lg text-muted-foreground mb-8">
+          {t('welcomeSubtitle')}
+        </p>
+        <ul className="space-y-4 text-lg text-left">
+          <li className="flex items-start">
+            <Check className="w-6 h-6 text-primary mr-3 mt-1 shrink-0" />
+            <span>{t('feature1')}</span>
+          </li>
+          <li className="flex items-start">
+            <Check className="w-6 h-6 text-primary mr-3 mt-1 shrink-0" />
+            <span>{t('feature2')}</span>
+          </li>
+          <li className="flex items-start">
+            <Check className="w-6 h-6 text-primary mr-3 mt-1 shrink-0" />
+            <span>{t('feature3')}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  )
 }
 
+// ✅ 1. Definim les props que rebrem del Servidor
+interface SignupClientProps {
+  privacyContent: React.ReactNode
+  termsContent: React.ReactNode
+}
+
+export function SignupClient({
+  privacyContent,
+  termsContent,
+}: SignupClientProps) {
+  const t = useTranslations('SignupPage')
+  const commonLegalT = useTranslations('LegalPages.Common')
+  const {
+    isPending,
+    isGoogleLoading,
+    errorMessage,
+    handleEmailSignup,
+    handleGoogleSignup,
+    invitedEmail,
+  } = useSignupForm()
+
+  return (
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2 relative">
+      <ParticleBackground />
+      <BrandingSection />
+
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold tracking-tight">{t('title')}</h2>
+            <p className="mt-2 text-muted-foreground">
+              {t('subtitle')}{' '}
+              <Link
+                href="/login"
+                className="font-medium text-primary hover:underline"
+              >
+                {t('loginLink')}
+              </Link>
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <Button
+              variant="outline"
+              className="w-full text-lg py-6"
+              onClick={handleGoogleSignup}
+              disabled={isGoogleLoading || isPending}
+            >
+              {isGoogleLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <Image
+                  className="w-5 h-5 mr-3"
+                  alt="Google logo"
+                  src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+                  width={20}
+                  height={20}
+                />
+              )}
+              <span>{t('googleButton')}</span>
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  {t('separator')}
+                </span>
+              </div>
+            </div>
+
+            <form action={handleEmailSignup} className="space-y-6">
+              {errorMessage && (
+                <div className="bg-destructive/10 text-destructive border border-destructive/30 p-3 rounded-md flex items-center gap-3 text-sm">
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                  <p>{errorMessage}</p>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="email">{t('emailLabel')}</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder={t('emailPlaceholder')}
+                    required
+                    className="pl-10"
+                    defaultValue={invitedEmail ?? undefined}
+                    readOnly={!!invitedEmail}
+                  />
+                </div>
+                {invitedEmail && (
+                  <p className="text-xs text-muted-foreground">
+                    Aquesta invitació és exclusiva per a aquest correu
+                    electrònic.
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">{t('passwordLabel')}</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder={t('passwordPlaceholder')}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              {/* --- Checkboxes Legals AMB MODAL --- */}
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="terms"
+                  name="termsAccepted"
+                  required
+                  disabled={isPending || isGoogleLoading}
+                  className="mt-0.5" // Ajusta l'alineació
+                />
+                <Label
+                  htmlFor="terms"
+                  className="text-sm font-normal leading-snug text-muted-foreground"
+                >
+                  {t('acceptTermsPrefix')}{' '}
+                  {/* ✅ 2. Fem servir el LegalModalTrigger */}
+                  <LegalModalTrigger
+                    title={commonLegalT('termsConditionsTitle')}
+                    triggerText={commonLegalT('termsConditionsTitle')}
+                  >
+                    {/* ✅ 3. Passem el contingut rebut per props */}
+                    {termsContent} 
+                  </LegalModalTrigger>
+                </Label>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="privacy"
+                  name="privacyAccepted"
+                  required
+                  disabled={isPending || isGoogleLoading}
+                  className="mt-0.5" // Ajusta l'alineació
+                />
+                <Label
+                  htmlFor="privacy"
+                  className="text-sm font-normal leading-snug text-muted-foreground"
+                >
+                  {t('acceptPrivacyPrefix')}{' '}
+                  {/* ✅ 2. Fem servir el LegalModalTrigger */}
+                  <LegalModalTrigger
+                    title={commonLegalT('privacyPolicyTitle')}
+                    triggerText={commonLegalT('privacyPolicyTitle')}
+                  >
+                    {/* ✅ 3. Passem el contingut rebut per props */}
+                    {privacyContent}
+                  </LegalModalTrigger>
+                </Label>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full text-lg py-6"
+                disabled={isPending || isGoogleLoading}
+              >
+                {isPending && (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                )}
+                {t('submitButton')}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // =================== FILE: src/app/[locale]/(auth)/signup/_hooks/useSignupForm.ts ===================
 
@@ -30251,183 +30447,59 @@ export function useSignupForm() {
 
 // =================== FILE: src/app/[locale]/(legal)/avis-legal/page.tsx ===================
 
-import { getTranslations } from 'next-intl/server';
-import { type Metadata } from 'next';
-import Link from 'next/link';
+import { LegalNoticeContent } from '../_components/LegalNoticeContent'
+import { type Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
-// ✅ 1. Definim la interfície amb 'params' com a Promise.
-interface LegalPageProps {
+// ✅ 1. Modifiquem la interfície perquè 'params' sigui una Promise.
+interface PageProps {
   params: Promise<{ locale: string }>;
 }
 
-export async function generateMetadata(props: LegalPageProps): Promise<Metadata> {
-  const { locale } = await props.params; // ✅ 2. Resolem la promesa.
+/**
+ * Funció per generar les metadades de la pàgina.
+ */
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  // ✅ 2. Resolem la promesa per accedir al 'locale'.
+  const { locale } = await props.params;
   const t = await getTranslations({ locale, namespace: 'LegalPages.LegalNotice' });
   return {
     title: t('metaTitle'),
   };
 }
 
-export default async function LegalNoticePage(props: LegalPageProps) {
-  const { locale } = await props.params; // ✅ 3. Resolem la promesa.
-  const t = await getTranslations({ locale, namespace: 'LegalPages.LegalNotice' });
-  const commonT = await getTranslations({ locale, namespace: 'LegalPages.Common' });
-
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl prose dark:prose-invert">
-      <h1>{t('title')}</h1>
-      <p>{commonT('lastUpdated', { date: new Date().toLocaleDateString(locale) })}</p>
-
-      <section>
-        <h2>{t('section1.title')}</h2> {/* 1. Dades Identificatives */}
-        <p>{t('section1.content.p1', {
-          companyName: commonT('companyData.name'),
-          companyVat: commonT('companyData.vat'),
-          companyAddress: commonT('companyData.address'),
-          companyEmail: commonT('companyData.email'),
-          // companyRegistry: commonT('companyData.registry'), // Afegeix si ets empresa
-        })}</p>
-      </section>
-
-      <section>
-        <h2>{t('section2.title')}</h2> {/* 2. Objecte */}
-        <p>{t('section2.content.p1', { appName: commonT('appName') })}</p>
-      </section>
-
-      <section>
-        <h2>{t('section3.title')}</h2> {/* 3. Propietat Intel·lectual i Industrial */}
-        <p>{t('section3.content.p1', { appName: commonT('appName'), companyName: commonT('companyData.name') })}</p>
-        <p>{t('section3.content.p2')}</p>
-      </section>
-
-      <section>
-        <h2>{t('section4.title')}</h2> {/* 4. Condicions d'Ús */}
-        <p>{t('section4.content.p1')}</p>
-        <p>{t('section4.content.p2')}</p>
-        {/* Llista d'obligacions */}
-        <ul>
-          <li>{t('section4.content.obligation1')}</li>
-          <li>{t('section4.content.obligation2')}</li>
-          <li>{t('section4.content.obligation3')}</li>
-          {/* ... més obligacions ... */}
-        </ul>
-      </section>
-
-       <section>
-        <h2>{t('section5.title')}</h2> {/* 5. Exclusió de Responsabilitat */}
-        <p>{t('section5.content.p1')}</p>
-        <p>{t('section5.content.p2')}</p>
-        {/* ... altres exclusions ... */}
-      </section>
-
-       <section>
-        <h2>{t('section6.title')}</h2> {/* 6. Enllaços */}
-        <p>{t('section6.content.p1')}</p>
-      </section>
-
-       <section>
-        <h2>{t('section7.title')}</h2> {/* 7. Protecció de Dades i Cookies */}
-        {/* Utilitzem Link de next/link per a la navegació SPA */}
-        <p>{t('section7.content.p1')} <Link href={commonT('privacyPolicyLink')}>{commonT('privacyPolicyTitle')}</Link> {commonT('and')} <Link href={commonT('cookiePolicyLink')}>{commonT('cookiePolicyTitle')}</Link>.</p>
-      </section>
-
-       <section>
-        <h2>{t('section8.title')}</h2> {/* 8. Modificacions */}
-        <p>{t('section8.content.p1')}</p>
-      </section>
-
-      <section>
-        <h2>{t('section9.title')}</h2> {/* 9. Llei Aplicable i Jurisdicció */}
-        <p>{t('section9.content.p1')}</p>
-      </section>
-
-    </div>
-  );
+/**
+ * Component de la pàgina, ara renderitza el component de contingut.
+ */
+// ✅ 3. Modifiquem la signatura per rebre 'props' i resoldre la promesa.
+export default async function LegalNoticeFallbackPage(props: PageProps) {
+  const { locale } = await props.params;
+  return <LegalNoticeContent locale={locale} />;
 }
 
 // =================== FILE: src/app/[locale]/(legal)/politica-cookies/page.tsx ===================
 
-import { getTranslations } from 'next-intl/server';
-import { type Metadata } from 'next';
-import Link from 'next/link';
+import { CookiePolicyContent } from '../_components/CookiePolicyContent' // <-- Importa el nou component
+import { type Metadata } from 'next'
+import { getTranslations } from 'next-intl/server'
 
-// ✅ 1. Definim la interfície amb 'params' com a Promise.
-interface LegalPageProps {
+interface PageProps {
   params: Promise<{ locale: string }>;
 }
 
-export async function generateMetadata(props: LegalPageProps): Promise<Metadata> {
-  const { locale } = await props.params; // ✅ 2. Resolem la promesa.
-  const t = await getTranslations({ locale, namespace: 'LegalPages.CookiePolicy' });
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const { locale } = await props.params;
+
+  const t = await getTranslations({ locale, namespace: 'LegalPages.CookiePolicy' })
   return {
     title: t('metaTitle'),
-  };
+  }
 }
 
-export default async function CookiePolicyPage(props: LegalPageProps) {
-  const { locale } = await props.params; // ✅ 3. Resolem la promesa.
-  const t = await getTranslations({ locale, namespace: 'LegalPages.CookiePolicy' });
-  const commonT = await getTranslations({ locale, namespace: 'LegalPages.Common' });
-
-  return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl prose dark:prose-invert">
-      <h1>{t('title')}</h1>
-      <p>{commonT('lastUpdated', { date: new Date().toLocaleDateString(locale) })}</p>
-
-      <section>
-        <h2>{t('section1.title')}</h2> {/* 1. Què són les cookies? */}
-        <p>{t('section1.content.p1')}</p>
-      </section>
-
-      <section>
-        <h2>{t('section2.title')}</h2> {/* 2. Quin tipus de cookies utilitzem? */}
-        <p>{t('section2.content.p1', { appName: commonT('appName') })}</p>
-        <p><strong>{t('section2.content.type1.name')}:</strong></p> {/* Tècniques/Necessàries */}
-        <p>{t('section2.content.type1.description')}</p>
-        <ul>
-          {/* Llista les cookies tècniques concretes */}
-          <li>{t('section2.content.type1.cookie1', { name: 'supabase-auth-token (o similar)'})}</li> {/* Exemple Supabase */}
-          <li>{t('section2.content.type1.cookie2', { name: 'next-intl-locale'})}</li> {/* Exemple idioma */}
-          {/* ... altres cookies tècniques */}
-        </ul>
-         {/* Secció Opcional: Cookies Analítiques */}
-        {/*
-        <p><strong>{t('section2.content.type2.name')}:</strong></p>
-        <p>{t('section2.content.type2.description')}</p>
-        <ul>
-          <li>{t('section2.content.type2.cookie1', { name: '_ga, _gid (Google Analytics)'})}</li>
-        </ul>
-        <p>{t('section2.content.type2.thirdPartyInfo')}</p>
-        */}
-         {/* Secció Opcional: Cookies de Publicitat/Màrqueting */}
-        {/* ... */}
-      </section>
-
-      <section>
-        <h2>{t('section3.title')}</h2> {/* 3. Com pots gestionar les cookies? */}
-        <p>{t('section3.content.p1')}</p>
-        <p>{t('section3.content.p2')}</p>
-         {/* Enllaços a configuració de navegadors */}
-        <ul>
-          <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer">Google Chrome</a></li>
-          <li><a href="https://support.mozilla.org/es/kb/habilitar-y-deshabilitar-cookies-sitios-web-rastrear-preferencias" target="_blank" rel="noopener noreferrer">Mozilla Firefox</a></li>
-          <li><a href="https://support.apple.com/es-es/guide/safari/sfri11471/mac" target="_blank" rel="noopener noreferrer">Apple Safari</a></li>
-          <li><a href="https://support.microsoft.com/es-es/windows/eliminar-y-administrar-cookies-168dab11-0753-043d-7c16-ede5947fc64d" target="_blank" rel="noopener noreferrer">Microsoft Edge</a></li>
-        </ul>
-        <p>{t('section3.content.p3')}</p> {/* Eina de consentiment */}
-      </section>
-
-       <section>
-        <h2>{t('section4.title')}</h2> {/* 4. Més informació */}
-        <p>{t('section4.content.p1')} <Link href={commonT('privacyPolicyLink')}>{commonT('privacyPolicyTitle')}</Link>.</p>
-      </section>
-
-      <section>
-        <h2>{t('section5.title')}</h2> {/* 5. Canvis a la Política */}
-        <p>{t('section5.content.p1')}</p>
-      </section>
-    </div>
-  );
+// Ara la pàgina només renderitza el component de contingut
+export default async function CookiePolicyFallbackPage(props: PageProps) {
+  const { locale } = await props.params;
+  return <CookiePolicyContent locale={locale} />
 }
 
 // =================== FILE: src/app/[locale]/(legal)/politica-privacitat/page.tsx ===================
@@ -30641,6 +30713,799 @@ export default async function TermsAndConditionsPage(props: LegalPageProps) {
 
     </div>
   );
+}
+
+// =================== FILE: src/app/[locale]/(legal)/_components/CookiePolicyContent.tsx ===================
+
+import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
+import { Separator } from '@/components/ui/separator'
+
+interface ContentProps {
+  locale: string
+}
+
+export async function CookiePolicyContent({ locale }: ContentProps) {
+  const t = await getTranslations({ locale, namespace: 'LegalPages.CookiePolicy' })
+  const commonT = await getTranslations({ locale, namespace: 'LegalPages.Common' })
+
+  // Link helper
+  const LegalLink = ({
+    href,
+    children,
+  }: {
+    href: string
+    children: React.ReactNode
+  }) => (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline-offset-4 hover:underline"
+    >
+      {children}
+    </Link>
+  )
+  
+  // Link extern per als navegadors
+  const ExternalLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+     <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline-offset-4 hover:underline"
+    >
+      {children}
+    </a>
+  )
+
+  return (
+    <div className="space-y-8">
+      {/* --- Títol Principal --- */}
+      <div className="space-y-2 pb-4 border-b">
+        <h1 className="text-3xl font-bold tracking-tight text-primary">
+          {t('title')}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {commonT('lastUpdated', { date: new Date().toLocaleDateString(locale) })}
+        </p>
+      </div>
+
+      {/* === Seccions === */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section1.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section1.content.p1')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section2.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section2.content.p1', { appName: commonT('appName') })}
+          </p>
+          {/* Tipus 1: Tècniques */}
+          <div>
+            <p className="font-semibold text-foreground">
+              {t('section2.content.type1.name')}
+            </p>
+            <p className="text-muted-foreground leading-relaxed mt-1">
+              {t('section2.content.type1.description')}
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground mt-2">
+              <li>{t('section2.content.type1.cookie1', { name: 'supabase-auth-token (o similar)'})}</li>
+              <li>{t('section2.content.type1.cookie2', { name: 'next-intl-locale'})}</li>
+              {/* Llista altres cookies tècniques si cal */}
+            </ul>
+          </div>
+
+          {/* Secció Opcional: Analítiques (descomenta si les utilitzes) */}
+          {/*
+          <div className="pt-4">
+            <p className="font-semibold text-foreground">
+              {t('section2.content.type2.name')}
+            </p>
+            <p className="text-muted-foreground leading-relaxed mt-1">
+              {t('section2.content.type2.description')}
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground mt-2">
+              <li>{t('section2.content.type2.cookie1', { name: '_ga, _gid (Google Analytics)'})}</li>
+            </ul>
+             <p className="text-sm text-muted-foreground mt-2">
+              {t('section2.content.type2.thirdPartyInfo')}
+            </p>
+          </div>
+          */}
+
+          {/* Secció Opcional: Publicitat (descomenta si les utilitzes) */}
+          {/* ... */}
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section3.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p1')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p2')}
+          </p>
+          <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+             <li><ExternalLink href="https://support.google.com/chrome/answer/95647">Google Chrome</ExternalLink></li>
+             <li><ExternalLink href="https://support.mozilla.org/es/kb/habilitar-y-deshabilitar-cookies-sitios-web-rastrear-preferencias">Mozilla Firefox</ExternalLink></li>
+             <li><ExternalLink href="https://support.apple.com/es-es/guide/safari/sfri11471/mac">Apple Safari</ExternalLink></li>
+             <li><ExternalLink href="https://support.microsoft.com/es-es/windows/eliminar-y-administrar-cookies-168dab11-0753-043d-7c16-ede5947fc64d">Microsoft Edge</ExternalLink></li>
+          </ul>
+           <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p3')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section4.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section4.content.p1')}{' '}
+            <LegalLink href={commonT('privacyPolicyLink')}>{commonT('privacyPolicyTitle')}</LegalLink>.
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section5.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section5.content.p1')}
+          </p>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+// =================== FILE: src/app/[locale]/(legal)/_components/LegalNoticeContent.tsx ===================
+
+import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
+import { Separator } from '@/components/ui/separator'
+
+interface ContentProps {
+  locale: string
+}
+
+export async function LegalNoticeContent({ locale }: ContentProps) {
+  const t = await getTranslations({ locale, namespace: 'LegalPages.LegalNotice' })
+  const commonT = await getTranslations({ locale, namespace: 'LegalPages.Common' })
+
+  // Link helper (pots moure'l a un fitxer compartit si vols)
+  const LegalLink = ({
+    href,
+    children,
+  }: {
+    href: string
+    children: React.ReactNode
+  }) => (
+    <Link
+      href={href}
+      target="_blank" // Obliguem a obrir en nova pestanya des del modal
+      rel="noopener noreferrer"
+      className="text-primary underline-offset-4 hover:underline"
+    >
+      {children}
+    </Link>
+  )
+
+  return (
+    <div className="space-y-8">
+      {/* --- Títol Principal --- */}
+      <div className="space-y-2 pb-4 border-b">
+        <h1 className="text-3xl font-bold tracking-tight text-primary">
+          {t('title')}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {commonT('lastUpdated', { date: new Date().toLocaleDateString(locale) })}
+        </p>
+      </div>
+
+      {/* === Seccions === */}
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section1.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section1.content.p1', {
+              companyName: commonT('companyData.name'),
+              companyVat: commonT('companyData.vat'),
+              companyAddress: commonT('companyData.address'),
+              companyEmail: commonT('companyData.email'),
+              // companyRegistry: commonT('companyData.registry'), // Descomenta si cal
+            })}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section2.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section2.content.p1', { appName: commonT('appName') })}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section3.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p1', { appName: commonT('appName'), companyName: commonT('companyData.name') })}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p2')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section4.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section4.content.p1')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section4.content.p2')}
+          </p>
+          <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <li>{t('section4.content.obligation1')}</li>
+            <li>{t('section4.content.obligation2')}</li>
+            <li>{t('section4.content.obligation3')}</li>
+          </ul>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section5.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section5.content.p1')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section5.content.p2')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section6.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section6.content.p1')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section7.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.p1')}{' '}
+            <LegalLink href={commonT('privacyPolicyLink')}>{commonT('privacyPolicyTitle')}</LegalLink>
+            {' '} {commonT('and')} {' '}
+            <LegalLink href={commonT('cookiePolicyLink')}>{commonT('cookiePolicyTitle')}</LegalLink>.
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+       <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section8.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section8.content.p1')}
+          </p>
+        </div>
+      </section>
+
+       <Separator className="my-8" />
+
+       <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section9.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section9.content.p1')}
+          </p>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+// =================== FILE: src/app/[locale]/(legal)/_components/PrivacyPolicyContent.tsx ===================
+
+import { getTranslations } from 'next-intl/server'
+import { Separator } from '@/components/ui/separator' // Importem el Separator
+
+interface ContentProps {
+  locale: string
+}
+
+export async function PrivacyPolicyContent({ locale }: ContentProps) {
+  const t = await getTranslations({
+    locale,
+    namespace: 'LegalPages.PrivacyPolicy',
+  })
+
+  return (
+    <div className="space-y-8">
+      {/* --- Títol Principal --- */}
+      <div className="space-y-2 pb-4 border-b"> {/* Afegim una línia sota el títol */}
+        <h1 className="text-3xl font-bold tracking-tight text-primary"> {/* Títol amb color primari */}
+          {t('title')}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {t('lastUpdated', { date: new Date().toLocaleDateString(locale) })}
+        </p>
+      </div>
+
+      {/* === Seccions === */}
+      <section className="space-y-4">
+        {/* ✅ Títol amb barra lateral i padding */}
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section1.title')}
+        </h2>
+        <p className="text-muted-foreground leading-relaxed pl-5"> {/* Alineem text amb el títol */}
+          {t('section1.content.p1', {
+            companyName: 'El Teu Nom/Empresa',
+            companyVat: 'El Teu NIF/CIF',
+            companyAddress: 'La Teva Adreça',
+            companyEmail: 'El Teu Email de Contacte',
+          })}
+        </p>
+      </section>
+
+      {/* ✅ Separador entre seccions */}
+      <Separator className="my-8" /> 
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section2.title')}
+        </h2>
+        <div className="pl-5 space-y-4"> {/* Agrupem i indentem contingut de la secció */}
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section2.content.p1')}
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <li>{t('section2.content.item1')}</li>
+            <li>{t('section2.content.item2')}</li>
+            <li>{t('section2.content.item3')}</li>
+            <li>{t('section2.content.item4')}</li>
+            <li>{t('section2.content.item5')}</li>
+            </ul>
+            <p className="text-muted-foreground leading-relaxed pt-2">
+            {t('section2.content.p2')}
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <li>{t('section2.content.purpose1')}</li>
+            <li>{t('section2.content.purpose2')}</li>
+            <li>{t('section2.content.purpose3')}</li>
+            <li>{t('section2.content.purpose4')}</li>
+            <li>{t('section2.content.purpose5')}</li>
+            </ul>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section3.title')}
+        </h2>
+         <div className="pl-5 space-y-4">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p1')}
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <li>{t('section3.content.basis1')}</li>
+            <li>{t('section3.content.basis2')}</li>
+            <li>{t('section3.content.basis3')}</li>
+            <li>{t('section3.content.basis4')}</li>
+            </ul>
+         </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section4.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section4.content.p1')}
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section4.content.p2')}
+            </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section5.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section5.content.p1')}
+            </p>
+            <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <li>{t('section5.content.item1', { provider: 'Supabase' })}</li>
+            </ul>
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section5.content.p2')}
+            </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section6.title')}
+        </h2>
+        <div className="pl-5">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section6.content.p1')}
+            </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section7.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.p1')}
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.p2', { email: 'El Teu Email de Contacte' })}
+            </p>
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.p3')}
+            </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section8.title')}
+        </h2>
+        <div className="pl-5">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section8.content.p1')}
+            </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section9.title')}
+        </h2>
+        <div className="pl-5">
+            <p className="text-muted-foreground leading-relaxed">
+            {t('section9.content.p1')}
+            </p>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+// =================== FILE: src/app/[locale]/(legal)/_components/TermsContent.tsx ===================
+
+import { getTranslations } from 'next-intl/server'
+import Link from 'next/link'
+import { Separator } from '@/components/ui/separator' // <-- Importa Separator
+
+interface ContentProps {
+  locale: string
+}
+
+export async function TermsContent({ locale }: ContentProps) {
+  const t = await getTranslations({
+    locale,
+    namespace: 'LegalPages.TermsAndConditions',
+  })
+  const commonT =
+    await getTranslations({ locale, namespace: 'LegalPages.Common' })
+  const companyName = commonT('companyData.name')
+
+  // Component 'helper' per estilitzar els enllaços de forma consistent
+  const LegalLink = ({
+    href,
+    children,
+  }: {
+    href: string
+    children: React.ReactNode
+  }) => (
+    <Link
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline-offset-4 hover:underline"
+    >
+      {children}
+    </Link>
+  )
+
+  return (
+    <div className="space-y-8">
+      {/* --- Títol Principal --- */}
+      <div className="space-y-2 pb-4 border-b"> {/* Línia sota el títol */}
+        <h1 className="text-3xl font-bold tracking-tight text-primary"> {/* Color primari */}
+          {t('title')}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {commonT('lastUpdated', {
+            date: new Date().toLocaleDateString(locale),
+          })}
+        </p>
+      </div>
+
+      {/* === Seccions === */}
+      <section className="space-y-4">
+        {/* Títol amb barra lateral */}
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section1.title')}
+        </h2>
+        {/* Contingut indentat */}
+        <div className="pl-5 space-y-4"> 
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section1.content.p1', {
+              appName: commonT('appName'),
+              companyName: companyName,
+            })}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section1.content.p2')}{' '}
+            <LegalLink href={commonT('privacyPolicyLink')}>
+              {commonT('privacyPolicyTitle')}
+            </LegalLink>
+            .
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" /> {/* Separador */}
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section2.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section2.content.p1', { appName: commonT('appName') })}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section3.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p1')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p2')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section3.content.p3')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section4.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section4.content.p1')}
+          </p>
+          <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+            <li>{t('section4.content.obligation1')}</li>
+            <li>{t('section4.content.obligation2')}</li>
+            <li>{t('section4.content.obligation3')}</li>
+            <li>
+              {t('section4.content.obligation4', { companyName: companyName })}
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section5.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section5.content.p1')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section6.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section6.content.p1', {
+              appName: commonT('appName'),
+              companyName: companyName,
+            })}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section6.content.p2')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section7.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.p1')}{' '}
+            <LegalLink href={commonT('privacyPolicyLink')}>
+              {commonT('privacyPolicyTitle')}
+            </LegalLink>
+            .
+          </p>
+          <p className="font-semibold text-foreground pt-2">
+            {t('section7.content.dpaTitle')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.dpaP1', { appName: commonT('appName') })}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section7.content.dpaP2')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section8.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section8.content.p1')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section8.content.p2', { companyName: companyName })}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section9.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section9.content.p1')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section10.title')}
+        </h2>
+        <div className="pl-5 space-y-4">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section10.content.p1')}
+          </p>
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section10.content.p2')}
+          </p>
+        </div>
+      </section>
+
+      <Separator className="my-8" />
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-semibold border-l-4 border-primary pl-4 py-1">
+          {t('section11.title')}
+        </h2>
+        <div className="pl-5">
+          <p className="text-muted-foreground leading-relaxed">
+            {t('section11.content.p1')}
+          </p>
+        </div>
+      </section>
+    </div>
+  )
 }
 
 // =================== FILE: src/app/[locale]/accept-invite/route.ts ===================
@@ -30910,8 +31775,6 @@ import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/components/theme-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations } from 'next-intl/server';
-// NOU: Component per registrar el Service Worker de forma segura al client
-import { PWARegistration } from '@/components/PWARegistration';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -30957,8 +31820,6 @@ export default async function LocaleLayout(props: LocaleLayoutProps) {
             {children}
           </ThemeProvider>
           <Toaster position="bottom-right" richColors closeButton />
-          {/* NOU: Afegim el component de registre del SW */}
-          <PWARegistration />
         </NextIntlClientProvider>
       </body>
     </html>
@@ -33030,27 +33891,37 @@ export const ContactSelector: FC<Props> = ({ contacts, selectedId, onSelect }) =
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+// Importem 'useMemo'
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { EnrichedTask } from './TaskDialogManager';
 import { DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Contact, Building } from "lucide-react";
+// Importem 'Clock'
+import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Activity, Clock } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useTranslations } from "next-intl";
-import { deleteTask, updateSimpleTask } from '@/app/actions/tasks/actions';
+import { deleteTask, updateSimpleTask,setTaskActiveStatus } from '@/app/actions/tasks/actions';
 import { toast } from 'sonner';
 import { priorityStyles, TaskPriority } from '@/config/styles/task';
 import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
 
+// Tipus per a les entrades del log
+type LogEntry = {
+    timestamp: string;
+    action: 'actiu' | 'inactiu';
+    user_id: string;
+};
+
 interface TaskDetailViewProps {
     task: EnrichedTask;
     onSetEditMode: () => void;
-    // ✅ CANVI 1: Actualitzem la definició per coincidir amb la del pare.
     onTaskMutation: (options?: { closeDialog?: boolean }) => void;
     onClose: () => void;
 }
@@ -33072,11 +33943,120 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
     const t = useTranslations('DashboardClient.taskActions');
     const t2 = useTranslations('DashboardClient.taskDetails');
 
+    const [isActive, setIsActive] = useState(task.is_active || false);
     const [currentDescription, setCurrentDescription] = useState(task.description || '');
+    
+    // --- CANVI CLAU 1 ---
+    // Creem un estat local pel log, inicialitzat amb el de la tasca.
+    const [localLog, setLocalLog] = useState(task.time_tracking_log as LogEntry[] | null);
 
     useEffect(() => {
         setCurrentDescription(task.description || '');
     }, [task.description]);
+
+    useEffect(() => {
+        setIsActive(task.is_active || false);
+    }, [task.is_active]);
+
+    // --- CANVI CLAU 2 ---
+    // Sincronitzem el log local si la 'task' (prop) canvia des del pare.
+    useEffect(() => {
+        setLocalLog(task.time_tracking_log as LogEntry[] | null);
+    }, [task.time_tracking_log]);
+
+
+    // Helper per formatar milisegons a HH:MM:SS
+    const formatMsToHHMMSS = (ms: number) => {
+        if (ms <= 0) return "00:00:00";
+
+        const totalSeconds = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const pad = (num: number) => String(num).padStart(2, '0');
+        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    };
+
+    // --- CANVI CLAU 3 ---
+    // El càlcul de temps ara depèn del 'localLog', no de 'task.time_tracking_log'.
+    const { activeTimeDisplay } = useMemo(() => {
+        const log = localLog; // <-- Llegeix de l'estat local
+
+        if (!log || !Array.isArray(log) || log.length < 2) {
+            return { activeTimeDisplay: "00:00:00", totalActiveMs: 0 };
+        }
+
+        const sortedLog = [...log].sort((a, b) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        );
+
+        let totalMs = 0;
+        let startTime: number | null = null;
+
+        for (const entry of sortedLog) {
+            if (entry.action === 'actiu' && startTime === null) {
+                startTime = new Date(entry.timestamp).getTime();
+            } 
+            else if (entry.action === 'inactiu' && startTime !== null) {
+                const endTime = new Date(entry.timestamp).getTime();
+                totalMs += (endTime - startTime);
+                startTime = null; 
+            }
+        }
+        
+        return { 
+            activeTimeDisplay: formatMsToHHMMSS(totalMs), 
+            totalActiveMs: totalMs // Aquest totalMs ja és el correcte!
+        };
+    }, [localLog]); // <-- Depèn de l'estat local
+
+    // --- CANVI CLAU 4 ---
+    // Ja no necessitem 'displayedTime' ni 'totalActiveMs' separats.
+    // El 'useMemo' (activeTimeDisplay) és ara la nostra font de veritat.
+    // Hem eliminat el 'useState' i 'useEffect' per a 'displayedTime'.
+
+
+    // --- CANVI CLAU 5 ---
+    // Simplifiquem 'handleToggleActive' per actualitzar l'estat local del log.
+    const handleToggleActive = async (newCheckedState: boolean) => {
+        const previousState = isActive;
+        setIsActive(newCheckedState); // 1. Actualització optimista de la UI
+
+        const previousLog = localLog; // Guardem el log anterior per si cal revertir
+
+        // 2. Creem una nova entrada de log optimista
+        const newLogEntry: LogEntry = {
+            timestamp: new Date().toISOString(), // Hora actual
+            action: newCheckedState ? 'actiu' : 'inactiu',
+            user_id: 'optimistic_placeholder' // Aquest ID no importa pel càlcul
+        };
+
+        // 3. Actualitzem l'estat local del log
+        // Això farà que 'useMemo' es recalcu-li A L'INSTANT
+        setLocalLog([...(localLog || []), newLogEntry]);
+
+        // 4. Cridem la nova acció del servidor
+        const { error } = await setTaskActiveStatus(task.id, newCheckedState);
+
+        // 5. Gestionem la resposta
+        if (error) {
+            // Error: Revertim els canvis optimistes
+            setIsActive(previousState);
+            setLocalLog(previousLog); // Revertim el log
+            
+            toast.error("No s'ha pogut actualitzar l'estat.", {
+                description: "Si us plau, intenta-ho de nou."
+            });
+        } else {
+            // Èxit: Mostrem confirmació i refresquem dades
+            toast.success(newCheckedState ? "Tasca activada." : "Tasca desactivada.");
+            onTaskMutation({ closeDialog: false });
+            // onTaskMutation refrescarà la 'task' (prop), que activarà
+            // l'useEffect (CANVI CLAU 2) i sincronitzarà el 'localLog'
+            // amb les dades reals del servidor.
+        }
+    };
 
     const handleToggleTaskItem = useCallback(async (itemIndex: number) => {
         if (!currentDescription) return;
@@ -33099,7 +34079,6 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
                 toast.error("No s'ha pogut actualitzar la llista de tasques.");
                 setCurrentDescription(task.description || ''); 
             } else {
-                // ✅ CANVI 2: Cridem a la funció amb l'opció per NO tancar el diàleg.
                 onTaskMutation({ closeDialog: false });
             }
         }
@@ -33144,7 +34123,6 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.errorTitle'), { description: "No s'ha pogut actualitzar la tasca." });
         } else {
             toast.success("Estat de la tasca actualitzat.");
-            // ✅ CANVI 3: També aquí, indiquem que no es tanqui el diàleg.
             onTaskMutation({ closeDialog: false });
         }
     };
@@ -33156,9 +34134,8 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.deleteErrorTitle'), { description: errorMessage });
         } else {
             toast.success(t('toast.deleteSuccessTitle'));
-            // Aquí no especifiquem res, així que el pare farà l'acció per defecte (tancar).
             onTaskMutation(); 
-            onClose(); // Doble seguretat per tancar en cas d'eliminació.
+            onClose(); 
         }
     };
 
@@ -33180,61 +34157,94 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
                         {parse(currentDescription, options)}
                     </div>
                 )}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 text-sm border-t pt-6">
-                    <DetailItem icon={Calendar} label={t2('limitDay')}>
-                        {task.due_date && format(new Date(task.due_date), "EEEE, d 'de' MMMM 'de' yyyy 'a les' HH:mm", { locale: es })}
-                    </DetailItem>
-                    <DetailItem icon={User} label={t2('assignedTo')}>
-                        {task.profiles?.full_name || 'Sense assignar'}
-                    </DetailItem>
-                    <DetailItem icon={Contact} label="Contacte">
-                        {task.contacts?.nom}
-                    </DetailItem>
-                    <DetailItem icon={Building} label="Departament">
-                        {task.departments?.name}
-                    </DetailItem>
+
+                {/* --- Nova estructura del layout --- */}
+                <div className="flex flex-col gap-y-6 text-sm border-t pt-6">
+                    {/* --- Fila 1: Fecha, Departament --- */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <DetailItem icon={Calendar} label={t2('limitDay')}>
+                            {task.due_date && format(new Date(task.due_date), "EEEE, d 'de' MMMM 'de' yyyy 'a les' HH:mm", { locale: es })}
+                        </DetailItem>
+                        <DetailItem icon={Building} label="Departament">
+                            {task.departments?.name}
+                        </DetailItem>
+                    </div>
+
+                    {/* --- Fila 2: Estat, Temps, Usuari --- */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6">
+                        
+                        {/* 1. Estat (Markup custom) */}
+                        <div className="flex items-start gap-3">
+                            <Activity className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <div className="flex flex-col">
+                                <span className="text-sm text-muted-foreground">Estat</span>
+                                <div className="flex items-center space-x-2 pt-1">
+                                    <Switch
+                                        id="task-status-active"
+                                        checked={isActive}
+                                        onCheckedChange={handleToggleActive}
+                                        aria-label="Estat de la tasca (activa/inactiva)"
+                                    />
+                                    <Label htmlFor="task-status-active" className="font-semibold select-none">
+                                        {isActive ? 'Activa' : 'Inactiva'}
+                                    </Label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* 2. Temps Activa (DetailItem estàndard) */}
+                        <DetailItem icon={Clock} label="Temps activa">
+                            {activeTimeDisplay} {/* <-- Llegeix directament del useMemo */}
+                        </DetailItem>
+                        
+                        {/* 3. Usuari (DetailItem estàndard) */}
+                        <DetailItem icon={User} label={t2('assignedTo')}>
+                            {task.profiles?.full_name || 'Sense assignar'}
+                        </DetailItem>
+
+                    </div>
                 </div>
             </div>
 
             <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2 border-t pt-4">
-                  <div>
-                      <Button variant="ghost" onClick={onSetEditMode}>
-                          <Pencil className="w-4 h-4 mr-2" />
-                          Editar
-                      </Button>
-                  </div>
-                  <div className='flex items-center gap-2'>
-                      <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                                  <Trash2 className="w-4 h-4" />
-                              </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                              <AlertDialogHeader>
-                                  <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
-                                  <AlertDialogDescription>{t('deleteConfirmDescription')}</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                  <AlertDialogCancel>{t2('cancelButton')}</AlertDialogCancel>
-                                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                      {t('deleteConfirmAction')}
-                                  </AlertDialogAction>
-                              </AlertDialogFooter>
-                          </AlertDialogContent>
-                      </AlertDialog>
-                      {task.is_completed ? (
-                          <Button variant="outline" onClick={handleToggle}>
-                              <RotateCcw className="w-4 h-4 mr-2" />
-                              {t2('markAsPendingButton')}
-                          </Button>
-                      ) : (
-                          <Button onClick={handleToggle} className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
-                              <CheckCircle2 className="w-4 h-4 mr-2" />
-                              {t2('markAsCompletedButton')}
-                          </Button>
-                      )}
-                  </div>
+                <div>
+                    <Button variant="ghost" onClick={onSetEditMode}>
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Editar
+                    </Button>
+                </div>
+                <div className='flex items-center gap-2'>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
+                                <AlertDialogDescription>{t('deleteConfirmDescription')}</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>{t2('cancelButton')}</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                    {t('deleteConfirmAction')}
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                    {task.is_completed ? (
+                        <Button variant="outline" onClick={handleToggle}>
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            {t2('markAsPendingButton')}
+                        </Button>
+                    ) : (
+                        <Button onClick={handleToggle} className="w-full sm:w-auto bg-green-600 hover:bg-green-700">
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            {t2('markAsCompletedButton')}
+                        </Button>
+                    )}
+                </div>
             </DialogFooter>
         </>
     );
@@ -33250,6 +34260,11 @@ import { TaskFormView } from './TaskFormView';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tables } from '@/types/supabase';
 
+interface TimeTrackingLogEntry {
+  status: 'active' | 'inactive';
+  timestamp: string;
+}
+
 // Aquest serà el nostre nou tipus de tasca universal
 export type EnrichedTask = Tables<'tasks'> & {
     contacts: { id: number; nom: string } | null;
@@ -33259,6 +34274,8 @@ export type EnrichedTask = Tables<'tasks'> & {
         avatar_url: string | null;
     } | null;
     departments: { id: number; name: string } | null;
+    time_tracking_log: TimeTrackingLogEntry[] | null;
+    is_active: boolean;
 };
 
 interface TaskDialogManagerProps {
@@ -36059,6 +37076,86 @@ function Label({
 export { Label }
 
 
+// =================== FILE: src/components/ui/LegalModalTrigger.tsx ===================
+
+"use client"
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { X } from 'lucide-react'
+
+interface LegalModalTriggerProps {
+  triggerText: string
+  title: string
+  children: React.ReactNode
+}
+
+export function LegalModalTrigger({
+  triggerText,
+  title,
+  children,
+}: LegalModalTriggerProps) {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="underline hover:text-primary focus:outline-none focus:ring-2 focus:ring-ring rounded-sm"
+        >
+          {triggerText}
+        </button>
+      </DialogTrigger>
+      {/* Mantenim la mida gran */}
+      <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0">
+        {/* Header es manté igual */}
+        <DialogHeader className="p-6 pb-5 border-b sticky top-0 bg-background z-10">
+          <DialogTitle className="text-2xl">{title}</DialogTitle>
+        </DialogHeader>
+
+        {/* Botó X es manté igual */}
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 text-muted-foreground"
+          >
+            <X className="h-5 w-5" />
+            <span className="sr-only">Tancar</span>
+          </Button>
+        </DialogClose>
+
+        {/* Contingut amb Scroll */}
+        {/* ✅ Assegurem que l'àrea de scroll ocupi l'espai i tingui scroll automàtic */}
+        <ScrollArea className="flex-1 overflow-y-auto">
+          {/* Donem padding intern al text */}
+          <div className="px-6 py-8">{children}</div>
+        </ScrollArea>
+
+        {/* Footer */}
+        {/* ✅ Eliminem 'sticky' - flexbox s'encarregarà de posar-lo a baix.
+           Afegim 'mt-auto' per assegurar-nos que s'enganxi a baix si el contingut és curt.
+           Afegim 'flex-shrink-0' per evitar que s'encongeixi. */}
+        <DialogFooter className="p-4 border-t bg-background z-10 mt-auto flex-shrink-0">
+          <DialogClose asChild>
+            <Button variant="outline" size="lg">
+              Tancar
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // =================== FILE: src/components/ui/pagination.tsx ===================
 
 import * as React from "react"
@@ -37199,31 +38296,35 @@ import {
   Columns,
   Receipt,
   Bot,
-  BookPlus,
   Settings,
   Users,
   Workflow,
   Activity,
-  CalendarDays, // ✅ Importem la nova icona
-
-  Truck
+  CalendarDays,
+  Truck,
+  BookPlus,
+  // ✅ 1. Importem les icones que necessitarem per als nous submenús
+  User,
+  CreditCard,
+  Puzzle,
+  Wrench,
+  ShieldOff,
+  KeyRound,
+  Download
 } from 'lucide-react';
-
-
-// ✅ PAS 1: Importem la interfície des del nostre nou fitxer de tipus.
 import type { NavItem } from '@/types/app/navigation';
 
 export const navModules: NavItem[] = [
   {
     id: 'dashboard',
-    labelKey: 'dashboard', // ✅ Canviat
+    labelKey: 'dashboard',
     icon: LayoutDashboard,
     path: '/dashboard',
     isSingle: true
   },
   {
     id: 'crm',
-    labelKey: 'crm', // ✅ Canviat
+    labelKey: 'crm',
     icon: Briefcase,
     basePath: '/crm',
     path: '/crm/general',
@@ -37234,12 +38335,11 @@ export const navModules: NavItem[] = [
       { id: 'pipeline', labelKey: 'pipeline', icon: Columns, path: '/crm/pipeline', isSingle: true },
       { id: 'activitats', labelKey: 'activities', icon: Activity, path: '/crm/activitats', isSingle: true },
       { id: 'calendari', labelKey: 'calendar', icon: CalendarDays, path: '/crm/calendari', isSingle: true }
-
     ]
   },
   {
     id: 'finances',
-    labelKey: 'finances', // ✅ Canviat
+    labelKey: 'finances',
     icon: Landmark,
     basePath: '/finances',
     path: '/finances/invoices',
@@ -37250,12 +38350,11 @@ export const navModules: NavItem[] = [
       { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/invoices', isSingle: true },
       { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/expenses', isSingle: true },
       { id: 'proveïdors', labelKey: 'suppliers', icon: Truck, path: '/finances/suppliers', isSingle: true },
-
     ]
   },
   {
     id: 'comunicacio',
-    labelKey: 'communication', // ✅ Canviat
+    labelKey: 'communication',
     icon: Headphones,
     basePath: '/comunicacio',
     path: '/comunicacio/inbox',
@@ -37269,7 +38368,6 @@ export const navModules: NavItem[] = [
         labelKey: 'planner',
         icon: CalendarDays,
         path: '/comunicacio/planificador',
-        // ✅ AQUÍ ESTÀ LA MÀGIA: Especifiquem els plans que tenen accés
         requiredPlan: ['plus', 'premium'],
         isSingle: false
       },
@@ -37277,15 +38375,14 @@ export const navModules: NavItem[] = [
   },
   {
     id: 'network',
-    labelKey: 'network', // ✅ Canviat
+    labelKey: 'network',
     icon: Users,
     path: '/network',
     isSingle: true
   },
-
   {
     id: 'projectStrocture',
-    labelKey: 'architecture', // ✅ Canviat
+    labelKey: 'architecture',
     icon: Workflow,
     path: '/projectStrocture',
     isSingle: true
@@ -37294,7 +38391,26 @@ export const navModules: NavItem[] = [
 
 export const bottomItems: NavItem[] = [
   { id: 'ai', labelKey: 'ai', icon: Bot, path: '#', isSingle: true, notImplemented: true },
-  { id: 'settings', labelKey: 'settings', icon: Settings, path: '/settings/profile', isSingle: true },
+  // ✅ 2. Modifiquem l'element 'settings' per a què tingui submenús.
+  {
+    id: 'settings',
+    labelKey: 'settings',
+    icon: Settings,
+    basePath: '/settings', // Important per saber quan mostrar els fills
+    path: '/settings/profile', // La ruta per defecte en clicar
+    isSingle: false, // Ara no és un enllaç únic, té fills
+    children: [
+      // ✅ 3. Afegim aquí tots els elements que abans estaven a 'SettingsNav.tsx'.
+      { id: 'profile', labelKey: 'profile', icon: User, path: '/settings/profile', isSingle: true },
+      { id: 'billing', labelKey: 'billing', icon: CreditCard, path: '/settings/billing', isSingle: true },
+      { id: 'team', labelKey: 'team', icon: Users, path: '/settings/team', isSingle: true },
+      { id: 'integrations', labelKey: 'integrations', icon: Puzzle, path: '/settings/integrations', isSingle: true },
+      { id: 'blacklist', labelKey: 'blacklist', icon: ShieldOff, path: '/settings/blacklist', isSingle: true },
+      { id: 'customization', labelKey: 'customization', icon: Wrench, path: '/settings/customization', isSingle: true },
+      { id: 'install', labelKey: 'install', icon: Download, path: '/settings/install', isSingle: true },
+      { id: 'permissions', labelKey: 'permissions', icon: KeyRound, path: '/settings/permissions', isSingle: true },
+    ]
+  },
 ];
 
 // =================== FILE: src/config/pipeline.ts ===================
@@ -38368,7 +39484,11 @@ export async function middleware(request: NextRequest) {
 
 
     // 3. Lògica de Redirecció (Auth) - Utilitza el locale fiable
-    const publicPrefixes = ['/login', '/signup', '/auth', '/accept-invite', '/quote', '/invitation/accept'];
+    const publicPrefixes = ['/login', '/signup', '/auth', '/accept-invite', '/quote', '/invitation/accept',
+    '/politica-privacitat',
+    '/termes-condicions',
+    '/politica-cookies',];
+    
     const isPublicPath = pathnameWithoutLocale === '/' || publicPrefixes.some(p => pathnameWithoutLocale.startsWith(p));
     const isAppPath = !isPublicPath;
 
@@ -38424,7 +39544,7 @@ export const NAVIGATION_KEYS = [
   'dashboard', 'crm', 'finances', 'communication', 'network', 'architecture',
   'crmGeneral', 'contacts', 'pipeline', 'quotes', 'concepts', 'activities', // ✅ 'concepts' i 'activities' afegits
   'invoicing', 'expenses', 'inbox', 'templates', 'marketing', 'profile', 'customization',
-  'ai', 'settings', 'planner', 'calendar', 'projects', 'tasks', 'reports', 'suppliers' // ✅ 'suppliers' afegit
+  'ai', 'settings', 'planner', 'calendar', 'projects', 'tasks', 'reports', 'suppliers', 'billing', 'team', 'integrations', 'blacklist', 'customization', 'install', 'permissions'
 ] as const;
 
 /**
@@ -41407,10 +42527,11 @@ export type Database = {
           is_completed: boolean
           priority: Database["public"]["Enums"]["task_priority"] | null
           team_id: string | null
-          time_tracking_log: Json | null
           title: string
           user_asign_id: string | null
           user_id: string
+          time_tracking_log?: Json | null
+          is_active: boolean
         }
         Insert: {
           asigned_date?: string | null
@@ -41425,10 +42546,11 @@ export type Database = {
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
-          time_tracking_log?: Json | null
           title: string
           user_asign_id?: string | null
           user_id: string
+          time_tracking_log?: Json | null
+          is_active: boolean
         }
         Update: {
           asigned_date?: string | null
@@ -41443,10 +42565,11 @@ export type Database = {
           is_completed?: boolean
           priority?: Database["public"]["Enums"]["task_priority"] | null
           team_id?: string | null
-          time_tracking_log?: Json | null
           title?: string
           user_asign_id?: string | null
           user_id?: string
+          time_tracking_log?: Json | null
+          is_active: boolean
         }
         Relationships: [
           {
@@ -44190,3 +45313,12 @@ export const Constants = {
     },
   },
 } as const
+
+
+// =================== FILE: src/types/tasks/task.ts ===================
+
+
+export interface TimeTrackingEntry {
+  action: 'start' | 'stop';
+  timestamp: string; // Data en format ISO 8601
+}

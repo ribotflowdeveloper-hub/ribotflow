@@ -1,0 +1,25 @@
+// .vscode/settings.json
+{
+  // Habilita Deno només per a la carpeta de funcions
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+
+  // Deshabilita el linter/format de Deno fora d'aquesta carpeta
+  "deno.lint": true,
+  "deno.format": true,
+
+  // Permet l'ús de funcions "unstable" (sovint necessari)
+  "deno.unstable": [],
+
+  // Associa els fitxers .ts d'aquesta carpeta amb el linter de Deno
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+
+  // Molt important: Indica a TypeScript que no utilitzi 
+  // el linter de Deno per al teu projecte Next.js
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features"
+  }
+}

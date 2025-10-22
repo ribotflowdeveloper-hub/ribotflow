@@ -78,9 +78,6 @@ export async function connectFacebookAction() { return createOAuthRedirectAction
 
 
 // --- LÒGICA PER A IMAP/SMTP (AMB CORRECCIONS FINALS) ---
-
-// --- LÒGICA PER A IMAP/SMTP (CORREGIDA) ---
-
 type ImapConfig = {
     imap: {
         user: string;
