@@ -33,7 +33,7 @@ function formatRelativeTime(dateString: string | null, t: TranslationFunction): 
 
 export function Radar({ attentionContacts, overdueInvoices, notifications }: RadarProps) {
   const t = useTranslations('DashboardClient');
-  
+
   const allItems = [
     ...notifications.map(item => ({ ...item, itemType: 'notification', date: new Date(item.created_at) })),
     ...overdueInvoices.map(item => ({ ...item, itemType: 'invoice', date: new Date(item.due_date ?? 0) })),
@@ -41,10 +41,10 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
   ];
 
   allItems.sort((a, b) => b.date.getTime() - a.date.getTime());
-  
+
   // ✅ CORRECCIÓ: Eliminem la línia que tallava la llista.
   // const visibleItems = allItems.slice(0, 6); 
-  
+
   const hasItems = allItems.length > 0;
 
   return (
@@ -60,12 +60,12 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
             const notif = item as Tables<"notifications">;
             const isError = notif.type === 'post_failed' || notif.type === 'integration_expired';
             return (
-              <ActivityItem 
-                key={`notif-${notif.id}`} 
+              <ActivityItem
+                key={`notif-${notif.id}`}
                 href={notif.type?.includes('integration') ? "/settings/integrations" : "/comunicacio/planificador"}
-                icon={isError ? AlertTriangle : Send} 
-                tone={isError ? {bg: 'bg-destructive/10', text: 'text-destructive'} : {bg: 'bg-success/10', text: 'text-success'}} 
-                title={notif.message} 
+                icon={isError ? AlertTriangle : Send}
+                variant={isError ? "danger" : "success"}
+                title={notif.message}
                 meta={formatRelativeTime(notif.created_at, t as TranslationFunction)}
               />
             );
@@ -73,12 +73,12 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
           if (item.itemType === 'invoice') {
             const inv = item as Tables<'invoices'> & { contacts: { nom: string } | null };
             return (
-              <ActivityItem 
-                key={`inv-${inv.id}`} 
-                href="/finances/facturacio" 
-                icon={FileWarning} 
-                tone={{bg: 'bg-destructive/10', text: 'text-destructive'}} 
-                title={t('overdueInvoice', { clientName: inv.contacts?.nom ?? 'client' })} 
+              <ActivityItem
+                key={`inv-${inv.id}`}
+                href="/finances/facturacio"
+                icon={FileWarning}
+                variant="danger"
+                title={t('overdueInvoice', { clientName: inv.contacts?.nom ?? 'client' })}
                 meta={t('dueDate', { dueDate: inv.due_date ? new Date(inv.due_date).toLocaleDateString() : t('unknownDueDate') })}
               />
             );
@@ -86,11 +86,11 @@ export function Radar({ attentionContacts, overdueInvoices, notifications }: Rad
           if (item.itemType === 'contact') {
             const c = item as Tables<"contacts">;
             return (
-              <ActivityItem 
-                key={`contact-${c.id}`} 
-                href="/crm/contactes" 
-                icon={MessageSquare} 
-                tone={{bg: 'bg-primary/10', text: 'text-primary'}} 
+              <ActivityItem
+                key={`contact-${c.id}`}
+                href="/crm/contactes"
+                icon={MessageSquare}
+                variant="info"
                 title={t('coolingContact', { contactName: c.nom })}
                 meta={t('noInteraction7Days')}
               />

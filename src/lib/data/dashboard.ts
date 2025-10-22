@@ -4,18 +4,22 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, Tables } from '@/types/supabase';
 import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 
+// ✅ CORRECCIÓ 1: Definim el nou tipus per a les variants de color, que faltava.
+export type ServerActivityVariant = 'default' | 'success' | 'danger' | 'warning' | 'info';
+
 export type ServerActivityIcon = 'fileWarning' | 'checkCircle' | 'clock' | 'users';
 
+// ✅ CORRECCIÓ 2: Actualitzem el tipus principal per utilitzar `variant` en lloc de `tone`.
 export type ServerActivityItem = {
   icon: ServerActivityIcon;
-  tone: { bg: string; text: string };
+  variant: ServerActivityVariant; // Canviat de 'tone' a 'variant'
   title: string;
   meta: string;
   href: string;
   date: string | null;
 };
 
-// ... (la resta de tipus i funcions de getStats, getTasks, etc. no canvien)
+// --- La resta de funcions per obtenir dades (getStats, getTasks, etc.) es mantenen igual ---
 type DashboardStats = {
     total_contacts: number; active_clients: number; opportunities: number; invoiced_current_month: number;
     invoiced_previous_month: number; pending_total: number; expenses_current_month: number; expenses_previous_month: number;
@@ -40,6 +44,8 @@ export const getRecentContacts = async (supabase: SupabaseClient<Database>, team
     if (error) { console.error('Error fetching recent contacts:', error); return []; }
     return data ?? [];
 };
+// --- Fi de les funcions que no canvien ---
+
 
 export const getRecentActivities = (
     invoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[],
@@ -48,12 +54,11 @@ export const getRecentActivities = (
 ): ServerActivityItem[] => {
     const activities: ServerActivityItem[] = [];
 
-    // ✅ CORRECCIÓ: Augmentem el límit per recollir més dades de cada tipus
     invoices.slice(0, 7).forEach(inv => {
         if (inv.due_date) {
             activities.push({
                 icon: 'fileWarning',
-                tone: { bg: 'bg-destructive/10', text: 'text-destructive' },
+                variant: 'danger', // ✅ CORRECCIÓ 3: Assignem la variant correcta
                 title: `Factura vençuda: ${inv.contacts?.nom ?? 'client'}`,
                 meta: `Vencia el ${new Date(inv.due_date).toLocaleDateString()}`,
                 href: '/finances/facturacio',
@@ -66,10 +71,10 @@ export const getRecentActivities = (
         if (task.created_at) {
             activities.push({
                 icon: task.is_completed ? 'checkCircle' : 'clock',
-                tone: { bg: task.is_completed ? 'bg-success/10' : 'bg-yellow-500/10', text: task.is_completed ? 'text-success' : 'text-yellow-600' },
+                variant: task.is_completed ? 'success' : 'warning', // ✅ CORRECCIÓ 3
                 title: task.title,
                 meta: `Tasca creada el ${new Date(task.created_at).toLocaleDateString()}`,
-                href: '/dashboard',
+                href: '/dashboard', // Pots canviar-ho per l'URL específica de la tasca si vols
                 date: task.created_at
             });
         }
@@ -79,7 +84,7 @@ export const getRecentActivities = (
         if (c.created_at) {
             activities.push({
                 icon: 'users',
-                tone: { bg: 'bg-primary/10', text: 'text-primary' },
+                variant: 'info', // ✅ CORRECCIÓ 3
                 title: `Nou contacte: ${c.nom}`,
                 meta: `Afegit el ${new Date(c.created_at).toLocaleDateString()}`,
                 href: `/crm/contactes/${c.id}`,
@@ -90,7 +95,5 @@ export const getRecentActivities = (
 
     return activities
         .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime())
-        // ✅ CORRECCIÓ: Eliminem el .slice(0, 5) per enviar més dades al client.
-        // Podem posar un límit superior per seguretat, per exemple, 15.
         .slice(0, 15);
 };

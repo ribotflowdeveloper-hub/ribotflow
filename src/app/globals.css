@@ -15,19 +15,21 @@
     --card-foreground: 220 15% 15%;
     --popover: 220 20% 95%;
     --popover-foreground: 220 15% 15%;
-    --primary: 262 83% 58%;
+    /* ✅ --primary ja sembla ser el cian que volíem (ajusta si cal) */
+    --primary: 205 90% 65%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 15% 90%;
     --secondary-foreground: 220 15% 20%;
     --muted: 220 15% 92%;
     --muted-foreground: 220 10% 45%;
-    --accent: 262 80% 95%;
-    --accent-foreground: 262 83% 50%;
+    --accent: 262 80% 95%; /* Aquest és un altre color d'accent, no el primari */
+    --accent-foreground: 262 83% 50%; /* Text per a l'accent */
     --destructive: 0 84.2% 50%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 15% 88%;
     --input: 220 15% 88%;
-    --ring: 262 83% 58%;
+    /* --ring: 262 83% 58%; */ /* <-- Antic Lila (Comentat o eliminat) */
+    --ring: 205 90% 65%;    /* <-- ✅ NOU: Cian (igual que el primari) */
     --radius: 0.75rem;
   }
 
@@ -38,7 +40,7 @@
     --card-foreground: 230 15% 95%;
     --popover: 230 15% 12%;
     --popover-foreground: 230 15% 90%;
-    --primary: 262 83% 58%;
+    --primary: 205 90% 65%;
     --primary-foreground: 0 0% 100%;
     --secondary: 230 15% 18%;
     --secondary-foreground: 230 15% 80%;

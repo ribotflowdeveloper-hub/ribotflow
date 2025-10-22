@@ -1,4 +1,4 @@
-"use client";
+// src/components/ui/button.tsx
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
@@ -15,16 +15,17 @@ const buttonVariants = cva(
           "bg-primary text-primary-foreground shadow hover:bg-primary/90",
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+        // ✅ CANVI: hover:bg-accent -> hover:bg-muted
+        // ✅ CANVI: hover:text-accent-foreground -> hover:text-muted-foreground (o hover:text-foreground si vols el text principal)
         outline:
-          "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-        
-        // ✅ LÍNIA AFEGIDA PER A LA NOVA VARIANT
+          "border border-input bg-background shadow-sm hover:bg-muted hover:text-muted-foreground",
         "destructive-outline":
           "border border-destructive bg-transparent text-destructive hover:bg-destructive/10",
-        
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
+        // ✅ CANVI: hover:bg-accent -> hover:bg-muted
+        // ✅ CANVI: hover:text-accent-foreground -> hover:text-muted-foreground (o hover:text-foreground)
+        ghost: "hover:bg-muted hover:text-muted-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -61,4 +62,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 )
 Button.displayName = "Button"
 
-export { Button, buttonVariants, VariantProps };
+export { Button, buttonVariants }; // Eliminat VariantProps de l'exportació directa si no s'usa fora
+
+// Re-exporta VariantProps per separat si cal
+export type { VariantProps };

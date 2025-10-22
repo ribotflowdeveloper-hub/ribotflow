@@ -1,4 +1,4 @@
-// Ubicació: /app/(app)/components/main-sidebar.tsx
+// Ubicació: src/app/[locale]/(app)/_components/main-sidebar.tsx
 
 "use client";
 
@@ -6,6 +6,7 @@ import React from 'react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { LogOut } from 'lucide-react';
+import { cn } from '@/lib/utils/utils'; // <-- Importa cn
 
 import { useNavigationStore } from '@/stores/navigationStore';
 import { navModules, bottomItems } from '@/config/navigation';
@@ -25,31 +26,30 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
     const { toggleChatbot } = useNavigationStore();
 
     const handleItemClick = (e: React.MouseEvent<HTMLAnchorElement>, item: NavItemType) => {
-        // ✅ CORRECCIÓ: Comprovem primer si l'ítem no està implementat.
         if (item.notImplemented) {
-            e.preventDefault(); // Prevenim la navegació del Link
-            onNotImplemented(e); // Cridem a la funció corresponent del pare
-            return; // Aturem l'execució aquí
+            e.preventDefault();
+            onNotImplemented(e);
+            return;
         }
 
-        // Lògica especial per a certs botons (com el chatbot)
         if (item.id === 'ia') {
             e.preventDefault();
             toggleChatbot();
             return;
         }
 
-        // Prevenim la navegació si no és un enllaç directe (és un mòdul que obre un submenú)
         if (!item.isSingle) {
             e.preventDefault();
         }
-
-        // Finalment, notifiquem al component pare que s'ha fet un clic.
         onModuleSelect(item);
     };
 
     return (
-        <aside className="hidden lg:flex w-24 h-full glass-effect border-r border-border p-4 flex-col items-center z-20">
+        // ✅✅ CANVI APLICAT AQUÍ ✅✅
+        <aside className={cn(
+          "hidden lg:flex w-24 h-full border-r border-border p-4 flex-col items-center z-20",
+          "bg-slate-50 dark:glass-effect" // Fons clar / Efecte vidre en fosc
+        )}>
             {/* Logo a la part superior */}
             <div className="flex items-center justify-center gap-3 mb-8">
                 <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
@@ -65,8 +65,8 @@ export function MainSidebar({ onModuleSelect, onOpenSignOutDialog, onNotImplemen
                             alt={t('logoAlt')}
                             className="object-cover"
                             priority
-                            width={64}   // Substitueix per l'amplada real de la teva imatge
-                            height={64}  // Substitueix per l'alçada real de la teva imatge
+                            width={64}
+                            height={64}
                         />
                     )}
                 </div>

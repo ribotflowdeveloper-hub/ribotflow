@@ -5,8 +5,7 @@
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { ActivityItem } from '@/components/shared/ActivityItem';
-import { ServerActivityItem, ServerActivityIcon } from '@/lib/data/dashboard';
-import { FileWarning, CheckCircle2, Clock3, Users, LucideIcon } from 'lucide-react';
+import { ServerActivityItem, ServerActivityIcon, ServerActivityVariant } from '@/lib/data/dashboard';import { FileWarning, CheckCircle2, Clock3, Users, LucideIcon } from 'lucide-react';
 
 const iconMap: Record<ServerActivityIcon, LucideIcon> = {
   fileWarning: FileWarning,
@@ -16,7 +15,7 @@ const iconMap: Record<ServerActivityIcon, LucideIcon> = {
 };
 
 interface RecentActivitiesProps {
-  activities: ServerActivityItem[];
+  activities: (ServerActivityItem & { variant?: ServerActivityVariant })[]; // Afegim variant opcional
 }
 
 export function RecentActivities({ activities }: RecentActivitiesProps) {
@@ -29,9 +28,16 @@ export function RecentActivities({ activities }: RecentActivitiesProps) {
     <div className="space-y-4 max-h-[380px] overflow-y-auto pr-2 -mr-2">
       {activities.length > 0
         ? activities.map((act, idx) => {
-            const IconComponent = iconMap[act.icon];
-            return <ActivityItem key={idx} {...act} icon={IconComponent} />;
-          })
+          const IconComponent = iconMap[act.icon];
+          return <ActivityItem
+            key={idx}
+            icon={IconComponent}
+            title={act.title}
+            meta={act.meta}
+            href={act.href}
+            variant={act.variant || 'default'} // Passem la variant
+          />;
+        })
         : <p className="text-sm text-muted-foreground">{t('noActivities')}</p>
       }
     </div>

@@ -791,6 +791,8 @@
     "taskUpdateErrorToast": "Could not update the task.",
     "actionRequired": "Action required",
     "publishedSuccess": "Published successfully",
+    "monthlyEvolution": "Monthly Evolution",
+    "goalProgress": "Goal Progress",
     "agenda": {
       "title": "Agenda",
       "newTask": "New Task",

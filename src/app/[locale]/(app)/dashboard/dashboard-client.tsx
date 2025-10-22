@@ -1,20 +1,21 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import Link from 'next/link';
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar } from "lucide-react";
 
 import { DashboardCard } from "./_components/DashboardCard";
 import { SalesPerformance } from "./_components/SalesPerformance";
 import { RecentActivities } from "./_components/RecentActivities";
 import { Radar } from "./_components/Radar";
-import { TaskDialogManager, EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
-import { toast } from "sonner";
-import { startTransition } from "react";
-import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar } from "lucide-react";
 import { Agenda, TaskFilterStatus } from "./_components/agenda/Agenda";
+
+import { TaskDialogManager, EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 import { updateSimpleTask } from '@/app/actions/tasks/actions';
-import Link from 'next/link';
 
 import { Tables } from "@/types/supabase";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ interface DashboardClientProps {
     overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
     attentionContacts: Tables<'contacts'>[];
     notifications: Tables<'notifications'>[];
-    recentActivities: ServerActivityItem[]; // ✅ Correcció aplicada aquí
+    recentActivities: ServerActivityItem[];
   };
   teamMembers: Tables<'team_members_with_profiles'>[];
   children: React.ReactNode;
@@ -73,7 +74,7 @@ export function DashboardClient({
   }, [initialData.tasks]);
 
   const pendingCount = useMemo(() => tasks.filter(t => !t.is_completed && !t.user_asign_id).length, [tasks]);
-  
+
   const assignedCount = useMemo(() => {
     const baseFilter = (t: EnrichedTask) => t.user_asign_id !== null && !t.is_completed;
     if (showAllTeamTasks) return tasks.filter(baseFilter).length;
@@ -149,64 +150,74 @@ export function DashboardClient({
   };
 
   return (
-    <div className="relative space-y-6">
-      <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(#2e2e2e_1px,transparent_1px)] [background-size:16px_16px]" />
+    <div className="relative w-full bg-muted/30">
+      <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(theme(colors.gray.300)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.slate.800)_1px,transparent_1px)] [background-size:16px_16px]" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <DashboardCard title={t('salesPerformance')} icon={BarChart2} className="lg:col-span-2">
-          <SalesPerformance stats={initialData.stats} percentGoal={Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)} monthlyGoal={MONTHLY_GOAL} />
-        </DashboardCard>
-        <DashboardCard title={t('recentActivities')} icon={Activity}>
-          <RecentActivities activities={initialData.recentActivities} />
-        </DashboardCard>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <DashboardCard
-          title={t('agenda.title')}
-          icon={ListChecks}
-          className="lg:col-span-2 h-full flex flex-col"
-          actions={
-            <div className="flex items-center space-x-4">
-              <Button asChild variant="outline" size="icon" className="flex-shrink-0">
-                <Link href="/crm/calendari" aria-label={"Calendar"}>
-                  <Calendar className="h-5 w-5" />
-                </Link>
-              </Button>
-              <div className="flex items-center space-x-2">
-                <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
-                <Label htmlFor="show-all-tasks" className="text-xs font-normal cursor-pointer">{t('agenda.viewAll')}</Label>
+      <motion.div
+        className="grid grid-cols-1 lg:grid-cols-5 gap-6 p-4 lg:p-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Columna principal (3/5 de l'ample) */}
+        <div className="lg:col-span-3 space-y-6">
+          <DashboardCard title={t('salesPerformance')} icon={BarChart2} variant="sales">
+            <SalesPerformance
+              stats={initialData.stats}
+              percentGoal={Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)}
+              monthlyGoal={MONTHLY_GOAL}
+            />
+          </DashboardCard>
+
+          <DashboardCard
+            title={t('agenda.title')}
+            icon={ListChecks}
+            variant="agenda"
+            className="h-full flex flex-col"
+            actions={
+              <div className="flex items-center space-x-4">
+                <Button asChild variant="outline" size="icon" className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                  <Link href="/crm/calendari" aria-label={"Calendar"}> <Calendar className="h-5 w-5" /> </Link>
+                </Button>
+                <div className="flex items-center space-x-2">
+                  <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
+                  <Label htmlFor="show-all-tasks" className="text-xm font-normal cursor-pointer text-primary-foreground">{t('agenda.viewAll')}</Label>
+                </div>
+                <Button variant="ghost" onClick={openNewTaskDialog} className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                  <Plus className="w-4 h-4" />
+                  {t('agenda.newTask')}
+                </Button>
               </div>
-              <Button variant="ghost" size="sm" onClick={openNewTaskDialog}>
-                <Plus className="w-4 h-4 mr-2" />
-                {t('agenda.newTask')}
-              </Button>
-            </div>
-          }
-        >
-          <Agenda
-            tasks={filteredTasks}
-            activeFilter={taskFilter}
-            onFilterChange={setTaskFilter}
-            departmentFilter={departmentFilter}
-            onDepartmentFilterChange={setDepartmentFilter}
-            onViewTask={openViewTaskDialog}
-            pendingCount={pendingCount}
-            assignedCount={assignedCount}
-            completedCount={completedCount}
-            departments={initialData.departments}
-            searchTerm={searchTerm}
-            onSearchChange={setSearchTerm}
-            onToggleTask={handleToggleTask}
-          />
-        </DashboardCard>
-        <div className="space-y-6">
-          <DashboardCard title={t('radar')} icon={RadarIcon}>
-       
-            <Radar attentionContacts={initialData.attentionContacts} overdueInvoices={initialData.overdueInvoices} notifications={initialData.notifications} />
+            }
+          >
+            <Agenda
+              tasks={filteredTasks}
+              activeFilter={taskFilter} onFilterChange={setTaskFilter}
+              departmentFilter={departmentFilter} onDepartmentFilterChange={setDepartmentFilter}
+              onViewTask={openViewTaskDialog}
+              pendingCount={pendingCount} assignedCount={assignedCount} completedCount={completedCount}
+              departments={initialData.departments}
+              searchTerm={searchTerm} onSearchChange={setSearchTerm}
+              onToggleTask={handleToggleTask}
+            />
+          </DashboardCard>
+        </div>
+
+        {/* Columna lateral (2/5 de l'ample) */}
+        <div className="lg:col-span-2 space-y-6">
+          <DashboardCard title={t('recentActivities')} icon={Activity} variant="activity">
+            <RecentActivities activities={initialData.recentActivities} />
+          </DashboardCard>
+          <DashboardCard title={t('radar')} icon={RadarIcon} variant="radar">
+            <Radar
+              attentionContacts={initialData.attentionContacts}
+              overdueInvoices={initialData.overdueInvoices}
+              notifications={initialData.notifications}
+            />
           </DashboardCard>
           {children}
         </div>
-      </div>
+      </motion.div>
 
       <TaskDialogManager
         task={taskToManage}

@@ -1,18 +1,38 @@
 "use client";
 
 import * as React from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils/utils";
 
-interface DashboardCardProps {
+// Defineix les variants de color per a la capçalera
+const cardHeaderVariants = cva(
+  "flex items-center justify-between p-3 text-primary-foreground rounded-t-xl",
+  {
+    variants: {
+      variant: {
+        default: "bg-primary",
+        sales: "bg-blue-800",
+        agenda: "bg-green-500",
+        activity: "bg-orange-500",
+        radar: "bg-purple-600",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+interface DashboardCardProps extends VariantProps<typeof cardHeaderVariants> {
   title: string;
   icon: React.ElementType;
   children: React.ReactNode;
   className?: string;
   defaultOpen?: boolean;
-  actions?: React.ReactNode; // ✅ 1. Afegim la nova prop opcional
+  actions?: React.ReactNode;
 }
 
 export function DashboardCard({
@@ -20,8 +40,9 @@ export function DashboardCard({
   icon: Icon,
   children,
   className,
+  variant,
   defaultOpen = true,
-  actions, // ✅ 2. La rebem aquí
+  actions,
 }: DashboardCardProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
 
@@ -29,27 +50,32 @@ export function DashboardCard({
     <Collapsible
       open={isOpen}
       onOpenChange={setIsOpen}
-      className={cn("rounded-xl border bg-card text-card-foreground shadow-sm", className)}
+      className={cn(
+        "rounded-xl border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-300",
+        className
+      )}
     >
-      <div className="flex items-center justify-between p-4">
+      {/* Capçalera amb color de marca dinàmic */}
+      <div className={cn(cardHeaderVariants({ variant }))}>
         <div className="flex items-center gap-3">
-          <Icon className="w-5 h-5 text-muted-foreground" />
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <Icon className="w-5 h-5 text-primary-foreground/80" />
+          <h2 className="text-lg font-semibold">{title}</h2>
         </div>
-        {/* ✅ 3. Creem un contenidor per a les accions i el botó de col·lapse */}
         <div className="flex items-center gap-1">
           {actions}
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-muted-foreground">
+            <Button variant="ghost" size="icon" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10">
               {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               <span className="sr-only">Toggle</span>
             </Button>
           </CollapsibleTrigger>
         </div>
       </div>
+      
+      {/* Contingut sobre fons blanc */}
       <CollapsibleContent>
-        <div className="p-6 pt-0">
-            {children}
+        <div className="p-6 bg-white">
+          {children}
         </div>
       </CollapsibleContent>
     </Collapsible>

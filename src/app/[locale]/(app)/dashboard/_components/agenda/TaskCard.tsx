@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react"; // ✅ 1. Importem useState i useEffect
+import { useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,14 +24,14 @@ const generateHslColorFromString = (str: string | null | undefined) => {
     for (let i = 0; i < str.length; i++) {
         hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const h = hash % 220;
-    return { h, s: 60, l: 75 };
+    const h = hash % 360;
+    return { h, s: 60, l: 55 }; // Ajustem la lluminositat per a millor contrast
 };
 
 function MetaItem({ icon: Icon, text, className }: { icon: React.ElementType, text: React.ReactNode, className?: string }) {
     if (!text) return null;
     return (
-        <div className={cn("flex items-center gap-1.5", className)}>
+        <div className={cn("flex items-center gap-1.5 text-muted-foreground", className)}>
             <Icon className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="truncate">{text}</span>
         </div>
@@ -49,40 +49,33 @@ export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
 
   const userColor = generateHslColorFromString(task.user_asign_id);
   const cardStyle = userColor
-    ? {
-        backgroundColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 0.15)`,
-        borderColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 0.4)`,
-      }
-    : {};
+    ? { borderLeftColor: `hsla(${userColor.h}, ${userColor.s}%, ${userColor.l}%, 1)` }
+    : { borderLeftColor: 'var(--border)' };
   
-  // ✅ 2. Creem un estat per a la descripció, inicialitzat a buit
   const [plainTextDescription, setPlainTextDescription] = useState('');
 
-  // ✅ 3. Utilitzem useEffect per processar l'HTML només al client
   useEffect(() => {
-    // Aquesta funció només s'executarà al navegador, després del primer render
     setPlainTextDescription(sanitizeHtml(task.description));
-  }, [task.description]); // Es tornarà a executar si la descripció de la tasca canvia
+  }, [task.description]);
 
   return (
     <div 
-      className="flex items-start gap-3 p-3 rounded-lg border bg-card text-card-foreground shadow-sm transition-colors group hover:bg-muted/50"
+      className="flex items-start gap-3 p-3 rounded-lg bg-background border-l-4 transition-all duration-200 group hover:bg-muted/80 cursor-pointer shadow-sm"
       style={cardStyle}
+      onClick={() => onViewTask(task)}
     >
-      
       <div className="pt-1">
-          <Checkbox
-            id={`task-${task.id}`}
-            checked={task.is_completed}
-            onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
-            onClick={(e) => e.stopPropagation()}
-          />
+        <Checkbox
+          id={`task-${task.id}`}
+          checked={task.is_completed}
+          onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
+          onClick={(e) => e.stopPropagation()}
+        />
       </div>
 
-      <div className="flex-1 min-w-0 cursor-pointer space-y-2" onClick={() => onViewTask(task)}>
-        
+      <div className="flex-1 min-w-0 space-y-2">
         <div className="flex justify-between items-start gap-2">
-            <p className={cn("font-semibold leading-tight break-words pr-2", task.is_completed && "line-through text-muted-foreground")}>
+            <p className={cn("font-semibold leading-tight break-words pr-2 text-card-foreground", task.is_completed && "line-through text-muted-foreground")}>
               {task.title}
             </p>
             <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
@@ -93,7 +86,7 @@ export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
                 )}
                 <TooltipProvider delayDuration={150}>
                     <Tooltip>
-                        <TooltipTrigger>
+                        <TooltipTrigger onClick={(e) => e.stopPropagation()}>
                             <Avatar className="w-6 h-6 border">
                                 <AvatarImage src={task.profiles?.avatar_url || undefined} />
                                 <AvatarFallback className="text-xs">
@@ -109,10 +102,9 @@ export function TaskCard({ task, onViewTask, onToggleTask }: TaskCardProps) {
             </div>
         </div>
 
-        <div className="space-y-2 text-muted-foreground">
-            {/* ✅ 4. Mostrem la descripció des de l'estat */}
+        <div className="space-y-2">
             {plainTextDescription && (
-              <p className="text-sm truncate">
+              <p className="text-sm truncate text-muted-foreground">
                 {plainTextDescription}
               </p>
             )}

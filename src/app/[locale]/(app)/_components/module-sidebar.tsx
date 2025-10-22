@@ -1,20 +1,18 @@
+// Ubicació: src/app/[locale]/(app)/_components/module-sidebar.tsx
+
 "use client";
 
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn, getCleanPathname } from '@/lib/utils/utils';
+import { cn, getCleanPathname } from '@/lib/utils/utils'; // <-- Importa cn
 import type { NavItem } from '@/types/app/navigation';
 
-/**
- * @summary Barra lateral para un módulo específico (submenú).
- * AHORA GESTIONA LA NAVEGACIÓN A TRAVÉS DE UNA FUNCIÓN PARA COMPROBAR PERMISOS.
- */
 export function ModuleSidebar({ module, onClose, handleNavigation }: {
     module: NavItem;
     onClose: () => void;
-    handleNavigation: (item: NavItem) => void; // ✅ Acceptem la funció de navegació
+    handleNavigation: (item: NavItem) => void;
 }) {
     const locale = useLocale();
     const t = useTranslations('Navigation');
@@ -24,7 +22,11 @@ export function ModuleSidebar({ module, onClose, handleNavigation }: {
     if (!module || !module.children) return null;
 
     return (
-        <div className="hidden lg:flex w-64 h-full glass-effect border-r border-border flex-col p-4 flex-shrink-0">
+        // ✅✅ CANVI APLICAT AQUÍ ✅✅
+        <div className={cn(
+          "hidden lg:flex w-64 h-full border-r border-border flex-col p-4 flex-shrink-0",
+          "bg-slate-100 dark:glass-effect" // Fons clar diferent / Efecte vidre en fosc
+        )}>
             <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-bold pl-2">{t(module.labelKey)}</h2>
                 <Button variant="ghost" size="icon" onClick={onClose}>
@@ -35,13 +37,12 @@ export function ModuleSidebar({ module, onClose, handleNavigation }: {
                 {module.children.map(item => {
                     const isActive = cleanPathname === item.path;
                     return (
-                        // ✅ CORRECCIÓ: Hem canviat <Link> per <Button> per a controlar el clic
                         <Button
                             key={item.id}
-                            variant="ghost" // Usem 'ghost' per a que sembli un enllaç
-                            onClick={() => handleNavigation(item)} // Cridem a la funció que comprova els permisos
+                            variant="ghost"
+                            onClick={() => handleNavigation(item)}
                             className={cn(
-                                'flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors w-full h-auto text-left', // 'text-left' per a alinear
+                                'flex items-center justify-start gap-3 px-4 py-2.5 rounded-lg text-sm transition-colors w-full h-auto text-left',
                                 isActive
                                     ? 'bg-primary text-primary-foreground font-semibold shadow-sm'
                                     : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'

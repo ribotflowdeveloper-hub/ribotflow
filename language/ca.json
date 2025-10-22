@@ -792,6 +792,9 @@
     "taskUpdateErrorToast": "No s'ha pogut actualitzar la tasca.",
     "actionRequired": "Acció requerida",
     "publishedSuccess": "Publicat amb èxit",
+    "monthlyEvolution": "Evolució Mensual",
+    "goalProgress": "Progrés de l'Objectiu",
+    
     "agenda": {
       "title": "Agenda",
       "newTask": "Nova Tasca",
