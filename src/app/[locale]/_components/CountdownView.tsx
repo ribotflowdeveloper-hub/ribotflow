@@ -7,8 +7,8 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 
 // Importem els nous components de la UI
-import { ThemeSwitcher } from '@/components/ThemeSwitcher';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
+import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
 import { Button } from '@/components/ui/button';
 
 // Carreguem el fons de partícules de manera dinàmica per a un millor rendiment.

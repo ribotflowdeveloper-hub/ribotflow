@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { LanguageSwitcher } from '@/components/LanguageSwitcher';
-import { ThemeSwitcher } from '@/components/ThemeSwitcher';
+import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
+import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 

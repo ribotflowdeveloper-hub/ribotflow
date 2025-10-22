@@ -7,8 +7,8 @@ export default async function InstallPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-medium">{t('title')}</h3>
-        <p className="text-sm text-muted-foreground">{t('description')}</p>
+        <h3 className="text-xl font-medium">{t('title')}</h3>
+        <p className="text-xm text-muted-foreground">{t('description')}</p>
       </div>
       <div className="border-t border-border pt-6">
         <InstallationManager

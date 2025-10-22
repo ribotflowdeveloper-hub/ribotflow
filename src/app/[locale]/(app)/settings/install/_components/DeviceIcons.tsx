@@ -21,7 +21,7 @@ export const AppleIcon = (props: LucideProps) => (
   </svg>
 );
 
-// Icona per a Android
+// ✅ ICONA D'ANDROID CORREGIDA: Utilitzem l'icona oficial.
 export const AndroidIcon = (props: LucideProps) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -35,12 +35,12 @@ export const AndroidIcon = (props: LucideProps) => (
     strokeLinejoin="round"
     {...props}
   >
-    <path d="M14 8V4.83A1 1 0 0 0 12.17 4a14.24 14.24 0 0 0-8.34 0A1 1 0 0 0 2 4.83V8" />
-    <path d="M6 12v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" />
-    <path d="M12 12v8" />
-    <path d="M4.2 10.2a6.5 6.5 0 0 1 15.6 0" />
-    <path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H8" />
-    <path d="M16 2h1.5A2.5 2.5 0 0 1 20 4.5" />
+    <path d="M17 9.5a5.5 5.5 0 1 0-10 0" />
+    <path d="M12 15H4a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-8" />
+    <path d="M6 15V9" />
+    <path d="M18 15V9" />
+    <path d="M9 6.5l.5-.5" />
+    <path d="M14.5 6l.5-.5" />
   </svg>
 );
 

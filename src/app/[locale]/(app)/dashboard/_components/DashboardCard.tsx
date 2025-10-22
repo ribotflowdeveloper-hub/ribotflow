@@ -21,6 +21,7 @@ const cardHeaderVariants = cva(
         quotes: "bg-teal-600",
         tasks: "bg-yellow-600",
         inbox: "bg-indigo-600",
+        iphone: "bg-gray-600",
       },
     },
     defaultVariants: {
