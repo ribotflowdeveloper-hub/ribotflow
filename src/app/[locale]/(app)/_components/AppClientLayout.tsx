@@ -70,20 +70,21 @@ export function AppClientLayout({ children }: { children: ReactNode, locale: str
             </motion.div>
 
             <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="lg:hidden flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-                    <MobileMenu
-                        onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
-                        onNotImplementedClick={handleNotImplementedClick}
-                        handleNavigation={handleNavigation}
-                    />
-                    <span className="font-bold text-lg">Ribotflow</span>
+                <header className="lg:hidden flex items-center justify-between border-b p-1 border-border flex-shrink-0">
                     <Image
                         src="/icon0.svg"
                         alt={t('logoAlt')}
                         className="object-cover"
-                        priority height={40}
-                        width={64}   // Substitueix per l'amplada real de la teva imatge
+                        priority height={30}
+                        width={30}   // Substitueix per l'amplada real de la teva imatge
 
+                    />
+
+                    <span className="font-bold text-lg">Ribotflow</span>
+                    <MobileMenu
+                        onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
+                        onNotImplementedClick={handleNotImplementedClick}
+                        handleNavigation={handleNavigation}
                     />
 
                 </header>

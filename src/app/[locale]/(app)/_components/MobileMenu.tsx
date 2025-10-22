@@ -36,7 +36,7 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
                 <nav className="flex-1 overflow-y-auto p-4 space-y-1">
                     {navModules.map(module => (
                         module.isSingle ? (
-                            <Button key={module.id} variant="ghost" className="w-full justify-start gap-3 px-4 py-3 text-base font-medium" onClick={createClickHandler(module)}>
+                            <Button key={module.id} variant="ghost" className="w-full justify-start gap-3 px-4 text-base font-medium" onClick={createClickHandler(module)}>
                                 <module.icon className="w-5 h-5" /> {t(module.labelKey)}
                             </Button>
                         ) : (
