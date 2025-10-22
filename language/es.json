@@ -769,7 +769,6 @@
     "invoices": "Facturas",
     "expenses": "Gastos",
     "costs": "Costes",
-    "inbox": "Bandeja de entrada",
     "communication": "Comunicación",
     "quotes": "Presupuestos",
     "newTask": "Nueva Tarea",
@@ -789,6 +788,13 @@
     "publishedSuccess": "Publicado con éxito",
     "monthlyEvolution": "Evolución Mensual",
     "goalProgress": "Progreso del Objetivo",
+    "recentQuotes": "Presupuestos Recientes",
+    "inbox": {
+      "title": "Bandeja de Entrada Prioritaria",
+      "emptyTitle": "Bandeja de entrada limpia",
+      "emptySubtitle": "No tienes correos nuevos para revisar."
+    },
+    "viewAll": "Verlos todos",
     "agenda": {
       "title": "Agenda",
       "newTask": "Nueva Tarea",

@@ -132,7 +132,7 @@ export function Agenda(props: AgendaProps) {
 
       <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4 min-h-0 space-y-3">
         {/* ✅ CORRECCIÓ DE L'ANIMACIÓ: AnimatePresence envolta directament el map o l'estat buit */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <motion.div

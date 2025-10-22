@@ -39,14 +39,15 @@ interface KPICardProps {
 const KPICard = ({ title, value, change, isPositive, icon: Icon }: KPICardProps) => (
   <div className="rounded-lg p-4 bg-background/50 border flex flex-col justify-between">
     <div>
-      <div className="flex items-center text-xs text-muted-foreground">
-        <Icon className="w-4 h-4 mr-2" />
-        <span>{title}</span>
-      </div>
+      <div className="flex items-center text-xs text-muted-foreground"><Icon className="w-4 h-4 mr-2" /><span>{title}</span></div>
       <div className="text-2xl font-bold text-foreground mt-2">{value}</div>
     </div>
     {change && (
-       <div className={cn("text-xs font-medium mt-1 flex items-center", isPositive ? 'text-green-600' : 'text-red-600')}>
+       <div className={cn(
+         "text-xs font-medium mt-1 flex items-center",
+         // ✅ CORRECCIÓ DARK MODE
+         isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+       )}>
          {isPositive ? <ArrowUp className="w-3 h-3 mr-1" /> : <ArrowDown className="w-3 h-3 mr-1" />}
          {change}
        </div>

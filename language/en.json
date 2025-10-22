@@ -774,7 +774,6 @@
     "invoices": "Invoices",
     "expenses": "Expenses",
     "costs": "Costs",
-    "inbox": "Inbox",
     "communication": "Communication",
     "quotes": "Quotes",
     "newTask": "New Task",
@@ -794,6 +793,13 @@
     "publishedSuccess": "Published successfully",
     "monthlyEvolution": "Monthly Evolution",
     "goalProgress": "Goal Progress",
+    "recentQuotes": "Recent Quotes",
+    "inbox": {
+      "title": "Priority Inbox",
+      "emptyTitle": "Inbox Clear",
+      "emptySubtitle": "You have no new emails to review."
+    },
+    "viewAll": "View All",
     "agenda": {
       "title": "Agenda",
       "newTask": "New Task",

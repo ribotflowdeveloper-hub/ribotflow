@@ -2,12 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-interface SupabaseDocumentMatch {
-  id: number;
-  metadata: Record<string, unknown> | null;
-  content: string;
-  similarity: number;
-}
+
 
 export async function chatbotAction(question: string): Promise<{ data: string | null, error: string | null }> {
   if (!process.env.GEMINI_API_KEY) {

@@ -775,7 +775,7 @@
     "invoices": "Factures",
     "expenses": "Despeses",
     "costs": "Costos",
-    "inbox": "Inbox",
+  
     "communication": "Comunicació",
     "quotes": "Pressupostos",
     "newTask": "Nova Tasca",
@@ -795,6 +795,13 @@
     "publishedSuccess": "Publicat amb èxit",
     "monthlyEvolution": "Evolució Mensual",
     "goalProgress": "Progrés de l'Objectiu",
+    "recentQuotes": "Pressupostos Recents",
+    "inbox": {
+      "title": "Safata d'Entrada Prioritària",
+      "emptyTitle": "Safata d'entrada neta",
+      "emptySubtitle": "No tens correus nous per revisar."
+    },
+    "viewAll": "Veure'ls tots",
     
     "agenda": {
       "title": "Agenda",

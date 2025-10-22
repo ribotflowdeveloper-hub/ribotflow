@@ -1,4 +1,4 @@
-// src/app/[locale]/(app)/dashboard/DashboardData.tsx
+// src/app/[locale]/(app)/dashboard/_components/DashboardData.tsx
 
 import React from 'react';
 import { validatePageSession } from '@/lib/supabase/session';
@@ -7,8 +7,8 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, Tables } from '@/types/supabase';
 import { DashboardClient } from '../dashboard-client';
 
-// ✅ CORRECCIÓ: Hem eliminat la importació de 'EnrichedTask' perquè ja no es necessita aquí.
-// El tipus s'infereix correctament de la funció getTasks.
+import { EnrichedQuote } from './RecentQuotes';
+import { EnrichedEmail } from './RecentEmails';
 
 import {
     getStats,
@@ -35,16 +35,56 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     const typedSupabase = supabase as SupabaseClient<Database>;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [statsData, tasksData, overdueInvoicesData, contactsData, notificationsData, departmentsData, teamMembersData] = await Promise.all([
+    const { data: permissions } = await typedSupabase
+        .from('inbox_permissions')
+        .select('target_user_id')
+        .eq('team_id', team.id)
+        .eq('grantee_user_id', user.id);
+
+    const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id) || [])];
+
+    const [
+        statsData,
+        tasksData,
+        overdueInvoicesData,
+        contactsData,
+        notificationsRes,
+        departmentsRes,
+        teamMembersRes,
+        recentQuotesRes,
+        recentEmailsRes,
+    ] = await Promise.all([
         getStats(typedSupabase),
         getTasks(typedSupabase, team.id),
         getOverdueInvoices(typedSupabase),
         getRecentContacts(typedSupabase, team.id),
-        typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false).then(res => res.data ?? []),
-        typedSupabase.from('departments').select('*').eq('team_id', team.id).then(res => res.data ?? []),
-        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id).then(res => res.data ?? []),
+        typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
+        typedSupabase.from('departments').select('*').eq('team_id', team.id),
+        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id),
+        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', team.id).order('created_at', { ascending: false }).limit(10),
+
+        // ✅ SOLUCIÓ DEFINITIVA: Consulta directa a la taula 'tickets'.
+        // ✅ CONSULTA DE DIAGNÒSTIC: la fem el més simple possible.
+        typedSupabase
+            .from('tickets')
+            .select('*, contacts(nom)')
+            .in('user_id', visibleUserIds)
+            .order('created_at', { ascending: false }) // Ordenem per creació, que sempre hi serà
+            .limit(10)
     ]);
-    
+// --- SECCIÓ DE DEPURACIÓ EXPLÍCITA ---
+    console.log('\n\n--- INICI DEPURACIÓ DADES INBOX DASHBOARD ---');
+    if (recentEmailsRes.error) {
+        console.error('>> ERROR EN LA CONSULTA DIRECTA A "tickets":', recentEmailsRes.error);
+    } else {
+        console.log(`>> ÈXIT! La consulta ha retornat ${recentEmailsRes.data?.length ?? 0} tiquets.`);
+        // Mostrem els IDs dels tiquets rebuts per verificar
+        if (recentEmailsRes.data && recentEmailsRes.data.length > 0) {
+            console.log('>> IDs dels tiquets rebuts:', recentEmailsRes.data.map(t => t.id));
+        }
+    }
+    console.log('--- FI DEPURACIÓ ---\n\n');
+    // ------------------------------------
     const recentActivities = getRecentActivities(overdueInvoicesData, tasksData, contactsData);
 
     const initialData = {
@@ -61,18 +101,21 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             expensesIsPositive: statsData.expenses_current_month <= statsData.expenses_previous_month,
         },
         tasks: tasksData,
-        departments: departmentsData,
+        departments: departmentsRes.data ?? [],
         contacts: contactsData,
         overdueInvoices: overdueInvoicesData,
         attentionContacts: contactsData.filter((c) => c.last_interaction_at && new Date(c.last_interaction_at).toISOString() < sevenDaysAgo).slice(0, 5),
-        notifications: notificationsData,
+        notifications: notificationsRes.data ?? [],
         recentActivities: recentActivities,
+        recentQuotes: (recentQuotesRes.data as EnrichedQuote[] | null) ?? [],
+        // Assignem directament les dades de la consulta
+        recentEmails: (recentEmailsRes.data as EnrichedEmail[] | null) ?? [],
     };
 
     return (
         <DashboardClient
             initialData={initialData}
-            teamMembers={teamMembersData as Tables<'team_members_with_profiles'>[]}
+            teamMembers={teamMembersRes.data as Tables<'team_members_with_profiles'>[] ?? []}
             userId={user.id}
         >
             {children}
