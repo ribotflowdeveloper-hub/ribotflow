@@ -5,7 +5,6 @@
 import { FC } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Crown } from 'lucide-react';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard';
 import { ListItem } from './ListItem';
 import { type TopClient } from '../CrmData';
 
@@ -18,7 +17,6 @@ export const TopClientsList: FC<TopClientsListProps> = ({ topClients }) => {
     const locale = useLocale();
 
     return (
-        <DashboardCard title={t('topClients')} icon={Crown} variant="default">
             <div className="space-y-1">
                 {topClients.length > 0 ? (
                     topClients.map((client, index) => (
@@ -35,6 +33,5 @@ export const TopClientsList: FC<TopClientsListProps> = ({ topClients }) => {
                     <p className="text-sm text-muted-foreground text-center py-4">{t('noRevenueData')}</p>
                 )}
             </div>
-        </DashboardCard>
     );
 };

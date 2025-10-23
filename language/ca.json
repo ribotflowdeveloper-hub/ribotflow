@@ -468,6 +468,20 @@
     "healthRadar": "Radar de Salut",
     "revenueForecast": "Previsió de Facturació",
     "salesActivityLast7d": "Activitat de Vendes (Últims 7 dies)",
+    "opportunityAgingByStage": "Antiguitat d'Oportunitats per Etapa",
+    "leadConversionBySource": "Conversió per Origen del Lead",
+    "noOpportunityData": "No hi ha dades d'oportunitats actives per analitzar.",
+    "campaignPerformance": {
+      "title": "Rendiment de Campanyes (ROI)"
+    },
+    "dailySummary": {
+      "title": "Resum d'Avui",
+      "tasks": "Tasques Completades",
+      "emails": "Emails Enviats",
+      "quotes": "Pressupostos Enviats",
+      "meetings": "Reunions Realitzades"
+    },
+    "noCampaignData": "No hi ha dades de campanyes de màrqueting.",
     "stats": {
       "totalContacts": "Contactes Totals",
       "newContactsThisMonth": "Nous Contactes (Mes)",

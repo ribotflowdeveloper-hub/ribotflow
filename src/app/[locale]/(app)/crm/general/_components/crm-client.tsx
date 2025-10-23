@@ -4,19 +4,21 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, BarChart3, PieChart, Zap } from 'lucide-react';
+import { AlertTriangle, BarChart3, PieChart, Zap, Clock, Megaphone, ListTodo, Crown, ShieldAlert, } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { type CrmData, type UnreadActivity, type ComposeEmailData } from './CrmData';
 import { ModuleCard } from '@/components/shared/ModuleCard';
 import { KpiGrid } from './kip/KipGrid';
 import { SalesFunnelChart } from './charts/SalesFunnelChart'; // Corregit
 import { LeadSourceChart } from './charts/LeadSourceChart';   // Corregit
-import { RevenueForecastChart } from './charts/RevenueForecastChart';
-import { SalesActivityChart } from './charts/SalesActivityChart';
 import { ActivityList } from './lists/ActivityList'; // Ajusta la ruta si cal
 import { TopClientsList } from './lists/TopClientsList'; // Ajusta la ruta si cal
 import { HealthRadarList } from './lists/HealtRadarList'; // Ajusta la ruta si cal
 import ComposeEmailDialog from './ComposeEmailDialog';
+import { OpportunityAgingChart } from './charts/OpportunityAgingChart';
+import { LeadSourceConversionChart } from './charts/LeadSourceConversionChart';
+import { CampaignPerformanceChart } from './charts/CampaignPerformanceChart';
+import { DailySummaryWidget } from './charts/DailySummaryWidget';
 
 export function CrmClient({ initialData }: { initialData: CrmData | null }) {
     const t = useTranslations('CrmGeneralPage');
@@ -58,45 +60,57 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
 
 
 
-    return (
+   return (
         <>
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-6">
-
-            
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-                    <div className="lg:col-span-2 space-y-6">
+                
+                {/* --- FILA SUPERIOR: KPIs (3/4) + Alertes (1/4) --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <div className="lg:col-span-3">
                         <ModuleCard title={t('keyMetrics')} icon={Zap} variant="info" defaultOpen={true}>
                             <KpiGrid stats={data.stats} />
                         </ModuleCard>
-                        <ActivityList activities={data.unreadActivities} onMarkAsRead={handleMarkAsRead} onReply={handleReply} />
-
-                        <ModuleCard title={t('revenueForecast')} icon={BarChart3}>
-                            <RevenueForecastChart data={data.revenue} />
-                        </ModuleCard>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <ModuleCard title={t('customerLifecycle')} icon={BarChart3}>
-                                <SalesFunnelChart data={data.funnel} t={t} />
-                            </ModuleCard>
-                            <ModuleCard title={t('leadSourceAnalysis')} icon={PieChart}>
-                                {data.leadSources && data.leadSources.length > 0 ? (
-                                    <LeadSourceChart data={data.leadSources} />
-                                ) : (
-                                    <p className="text-muted-foreground text-sm text-center p-4">{t('noLeadSourceData')}</p>
-                                )}
-                            </ModuleCard>
-                        </div>
                     </div>
-
-                    <div className="lg:col-span-1 space-y-6">
-                        <ModuleCard title={t('salesActivityLast7d')} icon={Zap}>
-                            <SalesActivityChart />
+                    <div className="lg:col-span-1">
+                         <ModuleCard title={t('recentAlerts', { count: data.unreadActivities.length })} icon={AlertTriangle} variant="activity">
+                            <ActivityList activities={data.unreadActivities} onMarkAsRead={handleMarkAsRead} onReply={handleReply} />
                         </ModuleCard>
-                        <TopClientsList topClients={data.topClients} />
+                    </div>
+                </div>
+                
+                {/* --- GRAELLA INFERIOR: 2 Files de 4 Targetes Adaptatives --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* Fila 1 */}
+                    <ModuleCard title={t('dailySummary.title')} icon={ListTodo} variant="agenda">
+                        <DailySummaryWidget data={data.dailySummary} />
+                    </ModuleCard>
+                    <ModuleCard title={t('opportunityAgingByStage')} icon={Clock} variant="warning">
+                        <OpportunityAgingChart data={data.opportunityAging} />
+                    </ModuleCard>
+                    <ModuleCard title={t('campaignPerformance.title')} icon={Megaphone} variant="inbox">
+                        <CampaignPerformanceChart data={data.campaignPerformance} />
+                    </ModuleCard>
+                    <ModuleCard title={t('topClients')} icon={Crown} variant="success">
+                         <TopClientsList topClients={data.topClients} />
+                    </ModuleCard>
+
+                    {/* Fila 2 */}
+                     <ModuleCard title={t('customerLifecycle')} icon={BarChart3} variant="activity">
+                        <SalesFunnelChart data={data.funnel} t={t} />
+                    </ModuleCard>
+                    <ModuleCard title={t('leadConversionBySource')} icon={PieChart} variant="radar">
+                        <LeadSourceConversionChart data={data.leadConversion} />
+                    </ModuleCard>
+                    <ModuleCard title={t('leadSourceAnalysis')} icon={PieChart}>
+                        {data.leadSources && data.leadSources.length > 0 ? (
+                            <LeadSourceChart data={data.leadSources} />
+                        ) : (
+                            <p className="text-muted-foreground text-sm text-center p-4">{t('noLeadSourceData')}</p>
+                        )}
+                    </ModuleCard>
+                    <ModuleCard title={t('healthRadar')} icon={ShieldAlert} variant="radar">
                         <HealthRadarList coldContacts={data.coldContacts} />
-                    </div>
+                    </ModuleCard>
                 </div>
 
             </motion.div>
@@ -105,7 +119,7 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
                 open={composeState.open}
                 onOpenChange={(isOpen) => setComposeState({ open: isOpen, initialData: isOpen ? composeState.initialData : null })}
                 initialData={composeState.initialData}
-                onEmailSent={() => { }}
+                onEmailSent={() => {}}
             />
         </>
     );

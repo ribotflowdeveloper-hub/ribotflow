@@ -4,7 +4,7 @@
 
 import { FC } from 'react';
 import { useTranslations } from 'next-intl';
-import { type CrmData } from './CrmData';
+import { type CrmData } from '../CrmData';
 import { KpiItem } from './KpiItem'; // <-- Aquest import ara funcionarà
 
 interface KpiGridProps {

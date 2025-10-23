@@ -4,8 +4,7 @@
 
 import { FC } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { AlertTriangle, Contact } from 'lucide-react';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard';
+import { AlertTriangle} from 'lucide-react';
 import { ListItem } from './ListItem';
 import { type ColdContact } from '../CrmData';
 
@@ -18,7 +17,6 @@ export const HealthRadarList: FC<HealthRadarListProps> = ({ coldContacts }) => {
     const locale = useLocale();
 
     return (
-        <DashboardCard title={t('healthRadar')} icon={Contact} variant="default">
             <div className="space-y-1">
                 {coldContacts.length > 0 ? (
                     coldContacts.map(contact => (
@@ -35,6 +33,5 @@ export const HealthRadarList: FC<HealthRadarListProps> = ({ coldContacts }) => {
                     <p className="text-sm text-muted-foreground text-center py-4">{t('allContactsWarm')}</p>
                 )}
             </div>
-        </DashboardCard>
     );
 };
