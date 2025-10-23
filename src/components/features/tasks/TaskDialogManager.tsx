@@ -5,20 +5,23 @@ import { TaskDetailView } from './TaskDetailView';
 import { TaskFormView } from './TaskFormView';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tables } from '@/types/supabase';
-
+import { JSONContent } from '@tiptap/react'; // <-- Importa
 interface TimeTrackingLogEntry {
-  status: 'active' | 'inactive';
-  timestamp: string;
+    status: 'active' | 'inactive';
+    timestamp: string;
 }
 
 // Aquest serà el nostre nou tipus de tasca universal
 export type EnrichedTask = Tables<'tasks'> & {
     contacts: { id: number; nom: string } | null;
-    profiles: { 
-        id: string; 
-        full_name: string | null; 
+    profiles: {
+        id: string;
+        full_name: string | null;
         avatar_url: string | null;
     } | null;
+    // Afegeix tipus explícits per als camps JSONB si supabase.ts no els infereix bé
+    description_json?: JSONContent | string | null; // Pot venir com string o objecte
+    checklist_progress?: { total: number; completed: number } | null;
     departments: { id: number; name: string } | null;
     time_tracking_log: TimeTrackingLogEntry[] | null;
     is_active: boolean;
@@ -32,11 +35,11 @@ interface TaskDialogManagerProps {
     contacts: Tables<'contacts'>[];
     departments: Tables<'departments'>[];
     teamMembers: { id: string; full_name: string | null }[];
-    
+
     // ✅ CANVI CLAU: Modifiquem la definició de onTaskMutation.
     // Ara pot rebre un objecte opcional amb instruccions.
     onTaskMutation: (options?: { closeDialog?: boolean }) => void;
-    
+
     initialDate?: Date;
 }
 
@@ -65,7 +68,7 @@ export function TaskDialogManager({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-3xl">
+            <DialogContent className="sm:max-w-6xl">
                 {isEditing ? (
                     <TaskFormView
                         task={task}

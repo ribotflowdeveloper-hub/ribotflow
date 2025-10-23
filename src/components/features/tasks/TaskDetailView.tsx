@@ -18,9 +18,29 @@ import { deleteTask, updateSimpleTask, setTaskActiveStatus } from '@/app/actions
 import { toast } from 'sonner';
 import { priorityStyles, TaskPriority } from '@/config/styles/task';
 import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
+import { Tables, Json } from '@/types/supabase'; // <-- Importa Json
 
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
-
+// ✅ PAS 1: Funció per comptar checkboxes des de l'HTML
+function countCheckboxesFromHtml(html: string): { total: number; completed: number } {
+    if (!html) return { total: 0, completed: 0 };
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const taskItems = doc.querySelectorAll('li[data-type="taskItem"]');
+        const total = taskItems.length;
+        let completed = 0;
+        taskItems.forEach(item => {
+            if (item.getAttribute('data-checked') === 'true') {
+                completed++;
+            }
+        });
+        return { total, completed };
+    } catch (error) {
+        console.error("Error counting checkboxes from HTML:", error);
+        return { total: 0, completed: 0 }; // Retorna 0 en cas d'error
+    }
+}
 // --- HOOK PER AL CRONÒMETRE EN TEMPS REAL ---
 const useDialogTaskTimer = (task: EnrichedTask, localLog: LogEntry[] | null) => {
     const [liveTime, setLiveTime] = useState("00:00:00");
@@ -30,10 +50,10 @@ const useDialogTaskTimer = (task: EnrichedTask, localLog: LogEntry[] | null) => 
 
         const calculateTotalTime = () => {
             if (!localLog || !Array.isArray(localLog)) return 0;
-            
+
             let totalMs = 0;
             let startTime: number | null = null;
-            
+
             const sortedLog = [...localLog].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
             for (const entry of sortedLog) {
@@ -99,7 +119,7 @@ interface TaskDetailViewProps {
 export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }: TaskDetailViewProps) {
     const t = useTranslations('DashboardClient.taskActions');
     const t2 = useTranslations('DashboardClient.taskDetails');
-    
+
     const [isActive, setIsActive] = useState(task.is_active || false);
     const [localLog, setLocalLog] = useState(task.time_tracking_log as LogEntry[] | null);
     const [currentDescription, setCurrentDescription] = useState(task.description || '');
@@ -114,13 +134,13 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
 
     const handleToggleActive = async (newCheckedState: boolean) => {
         const previousState = isActive;
-        setIsActive(newCheckedState); 
+        setIsActive(newCheckedState);
 
-        const previousLog = localLog; 
+        const previousLog = localLog;
         const newLogEntry: LogEntry = {
             timestamp: new Date().toISOString(),
             action: newCheckedState ? 'actiu' : 'inactiu',
-            user_id: 'optimistic_placeholder' 
+            user_id: 'optimistic_placeholder'
         };
         setLocalLog([...(localLog || []), newLogEntry]);
 
@@ -128,7 +148,7 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
 
         if (error) {
             setIsActive(previousState);
-            setLocalLog(previousLog); 
+            setLocalLog(previousLog);
             toast.error("No s'ha pogut actualitzar l'estat.", { description: "Si us plau, intenta-ho de nou." });
         } else {
             toast.success(newCheckedState ? "Tasca activada." : "Tasca desactivada.");
@@ -142,21 +162,35 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
         const parser = new DOMParser();
         const doc = parser.parseFromString(currentDescription, 'text/html');
         const taskItems = doc.querySelectorAll('li[data-type="taskItem"]');
-        
+
         if (itemIndex < taskItems.length) {
             const item = taskItems[itemIndex];
             const isChecked = item.getAttribute('data-checked') === 'true';
             item.setAttribute('data-checked', isChecked ? 'false' : 'true');
 
             const newHtml = doc.body.innerHTML;
-            setCurrentDescription(newHtml);
-            
-            const { error } = await updateSimpleTask(task.id, { description: newHtml });
+            setCurrentDescription(newHtml); // Actualització visual optimista
+
+            // ✅ PAS 2: Recalcula el progrés des del nou HTML
+            const newProgress = countCheckboxesFromHtml(newHtml);
+
+            // Prepara les dades per enviar
+            const updateData: Partial<Tables<'tasks'>> = {
+                description: newHtml,
+                // Assegura't que el tipus coincideix amb el que espera Supabase (Json)
+                checklist_progress: newProgress as unknown as Json // Cast a Json
+            };
+
+            // Crida a l'acció per actualitzar ambdues coses
+            const { error } = await updateSimpleTask(task.id, updateData);
 
             if (error) {
                 toast.error("No s'ha pogut actualitzar la llista de tasques.");
-                setCurrentDescription(task.description || ''); 
+                // Reverteix l'estat local si falla l'actualització
+                setCurrentDescription(task.description || '');
             } else {
+                // Notifica al component pare que hi ha hagut una mutació
+                // Això hauria de refrescar les dades a la TaskCard
                 onTaskMutation({ closeDialog: false });
             }
         }
@@ -169,11 +203,11 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
                 taskItemIndex++;
                 const currentIndex = taskItemIndex;
                 const isChecked = domNode.attribs['data-checked'] === 'true';
-                
+
                 const contentDiv = domNode.children.find(
                     (child): child is Element => child instanceof Element && child.name === 'div'
                 );
-                
+
                 return (
                     <div className="flex items-start gap-3 my-2 first:mt-0 last:mb-0">
                         <Checkbox
@@ -212,8 +246,8 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.deleteErrorTitle'), { description: errorMessage });
         } else {
             toast.success(t('toast.deleteSuccessTitle'));
-            onTaskMutation(); 
-            onClose(); 
+            onTaskMutation();
+            onClose();
         }
     };
 
@@ -221,7 +255,7 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
         <>
             <DialogHeader className="pr-16 pb-4 border-b">
                 <DialogTitle className="text-2xl font-bold leading-tight flex items-center gap-3">
-                    <div className={cn("w-4 h-4 rounded-full flex-shrink-0")} style={{backgroundColor: priorityStyles[task.priority as TaskPriority]?.hexColor}} />
+                    <div className={cn("w-4 h-4 rounded-full flex-shrink-0")} style={{ backgroundColor: priorityStyles[task.priority as TaskPriority]?.hexColor }} />
                     {task.title}
                 </DialogTitle>
                 <Badge variant="outline" className={cn("absolute top-6 right-6 text-sm py-1 px-3", priorityStyles[task.priority as TaskPriority]?.badgeClasses)}>

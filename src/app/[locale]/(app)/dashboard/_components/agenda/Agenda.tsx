@@ -28,6 +28,7 @@ interface AgendaProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onToggleTask: (taskId: number, currentStatus: boolean) => void;
+  onTaskMutation: () => void;
 }
 
 const filterOptions: { value: TaskFilterStatus; labelKey: string; count: (props: AgendaProps) => number }[] = [
@@ -61,13 +62,14 @@ export function Agenda(props: AgendaProps) {
     onDepartmentFilterChange,
     searchTerm,
     onSearchChange,
-    onToggleTask
+    onToggleTask,
+    onTaskMutation
   } = props;
   const t = useTranslations('DashboardClient.agenda');
 
   return (
     <div className="flex flex-col h-full max-h-[70vh]">
-        {/* --- SECCIÓ DE FILTRES I CERCA (Contingut fix) --- */}
+      {/* --- SECCIÓ DE FILTRES I CERCA (Contingut fix) --- */}
       <div className="flex-shrink-0 space-y-4">
         <div className="flex flex-col sm:flex-row gap-2">
 
@@ -147,6 +149,7 @@ export function Agenda(props: AgendaProps) {
                   task={task}
                   onViewTask={onViewTask}
                   onToggleTask={onToggleTask}
+                  onTaskMutation={onTaskMutation}
                 />
               </motion.div>
             ))

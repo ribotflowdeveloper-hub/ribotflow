@@ -229,6 +229,7 @@ export function DashboardClient({
                 departments={initialData.departments}
                 searchTerm={searchTerm} onSearchChange={setSearchTerm}
                 onToggleTask={handleToggleTask}
+                onTaskMutation={handleTaskMutation}
               />
             </DashboardCard>
           </div>
