@@ -35,40 +35,35 @@ const formatDuration = (ms: number): string => {
     return `${hours}:${minutes}:${seconds}`;
 };
 
-// Hook del temporitzador (Corregit l'ús de 'any')
+// Hook del temporitzador
 const useTaskTimer = (task: EnrichedTask): string => {
     const [elapsedTime, setElapsedTime] = useState<number>(0);
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null;
-        // ✅ Comprovació més segura per a time_tracking_log
         if (task.is_active && task.time_tracking_log && Array.isArray(task.time_tracking_log)) {
-            // Assegurem que tractem els elements com a TimeTrackingLogEntry
-            const logArray: TimeTrackingLogEntry[] = task.time_tracking_log as TimeTrackingLogEntry[];
+            const logArray: TimeTrackingLogEntry[] = task.time_tracking_log as unknown as TimeTrackingLogEntry[];
 
             const lastActiveLog = [...logArray]
-                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) // Ordena descendent per trobar l'últim
+                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
                 .find(log => log.status === 'active' || log.action === 'actiu');
 
             if (lastActiveLog) {
                 const startTime = lastActiveLog.timestamp;
-                // Funció per actualitzar el temps
                 const updateElapsedTime = () => setElapsedTime(calculateElapsedTime(startTime));
-                updateElapsedTime(); // Crida inicial
+                updateElapsedTime();
                 intervalId = setInterval(updateElapsedTime, 1000);
             } else {
-                 // Si està actiu però no hi ha log d'inici (cas estrany), posem a 0
-                 setElapsedTime(0);
+                setElapsedTime(0);
             }
         } else {
-             // Si no està actiu o no hi ha logs, posem a 0
-             setElapsedTime(0);
+            setElapsedTime(0);
         }
 
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [task.is_active, task.time_tracking_log]); // Dependències correctes
+    }, [task.is_active, task.time_tracking_log]);
 
     return formatDuration(elapsedTime);
 };
@@ -130,7 +125,8 @@ function countCheckboxesFromHtml(html: string): { total: number; completed: numb
 interface TaskCardProps {
     task: EnrichedTask;
     onViewTask: (task: EnrichedTask) => void;
-    onToggleTask: (taskId: number, currentStatus: boolean) => void;
+    // ✅ Canvi: Passem la tasca sencera per tenir més context
+    onToggleTask: (task: EnrichedTask) => void;
     onTaskMutation: () => void;
 }
 
@@ -140,7 +136,7 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
 
     const dueDate = task.due_date ? new Date(task.due_date) : null;
     const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
-    const formattedTimer = useTaskTimer(task); // Ara sense 'any'
+    const formattedTimer = useTaskTimer(task);
     const userColor = generateHslColorFromString(task.user_asign_id);
     const cardStyle: React.CSSProperties = userColor ? {
         '--user-color-main': userColor.main,
@@ -173,8 +169,8 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
             const newProgress = countCheckboxesFromHtml(newHtml);
 
             const updateData: Partial<Tables<'tasks'>> = {
-                 description: newHtml,
-                 checklist_progress: newProgress as unknown as Json
+                description: newHtml,
+                checklist_progress: newProgress as unknown as Json
             };
 
             const result = await updateSimpleTask(task.id, updateData);
@@ -226,12 +222,13 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
             )}
             style={cardStyle}
         >
-            {/* Header del Collapsible (Títol, Checkbox principal, Avatar, etc.) */}
             <div className="flex items-center gap-3 p-3" onClick={() => !isOpen && onViewTask(task)}>
-                 <Checkbox
+                <Checkbox
                     id={`task-${task.id}`}
-                    checked={task.is_completed}
-                    onCheckedChange={() => onToggleTask(task.id, task.is_completed)}
+                    // L'estat `checked` depèn de si la tasca està completada o si està assignada (pas intermedi)
+                    checked={task.is_completed || !!task.user_asign_id}
+                    // ✅ Canvi: Passem la tasca sencera a la funció onToggleTask
+                    onCheckedChange={() => onToggleTask(task)}
                     onClick={(e) => e.stopPropagation()}
                     className="w-5 h-5"
                 />
@@ -243,7 +240,7 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
                         </h3>
                     </div>
                 </div>
-                 {showProgress && (
+                {showProgress && (
                     <div className="mt-1 flex-shrink-0">
                         <Badge variant="secondary" className="text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 flex items-center">
                             <CheckSquare className="w-3 h-3 mr-1" />
@@ -251,39 +248,32 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
                         </Badge>
                     </div>
                 )}
-                 {task.is_active && (
+                {task.is_active && (
                     <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400 flex-shrink-0">
                         <span className="relative flex h-2.5 w-2.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span></span>
                         <span className="font-mono text-sm font-semibold">{formattedTimer.substring(0, 5)}</span>
                     </div>
-                 )}
-                 <TooltipProvider delayDuration={150}>
+                )}
+                <TooltipProvider delayDuration={150}>
                     <Tooltip>
                         <TooltipTrigger onClick={(e) => e.stopPropagation()}><Avatar className="w-8 h-8 border-2 border-white dark:border-slate-800"><AvatarImage src={task.profiles?.avatar_url || undefined} /><AvatarFallback className="text-xs font-bold">{task.profiles ? task.profiles.full_name?.charAt(0) : <UserIcon className="w-4 h-4" />}</AvatarFallback></Avatar></TooltipTrigger>
                         <TooltipContent><p>{task.profiles ? `Assignat a ${task.profiles.full_name}` : 'Sense assignar'}</p></TooltipContent>
                     </Tooltip>
-                 </TooltipProvider>
-                 <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
+                </TooltipProvider>
+                <CollapsibleTrigger asChild onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" className="w-8 h-8">
                         <ChevronDown className={cn("w-5 h-5 transition-transform", isOpen && "rotate-180")} />
                     </Button>
-                 </CollapsibleTrigger>
+                </CollapsibleTrigger>
             </div>
 
-            {/* Contingut Desplegable */}
             <CollapsibleContent>
                 <div className="border-t-2 border-black/5 dark:border-white/5 p-4 space-y-3">
-                    {/* ✅ Renderitza l'HTML interactiu */}
                     {currentDescription && (
                         <div className="prose dark:prose-invert prose-sm max-w-none text-muted-foreground">
-                             {/* Reset index */}
                             {(() => { taskItemIndex = -1; return parse(currentDescription, options); })()}
                         </div>
                     )}
-                    {/* ❌ Línia eliminada definitivament */}
-                    {/* {plainTextDescription && <p className="text-sm text-muted-foreground">{plainTextDescription}</p>} */}
-
-                    {/* MetaItems (Contacte, Departament, Data) */}
                     <div className="flex items-center justify-between mt-3 border-t pt-3">
                         <div className="flex items-center gap-4 flex-wrap">
                             {task.contacts && <MetaItem icon={ContactIcon} text={task.contacts.nom} />}

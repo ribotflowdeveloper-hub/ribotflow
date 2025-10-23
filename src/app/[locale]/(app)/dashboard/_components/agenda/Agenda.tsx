@@ -1,3 +1,5 @@
+// src/app/[locale]/(app)/dashboard/_components/agenda/Agenda.tsx (COMPLET I CORREGIT)
+
 "use client";
 
 import React from 'react';
@@ -27,7 +29,8 @@ interface AgendaProps {
   onDepartmentFilterChange: (filter: number | 'all') => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  onToggleTask: (taskId: number, currentStatus: boolean) => void;
+  // ✅ CORRECCIÓ: Actualitzem la signatura per reflectir el canvi a TaskCard
+  onToggleTask: (task: EnrichedTask) => void; 
   onTaskMutation: () => void;
 }
 
@@ -73,13 +76,11 @@ export function Agenda(props: AgendaProps) {
       <div className="flex-shrink-0 space-y-4">
         <div className="flex flex-col sm:flex-row gap-2">
 
-          {/* ✅ NOU DISSENY DE BOTONS DE FILTRE */}
-          <div className="grid grid-cols-3 gap-1  bg-green-300/10 rounded-lg flex-grow border border-green-500/20">
+          <div className="grid grid-cols-3 gap-1 bg-green-300/10 rounded-lg flex-grow border border-green-500/20">
             {filterOptions.map(option => (
               <Button
                 key={option.value}
                 variant={activeFilter === option.value ? 'default' : 'ghost'}
-
                 onClick={() => onFilterChange(option.value)}
                 className={cn(
                   "w-full justify-center transition-all duration-200",
@@ -116,7 +117,6 @@ export function Agenda(props: AgendaProps) {
               ))}
             </SelectContent>
           </Select>
-          {/* ✅ NOU DISSENY DE LA BARRA DE CERCA */}
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-green-800/50 dark:text-green-300/50" />
             <Input
@@ -128,12 +128,9 @@ export function Agenda(props: AgendaProps) {
             />
           </div>
         </div>
-
-
       </div>
 
       <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4 min-h-0 space-y-3">
-        {/* ✅ CORRECCIÓ DE L'ANIMACIÓ: AnimatePresence envolta directament el map o l'estat buit */}
         <AnimatePresence>
           {tasks.length > 0 ? (
             tasks.map((task) => (
@@ -143,7 +140,7 @@ export function Agenda(props: AgendaProps) {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                layout // Afegeix `layout` per animar canvis de posició
+                layout
               >
                 <TaskCard
                   task={task}
