@@ -486,17 +486,28 @@
     "avgConversionTime": "Temps Mitjà de Conversió",
     "replyTooltip": "Respondre",
     "markAsReadTooltip": "Marcar com a llegit",
+    "leadSourceAnalysis": "Anàlisi d'Origen dels Leads",  
     "tooltips": {
-      "totalContacts": "Tots els contactes del teu CRM",
-      "newContacts": "Contactes afegits en els darrers 30 dies",
-      "opportunities": "Oportunitats actives al teu pipeline",
-      "pipelineValue": "Suma de tots els valors d'oportunitats actives"
+      "totalContacts": "Nombre total de contactes registrats al teu CRM.",
+      "newContactsThisMonth": "Contactes creats des de l'inici del mes actual.",
+      "opportunities": "Nombre d'oportunitats comercials actualment actives.",
+      "pipelineValue": "Valor total de les oportunitats en curs.",
+      "avgRevenuePerClient": "Ingressos mitjans generats per client.",
+      "avgConversionTimeDays": "Temps mitjà que triga un lead a convertir-se en client."
     },
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "No s'ha pogut marcar com a llegida.",
       "replySubject": "Re: El teu pressupost",
       "fetchError": "No s'han pogut carregar les dades del CRM."
+    },
+     "stats": {
+      "totalContacts": "Total de Contactes",
+      "newContactsThisMonth": "Nous Contactes Aquest Mes",
+      "opportunities": "Oportunitats Actives",
+      "pipelineValue": "Valor del Pipeline",
+      "avgRevenuePerClient": "Ingressos Mitjans per Client",
+      "avgConversionTimeDays": "Temps Mitjà de Conversió (dies)"
     },
     "replyBody": "\n\n\n--- En resposta al teu feedback del {date} ---\n>{content}"
   },

@@ -480,19 +480,30 @@
     "avgConversionTime": "Tiempo Medio de Conversión",
     "replyTooltip": "Responder",
     "markAsReadTooltip": "Marcar como leído",
+    "leadSourceAnalysis": "Análisis del Origen de los Leads",
     "tooltips": {
-      "totalContacts": "Todos los contactos de tu CRM",
-      "newContacts": "Contactos añadidos en los últimos 30 días",
-      "opportunities": "Oportunidades activas en tu pipeline",
-      "pipelineValue": "Suma de todos los valores de oportunidades activas"
+      "totalContacts": "Número total de contactos registrados en tu CRM.",
+      "newContactsThisMonth": "Contactos creados desde el inicio del mes actual.",
+      "opportunities": "Número de oportunidades comerciales actualmente activas.",
+      "pipelineValue": "Valor total de las oportunidades en curso.",
+      "avgRevenuePerClient": "Ingresos medios generados por cliente.",
+      "avgConversionTimeDays": "Tiempo medio que tarda un lead en convertirse en cliente."
     },
     "toast": {
       "errorTitle": "Error",
-      "markAsReadError": "No se ha podido marcar como leída.",
+      "markAsReadError": "No se pudo marcar como leído.",
       "replySubject": "Re: Tu presupuesto",
-      "fetchError": "No se han podido cargar los datos del CRM."
+      "fetchError": "No se pudieron cargar los datos del CRM."
     },
-    "replyBody": "\n\n\n--- En respuesta a tu feedback del {date} ---\n>{content}"
+    "stats": {
+      "totalContacts": "Total de Contactos",
+      "newContactsThisMonth": "Nuevos Contactos Este Mes",
+      "opportunities": "Oportunidades Activas",
+      "pipelineValue": "Valor del Pipeline",
+      "avgRevenuePerClient": "Ingresos Medios por Cliente",
+      "avgConversionTimeDays": "Tiempo Medio de Conversión (días)"
+    },
+    "replyBody": "\n\n\n--- En respuesta a tu comentario del {date} ---\n>{content}"
   },
   "PipelinePage": {
     "title": "Canal de Ventas",

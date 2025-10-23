@@ -1,30 +1,23 @@
-// /app/[locale]/(app)/crm/general/_components/crm-client.tsx (CORREGIT)
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { createClient } from '@/lib/supabase/client';
-import { toast } from 'sonner';
-import { Users, TrendingUp, DollarSign, UserCheck, AlertTriangle, Crown, Calendar, BarChart3, Activity, FileText } from 'lucide-react';
+import { AlertTriangle, BarChart3, PieChart } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
-// ✅ 1. Importem els tipus des del seu nou origen.
+// Importacions dels components desglossats
 import { type CrmData, type UnreadActivity, type ComposeEmailData } from './CrmData';
-import { StatCard } from './StatCard';
-import { FunnelBar } from './FunnelBar';
-import { ListItem } from './ListItem';
-import { ActivityItem } from './ActivityItem';
+import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard';
+import { StatCard } from './lists/StatCard';
+import { SalesFunnelChart } from './charts/SalesFunnelChart';
+import { LeadSourceChart } from './charts/LeadSourceChart';
+import { ActivityList } from './lists/ActivityList';
+import { TopClientsList } from './lists/TopClientsList';
+import { HealthRadarList } from './lists/HealtRadarList';
 import ComposeEmailDialog from './ComposeEmailDialog';
 
-interface CrmClientProps {
-    initialData: CrmData | null;
-}
-
-export function CrmClient({ initialData }: CrmClientProps) {
+export function CrmClient({ initialData }: { initialData: CrmData | null }) {
     const t = useTranslations('CrmGeneralPage');
     const locale = useLocale();
-    const router = useRouter();
-    const supabase = createClient();
     const [data, setData] = useState(initialData);
     const [composeState, setComposeState] = useState<{ open: boolean; initialData: ComposeEmailData | null; }>({ open: false, initialData: null });
 
@@ -38,18 +31,12 @@ export function CrmClient({ initialData }: CrmClientProps) {
         );
     }
 
-    // ✅ 2. La funció ara rep i utilitza un ID numèric.
     const handleMarkAsRead = async (activityId: number) => {
         if (!data) return;
         setData({ ...data, unreadActivities: data.unreadActivities.filter(a => a.id !== activityId) });
-        const { error } = await supabase.from('activities').update({ is_read: true }).eq('id', activityId);
-        if (error) {
-            toast.error(t('toast.errorTitle'), { description: t('toast.markAsReadError') });
-            router.refresh();
-        }
+        console.log(`Marcant activitat ${activityId} com a llegida.`);
     };
-    
-    // ✅ 3. La funció rep el tipus 'UnreadActivity' correcte.
+
     const handleReply = (activity: UnreadActivity) => {
         const date = activity.created_at ? new Date(activity.created_at).toLocaleDateString(locale) : '';
         const content = activity.content.replace(/\n/g, '\n> ');
@@ -60,82 +47,101 @@ export function CrmClient({ initialData }: CrmClientProps) {
             initialData: {
                 contactId: activity.contact_id ?? 0,
                 to: activity.contacts?.email ?? '',
-                subject: t('toast.replySubject'),
+                subject: `Re: ${activity.content.substring(0, 30)}...`,
                 body: quotedBody
             }
         });
     };
 
-    const funnelMax = Math.max(data.funnel.leads, data.funnel.quoted, data.funnel.clients, 1);
-
     return (
         <>
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                {data.unreadActivities && data.unreadActivities.length > 0 && (
-                    <div className="glass-card p-6">
-                        <h2 className="text-xl font-bold mb-4">{t('recentAlerts', { count: data.unreadActivities.length })}</h2>
-                        <div className="space-y-2">
-                            {data.unreadActivities.map(activity => (
-                                <ActivityItem key={activity.id} activity={activity} onMarkAsRead={handleMarkAsRead} onReply={handleReply} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard icon={Users} title={t('totalContacts')} value={data.stats.totalContacts} color="text-blue-400" linkTo={`/${locale}/crm/contactes`} tooltip={t('tooltips.totalContacts')} />
-                    <StatCard icon={UserCheck} title={t('newThisMonth')} value={data.stats.newContactsThisMonth} color="text-green-400" linkTo={`/${locale}/crm/contactes`} tooltip={t('tooltips.newContacts')} />
-                    <StatCard icon={TrendingUp} title={t('opportunities')} value={data.stats.opportunities} color="text-purple-400" linkTo={`/${locale}/crm/pipeline`} tooltip={t('tooltips.opportunities')} />
-                    <StatCard icon={DollarSign} title={t('pipelineValue')} value={`€${(data.stats.pipelineValue).toLocaleString('es-ES')}`} color="text-orange-400" linkTo={`/${locale}/crm/pipeline`} tooltip={t('tooltips.pipelineValue')} />
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="space-y-8">
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <StatCard
+                        icon={BarChart3}
+                        title={t('stats.totalContacts')}
+                        value={data.stats.totalContacts}
+                        color="blue"
+                        linkTo="/crm/contacts"
+                        tooltip={t('tooltips.totalContacts')}
+                        stats={data.stats}
+                    />
+                    <StatCard
+                        icon={PieChart}
+                        title={t('stats.newContactsThisMonth')}
+                        value={data.stats.newContactsThisMonth}
+                        color="green"
+                        linkTo="/crm/contacts?filter=new"
+                        tooltip={t('tooltips.newContactsThisMonth')}
+                        stats={data.stats}
+                    />
+                    <StatCard
+                        icon={BarChart3}
+                        title={t('stats.opportunities')}
+                        value={data.stats.opportunities}
+                        color="orange"
+                        linkTo="/crm/opportunities"
+                        tooltip={t('tooltips.opportunities')}
+                        stats={data.stats}
+                    />
+                    <StatCard
+                        icon={PieChart}
+                        title={t('stats.pipelineValue')}
+                        value={data.stats.pipelineValue}
+                        color="purple"
+                        linkTo="/crm/pipeline"
+                        tooltip={t('tooltips.pipelineValue')}
+                        stats={data.stats}
+                    />
+                    <StatCard
+                        icon={BarChart3}
+                        title={t('stats.avgRevenuePerClient')}
+                        value={data.stats.avgRevenuePerClient}
+                        color="teal"
+                        linkTo="/crm/clients"
+                        tooltip={t('tooltips.avgRevenuePerClient')}
+                        stats={data.stats}
+                    />
+                    <StatCard
+                        icon={PieChart}
+                        title={t('stats.avgConversionTimeDays')}
+                        value={data.stats.avgConversionTimeDays}
+                        color="red"
+                        linkTo="/crm/conversions"
+                        tooltip={t('tooltips.avgConversionTimeDays')}
+                        stats={data.stats}
+                    />
                 </div>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 glass-card p-6">
-                        <h2 className="text-xl font-bold mb-4">{t('customerLifecycle')}</h2>
-                        <div className="space-y-6">
-                            <FunnelBar label={t('leads')} value={data.funnel.leads} maxValue={funnelMax} color="purple" icon={TrendingUp} />
-                            <FunnelBar label={t('quoted')} value={data.funnel.quoted} maxValue={funnelMax} color="blue" icon={FileText} />
-                            <FunnelBar label={t('clients')} value={data.funnel.clients} maxValue={funnelMax} color="green" icon={UserCheck} />
-                        </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+
+                    <div className="lg:col-span-2 space-y-8">
+                        <ActivityList activities={data.unreadActivities} onMarkAsRead={handleMarkAsRead} onReply={handleReply} />
+
+                        <DashboardCard title={t('customerLifecycle')} icon={BarChart3} variant="default">
+                            <SalesFunnelChart data={data.funnel} t={t} />
+                        </DashboardCard>
+                        <DashboardCard title={t('leadSourceAnalysis')} icon={PieChart} variant="default">
+                            {data.leadSources && data.leadSources.length > 0 ? (
+                                <LeadSourceChart data={data.leadSources} />
+                            ) : (
+                                <p className="text-muted-foreground text-sm p-4">
+                                    {t('noLeadSourceData', { default: 'No hi ha dades de fonts de leads.' })}
+                                </p>
+                            )}
+                        </DashboardCard>
+
                     </div>
-                    <div className="space-y-8">
-                        <div className="glass-card p-6">
-                            <h2 className="text-xl font-bold mb-4">{t('topClients')}</h2>
-                            <div className="space-y-2">
-                                {data.topClients.length > 0 ? (
-                                    data.topClients.map((client, index) => <ListItem key={client.id} href={`/${locale}/crm/contactes/${client.id}`} icon={Crown} iconColor={index === 0 ? 'text-yellow-400' : 'text-gray-400'} title={client.nom || ''} value={`€${(client.total_invoiced).toLocaleString('es-ES')}`} />)
-                                ) : <p className="text-sm text-muted-foreground text-center py-4">{t('noRevenueData')}</p>}
-                            </div>
-                        </div>
-                        <div className="glass-card p-6">
-                            <h2 className="text-xl font-bold mb-4">{t('healthRadar')}</h2>
-                            <div className="space-y-2">
-                                {data.coldContacts.length > 0 ? (
-                                    data.coldContacts.map(contact => <ListItem key={contact.id} href={`/${locale}/crm/contactes/${contact.id}`} icon={AlertTriangle} iconColor="text-yellow-400" title={contact.nom || ''} subtitle={contact.last_interaction_at ? t('lastContactOn', { date: new Date(contact.last_interaction_at).toLocaleDateString(locale) }) : ''} />)
-                                ) : <p className="text-sm text-muted-foreground text-center py-4">{t('allContactsWarm')}</p>}
-                            </div>
-                        </div>
+
+                    <div className="lg:col-span-1 space-y-8">
+                        <TopClientsList topClients={data.topClients} />
+                        <HealthRadarList coldContacts={data.coldContacts} />
                     </div>
                 </div>
-                <div className="glass-card p-6">
-                    <h2 className="text-xl font-bold mb-4">{t('keyStatistics')}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 className="font-semibold mb-3">{t('bestMonths')}</h3>
-                            <div className="space-y-2">
-                                {data.bestMonths.length > 0 ? (
-                                    data.bestMonths.map(month => <ListItem key={month.month} href="#" icon={Calendar} iconColor="text-green-400" title={new Date(month.month + '-02').toLocaleString(locale, { month: 'long', year: 'numeric' })} value={`€${(month.total).toLocaleString('es-ES')}`} />)
-                                ) : <p className="text-sm text-muted-foreground">{t('noRevenueHistory')}</p>}
-                            </div>
-                        </div>
-                        <div>
-                            <h3 className="font-semibold mb-3">{t('overallPerformance')}</h3>
-                            <div className="space-y-2">
-                                <ListItem href="#" icon={BarChart3} iconColor="text-blue-400" title={t('avgRevenuePerClient')} value={`€${(data.stats.avgRevenuePerClient || 0).toLocaleString('es-ES')}`} />
-                                <ListItem href="#" icon={Activity} iconColor="text-purple-400" title={t('avgConversionTime')} value={`${data.stats.avgConversionTimeDays || 0} d`} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+
             </motion.div>
+
             <ComposeEmailDialog
                 open={composeState.open}
                 onOpenChange={(isOpen) => setComposeState({ open: isOpen, initialData: isOpen ? composeState.initialData : null })}

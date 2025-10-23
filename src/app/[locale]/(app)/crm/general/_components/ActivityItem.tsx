@@ -30,17 +30,14 @@ export const ActivityItem: FC<ActivityItemProps> = ({ activity, onMarkAsRead, on
             router.push(`/${locale}/crm/contactes/${activity.contact_id}`);
         }
     };
-    
+
     return (
-        <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/10 transition-colors group">
-            <div className="p-2 rounded-lg bg-white/5">
-                <AlertTriangle className="w-5 h-5 text-yellow-400" />
+        <div className="flex items-center gap-4 p-2 -mx-2 rounded-lg hover:bg-muted dark:hover:bg-muted/50 transition-colors group">
+            <div className="p-2.5 rounded-lg bg-yellow-500/10 dark:bg-yellow-800/20">
+                <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="flex-1 min-w-0 cursor-pointer" onClick={handleClick}>
-                <p className="font-semibold truncate">
-                    {/* ✅ 2. Accedim al nom a través de la relació. */}
-                    {activity.type} - <span className="font-normal">{activity.contacts?.nom}</span>
-                </p>
+                <p className="font-semibold truncate text-foreground">{activity.type} - <span className="font-normal text-muted-foreground">{activity.contacts?.nom}</span></p>
                 <p className="text-sm text-muted-foreground truncate italic">"{activity.content}"</p>
             </div>
             <div className="text-xs text-muted-foreground shrink-0">
@@ -50,10 +47,10 @@ export const ActivityItem: FC<ActivityItemProps> = ({ activity, onMarkAsRead, on
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="w-8 h-8 rounded-full" 
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-8 h-8 rounded-full"
                                 onClick={(e) => { e.stopPropagation(); onReply(activity); }}
                             >
                                 <Mail className="w-4 h-4 text-blue-400" />
@@ -65,10 +62,10 @@ export const ActivityItem: FC<ActivityItemProps> = ({ activity, onMarkAsRead, on
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="w-8 h-8 rounded-full" 
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="w-8 h-8 rounded-full"
                                 // ✅ 3. Passem l'ID numèric.
                                 onClick={(e) => { e.stopPropagation(); onMarkAsRead(activity.id); }}
                             >

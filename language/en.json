@@ -473,31 +473,42 @@
     "quoted": "Quoted",
     "clients": "Clients",
     "topClients": "Top Clients (Revenue)",
-    "noRevenueData": "No revenue data yet.",
+    "noRevenueData": "No revenue data available yet.",
     "healthRadar": "Health Radar",
     "lastContactOn": "Last contact on {date}",
     "allContactsWarm": "All contacts are active!",
     "keyStatistics": "Key Statistics",
     "bestMonths": "Best Months (Revenue)",
-    "noRevenueHistory": "No revenue history.",
+    "noRevenueHistory": "No revenue history available.",
     "overallPerformance": "Overall Performance",
-    "avgRevenuePerClient": "Average Revenue per Client",
+    "avgRevenuePerClient": "Average Revenue / Client",
     "avgConversionTime": "Average Conversion Time",
     "replyTooltip": "Reply",
     "markAsReadTooltip": "Mark as read",
+    "leadSourceAnalysis": "Lead Source Analysis",
     "tooltips": {
-      "totalContacts": "All contacts in your CRM",
-      "newContacts": "Contacts added in the last 30 days",
-      "opportunities": "Active opportunities in your pipeline",
-      "pipelineValue": "Sum of all active opportunity values"
+      "totalContacts": "Total number of contacts registered in your CRM.",
+      "newContactsThisMonth": "Contacts created since the start of this month.",
+      "opportunities": "Number of currently active business opportunities.",
+      "pipelineValue": "Total value of ongoing opportunities.",
+      "avgRevenuePerClient": "Average revenue generated per client.",
+      "avgConversionTimeDays": "Average time it takes for a lead to become a client."
     },
     "toast": {
       "errorTitle": "Error",
-      "markAsReadError": "Could not mark as read.",
+      "markAsReadError": "Failed to mark as read.",
       "replySubject": "Re: Your quote",
       "fetchError": "Failed to load CRM data."
     },
-    "replyBody": "\n\n\n--- In response to your feedback from {date} ---\n>{content}"
+    "stats": {
+      "totalContacts": "Total Contacts",
+      "newContactsThisMonth": "New Contacts This Month",
+      "opportunities": "Active Opportunities",
+      "pipelineValue": "Pipeline Value",
+      "avgRevenuePerClient": "Average Revenue per Client",
+      "avgConversionTimeDays": "Average Conversion Time (days)"
+    },
+    "replyBody": "\n\n\n--- In response to your feedback on {date} ---\n>{content}"
   },
   "PipelinePage": {
     "title": "Sales Pipeline",
