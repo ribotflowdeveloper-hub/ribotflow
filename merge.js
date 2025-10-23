@@ -7,6 +7,7 @@ const outputFile = "codi_i_estructura_ribotflow.txt";
 const extensionsToInclude = [".ts", ".tsx", ".js", ".jsx", ".css", ".json", ".sql"];
 
 const ignoreList = [
+  "public",
   "node_modules",
   ".next",
   "dist",

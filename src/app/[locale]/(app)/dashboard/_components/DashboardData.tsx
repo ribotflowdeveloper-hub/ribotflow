@@ -25,12 +25,8 @@ const calculatePercentageChange = (current: number, previous: number): string =>
 };
 
 export async function DashboardData({ children }: { children: React.ReactNode }) {
-    const { supabase, user } = await validatePageSession();
-    const team = await getActiveTeam();
+    const { supabase, user , activeTeamId} = await validatePageSession();
 
-    if (!team) {
-        return <div>No s'ha trobat un equip actiu.</div>;
-    }
 
     const typedSupabase = supabase as SupabaseClient<Database>;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -38,7 +34,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     const { data: permissions } = await typedSupabase
         .from('inbox_permissions')
         .select('target_user_id')
-        .eq('team_id', team.id)
+        .eq('team_id', activeTeamId)
         .eq('grantee_user_id', user.id);
 
     const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id) || [])];
@@ -55,13 +51,13 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         recentEmailsRes,
     ] = await Promise.all([
         getStats(typedSupabase),
-        getTasks(typedSupabase, team.id),
+        getTasks(typedSupabase, activeTeamId),
         getOverdueInvoices(typedSupabase),
-        getRecentContacts(typedSupabase, team.id),
+        getRecentContacts(typedSupabase, activeTeamId),
         typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
-        typedSupabase.from('departments').select('*').eq('team_id', team.id),
-        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id),
-        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', team.id).order('created_at', { ascending: false }).limit(10),
+        typedSupabase.from('departments').select('*').eq('team_id', activeTeamId),
+        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', activeTeamId),
+        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', activeTeamId).order('created_at', { ascending: false }).limit(10),
 
         // ✅ SOLUCIÓ DEFINITIVA: Consulta directa a la taula 'tickets'.
         // ✅ CONSULTA DE DIAGNÒSTIC: la fem el més simple possible.

@@ -11,6 +11,7 @@ interface ColumnsViewProps {
 
 export const ColumnsView: React.FC<ColumnsViewProps> = ({ stages, opportunitiesByStage, onEditOpportunity, onAddClick }) => {
     return (
+        //console.log("Renderitzant ColumnsView amb etapes:", stages),
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-h-0">
             {stages.map(stage => (
                 <StageColumn

@@ -76,6 +76,7 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
                 <DragDropContext onDragEnd={onDragEnd}>
                     {viewMode === 'columns' ? (
                         <ColumnsView
+                        
                             stages={initialStages}
                             opportunitiesByStage={opportunitiesByStage}
                             onEditOpportunity={(op) => handleOpenDialog(op)}
