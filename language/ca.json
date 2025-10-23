@@ -460,56 +460,52 @@
     "sendButton": "Enviar amb Gmail"
   },
   "CrmGeneralPage": {
+    "keyMetrics": "Mètriques Clau",
     "recentAlerts": "Alertes Recents ({count})",
-    "totalContacts": "Contactes Totals",
-    "totalContactsTooltip": "Tots els contactes al teu CRM",
-    "newThisMonth": "Nous aquest mes",
-    "newThisMonthTooltip": "Contactes afegits en els últims 30 dies",
-    "opportunities": "Oportunitats",
-    "opportunitiesTooltip": "Oportunitats de negoci actives",
-    "pipelineValue": "Valor del Pipeline",
-    "pipelineValueTooltip": "Suma de totes les oportunitats actives",
     "customerLifecycle": "Cicle de Vida del Client",
-    "leads": "Leads",
-    "quoted": "Pressupostats",
-    "clients": "Clients",
+    "leadSourceAnalysis": "Anàlisi d'Origen dels Leads",
     "topClients": "Top Clients (Facturació)",
-    "noRevenueData": "Encara no hi ha dades de facturació.",
     "healthRadar": "Radar de Salut",
-    "lastContactOn": "Últim contacte el {date}",
-    "allContactsWarm": "Tots els contactes estan actius!",
-    "keyStatistics": "Estadístiques Clau",
-    "bestMonths": "Millors Mesos (Facturació)",
-    "noRevenueHistory": "Sense historial de facturació.",
-    "overallPerformance": "Rendiment General",
-    "avgRevenuePerClient": "Facturació Mitjana / Client",
-    "avgConversionTime": "Temps Mitjà de Conversió",
-    "replyTooltip": "Respondre",
-    "markAsReadTooltip": "Marcar com a llegit",
-    "leadSourceAnalysis": "Anàlisi d'Origen dels Leads",  
+    "revenueForecast": "Previsió de Facturació",
+    "salesActivityLast7d": "Activitat de Vendes (Últims 7 dies)",
+    "stats": {
+      "totalContacts": "Contactes Totals",
+      "newContactsThisMonth": "Nous Contactes (Mes)",
+      "opportunities": "Oportunitats Actives",
+      "pipelineValue": "Valor del Pipeline",
+      "avgRevenuePerClient": "Fact. Mitjana / Client",
+      "avgConversionTimeDays": "Temps Mitjà Conversió",
+      "conversionRate": "Taxa de Conversió",
+      "salesVelocity": "Velocitat de Vendes"
+    },
     "tooltips": {
       "totalContacts": "Nombre total de contactes registrats al teu CRM.",
       "newContactsThisMonth": "Contactes creats des de l'inici del mes actual.",
       "opportunities": "Nombre d'oportunitats comercials actualment actives.",
-      "pipelineValue": "Valor total de les oportunitats en curs.",
-      "avgRevenuePerClient": "Ingressos mitjans generats per client.",
-      "avgConversionTimeDays": "Temps mitjà que triga un lead a convertir-se en client."
+      "pipelineValue": "Valor monetari total de totes les teves oportunitats en curs.",
+      "avgRevenuePerClient": "Ingressos mitjans generats per cada client que ha facturat.",
+      "avgConversionTimeDays": "Nombre mitjà de dies que triga un lead des de la seva creació fins que es guanya l'oportunitat.",
+      "conversionRate": "Percentatge d'oportunitats guanyades respecte al total d'oportunitats creades. Un indicador clau de l'eficiència del teu procés de venda.",
+      "salesVelocity": "Mètrica que mesura la rapidesa amb què el teu pipeline genera ingressos. Un número més alt significa que guanyes diners més ràpid."
     },
+    "funnel": {
+      "leads": "Leads",
+      "quoted": "Pressupostats",
+      "clients": "Clients"
+    },
+    "noRevenueData": "Encara no hi ha dades de facturació.",
+    "noLeadSourceData": "No hi ha dades sobre l'origen dels contactes.",
+    "lastContactOn": "Últim contacte el {date}",
+    "allContactsWarm": "Tots els contactes estan actius!",
+    "replyTooltip": "Respondre",
+    "markAsReadTooltip": "Marcar com a llegit",
     "toast": {
       "errorTitle": "Error",
       "markAsReadError": "No s'ha pogut marcar com a llegida.",
-      "replySubject": "Re: El teu pressupost",
+      "replySubject": "Re: El teu missatge",
       "fetchError": "No s'han pogut carregar les dades del CRM."
     },
-     "stats": {
-      "totalContacts": "Total de Contactes",
-      "newContactsThisMonth": "Nous Contactes Aquest Mes",
-      "opportunities": "Oportunitats Actives",
-      "pipelineValue": "Valor del Pipeline",
-      "avgRevenuePerClient": "Ingressos Mitjans per Client",
-      "avgConversionTimeDays": "Temps Mitjà de Conversió (dies)"
-    },
-    "replyBody": "\n\n\n--- En resposta al teu feedback del {date} ---\n>{content}"
+    "replyBody": "\n\n\n--- En resposta al teu missatge del {date} ---\n>{content}"
   },
   "PipelinePage": {
     "title": "Canal de Vendes",
@@ -786,7 +782,6 @@
     "invoices": "Factures",
     "expenses": "Despeses",
     "costs": "Costos",
-  
     "communication": "Comunicació",
     "quotes": "Pressupostos",
     "newTask": "Nova Tasca",
@@ -813,7 +808,6 @@
       "emptySubtitle": "No tens correus nous per revisar."
     },
     "viewAll": "Veure'ls tots",
-    
     "agenda": {
       "title": "Agenda",
       "newTask": "Nova Tasca",
