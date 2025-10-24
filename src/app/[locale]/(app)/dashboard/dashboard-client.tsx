@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar, Quote, Mail } from "lucide-react";
 
-import { DashboardCard } from "./_components/DashboardCard";
+import { ModuleCard } from "@/components/shared/ModuleCard";
 import { SalesPerformance } from "./_components/SalesPerformance";
 import { RecentActivities } from "./_components/RecentActivities";
 import { Radar } from "./_components/Radar";
@@ -209,36 +209,36 @@ export function DashboardClient({
         transition={{ duration: 0.5 }}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          <DashboardCard title={t('recentQuotes')} icon={Quote} variant="quotes" className={midaCardsSuperiors}>
+          <ModuleCard title={t('recentQuotes')} icon={Quote} variant="quotes" className={midaCardsSuperiors}>
             <RecentQuotes quotes={initialData.recentQuotes} />
-          </DashboardCard>
-          <DashboardCard title={t('inbox.title')} icon={Mail} variant="inbox" className={midaCardsSuperiors}>
+          </ModuleCard>
+          <ModuleCard title={t('inbox.title')} icon={Mail} variant="inbox" className={midaCardsSuperiors}>
             <RecentEmails emails={initialData.recentEmails} />
-          </DashboardCard>
-          <DashboardCard title={t('recentActivities')} icon={Activity} variant="activity" className={midaCardsSuperiors}>
+          </ModuleCard>
+          <ModuleCard title={t('recentActivities')} icon={Activity} variant="activity" className={midaCardsSuperiors}>
             <RecentActivities activities={initialData.recentActivities} />
-          </DashboardCard>
-          <DashboardCard title={t('radar')} icon={RadarIcon} variant="radar" className={midaCardsSuperiors}>
+          </ModuleCard>
+          <ModuleCard title={t('radar')} icon={RadarIcon} variant="radar" className={midaCardsSuperiors}>
             <Radar
               attentionContacts={initialData.attentionContacts}
               overdueInvoices={initialData.overdueInvoices}
               notifications={initialData.notifications}
             />
-          </DashboardCard>
+          </ModuleCard>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2">
-            <DashboardCard title={t('salesPerformance')} icon={BarChart2} variant="sales">
+            <ModuleCard title={t('salesPerformance')} icon={BarChart2} variant="sales">
               <SalesPerformance
                 stats={initialData.stats}
                 percentGoal={Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)}
                 monthlyGoal={MONTHLY_GOAL}
               />
-            </DashboardCard>
+            </ModuleCard>
           </div>
           <div className="lg:col-span-3">
-            <DashboardCard
+            <ModuleCard
               title={t('agenda.title')}
               icon={ListChecks}
               variant="agenda"
@@ -270,7 +270,7 @@ export function DashboardClient({
                 onToggleTask={handleToggleTask}
                 onTaskMutation={handleTaskMutation}
               />
-            </DashboardCard>
+            </ModuleCard>
           </div>
         </div>
 

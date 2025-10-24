@@ -24,7 +24,7 @@ type DashboardStats = {
     total_contacts: number; active_clients: number; opportunities: number; invoiced_current_month: number;
     invoiced_previous_month: number; pending_total: number; expenses_current_month: number; expenses_previous_month: number;
 };
-export const getStats = async (supabase: SupabaseClient<Database>): Promise<DashboardStats> => {
+export const getStats = async (supabase: SupabaseClient<Database> ): Promise<DashboardStats> => {
     const { data, error } = await supabase.rpc('get_dashboard_stats');
     if (error) { console.error('Error fetching dashboard stats:', error); return { total_contacts: 0, active_clients: 0, opportunities: 0, invoiced_current_month: 0, invoiced_previous_month: 0, pending_total: 0, expenses_current_month: 0, expenses_previous_month: 0 }; }
     return data?.[0] || { total_contacts: 0, active_clients: 0, opportunities: 0, invoiced_current_month: 0, invoiced_previous_month: 0, pending_total: 0, expenses_current_month: 0, expenses_previous_month: 0 };
@@ -34,10 +34,19 @@ export const getTasks = async (supabase: SupabaseClient<Database>, teamId: strin
     if (error) { console.error('Error fetching tasks:', error); return []; }
     return data as unknown as EnrichedTask[];
 };
-export const getOverdueInvoices = async (supabase: SupabaseClient<Database>): Promise<(Tables<'invoices'> & { contacts: { nom: string } | null })[]> => {
-    const { data, error } = await supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString());
-    if (error) { console.error('Error fetching overdue invoices:', error); return []; }
-    return data ?? [];
+export const getOverdueInvoices = async (
+    supabase: SupabaseClient<Database>, 
+    teamId: string // <-- 1. AFEGIM EL PARÀMETRE
+): Promise<(Tables<'invoices'> & { contacts: { nom: string } | null })[]> => {
+    const { data, error } = await supabase
+        .from('invoices')
+        .select('*, contacts(nom)')
+        .eq('team_id', teamId) // <-- 2. AFEGIM EL FILTRE
+        .in('status', ['Sent', 'Overdue'])
+        .lt('due_date', new Date().toISOString());
+        
+    if (error) { console.error('Error fetching overdue invoices:', error); return []; }
+    return data ?? [];
 };
 export const getRecentContacts = async (supabase: SupabaseClient<Database>, teamId: string): Promise<Tables<'contacts'>[]> => {
     const { data, error } = await supabase.from('contacts').select('*').eq('team_id', teamId).order('created_at', { ascending: false });
