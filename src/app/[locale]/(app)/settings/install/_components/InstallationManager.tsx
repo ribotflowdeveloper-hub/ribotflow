@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Download, CheckCircle, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/utils';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard'; // Assegura't que la ruta és correcta
+import { ModuleCard } from '@/components/shared/ModuleCard'; // Assegura't que la ruta és correcta
 import { AppleIcon, AndroidIcon, DesktopIcon } from './DeviceIcons';
 import Image from 'next/image'; // ✅ Importem el component Image de Next.js
 
@@ -61,7 +61,7 @@ interface InstructionCardProps {
   buttonText?: string;
   onButtonClick?: () => void;
   isRecommended: boolean;
-  variant: "sales" | "agenda" | "iphone"; // Reutilitzem variants de color existents
+  variant: "sales" | "agenda" | "info"; // Reutilitzem variants de color existents, "info" substitueix "iphone"
   deviceType: 'desktop' | 'mobile'; // ✅ Nova prop per al tipus de dispositiu
 }
 
@@ -71,7 +71,7 @@ const InstructionCard: FC<InstructionCardProps> = ({ icon, title, instructions, 
   transition={{ duration: 0.5 }}
   className={cn("h-full", isRecommended && "ring-2 ring-offset-2 ring-offset-background ring-primary")}
 >
-  <DashboardCard title={title} icon={() => icon} variant={variant} className="h-full">
+  <ModuleCard title={title} icon={() => icon} variant={variant} className="h-full">
     {isRecommended && (
       <div className="absolute top-2 right-2 flex items-center gap-1 text-xs font-semibold bg-primary-foreground text-primary px-2 py-1 rounded-full">
         <Star className="w-3 h-3" /> Recomanat
@@ -91,7 +91,7 @@ const InstructionCard: FC<InstructionCardProps> = ({ icon, title, instructions, 
         </Button>
       )}
     </div>
-  </DashboardCard>
+  </ModuleCard>
 </motion.div>
 );
 
@@ -177,7 +177,7 @@ export function InstallationManager({ texts }: InstallationManagerProps) {
           title={texts.ios_title}
           instructions={texts.ios_instructions}
           isRecommended={userOS === 'ios'}
-          variant="iphone" // Taronja
+          variant="info" // Substituïm "iphone" per "info"
           deviceType="mobile" // ✅ Passem el tipus de dispositiu
         />
       </div>

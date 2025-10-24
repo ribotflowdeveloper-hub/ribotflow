@@ -4,3 +4,5 @@ export const QUOTE_STATUS_MAP = [
   { dbValue: 'Accepted', key: 'accepted', colorClass: 'bg-green-900/50 text-green-300' },
   { dbValue: 'Declined', key: 'declined', colorClass: 'bg-red-900/50 text-red-300' },
 ] as const;
+
+export type QuoteStatus = typeof QUOTE_STATUS_MAP[number]['dbValue'];

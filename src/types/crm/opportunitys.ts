@@ -1,4 +1,4 @@
-import type {PipelineStageName} from "@/types/crm";
+import type {PipelineStageName} from "@/config/pipeline";
 import type { Contact } from "./contacts";  
 
 export type OpportunityPipline = { 

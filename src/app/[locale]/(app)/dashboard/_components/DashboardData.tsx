@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { validatePageSession } from '@/lib/supabase/session';
-import { getActiveTeam } from '@/lib/supabase/teams';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, Tables } from '@/types/supabase';
 import { DashboardClient } from '../dashboard-client';
@@ -25,8 +24,8 @@ const calculatePercentageChange = (current: number, previous: number): string =>
 };
 
 export async function DashboardData({ children }: { children: React.ReactNode }) {
-    const { supabase, user , activeTeamId} = await validatePageSession();
-
+    // 1. Obtenim TOT el que necessitem d'UNA sola crida.
+    const { supabase, user, activeTeamId } = await validatePageSession();
 
     const typedSupabase = supabase as SupabaseClient<Database>;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -34,7 +33,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     const { data: permissions } = await typedSupabase
         .from('inbox_permissions')
         .select('target_user_id')
-        .eq('team_id', activeTeamId)
+        .eq('team_id', activeTeamId) // ⬅️ Fem servir activeTeamId
         .eq('grantee_user_id', user.id);
 
     const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id) || [])];
@@ -50,14 +49,15 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         recentQuotesRes,
         recentEmailsRes,
     ] = await Promise.all([
-        getStats(typedSupabase),
-        getTasks(typedSupabase, activeTeamId),
-        getOverdueInvoices(typedSupabase),
-        getRecentContacts(typedSupabase, activeTeamId),
+        // 2. Passem 'activeTeamId' a les funcions que ho necessiten.
+        getStats(typedSupabase), 
+        getTasks(typedSupabase, activeTeamId), // ✅ Fem servir activeTeamId
+        getOverdueInvoices(typedSupabase, activeTeamId), // ✅ PASSEM L'ID (hauràs d'actualitzar getOverdueInvoices)
+        getRecentContacts(typedSupabase, activeTeamId), // ✅ Fem servir activeTeamId
         typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
-        typedSupabase.from('departments').select('*').eq('team_id', activeTeamId),
-        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', activeTeamId),
-        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', activeTeamId).order('created_at', { ascending: false }).limit(10),
+        typedSupabase.from('departments').select('*').eq('team_id', activeTeamId), // ✅ Fem servir activeTeamId
+        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', activeTeamId), // ✅ Fem servir activeTeamId
+        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', activeTeamId).order('created_at', { ascending: false }).limit(10), // ✅ Fem servir activeTeamId(10),
 
         // ✅ SOLUCIÓ DEFINITIVA: Consulta directa a la taula 'tickets'.
         // ✅ CONSULTA DE DIAGNÒSTIC: la fem el més simple possible.
@@ -68,7 +68,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             .order('created_at', { ascending: false }) // Ordenem per creació, que sempre hi serà
             .limit(10)
     ]);
-// --- SECCIÓ DE DEPURACIÓ EXPLÍCITA ---
+    // --- SECCIÓ DE DEPURACIÓ EXPLÍCITA ---
     console.log('\n\n--- INICI DEPURACIÓ DADES INBOX DASHBOARD ---');
     if (recentEmailsRes.error) {
         console.error('>> ERROR EN LA CONSULTA DIRECTA A "tickets":', recentEmailsRes.error);
@@ -113,6 +113,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             initialData={initialData}
             teamMembers={teamMembersRes.data as Tables<'team_members_with_profiles'>[] ?? []}
             userId={user.id}
+            activeTeamId={activeTeamId} // ✅ LÍNIA AFEGIDA: Passem la propietat que faltava
         >
             {children}
         </DashboardClient>

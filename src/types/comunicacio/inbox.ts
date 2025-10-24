@@ -5,17 +5,9 @@
 
 import { z } from 'zod';
 import type { Contact } from '../crm/index';
-
+import { TicketStatus, TICKET_STATUS_MAP} from '@/config/inbox';
 // --- MAPA I TIPUS D'ESTAT DE TIQUET ---
 
-
-export const TICKET_STATUS_MAP = [
-  // ✅ CANVI: D'"Obert" a "NoLlegit"
-  { dbValue: 'NoLlegit', key: 'unread' }, 
-  { dbValue: 'Llegit', key: 'read' },
-  { dbValue: 'Respost', key: 'replied' },
-] as const;
-export type TicketStatus = typeof TICKET_STATUS_MAP[number]['dbValue'];
 
 // --- TIPUS PRINCIPALS (AMB ZOD PER A MÉS SEGURETAT) ---
 export type TicketFilter = 'tots' | 'rebuts' | 'enviats' | 'noLlegits';

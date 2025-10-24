@@ -6,25 +6,9 @@
 
 import type {Contact} from "@/types/crm";
 import type { Team as CompanyProfile } from "@/types/settings/team";
+import type { InvoiceStatus } from "@/config/invoices";
+import type { QuoteStatus } from "@/config/styles/quotes";
 // --- MAPES I TIPUS D'ESTATS ---
-
-
-export const QUOTE_STATUS_MAP = [
-  { dbValue: 'Draft',    key: 'draft',    colorClass: 'bg-yellow-900/50 text-yellow-300' },
-  { dbValue: 'Sent',     key: 'sent',     colorClass: 'bg-blue-900/50 text-blue-300' },
-  { dbValue: 'Accepted', key: 'accepted', colorClass: 'bg-green-900/50 text-green-300' },
-  { dbValue: 'Declined', key: 'declined', colorClass: 'bg-red-900/50 text-red-300' },
-] as const;
-type QuoteStatus = typeof QUOTE_STATUS_MAP[number]['dbValue'];
-
-export const INVOICE_STATUS_MAP = [
-  { dbValue: 'Draft',     key: 'draft' },
-  { dbValue: 'Sent',      key: 'sent' },
-  { dbValue: 'Paid',      key: 'paid' },
-  { dbValue: 'Overdue',   key: 'overdue' },
-  { dbValue: 'Cancelled', key: 'cancelled' },
-] as const;
-type InvoiceStatus = typeof INVOICE_STATUS_MAP[number]['dbValue'];
 
 // --- TIPUS PRINCIPALS ---
 

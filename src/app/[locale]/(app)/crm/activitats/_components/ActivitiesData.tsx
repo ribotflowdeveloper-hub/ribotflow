@@ -1,31 +1,35 @@
-// /app/[locale]/(app)/crm/activitats/_components/ActivitiesData.tsx
+// ✅ 1. Importem la validació de sessió i el nou servei
+import { validatePageSession } from '@/lib/supabase/session';
+import { getActivities, type ActivityWithContact } from '@/lib/services/activities.service';
 
-import { createClient } from '@/lib/supabase/server';
 import { ActivitatsClient } from './activitats-client';
-import { Database } from '@/types/supabase'; // ✅ Importem la definició principal
 
-// ✅ PAS 1: Definim el tipus que representa el resultat EXACTE de la nostra consulta.
-// És una fila de 'activities' enriquida amb una fila (o null) de 'contacts'.
-export type ActivityWithContact = Database['public']['Tables']['activities']['Row'] & {
-  contacts: Database['public']['Tables']['contacts']['Row'] | null;
-};
+// ✅ 2. Re-exportem el tipus per al component client
+export type { ActivityWithContact };
 
 export async function ActivitiesData() {
-    const supabase = createClient();
-    
-    // ✅ La consulta ara demana TOTES les columnes de 'contacts' amb (*)
-    const { data: activities, error } = await supabase
-        .from('activities')
-        .select('*, contacts(*)') // Canviem de 'contacts(nom, email)' a 'contacts(*)' per consistència
-        .order('created_at', { ascending: false });
+  // ✅ 3. Obtenim sessió i 'activeTeamId'
+  const session = await validatePageSession();
+  if ('error' in session) {
+    console.error(
+      "ActivitiesData: Sessió invàlida.",
+      typeof session.error === 'object' && session.error !== null && 'message' in session.error
+        ? (session.error as { message?: string }).message
+        : session.error
+    );
+    return <ActivitatsClient initialActivities={[]} />;
+  }
+  
+  const { supabase, activeTeamId } = session;
+  
+  // ✅ 4. Cridem al servei
+  const { data: activities, error } = await getActivities(supabase, activeTeamId);
 
-    if (error) {
-        console.error("Error en obtenir les activitats (pot ser per RLS):", error.message);
-        return <ActivitatsClient initialActivities={[]} />;
-    }
+  if (error) {
+    console.error("Error en obtenir les activitats (Component):", error.message);
+    return <ActivitatsClient initialActivities={[]} />;
+  }
 
-    // ✅ PAS 2: Passem les dades directament, sense transformar-les.
-    // Utilitzem 'as' perquè TypeScript no pot inferir el tipus de la relació 'contacts(*)'
-    // Aquest patró és segur perquè hem definit 'ActivityWithContact' per a aquest propòsit.
-    return <ActivitatsClient initialActivities={activities as ActivityWithContact[]} />;
+  // ✅ 5. Passem les dades al client
+  return <ActivitatsClient initialActivities={activities || []} />;
 }

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useTranslations } from "next-intl";
 // Importa el mapa d'estats per omplir el selector
-import { INVOICE_STATUS_MAP, type InvoiceStatus } from "@/types/finances/invoices";
+import { INVOICE_STATUS_MAP, type InvoiceStatus } from "@/config/invoices";
 
 interface InvoiceFiltersProps {
   searchTerm: string;

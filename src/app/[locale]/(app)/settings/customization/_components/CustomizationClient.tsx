@@ -9,7 +9,7 @@ import { useTranslations } from 'next-intl';
 
 import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
 import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard'; // Assegura't que la ruta sigui correcta
+import { ModuleCard } from '@/components/shared/ModuleCard'; // Assegura't que la ruta sigui correcta
 import { type Database } from '@/types/supabase';
 
 
@@ -24,7 +24,7 @@ function PipelineStagesManager({ initialStages }: { initialStages: Stage[] }) {
   const handleNotImplemented = () => toast.info("Funcionalitat no implementada.");
 
   return (
-    <DashboardCard title={t('pipelineTitle')} icon={Network} variant="default">
+    <ModuleCard title={t('pipelineTitle')} icon={Network} variant="default">
       <div className="space-y-3">
         {stages.map(stage => (
           <div key={stage.id} className="flex items-center gap-3 p-2 bg-muted dark:bg-muted/50 rounded-lg border">
@@ -39,7 +39,7 @@ function PipelineStagesManager({ initialStages }: { initialStages: Stage[] }) {
           <Plus className="w-4 h-4 mr-2" />{t('newStageButton')}
         </Button>
       </div>
-    </DashboardCard>
+    </ModuleCard>
   );
 }
 
@@ -51,7 +51,7 @@ function ContactTagsManager({ initialTags }: { initialTags: Tag[] }) {
   const handleNotImplemented = () => toast.info("Funcionalitat no implementada.");
 
   return (
-    <DashboardCard title={t('tagsTitle')} icon={Palette} variant="default">
+    <ModuleCard title={t('tagsTitle')} icon={Palette} variant="default">
       <div className="flex flex-wrap gap-3">
         {tags.map(tag => (
           <div key={tag.id} className="flex items-center gap-2 pl-3 pr-2 py-1 rounded-full text-sm border font-medium" style={{ backgroundColor: `${tag.color}20`, borderColor: `${tag.color}40`, color: tag.color || undefined }}>
@@ -66,7 +66,7 @@ function ContactTagsManager({ initialTags }: { initialTags: Tag[] }) {
       <Button onClick={handleNotImplemented} variant="outline" className="w-full mt-6">
           <Plus className="w-4 h-4 mr-2" />{t('newTagButton')}
       </Button>
-    </DashboardCard>
+    </ModuleCard>
   );
 }
 
@@ -92,15 +92,15 @@ export function CustomizationClient({ initialStages, initialTags }: {
 
       {/* Columna lateral */}
       <div className="lg:col-span-1 space-y-8">
-        <DashboardCard title={t('themeTitle')} icon={Settings} variant="default">
+        <ModuleCard title={t('themeTitle')} icon={Settings} variant="default" >
             <p className="text-sm text-muted-foreground mb-4">{t('themeDescription')}</p>
             <ThemeSwitcher />
-        </DashboardCard>
-        
-        <DashboardCard title={t('languageTitle')} icon={Languages} variant="default">
+        </ModuleCard>
+
+        <ModuleCard title={t('languageTitle')} icon={Languages} variant="default">
             <p className="text-sm text-muted-foreground mb-4">{t('languageDescription')}</p>
             <LanguageSwitcher />
-        </DashboardCard>
+        </ModuleCard>
       </div>
     </motion.div>
   );
