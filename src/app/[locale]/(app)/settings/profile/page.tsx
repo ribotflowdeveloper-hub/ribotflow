@@ -8,7 +8,7 @@ export default async function ProfilePage() {
   const t = await getTranslations('SettingsPage.nav');
 
   return (
-    <div className="space-y-8">
+    <div className="">
       {/* ✅ NOU: Afegim el títol aquí, però només el mostrem en pantalles petites (lg:hidden)
           perquè en escriptori ja apareix al menú lateral. */}
       <h1 className="text-3xl font-bold lg:hidden">{t('title')}</h1>
