@@ -50,7 +50,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         recentEmailsRes,
     ] = await Promise.all([
         // 2. Passem 'activeTeamId' a les funcions que ho necessiten.
-        getStats(typedSupabase), 
+        getStats(typedSupabase), // ✅ PASSEM L'ID (hauràs d'actualitzar getStats)
         getTasks(typedSupabase, activeTeamId), // ✅ Fem servir activeTeamId
         getOverdueInvoices(typedSupabase, activeTeamId), // ✅ PASSEM L'ID (hauràs d'actualitzar getOverdueInvoices)
         getRecentContacts(typedSupabase, activeTeamId), // ✅ Fem servir activeTeamId

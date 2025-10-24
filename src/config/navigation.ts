@@ -59,8 +59,8 @@ export const navModules: NavItem[] = [
     path: '/finances/invoices',
     isSingle: false,
     children: [
-      { id: 'pressupostos', labelKey: 'quotes', icon: FileText, path: '/crm/quotes', isSingle: true },
-      { id: 'conceptes', labelKey: 'concepts', icon: BookPlus, path: '/crm/products', isSingle: true },
+      { id: 'pressupostos', labelKey: 'quotes', icon: FileText, path: '/finances/quotes', isSingle: true },
+      { id: 'conceptes', labelKey: 'concepts', icon: BookPlus, path: '/finances/products', isSingle: true },
       { id: 'facturacio', labelKey: 'invoicing', icon: Receipt, path: '/finances/invoices', isSingle: true },
       { id: 'despeses', labelKey: 'expenses', icon: Landmark, path: '/finances/expenses', isSingle: true },
       { id: 'proveïdors', labelKey: 'suppliers', icon: Truck, path: '/finances/suppliers', isSingle: true },

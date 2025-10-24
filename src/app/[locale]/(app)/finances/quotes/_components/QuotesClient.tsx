@@ -10,7 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Trash2, Edit, ArrowUpDown, Plus } from 'lucide-react'; 
 import type { QuoteWithContact } from '../page';
 import { useTranslations, useLocale } from 'next-intl';
-import { QUOTE_STATUS_MAP } from '@/types/crm';
+import { QUOTE_STATUS_MAP } from '@/config/styles/quotes';
 import { cn } from '@/lib/utils/utils';
 import { useQuotes } from '../_hooks/useQuotes'; 
 

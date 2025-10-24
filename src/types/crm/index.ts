@@ -10,9 +10,8 @@ export * from './opportunitys';
 export * from './contacts';
 export * from '../comunicacio/inbox';
 export * from './general';
-export * from './products';
+export * from '../finances/products';
 export * from './deals';
-export * from './quotes';
-
+export * from '../finances/quotes';
 export * from '../shared/notification';
 export * from './calendar';

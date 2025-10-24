@@ -2,10 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
-import { QuotePreview } from "@/app/[locale]/(app)/crm/quotes/[id]/_components/QuotePreview";
+import { QuotePreview } from "@/app/[locale]/(app)/finances/quotes/[id]/_components/QuotePreview";
 import { type QuoteDataFromServer } from "@/types/crm";
 // ✅ 1. Importem els tipus que 'QuotePreview' realment espera.
-import { type EditableQuote } from "@/app/[locale]/(app)/crm/quotes/[id]/_hooks/useQuoteEditor";
+import { type EditableQuote } from "@/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor";
 import { type Database } from "@/types/supabase";
 
 // Definim els tipus locals que 'QuotePreview' utilitza
