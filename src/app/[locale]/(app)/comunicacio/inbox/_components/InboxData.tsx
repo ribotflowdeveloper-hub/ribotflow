@@ -1,57 +1,51 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx (VERSIÓ FINAL)
+// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx
+
 import { redirect } from 'next/navigation';
 import { headers } from "next/headers";
 import { InboxClient } from "./InboxClient";
-import { getTeamMembersWithProfiles } from "@/lib/supabase/teams";
 import { validateUserSession } from "@/lib/supabase/session";
-import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db';
+// ✅ 1. Importem el servei i els tipus necessaris des del servei
+import { getInboxInitialData } from '@/lib/services/comunicacio/inbox.service';
+import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db'; // Mantenim tipus per claredat al component client
 
-// Aquest component ja no rep 'searchParams'.
+// Re-exportem tipus per a InboxClient
+export type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission };
+
 export async function InboxData() {
-    // El servidor SEMPRE carrega la vista per defecte (sense cerca).
-    const searchTerm = '';
-
+    // Obtenim sessió i locale
     const session = await validateUserSession();
-    const locale = (await (headers())).get('x-next-intl-locale') || 'ca';
+    const locale = ((await headers()).get('x-next-intl-locale')) || 'ca'; // Simplificat
+
     if ('error' in session) {
+        console.error("InboxData: Sessió invàlida.", session.error.message);
         redirect(`/${locale}/login`);
     }
     const { supabase, user, activeTeamId } = session;
 
-    const { data: permissions, error: permissionsError } = await supabase
-        .from('inbox_permissions').select('*').eq('team_id', activeTeamId).eq('grantee_user_id', user.id);
-    
-    if (permissionsError) console.error("Error en carregar els permisos de l'inbox:", permissionsError);
-    
-    const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id).filter(Boolean) || [])];
-    
-    const [teamMembersRes, allTeamContactsRes, templatesRes, receivedCountRes, sentCountRes, ticketsRes] = await Promise.all([
-        getTeamMembersWithProfiles(supabase, activeTeamId),
-        supabase.from('contacts').select('*').eq('team_id', activeTeamId),
-        supabase.from("email_templates").select("*").eq('team_id', activeTeamId),
-        supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds }),
-        supabase.rpc('get_inbox_sent_count', { p_visible_user_ids: visibleUserIds }),
-        supabase.rpc('get_inbox_tickets', {
-            p_user_id: user.id, p_team_id: activeTeamId, p_visible_user_ids: visibleUserIds,
-            p_limit: 50, p_offset: 0, p_search_term: searchTerm
-        })
-    ]);
+    // ✅ 2. Cridem al servei per obtenir totes les dades inicials
+    const { data, error } = await getInboxInitialData(supabase, user.id, activeTeamId);
 
-    if (ticketsRes.error) console.error("Error RPC (get_inbox_tickets):", ticketsRes.error);
+    // ✅ 3. Gestionem l'error del servei
+    if (error || !data) {
+        console.error("Error en carregar les dades de l'Inbox (Component):", error);
+        // Podries mostrar un missatge d'error més específic o un estat buit robust
+        return (
+            <InboxClient
+                user={user} initialTickets={[]} initialTemplates={[]}
+                initialReceivedCount={0} initialSentCount={0}
+                teamMembers={[]} permissions={[]} allTeamContacts={[]}
+                // Passa un estat d'error opcional al client si vols
+                // errorLoading={error ? 'Error en carregar les dades inicials.' : undefined}
+            />
+        );
+    }
 
-    const teamMembers: TeamMemberWithProfile[] = teamMembersRes.data || [];
-    const allTeamContacts: Contact[] = allTeamContactsRes.data || [];
-    const templates: Template[] = templatesRes.data || [];
-    const receivedCount = receivedCountRes.data || 0;
-    const sentCount = sentCountRes.data || 0;
-    const tickets: EnrichedTicket[] = (ticketsRes.data as EnrichedTicket[] || []);
-    const safePermissions: InboxPermission[] = permissions || [];
-    
+    // ✅ 4. Passem les dades obtingudes del servei al component client
     return (
         <InboxClient
-            user={user} initialTickets={tickets} initialTemplates={templates}
-            initialReceivedCount={receivedCount} initialSentCount={sentCount}
-            teamMembers={teamMembers} permissions={safePermissions} allTeamContacts={allTeamContacts}
+            user={user} initialTickets={data.tickets} initialTemplates={data.templates}
+            initialReceivedCount={data.receivedCount} initialSentCount={data.sentCount}
+            teamMembers={data.teamMembers} permissions={data.permissions} allTeamContacts={data.allTeamContacts}
         />
     );
 }
