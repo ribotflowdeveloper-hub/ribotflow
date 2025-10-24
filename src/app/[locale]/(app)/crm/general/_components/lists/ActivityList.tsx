@@ -8,7 +8,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { formatDistanceToNow } from 'date-fns';
 import { ca, es, enUS } from 'date-fns/locale';
 import { AlertTriangle, Mail, Check } from 'lucide-react';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard';
+import { ModuleCard } from '@/components/shared/ModuleCard';
 import { Button } from '@/components/ui/button';
 import { type UnreadActivity } from '../CrmData';
 
@@ -64,12 +64,12 @@ export const ActivityList: FC<ActivityListProps> = ({ activities, onMarkAsRead, 
     }
 
     return (
-        <DashboardCard title={t('recentAlerts', { count: activities.length })} icon={AlertTriangle} variant="activity">
+        <ModuleCard title={t('recentAlerts', { count: activities.length })} icon={AlertTriangle} variant="activity">
             <div className="space-y-1 max-h-72 overflow-y-auto pr-2 -mr-4">
                 {activities.map(activity => (
                     <ActivityItem key={activity.id} activity={activity} onMarkAsRead={onMarkAsRead} onReply={onReply} />
                 ))}
             </div>
-        </DashboardCard>
+        </ModuleCard>
     );
 };

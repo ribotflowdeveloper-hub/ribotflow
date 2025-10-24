@@ -1328,104 +1328,51 @@
       }
     },
     "SettingsProfile": {
-      "toastError": "Error",
-      "toastLogoUploadError": "No s'ha pogut pujar el logo.",
-      "toastLogoUploadSuccess": "Logo pujat!",
-      "toFastLogoUploadSuccessDesc": "Recorda desar els canvis per aplicar-lo.",
-      "toastSuccess": "Èxit!",
-      "toastUpdateSuccess": "Perfil actualitzat correctament.",
-      "toastVisibilitySuccess": "Visibilitat actualitzada!",
-      "visibilityUpdateMessage": "El perfil ara és {status}.",
-      "publicStatus": "públic",
-      "privateStatus": "privat",
-      "generalCardTitle": "Perfil General",
-      "generalCardDescription": "Informació bàsica sobre tu i la teva empresa.",
-      "fullNameLabel": "Nom complet",
-      "companyNameLabel": "Nom de l'empresa",
-      "summaryLabel": "Descripció del negoci",
-      "summaryPlaceholder": "Una breu descripció del que fas...",
-      "servicesLabel": "Serveis (separats per comes)",
-      "servicesPlaceholder": "Ex: Disseny web, SEO, Marketing",
-      "contactCardTitle": "Dades de Contacte i Adreça",
-      "contactCardDescription": "Com et poden trobar els teus clients.",
-      "phoneLabel": "Telèfon de contacte",
-      "streetLabel": "Carrer",
-      "cityLabel": "Població",
-      "postalCodeLabel": "Codi Postal",
-      "regionLabel": "Província",
-      "countryLabel": "País",
-      "visibilityCardTitle": "Visibilitat del Perfil",
-      "publicProfileLabel": "Perfil Públic",
-      "publicProfileDescription": "Si està actiu, altres usuaris podran trobar i veure la informació del teu negoci.",
-      "billingCardTitle": "Dades de Facturació de l'Empresa",
-      "billingCardDescription": "Aquesta informació apareixerà als teus pressupostos i factures.",
-      "taxIdLabel": "NIF/CIF",
-      "companyEmailLabel": "Email de l'Empresa",
-      "fiscalAddressLabel": "Adreça Fiscal",
-      "logoLabel": "Logo de l'Empresa",
-      "changeLogoButton": "Canviar Logo",
-      "savingButton": "Desant...",
-      "saveChangesButton": "Desar Canvis",
-      "uploadingLogoButton": "Pujant logo..."
-    },
-    "team": {
-      "pageTitle": "Gestió de l'Equip",
-      "toastNotImplemented": "Funció no implementada",
-      "toastNotImplementedDesc": "L'opció d'invitar membres aviat estarà disponible.",
-      "title": "Membres de l'Equip",
-      "inviteButton": "Invitar Membre",
-      "youOwner": "Tu (Propietari)",
-      "exampleEmail": "email@exemple.com",
-      "adminRole": "Administrador",
-      "createTeam": {
-        "title": "Crea el teu Equip",
-        "description": "Comença donant un nom a la teva empresa o equip. Després podràs convidar els teus col·laboradors.",
-        "placeholder": "Nom de la teva empresa",
-        "createButton": "Crear Equip",
-        "creatingButton": "Creant...",
-        "success": "Equip creat correctament!",
-        "errorNameRequired": "El nom de l'empresa és obligatori.",
-        "errorGeneral": "No s'ha pogut crear l'equip.",
-        "errorMember": "No s'ha pogut assignar el propietari a l'equip."
+      "toasts": {
+        "logoUploadErrorTitle": "Error",
+        "logoUploadErrorDesc": "No s'ha pogut pujar el logo.",
+        "logoUploadSuccess": "Logo pujat correctament!"
       },
-      "inviteCard": {
-        "title": "Convidar Membres",
-        "description": "Convida nous membres al teu equip enviant-los una invitació per correu electrònic.",
-        "emailPlaceholder": "correu@exemple.com",
-        "rolePlaceholder": "Selecciona un rol",
-        "sendButton": "Enviar Invitació",
-        "sendingButton": "Enviant...",
-        "success": "Invitació enviada a {email}.",
-        "errorAlreadyInvited": "No s'ha pogut crear la invitació. L'email ja ha estat convidat?",
-        "toast": {
-          "error": "Error",
-          "success": "Èxit!",
-          "invalidEmail": "L'email no és vàlid.",
-          "invalidRole": "El rol no és vàlid.",
-          "notAuthenticated": "No estàs autenticat.",
-          "notAdmin": "No tens permisos per convidar usuaris.",
-          "alreadyMember": "Aquest usuari ja és membre de l'equip."
-        }
+      "personalProfile": {
+        "title": "El Meu Perfil",
+        "emailLabel": "Email",
+        "fullNameLabel": "Nom i Cognoms",
+        "phoneLabel": "Telèfon Personal",
+        "jobTitleLabel": "Càrrec",
+        "jobTitlePlaceholder": "Ex: Director Comercial",
+        "saveButton": "Desar Perfil",
+        "savingButton": "Desant..."
       },
-      "membersCard": {
-        "title": "Membres de l'Equip",
-        "description": "Aquests són els membres actius de la teva organització."
+      "companyProfile": {
+        "title": "Dades de l'Empresa",
+        "description": "Aquesta informació s'utilitzarà a les teves factures i pressupostos.",
+        "nameLabel": "Nom de l'empresa",
+        "taxIdLabel": "NIF/CIF",
+        "emailLabel": "Email de l'empresa",
+        "phoneLabel": "Telèfon de l'empresa",
+        "sectorLabel": "Sector",
+        "sectorPlaceholder": "Ex: Tecnologia",
+        "countryLabel": "País",
+        "addressLabel": "Adreça",
+        "addressPlaceholder": "Carrer i número",
+        "cityLabel": "Població",
+        "postalCodeLabel": "Codi Postal",
+        "websiteLabel": "Pàgina web",
+        "websitePlaceholder": "https://elteudomini.com",
+        "summaryLabel": "Descripció curta",
+        "summaryPlaceholder": "Una breu descripció del que fa la teva empresa.",
+        "logoLabel": "Logo",
+        "changeLogoButton": "Cambiar",
+        "saveButton": "Desar Dades",
+        "savingButton": "Desant..."
       },
-      "invitationsCard": {
-        "title": "Invitacions Pendents",
-        "description": "Aquests usuaris han estat convidats però encara no han acceptat.",
-        "pending": "Pendent",
-        "none": "No hi ha invitacions pendents."
-      },
-      "roles": {
-        "owner": "Propietari",
-        "admin": "Administrador",
-        "member": "Membre"
+      "preferences": {
+        "title": "Preferències",
+        "themeTitle": "Tema Visual",
+        "themeDescription": "Tria l'aparença de la interfície.",
+        "languageTitle": "Idioma",
+        "languageDescription": "Selecciona el teu idioma preferit."
       }
-    },
-    "Errors": {
-      "permissionDenied": "No tens permisos per a realitzar aquesta acció.",
-      "accessDeniedTitle": "Accés Denegat"
     }
   },
   "ThemeSwitcher": {
