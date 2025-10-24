@@ -14,17 +14,17 @@ import {
     type LeadSource, 
     type OpportunityAgingData, 
     type LeadConversionData 
-} from './crm/types';
+} from './crm/general/types';
 
 // Importa les funcions de servei modulars
-import { fetchAllCrmRawData } from './crm/data.service';
-import { processStats } from './crm/stats.service';
-import { processFunnel } from './crm/funnel.service';
-import { processRevenue } from './crm/revenue.service';
-import { processLists } from './crm/lists.service';
-import { processCharts } from './crm/charts.service';
-import { processCampaignPerformance } from './crm/campaignPerformance.service';
-import { processDailySummary } from './crm/dailySummary.service';
+import { fetchAllCrmRawData } from './crm/general/data.service';
+import { processStats } from './crm/general/stats.service';
+import { processFunnel } from './crm/general/funnel.service';
+import { processRevenue } from './crm/general/revenue.service';
+import { processLists } from './crm/general/lists.service';
+import { processCharts } from './crm/general/charts.service';
+import { processCampaignPerformance } from './crm/general/campaignPerformance.service';
+import { processDailySummary } from './crm/general/dailySummary.service';
 
 
 /**

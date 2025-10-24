@@ -1,6 +1,6 @@
 import { type Tables } from '@/types/supabase';
 import { type RawCrmDataResults } from './data.service';
-import { type DailySummaryData } from '../crm.service'; // Importa el tipus des de l'arxiu principal
+import { type DailySummaryData } from '../../crm.service'; // Importa el tipus des de l'arxiu principal
 
 // Abans _processDailySummary
 export function processDailySummary(rawData: RawCrmDataResults): DailySummaryData {

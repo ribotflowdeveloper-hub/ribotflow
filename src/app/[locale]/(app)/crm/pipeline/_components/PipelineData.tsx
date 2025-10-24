@@ -6,7 +6,7 @@ import {
   type Stage, 
   type Contact, 
   type OpportunityWithContact 
-} from '@/lib/services/pipline.service'; // Ruta al nou servei
+} from '@/lib/services/crm/pipeline/pipline.service'; // Ruta al nou servei
 
 // ✅ 2. Exportem els tipus perquè el Client Component (PipelineClient) els pugui inferir
 export type { Stage, Contact, OpportunityWithContact };

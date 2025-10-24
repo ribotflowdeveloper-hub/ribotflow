@@ -1,7 +1,7 @@
 import { ContactsClient } from './contacts-client';
 import { validatePageSession } from "@/lib/supabase/session";
 // ✅ 1. Importem el nou servei i el tipus
-import { getPaginatedContacts, type ContactWithOpportunities } from '@/lib/services/contacts.service';
+import { getPaginatedContacts, type ContactWithOpportunities } from '@/lib/services/crm/contacts/contacts.service';
 
 // ✅ 2. Exportem el tipus per al client
 export type { ContactWithOpportunities };

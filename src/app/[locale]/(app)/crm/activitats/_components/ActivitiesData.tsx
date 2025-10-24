@@ -1,6 +1,6 @@
 // ✅ 1. Importem la validació de sessió i el nou servei
 import { validatePageSession } from '@/lib/supabase/session';
-import { getActivities, type ActivityWithContact } from '@/lib/services/activities.service';
+import { getActivities, type ActivityWithContact } from '@/lib/services/crm/activities/activities.service';
 
 import { ActivitatsClient } from './activitats-client';
 

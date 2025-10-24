@@ -3,7 +3,7 @@ import { validatePageSession } from '@/lib/supabase/session';
 import { startOfWeek, endOfWeek } from 'date-fns';
 
 // ✅ 1. Importem el SERVEI per a la càrrega inicial
-import { getCalendarPageData } from '@/lib/services/calendar.service';
+import { getCalendarPageData } from '@/lib/services/crm/calendar/calendar.service';
 // ✅ 2. Importem l'ACCIÓ per passar-la al client (per a recàrregues)
 import { getCalendarData } from '../actions'; 
 // ✅ 3. Importem els tipus des del SERVEI
@@ -11,7 +11,7 @@ import {
   type EnrichedTaskForCalendar,
   type EnrichedQuoteForCalendar,
   type EnrichedEmailForCalendar
-} from '@/lib/services/calendar.service';
+} from '@/lib/services/crm/calendar/calendar.service';
 
 // Re-exportem tipus per al client
 export type { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCalendar };

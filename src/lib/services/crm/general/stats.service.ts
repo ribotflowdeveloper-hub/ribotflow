@@ -1,7 +1,6 @@
 import { type Tables } from '@/types/supabase';
-import { type RawCrmDataResults } from './data.service'; // Importa el tipus de dades brutes
-// Afegeix la importació o definició del tipus CrmData
-import type { CrmData } from '../crm.service'; // Assegura't que CrmData està exportat a crm.service.ts, o canvia el path segons correspongui
+// ✅ CORRECCIÓ 1: Importem des de './types' i assegurem que tots els tipus necessaris hi són
+import { type RawCrmDataResults, type CrmData } from './types';
 
 // Helper privat si només s'usa aquí
 const calculateTrend = (current: number, previous: number): number => {
@@ -25,13 +24,15 @@ export function processStats(rawData: RawCrmDataResults): CrmData['stats'] {
     type PaidInvoice = Pick<Tables<'invoices'>, 'total_amount' | 'contact_id' | 'issue_date'>;
     const paidInvoices = rawData.paidInvoicesRes.data ?? [];
     const totalRevenue = paidInvoices.reduce((sum: number, inv: PaidInvoice) => sum + (inv.total_amount ?? 0), 0);
-    const uniqueClientsWithRevenue = new Set(paidInvoices.map(inv => inv.contact_id).filter(Boolean)).size;
+    // ✅ CORRECCIÓ 2: Tipem 'inv' explícitament en el .map()
+    const uniqueClientsWithRevenue = new Set(paidInvoices.map((inv: PaidInvoice) => inv.contact_id).filter(Boolean)).size;
     const avgRevenuePerClient = uniqueClientsWithRevenue > 0 ? totalRevenue / uniqueClientsWithRevenue : 0;
 
     type PaidInvoiceLastMonth = Pick<Tables<'invoices'>, 'total_amount' | 'contact_id'>;
     const paidInvoicesLastMonth = rawData.paidInvoicesLastMonthRes.data ?? [];
     const totalRevenueLastMonth = paidInvoicesLastMonth.reduce((sum: number, inv: PaidInvoiceLastMonth) => sum + (inv.total_amount ?? 0), 0);
-    const uniqueClientsLastMonth = new Set(paidInvoicesLastMonth.map(inv => inv.contact_id).filter(Boolean)).size;
+    // ✅ CORRECCIÓ 2: Tipem 'inv' explícitament en el .map()
+    const uniqueClientsLastMonth = new Set(paidInvoicesLastMonth.map((inv: PaidInvoiceLastMonth) => inv.contact_id).filter(Boolean)).size;
     const avgRevenuePerClientLastMonth = uniqueClientsLastMonth > 0 ? totalRevenueLastMonth / uniqueClientsLastMonth : 0;
 
     const funnelLeadsCount = rawData.funnelLeadsCountRes.count ?? 0;

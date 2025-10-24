@@ -3,7 +3,7 @@ import { type Database } from '@/types/supabase';
 
 // ✅ 1. Importem les nostres funcions de servei d'entitat
 import { getPipelineStages } from './stages.service';
-import { getBasicContacts } from './contacts.service';
+import { getBasicContacts } from '../contacts/contacts.service';
 import { getOpportunitiesWithContact } from './opportunities.service';
 
 // 2. Les definicions de tipus es mantenen igual. Són el "contracte" públic.
