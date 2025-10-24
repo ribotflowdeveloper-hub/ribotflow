@@ -2668,7 +2668,9 @@ CREATE TABLE IF NOT EXISTS "public"."tasks" (
     "duration" numeric,
     "finish_date" timestamp with time zone,
     "time_tracking_log" "jsonb" DEFAULT '[]'::"jsonb",
-    "is_active" boolean
+    "is_active" boolean,
+    "description_json" "jsonb",
+    "checklist_progress" "jsonb" DEFAULT '{"total": 0, "completed": 0}'::"jsonb"
 );
 
 
@@ -2692,6 +2694,10 @@ COMMENT ON COLUMN "public"."tasks"."finish_date" IS 'Finish Date';
 
 
 COMMENT ON COLUMN "public"."tasks"."is_active" IS 'Activa';
+
+
+
+COMMENT ON COLUMN "public"."tasks"."checklist_progress" IS 'Emmagatzema el recompte de checkboxes dins la descripció: { "total": number, "completed": number }';
 
 
 
@@ -3631,6 +3637,32 @@ CREATE POLICY "Allow access based on active team" ON "public"."products" USING (
 
 
 
+CREATE POLICY "Allow authenticated users to DELETE tasks of their teams" ON "public"."tasks" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Allow authenticated users to INSERT tasks for their teams" ON "public"."tasks" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Allow authenticated users to SELECT tasks of their teams" ON "public"."tasks" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Allow authenticated users to UPDATE tasks of their teams" ON "public"."tasks" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
+
+
+
 CREATE POLICY "Allow members to read their own team" ON "public"."teams" FOR SELECT USING (("id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE ("team_members"."user_id" = "auth"."uid"()))));
@@ -3916,14 +3948,6 @@ CREATE POLICY "Users can manage suppliers of their active team." ON "public"."su
 
 
 CREATE POLICY "Users can manage tags for their active team." ON "public"."contact_tags" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage tasks for their active team." ON "public"."tasks" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage tasks of their active team." ON "public"."tasks" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
 
 
 

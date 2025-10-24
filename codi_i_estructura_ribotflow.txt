@@ -78,6 +78,8 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   ├── PostPreview.tsx
 │       │   │   │   │   ├── SchedulePostDialog.tsx
 │       │   │   │   │   ├── SocialPlannerClient.tsx
+│       │   │   │   │   ├── SocialPlannerData.tsx
+│       │   │   │   │   ├── SocialPlannerSkeleton.tsx
 │       │   │   │   │   └── ViewPostDialog.tsx
 │       │   │   │   └── _hooks
 │       │   │   │       ├── useCreatePost.ts
@@ -243,8 +245,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │       │   └── TaskCard.tsx
 │       │   │       ├── AIOracle.tsx
 │       │   │       ├── AIOracleSkeleton.tsx
-│       │   │       ├── DashboardBottomGrid.tsx
-│       │   │       ├── DashboardCard.tsx
 │       │   │       ├── DashboardData.tsx
 │       │   │       ├── DashboardMainGrid.tsx
 │       │   │       ├── DashboardSkeleton.tsx
@@ -581,6 +581,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   ├── billing.ts
 │   ├── contacts.ts
 │   ├── inbox.ts
+│   ├── invoices.ts
 │   ├── navigation.ts
 │   ├── pipeline.ts
 │   └── styles
@@ -597,6 +598,29 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │   └── dashboard.ts
 │   ├── permissions.config.ts
 │   ├── permissions.ts
+│   ├── services
+│   │   ├── activities.service.ts
+│   │   ├── calendar.service.ts
+│   │   ├── comunicacio
+│   │   │   ├── inbox.service.ts
+│   │   │   └── socialPlanner.service.ts
+│   │   ├── contacts.service.ts
+│   │   ├── crm
+│   │   │   ├── campaignPerformance.service.ts
+│   │   │   ├── charts.service.ts
+│   │   │   ├── dailySummary.service.ts
+│   │   │   ├── data.service.ts
+│   │   │   ├── funnel.service.ts
+│   │   │   ├── lists.service.ts
+│   │   │   ├── revenue.service.ts
+│   │   │   ├── stats.service.ts
+│   │   │   └── types.ts
+│   │   ├── crm.service.ts
+│   │   ├── departments.service.ts
+│   │   ├── opportunities.service.ts
+│   │   ├── pipline.service.ts
+│   │   ├── stages.service.ts
+│   │   └── team.service.ts
 │   ├── supabase
 │   │   ├── admin.ts
 │   │   ├── client.ts
@@ -624,7 +648,6 @@ ESTRUCTURA DEL PROJECTE (./src)
     │   ├── general.ts
     │   ├── index.ts
     │   ├── opportunitys.ts
-    │   ├── pipelines.ts
     │   ├── products.ts
     │   └── quotes.ts
     ├── dashboard
@@ -3147,60 +3170,54 @@ export function InboxClient(props: InboxClientProps) {
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx ===================
 
-// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx (VERSIÓ FINAL)
+// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx
+
 import { redirect } from 'next/navigation';
 import { headers } from "next/headers";
 import { InboxClient } from "./InboxClient";
-import { getTeamMembersWithProfiles } from "@/lib/supabase/teams";
 import { validateUserSession } from "@/lib/supabase/session";
-import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db';
+// ✅ 1. Importem el servei i els tipus necessaris des del servei
+import { getInboxInitialData } from '@/lib/services/comunicacio/inbox.service';
+import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db'; // Mantenim tipus per claredat al component client
 
-// Aquest component ja no rep 'searchParams'.
+// Re-exportem tipus per a InboxClient
+export type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission };
+
 export async function InboxData() {
-    // El servidor SEMPRE carrega la vista per defecte (sense cerca).
-    const searchTerm = '';
-
+    // Obtenim sessió i locale
     const session = await validateUserSession();
-    const locale = (await (headers())).get('x-next-intl-locale') || 'ca';
+    const locale = ((await headers()).get('x-next-intl-locale')) || 'ca'; // Simplificat
+
     if ('error' in session) {
+        console.error("InboxData: Sessió invàlida.", session.error.message);
         redirect(`/${locale}/login`);
     }
     const { supabase, user, activeTeamId } = session;
 
-    const { data: permissions, error: permissionsError } = await supabase
-        .from('inbox_permissions').select('*').eq('team_id', activeTeamId).eq('grantee_user_id', user.id);
-    
-    if (permissionsError) console.error("Error en carregar els permisos de l'inbox:", permissionsError);
-    
-    const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id).filter(Boolean) || [])];
-    
-    const [teamMembersRes, allTeamContactsRes, templatesRes, receivedCountRes, sentCountRes, ticketsRes] = await Promise.all([
-        getTeamMembersWithProfiles(supabase, activeTeamId),
-        supabase.from('contacts').select('*').eq('team_id', activeTeamId),
-        supabase.from("email_templates").select("*").eq('team_id', activeTeamId),
-        supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds }),
-        supabase.rpc('get_inbox_sent_count', { p_visible_user_ids: visibleUserIds }),
-        supabase.rpc('get_inbox_tickets', {
-            p_user_id: user.id, p_team_id: activeTeamId, p_visible_user_ids: visibleUserIds,
-            p_limit: 50, p_offset: 0, p_search_term: searchTerm
-        })
-    ]);
+    // ✅ 2. Cridem al servei per obtenir totes les dades inicials
+    const { data, error } = await getInboxInitialData(supabase, user.id, activeTeamId);
 
-    if (ticketsRes.error) console.error("Error RPC (get_inbox_tickets):", ticketsRes.error);
+    // ✅ 3. Gestionem l'error del servei
+    if (error || !data) {
+        console.error("Error en carregar les dades de l'Inbox (Component):", error);
+        // Podries mostrar un missatge d'error més específic o un estat buit robust
+        return (
+            <InboxClient
+                user={user} initialTickets={[]} initialTemplates={[]}
+                initialReceivedCount={0} initialSentCount={0}
+                teamMembers={[]} permissions={[]} allTeamContacts={[]}
+                // Passa un estat d'error opcional al client si vols
+                // errorLoading={error ? 'Error en carregar les dades inicials.' : undefined}
+            />
+        );
+    }
 
-    const teamMembers: TeamMemberWithProfile[] = teamMembersRes.data || [];
-    const allTeamContacts: Contact[] = allTeamContactsRes.data || [];
-    const templates: Template[] = templatesRes.data || [];
-    const receivedCount = receivedCountRes.data || 0;
-    const sentCount = sentCountRes.data || 0;
-    const tickets: EnrichedTicket[] = (ticketsRes.data as EnrichedTicket[] || []);
-    const safePermissions: InboxPermission[] = permissions || [];
-    
+    // ✅ 4. Passem les dades obtingudes del servei al component client
     return (
         <InboxClient
-            user={user} initialTickets={tickets} initialTemplates={templates}
-            initialReceivedCount={receivedCount} initialSentCount={sentCount}
-            teamMembers={teamMembers} permissions={safePermissions} allTeamContacts={allTeamContacts}
+            user={user} initialTickets={data.tickets} initialTemplates={data.templates}
+            initialReceivedCount={data.receivedCount} initialSentCount={data.sentCount}
+            teamMembers={data.teamMembers} permissions={data.permissions} allTeamContacts={data.allTeamContacts}
         />
     );
 }
@@ -5894,77 +5911,18 @@ export async function deleteSocialPostAction(postId: number): Promise<ActionResu
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/page.tsx ===================
 
-// Ubicació: /app/(app)/comunicacio/planificador/page.tsx
 
+// Modifica la pàgina per usar el component de dades amb Suspense
+// src/app/[locale]/(app)/comunicacio/planificador/page.tsx
 import { Suspense } from 'react';
-import { SocialPlannerClient } from './_components/SocialPlannerClient';
-import type { SocialPost } from "@/types/comunicacio/SocialPost";
-import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
-import { validatePageSession } from '@/lib/supabase/session';
+import { SocialPlannerData } from './_components/SocialPlannerData';
+import { SocialPlannerSkeleton } from './_components/SocialPlannerSkeleton'; // Importa el Skeleton
 
-// ✅ Esborrem les importacions de 'permissions' que no s'utilitzen aquí directament.
-// import { hasPermission, PERMISSIONS } from '@/lib/permissions';
-// import { getUserRoleInTeam } from '@/lib/permissions';
-
-export default async function SocialPlannerPage() {
-    const session = await validatePageSession();
-    // ✅ CORRECCIÓ 1: Comprovem si hi ha hagut un error (encara que 'validatePageSession' redirigeix,
-    // TypeScript necessita aquesta comprovació per saber que 'session' no és un error).
-    if (!session) {
-        // Aquesta línia realment no s'executarà perquè validatePageSession ja haurà redirigit,
-        // però satisfà el tipatge de TypeScript.
-        return null; 
-    }
-    const { supabase, user, activeTeamId } = session;
-    const locale = user.user_metadata?.locale || 'ca';
-
-    // Comprovació de pla de subscripció
-    const activeTeamPlan = user.app_metadata?.active_team_plan as string | undefined;
-    const allowedPlans = ['plus', 'premium'];
-    // ✅ CORRECCIÓ 2: Fem la comprovació més robusta (insensible a majúscules/minúscules).
-    if (!activeTeamPlan || !allowedPlans.includes(activeTeamPlan.toLowerCase())) {
-        return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
-    }
-
-    // ✅ CORRECCIÓ 3: La comprovació de permisos es feia DUES VEGADES i amb permisos incorrectes.
-    // La centralitzarem i la simplificarem. La lògica principal de permisos ja està dins
-    // de les 'actions', així que la comprovació aquí només ha de ser de visualització bàsica si cal.
-    // De moment, la podem eliminar si les RLS de Supabase ja protegeixen les dades. Si no,
-    // hauria de ser una única comprovació amb el permís correcte.
-
-    // Com que les Server Actions ja tenen una validació robusta amb 'validateSocialPlannerPermissions',
-    // podem confiar en que l'usuari no podrà fer accions no permeses. La càrrega inicial
-    // de dades estarà protegida per les polítiques RLS de Supabase.
-
-    // La resta de la càrrega de dades es manté igual...
-    const { data: posts, error } = await supabase
-        .from('social_posts')
-        .select('*')
-        .eq('team_id', activeTeamId) // Afegim el filtre per equip per RLS.
-        .order('created_at', { ascending: false });
-
-    if (error) console.error("Error carregant les publicacions:", error);
-
-    const [userCredsRes, teamCredsRes] = await Promise.all([
-        supabase.from('user_credentials').select('provider').eq('user_id', user.id),
-        supabase.from('team_credentials').select('provider').eq('team_id', activeTeamId)
-    ]);
-    const userProviders = userCredsRes.data?.map(c => c.provider) || [];
-    const teamProviders = teamCredsRes.data?.map(c => c.provider) || [];
-    const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
-
-    const connectionStatuses = {
-        linkedin: allConnectedProviders.has('linkedin'),
-        facebook: allConnectedProviders.has('facebook'),
-        instagram: allConnectedProviders.has('instagram'),
-    };
-
+export default function SocialPlannerPage() {
+    // La comprovació de pla i sessió ara es fa dins de SocialPlannerData
     return (
-        <Suspense fallback={<div>Carregant planificador...</div>}>
-            <SocialPlannerClient
-                initialPosts={(posts as SocialPost[]) || []}
-                connectionStatuses={connectionStatuses}
-            />
+        <Suspense fallback={<SocialPlannerSkeleton />}>
+            <SocialPlannerData />
         </Suspense>
     );
 }
@@ -6471,6 +6429,144 @@ export function SocialPlannerClient({ initialPosts, connectionStatuses }: Social
             <ViewPostDialog isOpen={dialogState.view} onOpenChange={(isOpen) => setDialogState(p => ({...p, view: isOpen}))} post={postToView} onUnschedule={handleUnschedule} onDelete={handleDeletePost} isPending={isPending} t={t} />
         </DragDropContext>
     );
+}
+
+// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/_components/SocialPlannerData.tsx ===================
+
+import { SocialPlannerClient } from './SocialPlannerClient';
+import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
+import { validatePageSession } from '@/lib/supabase/session';
+import { getSocialPlannerInitialData } from '@/lib/services/comunicacio/socialPlanner.service';
+import type { SocialPost, ConnectionStatuses } from '@/lib/services/comunicacio/socialPlanner.service'; // Importem tipus del servei
+
+// Re-exportem tipus per al client
+export type { SocialPost, ConnectionStatuses };
+
+// Plans permesos (pots moure'ls a config si vols)
+const ALLOWED_PLANS = ['plus', 'premium'];
+
+export async function SocialPlannerData() {
+    const session = await validatePageSession();
+    // validatePageSession ja gestiona redirecció si no hi ha sessió/equip
+    // Però afegim comprovació per a TypeScript i possibles errors inesperats
+    if (!session) return null;
+
+    const { supabase, user, activeTeamId } = session;
+    const locale = user.user_metadata?.locale || 'ca';
+
+    // Comprovació de pla de subscripció
+    const activeTeamPlan = user.app_metadata?.active_team_plan as string | undefined;
+    if (!activeTeamPlan || !ALLOWED_PLANS.includes(activeTeamPlan.toLowerCase())) {
+        return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
+    }
+
+    // Cridem al servei per obtenir les dades
+    const { data, error } = await getSocialPlannerInitialData(supabase, user.id, activeTeamId);
+
+    if (error || !data) {
+        console.error("Error carregant les dades del Planificador Social (Component):", error);
+        // Mostrem un estat d'error o buit
+        // Podries passar un prop 'errorLoading' al client
+        return (
+            <SocialPlannerClient
+                initialPosts={[]}
+                connectionStatuses={{ linkedin: false, facebook: false, instagram: false }}
+                // errorLoading="No s'han pogut carregar les dades."
+            />
+        );
+    }
+
+    return (
+        <SocialPlannerClient
+            initialPosts={data.posts}
+            connectionStatuses={data.connectionStatuses}
+        />
+    );
+}
+
+
+// =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/_components/SocialPlannerSkeleton.tsx ===================
+
+// src/app/[locale]/(app)/comunicacio/planificador/_components/SocialPlannerSkeleton.tsx
+
+import { Skeleton } from "@/components/ui/skeleton";
+
+export function SocialPlannerSkeleton() {
+  return (
+    // Estructura principal flex (columna en mòbil, fila en desktop)
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-theme(spacing.24))] gap-6 p-4 md:p-6 animate-pulse">
+
+      {/* --- Columna d'Esborranys (Sidebar) Skeleton --- */}
+      <aside className="lg:w-[320px] xl:w-[350px] flex-shrink-0 flex flex-col gap-4 min-h-[300px] lg:min-h-0">
+        {/* Botó Crear Post */}
+        <Skeleton className="h-10 w-full" />
+        {/* Caixa d'Esborranys */}
+        <div className="bg-muted/50 rounded-lg p-4 flex-grow flex flex-col">
+          {/* Títol Esborranys */}
+          <Skeleton className="h-6 w-3/4 mb-3 flex-shrink-0" />
+          {/* Llista d'Esborranys Skeletons */}
+          <div className="space-y-3 flex-grow overflow-hidden">
+            {[...Array(3)].map((_, index) => (
+              // PostCard Skeleton a la Sidebar
+              <div key={`draft-skel-${index}`} className="p-1.5 rounded-md bg-card border border-border flex items-start gap-1.5">
+                {/* Drag Handle Skeleton */}
+                <Skeleton className="h-8 w-8 flex-shrink-0" />
+                {/* Contingut Skeleton */}
+                <div className="flex-grow space-y-1.5 overflow-hidden">
+                  <Skeleton className="h-3 w-1/2" /> {/* Simula text petit */}
+                  <Skeleton className="h-3 w-full" /> {/* Simula text truncat */}
+                </div>
+                {/* Media Preview Skeleton (opcional, no sempre hi ha) */}
+                <Skeleton className="h-10 w-10 rounded-sm flex-shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </aside>
+
+      {/* --- Calendari Skeleton --- */}
+      <section className="flex-grow bg-card p-4 rounded-lg shadow-sm flex flex-col h-full overflow-hidden">
+        {/* Header Navegació Mes Skeleton */}
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+          <Skeleton className="h-8 w-8 rounded-full" />
+          <Skeleton className="h-7 w-40" />
+          <Skeleton className="h-8 w-8 rounded-full" />
+        </div>
+        {/* Header Dies Setmana Skeleton */}
+        <header className="grid grid-cols-7 gap-1 text-center mb-2 flex-shrink-0">
+          {[...Array(7)].map((_, index) => (
+            <Skeleton key={`day-header-${index}`} className="h-4 w-8 mx-auto" />
+          ))}
+        </header>
+        {/* Grid Calendari Skeleton */}
+        <main className="grid grid-cols-7 grid-rows-5 gap-2 flex-grow min-h-0">
+          {/* Generem cel·les skeleton (aprox 35 per a 5 setmanes) */}
+          {[...Array(35)].map((_, index) => (
+            <div key={`day-cell-${index}`} className="rounded-md p-1.5 flex flex-col gap-2 bg-muted/30">
+              {/* Número del dia Skeleton */}
+              <Skeleton className="h-4 w-4 self-center flex-shrink-0" />
+              {/* Espai per a PostCards Skeletons (només en algunes cel·les) */}
+              <div className="flex-grow space-y-2 overflow-hidden">
+                {/* Afegim 1 o 2 post skeletons aleatòriament per simular contingut */}
+                {Math.random() > 0.6 && (
+                  <div className="p-1 rounded-md bg-card border border-border flex items-start gap-1">
+                    <Skeleton className="h-4 w-4 flex-shrink-0" /> {/* Icona petita */}
+                    <Skeleton className="h-3 w-full" /> {/* Text truncat */}
+                  </div>
+                )}
+                {Math.random() > 0.8 && (
+                   <div className="p-1 rounded-md bg-card border border-border flex items-start gap-1">
+                    <Skeleton className="h-4 w-4 flex-shrink-0" />
+                    <Skeleton className="h-3 w-full" />
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </main>
+      </section>
+    </div>
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/planificador/_components/ViewPostDialog.tsx ===================
@@ -7541,36 +7637,40 @@ export const ActivitatsClient: React.FC<ActivitatsClientProps> = ({ initialActiv
 
 // =================== FILE: src/app/[locale]/(app)/crm/activitats/_components/ActivitiesData.tsx ===================
 
-// /app/[locale]/(app)/crm/activitats/_components/ActivitiesData.tsx
+// ✅ 1. Importem la validació de sessió i el nou servei
+import { validatePageSession } from '@/lib/supabase/session';
+import { getActivities, type ActivityWithContact } from '@/lib/services/activities.service';
 
-import { createClient } from '@/lib/supabase/server';
 import { ActivitatsClient } from './activitats-client';
-import { Database } from '@/types/supabase'; // ✅ Importem la definició principal
 
-// ✅ PAS 1: Definim el tipus que representa el resultat EXACTE de la nostra consulta.
-// És una fila de 'activities' enriquida amb una fila (o null) de 'contacts'.
-export type ActivityWithContact = Database['public']['Tables']['activities']['Row'] & {
-  contacts: Database['public']['Tables']['contacts']['Row'] | null;
-};
+// ✅ 2. Re-exportem el tipus per al component client
+export type { ActivityWithContact };
 
 export async function ActivitiesData() {
-    const supabase = createClient();
-    
-    // ✅ La consulta ara demana TOTES les columnes de 'contacts' amb (*)
-    const { data: activities, error } = await supabase
-        .from('activities')
-        .select('*, contacts(*)') // Canviem de 'contacts(nom, email)' a 'contacts(*)' per consistència
-        .order('created_at', { ascending: false });
+  // ✅ 3. Obtenim sessió i 'activeTeamId'
+  const session = await validatePageSession();
+  if ('error' in session) {
+    console.error(
+      "ActivitiesData: Sessió invàlida.",
+      typeof session.error === 'object' && session.error !== null && 'message' in session.error
+        ? (session.error as { message?: string }).message
+        : session.error
+    );
+    return <ActivitatsClient initialActivities={[]} />;
+  }
+  
+  const { supabase, activeTeamId } = session;
+  
+  // ✅ 4. Cridem al servei
+  const { data: activities, error } = await getActivities(supabase, activeTeamId);
 
-    if (error) {
-        console.error("Error en obtenir les activitats (pot ser per RLS):", error.message);
-        return <ActivitatsClient initialActivities={[]} />;
-    }
+  if (error) {
+    console.error("Error en obtenir les activitats (Component):", error.message);
+    return <ActivitatsClient initialActivities={[]} />;
+  }
 
-    // ✅ PAS 2: Passem les dades directament, sense transformar-les.
-    // Utilitzem 'as' perquè TypeScript no pot inferir el tipus de la relació 'contacts(*)'
-    // Aquest patró és segur perquè hem definit 'ActivityWithContact' per a aquest propòsit.
-    return <ActivitatsClient initialActivities={activities as ActivityWithContact[]} />;
+  // ✅ 5. Passem les dades al client
+  return <ActivitatsClient initialActivities={activities || []} />;
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/activitats/_components/ActivitiesSkeleton.tsx ===================
@@ -8057,84 +8157,99 @@ export default function CalendarClient(props: CalendarClientProps) {
 
 // =================== FILE: src/app/[locale]/(app)/crm/calendari/_components/CalendarData.tsx ===================
 
-// src/app/[locale]/(app)/crm/calendari/_components/CalendarData.tsx
 import CalendarClient from './CalendarClient';
 import { validatePageSession } from '@/lib/supabase/session';
-import { TaskWithAssignee } from '@/types/crm';
-import { Tables } from '@/types/supabase';
-import { getCalendarData } from '../actions'; 
 import { startOfWeek, endOfWeek } from 'date-fns';
 
-// --- Tipus Enriquits per al Calendari (unchanged) ---
-export type EnrichedTaskForCalendar = TaskWithAssignee & {
-    contacts: Tables<'contacts'> | null;
-    departments: Tables<'departments'> | null;
-};
-export type EnrichedQuoteForCalendar = Tables<'quotes'> & {
-    contacts: Pick<Tables<'contacts'>, 'id' | 'nom'> | null;
-};
-export type EnrichedEmailForCalendar = Tables<'tickets'> & {
-    contacts: Pick<Tables<'contacts'>, 'id' | 'nom'> | null;
-};
+// ✅ 1. Importem el SERVEI per a la càrrega inicial
+import { getCalendarPageData } from '@/lib/services/calendar.service';
+// ✅ 2. Importem l'ACCIÓ per passar-la al client (per a recàrregues)
+import { getCalendarData } from '../actions'; 
+// ✅ 3. Importem els tipus des del SERVEI
+import { 
+  type EnrichedTaskForCalendar,
+  type EnrichedQuoteForCalendar,
+  type EnrichedEmailForCalendar
+} from '@/lib/services/calendar.service';
 
-// 🧠 NOU: Estat inicial de filtres (Només Tasques Actives)
+// Re-exportem tipus per al client
+export type { EnrichedTaskForCalendar, EnrichedQuoteForCalendar, EnrichedEmailForCalendar };
+
 const INITIAL_ACTIVE_SOURCES = {
-    tasks: true,
-    quotes: false,
-    emails: false,
-    receivedEmails: false,
+  tasks: true,
+  quotes: false,
+  emails: false,
+  receivedEmails: false,
 };
-
 
 export default async function CalendarData() {
-    const { supabase, activeTeamId } = await validatePageSession();
+  // ✅ 4. Validem la sessió UNA SOLA VEGADA
+  const session = await validatePageSession();
+  if ('error' in session) {
+      console.error(
+        'CalendarData: Sessió invàlida.',
+        typeof session.error === 'object' && session.error !== null && 'message' in session.error
+          ? (session.error as { message?: string }).message
+          : session.error
+      );
+      // Retornem un estat buit si la sessió falla
+      return <CalendarClient 
+        initialTasks={[]} 
+        initialQuotes={[]} 
+        initialSentEmails={[]} 
+        initialReceivedEmails={[]} 
+        teamUsers={[]} 
+        contacts={[]} 
+        departments={[]} 
+        fetchCalendarDataAction={getCalendarData} 
+      />;
+  }
+  const { supabase, activeTeamId } = session;
 
-    // CÀLCUL INICIAL (Vista per defecte "setmana")
-    const today = new Date();
-    const initialStart = startOfWeek(today, { weekStartsOn: 1 as const }).toISOString();
-    const initialEnd = endOfWeek(today, { weekStartsOn: 1 as const }).toISOString();
-    
-    // ✅ FIX CLAU: Passem l'estat inicial dels filtres al Server Action
-    const initialData = await getCalendarData(initialStart, initialEnd, INITIAL_ACTIVE_SOURCES); 
+  const today = new Date();
+  const initialStart = startOfWeek(today, { weekStartsOn: 1 as const }).toISOString();
+  const initialEnd = endOfWeek(today, { weekStartsOn: 1 as const }).toISOString();
+  
+  // ✅ 5. Cridem al nostre "Cas d'Ús" del servei per obtenir TOTES les dades inicials
+  const { data, error } = await getCalendarPageData(
+    supabase, 
+    activeTeamId, 
+    initialStart, 
+    initialEnd, 
+    INITIAL_ACTIVE_SOURCES
+  );
 
-    const [usersResult, contactsResult, departmentsResult] = await Promise.all([
-        supabase.from('team_members_with_profiles').select('user_id, full_name').eq('team_id', activeTeamId),
-        supabase.from('contacts').select('*').eq('team_id', activeTeamId),
-        supabase.from('departments').select('*').eq('team_id', activeTeamId),
-    ]);
+  // ✅ 6. Gestionem errors
+  if (error || !data) {
+    console.error('Error carregant dades per al calendari (Component):', error);
+    return <CalendarClient 
+      initialTasks={[]} 
+      initialQuotes={[]} 
+      initialSentEmails={[]} 
+      initialReceivedEmails={[]} 
+      teamUsers={[]} 
+      contacts={[]} 
+      departments={[]} 
+      fetchCalendarDataAction={getCalendarData} 
+    />;
+  }
 
-    if (initialData.error || usersResult.error || contactsResult.error || departmentsResult.error) {
-        console.error('Error carregant dades per al calendari:',
-            initialData.error || usersResult.error || contactsResult.error || departmentsResult.error
-        );
-        return <CalendarClient 
-            initialTasks={[]} 
-            initialQuotes={[]} 
-            initialSentEmails={[]} 
-            initialReceivedEmails={[]} 
-            teamUsers={[]} 
-            contacts={[]} 
-            departments={[]} 
-            fetchCalendarDataAction={getCalendarData} 
-        />;
-    }
+  // ✅ 7. Desestructurem les dades netes (events i metadata)
+  const { events, metadata } = data;
 
-    const users = usersResult.data
-        ?.filter(member => member.user_id)
-        .map(member => ({ id: member.user_id!, full_name: member.full_name })) ?? [];
-
-    return (
-        <CalendarClient
-            initialTasks={initialData.tasks ?? []}
-            initialQuotes={initialData.quotes ?? []}
-            initialSentEmails={initialData.sentEmails ?? []}
-            initialReceivedEmails={initialData.receivedEmails ?? []}
-            teamUsers={users} 
-            contacts={contactsResult.data ?? []}
-            departments={departmentsResult.data ?? []}
-            fetchCalendarDataAction={getCalendarData} 
-        />
-    );
+  return (
+    <CalendarClient
+      initialTasks={events.tasks ?? []}
+      initialQuotes={events.quotes ?? []}
+      initialSentEmails={events.sentEmails ?? []}
+      initialReceivedEmails={events.receivedEmails ?? []}
+      teamUsers={metadata.teamUsers ?? []} 
+      contacts={metadata.contacts ?? []} 
+      departments={metadata.departments ?? []}
+      // Passem l'ACCIÓ (importada de actions.ts) al client per a les recàrregues
+      fetchCalendarDataAction={getCalendarData} 
+    />
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/calendari/_components/CalendarSkeleton.tsx ===================
@@ -10879,14 +10994,13 @@ export function ContactsClient({
 
 // =================== FILE: src/app/[locale]/(app)/crm/contactes/_components/ContactsData.tsx ===================
 
-// /app/[locale]/crm/contactes/_components/ContactsData.tsx (Versió Refactoritzada)
-
 import { ContactsClient } from './contacts-client';
-// ✅ 1. Importem la definició completa de la base de dades
-import { Database } from "@/types/supabase";
-import { validateUserSession } from "@/lib/supabase/session";
+import { validatePageSession } from "@/lib/supabase/session";
+// ✅ 1. Importem el nou servei i el tipus
+import { getPaginatedContacts, type ContactWithOpportunities } from '@/lib/services/contacts.service';
 
-const ITEMS_PER_PAGE = 50;
+// ✅ 2. Exportem el tipus per al client
+export type { ContactWithOpportunities };
 
 interface ContactsDataProps {
     page: string;
@@ -10896,54 +11010,46 @@ interface ContactsDataProps {
     viewMode: 'cards' | 'list';
 }
 
-// ✅ 2. Definim el tipus que representa el resultat EXACTE de la consulta.
-// És una fila de 'contacts' enriquida amb un array d'objectes (o null) d' 'opportunities'.
-export type ContactWithOpportunities = Database['public']['Tables']['contacts']['Row'] & {
-  opportunities: Pick<Database['public']['Tables']['opportunities']['Row'], 'id' | 'value'>[] | null;
-};
-
-
 export async function ContactsData({ page, sortBy, status, searchTerm, viewMode }: ContactsDataProps) {
-    const session = await validateUserSession();
+
+    const session = await validatePageSession(); // ⬅️ 2. Cridem la funció correcta
 
     if ('error' in session) {
-        console.error("ContactsData: Sessió invàlida.", session.error.message);
+        console.error(
+            "ContactsData: Sessió invàlida.",
+            typeof session.error === "object" && session.error !== null && "message" in session.error
+                ? (session.error as { message?: string }).message
+                : session.error
+        );
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialViewMode={viewMode} />;
     }
 
-    const { supabase } = session;
-    const currentPage = Number(page) || 1;
-    const from = (currentPage - 1) * ITEMS_PER_PAGE;
-    const to = from + ITEMS_PER_PAGE - 1;
+    // ✅ 3. Ara aquesta desestructuració és segura i està correctament tipada
+    // TypeScript sap que 'session' conté 'supabase' i 'activeTeamId'
+    // (També he eliminat el '_' extra al final, que semblava un error de sintaxi)
+    const { supabase, activeTeamId } = session;
 
-    let query = supabase
-        .from('contacts')
-        .select('*, opportunities(id, value)', { count: 'exact' });
+    // ✅ 4. Cridem el servei amb un objecte d'opcions net
+    const { data, error } = await getPaginatedContacts(supabase, {
+        teamId: activeTeamId, // Passem el teamId obtingut de la sessió
+        page: Number(page) || 1,
+        sortBy,
+        status,
+        searchTerm
+    });
 
-    if (searchTerm) {
-        query = query.or(`nom.ilike.%${searchTerm}%,empresa.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
-    }
-    if (status && status !== 'all') {
-        query = query.eq('estat', status);
-    }
-    query = query.order('created_at', { ascending: sortBy === 'oldest' });
-    query = query.range(from, to);
-
-    const { data: contacts, error, count } = await query;
-    
-    if (error) {
-        console.error("Error en obtenir contactes (pot ser per RLS):", error.message);
+    // ✅ 5. Gestionem l'error
+    if (error || !data) {
+        console.error("Error en obtenir contactes (Component):", error);
         return <ContactsClient initialContacts={[]} totalPages={0} currentPage={1} initialViewMode={viewMode} />;
     }
 
-    const totalPages = Math.ceil((count || 0) / ITEMS_PER_PAGE);
-
+    // ✅ 6. Passem les dades del payload al component client
     return (
-        <ContactsClient 
-            // ✅ 3. Passem les dades amb el nou tipus. L'ús de 'as' aquí és segur perquè hem definit el tipus per a aquesta consulta.
-            initialContacts={contacts as ContactWithOpportunities[] || []} 
-            totalPages={totalPages} 
-            currentPage={currentPage}
+        <ContactsClient
+            initialContacts={data.contacts}
+            totalPages={data.totalPages}
+            currentPage={data.currentPage}
             initialViewMode={viewMode}
         />
     );
@@ -11147,7 +11253,7 @@ export function useContactFilters(initialViewMode: ViewMode) {
 
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { CrmData } from './_components/CrmData';
+import { CrmDataDashboard } from './_components/CrmData';
 import { CrmSkeleton } from './_components/CrmSkeleton';
 // ⛔ Ja no s'importa cap tipus des d'aquí.
 
@@ -11158,7 +11264,7 @@ export const metadata: Metadata = {
 export default function CrmGeneralPage() {
     return (
         <Suspense fallback={<CrmSkeleton />}>
-            <CrmData />
+            <CrmDataDashboard />
         </Suspense>
     );
 }
@@ -11837,286 +11943,52 @@ export function CrmClient({ initialData }: { initialData: CrmData | null }) {
 
 // =================== FILE: src/app/[locale]/(app)/crm/general/_components/CrmData.tsx ===================
 
-// src/app/[locale]/(app)/crm/general/_components/CrmData.tsx
-
 import { validatePageSession } from "@/lib/supabase/session";
 import { CrmClient } from './crm-client';
-import { type Database } from '@/types/supabase';
-import { startOfMonth, subMonths, subDays, startOfDay, endOfDay } from 'date-fns';
-// Afegeix aquests tipus nous a la part superior del teu fitxer
-export type CampaignPerformanceData = {
-    name: string;
-    roi: number; // Retorn de la inversió (ingressos / cost)
-    fill: string;
-};
 
-export type DailySummaryData = {
-    tasks_completed: number;
-    emails_sent: number;
-    quotes_sent: number;
-    meetings_held: number;
-};
-// TIPUS DE DADES (SENSE CANVIS)
-export type KpiData = {
-    value: number | string;
-    trend: number;
-};
-export type UnreadActivity = Database['public']['Tables']['activities']['Row'] & {
-    contacts: Pick<Database['public']['Tables']['contacts']['Row'], 'nom' | 'email'> | null;
-};
-export type TopClient = { id: number; nom: string | null; total_invoiced: number; };
-export type ColdContact = Pick<Database['public']['Tables']['contacts']['Row'], 'id' | 'nom' | 'last_interaction_at'>;
-export type LeadSource = { source: string; count: number; };
-// Afegeix aquests tipus nous a la part superior del teu fitxer CrmData.tsx
-export type OpportunityAgingData = {
-    stage_name: string;
-    avg_days: number;
-};
+// ✅ 1. Importem el servei i els tipus principals
+import { getCrmDashboardData } from '@/lib/services/crm.service';
 
-export type LeadConversionData = {
-    source: string;
-    conversion_rate: number;
-    total: number;
-};
-export type CrmData = {
-    stats: {
-        totalContacts: KpiData;
-        newContactsThisMonth: KpiData;
-        opportunities: KpiData;
-        pipelineValue: KpiData;
-        avgRevenuePerClient: KpiData;
-        conversionRate: KpiData;
-        salesVelocity: KpiData;
-        avgConversionTimeDays: KpiData;
-    };
-    funnel: {
-        leads: number;
-        quoted: number;
-        clients: number;
-    };
-    revenue: {
-        monthlyForecast: number;
-        currentMonthRevenue: number;
-    };
-    unreadActivities: UnreadActivity[];
-    topClients: TopClient[];
-    coldContacts: ColdContact[];
-    leadSources: LeadSource[];
-    // ✅ NOVES PROPIETATS
-    opportunityAging: OpportunityAgingData[];
-    leadConversion: LeadConversionData[];
-    campaignPerformance: CampaignPerformanceData[];
-    dailySummary: DailySummaryData;
-};
+// ✅ 2. Re-exportem els tipus que el CrmClient pugui necessitar
+export type { 
+  CrmData,
+  CampaignPerformanceData,
+  DailySummaryData,
+  KpiData,
+  UnreadActivity,
+  TopClient,
+  ColdContact,
+  LeadSource,
+  OpportunityAgingData,
+  LeadConversionData
+} from '@/lib/services/crm.service';
+
+// El tipus ComposeEmailData es manté si es fa servir localment
 export type ComposeEmailData = { contactId: number; to: string; subject: string; body: string; };
 
 
-export async function CrmData() {
-    const session = await validatePageSession();
-    if ('error' in session) {
-        return <CrmClient initialData={null} />;
-    }
-    const { supabase, activeTeamId } = session;
+export async function CrmDataDashboard() {
+  // ✅ 3. Validació de sessió
+  const session = await validatePageSession();
+  if ('error' in session) {
+    const errorMessage = typeof session.error === 'object' && session.error && 'message' in session.error
+      ? (session.error as { message?: string }).message
+      : String(session.error);
+    console.error("CrmData: Sessió invàlida.", errorMessage);
+    return <CrmClient initialData={null} />;
+  }
+  const { supabase, activeTeamId } = session;
 
-    // --- RANGS DE DATES ---
-    const now = new Date();
-    const startOfCurrentMonth = startOfMonth(now).toISOString();
-    const startOfLastMonth = startOfMonth(subMonths(now, 1)).toISOString();
-    const thirtyDaysAgo = subDays(now, 30).toISOString();
-    // Defineix el rang de dates per "avui"
-    const todayStart = startOfDay(new Date()).toISOString();
-    const todayEnd = endOfDay(new Date()).toISOString();
-    const [
-        contactsRes, newContactsRes, opportunitiesRes, paidInvoicesRes, wonOpportunitiesRes,
-        contactsLastMonthRes, newContactsLastMonthRes, opportunitiesLastMonthRes, allOpportunitiesLastMonthRes, wonOpportunitiesLastMonthRes,
-        funnelLeadsCountRes, funnelClientsCountRes, funnelQuotedCountRes,
-        unreadActivitiesRes, topClientsRes, coldContactsRes, leadSourcesRes, paidInvoicesLastMonthRes, allOpportunitiesRes, campaignsRes,
-        dailyTasksRes,
-        dailyActivitiesRes,
-        dailyQuotesRes,
-    ] = await Promise.all([
-        // Dades del mes actual
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId),
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).gte('created_at', startOfCurrentMonth),
-        supabase.from('opportunities').select('value', { count: 'exact' }).eq('team_id', activeTeamId).not('stage_name', 'in', '("Guanyat", "Perdut")'),
-        supabase.from('invoices').select('total_amount, contact_id, issue_date').eq('team_id', activeTeamId).eq('status', 'Paid'),
-        supabase.from('opportunities').select('created_at, last_updated_at, value').eq('team_id', activeTeamId).eq('stage_name', 'Guanyat').gte('last_updated_at', startOfCurrentMonth),
+  // ✅ 4. UNA SOLA CRIDA. Tota la complexitat està encapsulada.
+  const { data, error } = await getCrmDashboardData(supabase, activeTeamId);
 
-        // Dades del mes anterior per comparar
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).lt('created_at', startOfCurrentMonth),
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).gte('created_at', startOfLastMonth).lt('created_at', startOfCurrentMonth),
-        supabase.from('opportunities').select('value', { count: 'exact' }).eq('team_id', activeTeamId).not('stage_name', 'in', '("Guanyat", "Perdut")').gte('created_at', startOfLastMonth).lt('created_at', startOfCurrentMonth),
-        supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).gte('created_at', startOfLastMonth).lt('created_at', startOfCurrentMonth),
-        supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('stage_name', 'Guanyat').gte('last_updated_at', startOfLastMonth).lt('last_updated_at', startOfCurrentMonth),
-
-        // Altres dades
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('estat', 'Lead'),
-        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('estat', 'Client'),
-        supabase.from('quotes').select('contact_id', { count: 'exact' }).eq('team_id', activeTeamId).not('contact_id', 'is', null),
-        supabase.from('activities').select('*, contacts(nom, email)').eq('team_id', activeTeamId).eq('is_read', false).order('created_at', { ascending: false }).limit(5),
-        supabase.from('invoices').select('total_amount, contacts(id, nom)').eq('team_id', activeTeamId).eq('status', 'Paid'),
-        supabase.from('contacts').select('id, nom, last_interaction_at').eq('team_id', activeTeamId).lt('last_interaction_at', thirtyDaysAgo).order('last_interaction_at', { ascending: true }).limit(5),
-        supabase.from('opportunities').select('source').eq('team_id', activeTeamId),
-        supabase.from('invoices').select('total_amount, contact_id').eq('team_id', activeTeamId).eq('status', 'Paid').gte('issue_date', startOfLastMonth).lt('issue_date', startOfCurrentMonth),
-        supabase.from('opportunities').select('created_at, stage_name, source, team_id').eq('team_id', activeTeamId),
-        supabase.from('campaigns').select('name, cost, revenue_generated').eq('team_id', activeTeamId),
-        supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).eq('status', 'Completada').gte('due_date', todayStart).lte('due_date', todayEnd),
-        supabase.from('activities').select('type', { count: 'exact' }).eq('team_id', activeTeamId).gte('created_at', todayStart).lte('created_at', todayEnd),
-        supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('team_id', activeTeamId).gte('sent_at', todayStart).lte('sent_at', todayEnd),
-    ]);
-
-    const calculateTrend = (current: number, previous: number) => {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return ((current - previous) / previous) * 100;
-    };
-    // --- PROCESSAMENT: Rendiment de Campanyes de Màrqueting ---
-    // Utilitzo dades de mostra ja que la taula no existeix a l'esquema, però la lògica és vàlida.
-    const mockCampaigns = [
-        { name: 'Campanya Estiu', cost: 500, revenue_generated: 1500 },
-        { name: 'Black Friday', cost: 1000, revenue_generated: 4500 },
-        { name: 'Llançament Producte', cost: 200, revenue_generated: 300 },
-    ];
-    const campaignColors = ['#8b5cf6', '#3b82f6', '#10b981', '#f97316'];
-    const campaignPerformance: CampaignPerformanceData[] = mockCampaigns.map((campaign, index) => ({
-        name: campaign.name,
-        roi: campaign.cost > 0 ? ((campaign.revenue_generated || 0) - campaign.cost) / campaign.cost * 100 : 0,
-        fill: campaignColors[index % campaignColors.length],
-    }));
-
-    // --- PROCESSAMENT: Resum d'Activitat Diària ---
-    const dailyActivities = dailyActivitiesRes.data || [];
-    const dailySummary: DailySummaryData = {
-        tasks_completed: dailyTasksRes.count ?? 0,
-        emails_sent: dailyActivities.filter(a => a.type === 'Email').length,
-        quotes_sent: dailyQuotesRes.count ?? 0,
-        meetings_held: dailyActivities.filter(a => a.type === 'Reunió').length,
-    };
-    const totalContacts = contactsRes.count ?? 0;
-    const totalContactsLastMonth = contactsLastMonthRes.count ?? 0;
-    const newContactsThisMonth = newContactsRes.count ?? 0;
-    const newContactsLastMonth = newContactsLastMonthRes.count ?? 0;
-
-    const opportunitiesCount = opportunitiesRes.count ?? 0;
-    const opportunitiesCountLastMonth = opportunitiesLastMonthRes.count ?? 0;
-    const pipelineValue = opportunitiesRes.data?.reduce((sum, op) => sum + (op.value ?? 0), 0) ?? 0;
-    const pipelineValueLastMonth = opportunitiesLastMonthRes.data?.reduce((sum, op) => sum + (op.value ?? 0), 0) ?? 0;
-
-    const wonOpportunities = wonOpportunitiesRes.data ?? [];
-    const wonOpportunitiesLastMonthCount = wonOpportunitiesLastMonthRes.count ?? 0;
-    const totalOpportunitiesCreatedLastMonth = allOpportunitiesLastMonthRes.count ?? 0;
-    const conversionRate = (funnelLeadsCountRes.count ?? 0) > 0 ? ((funnelClientsCountRes.count ?? 0) / (funnelLeadsCountRes.count ?? 1)) * 100 : 0;
-    const conversionRateLastMonth = totalOpportunitiesCreatedLastMonth > 0 ? (wonOpportunitiesLastMonthCount / totalOpportunitiesCreatedLastMonth) * 100 : 0;
-
-    const totalConversionTime = wonOpportunities.reduce((sum, op) => {
-        if (op.created_at && op.last_updated_at) return sum + (new Date(op.last_updated_at).getTime() - new Date(op.created_at).getTime());
-        return sum;
-    }, 0);
-    const avgConversionTimeDays = wonOpportunities.length > 0 ? Math.round(totalConversionTime / wonOpportunities.length / (1000 * 60 * 60 * 24)) : 0;
-
-    const avgDealValue = wonOpportunities.length > 0 ? wonOpportunities.reduce((sum, op) => sum + (op.value ?? 0), 0) / wonOpportunities.length : 0;
-    const salesVelocity = avgConversionTimeDays > 0 ? (opportunitiesCount * avgDealValue * (conversionRate / 100)) / avgConversionTimeDays : 0;
-
-    const paidInvoices = paidInvoicesRes.data ?? [];
-    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + (inv.total_amount ?? 0), 0);
-    const uniqueClientsWithRevenue = new Set(paidInvoices.map(inv => inv.contact_id)).size;
-    const avgRevenuePerClient = uniqueClientsWithRevenue > 0 ? totalRevenue / uniqueClientsWithRevenue : 0;
-    const totalRevenueLastMonth = (paidInvoicesLastMonthRes.data ?? []).reduce((sum, inv) => sum + (inv.total_amount ?? 0), 0);
-    const uniqueClientsLastMonth = new Set((paidInvoicesLastMonthRes.data ?? []).map(inv => inv.contact_id)).size;
-    const avgRevenuePerClientLastMonth = uniqueClientsLastMonth > 0 ? totalRevenueLastMonth / uniqueClientsLastMonth : 0;
-
-    const clientRevenue = (topClientsRes.data ?? []).reduce<Record<string, { id: number, nom: string | null, total: number }>>((acc, inv) => {
-        const contact = inv.contacts;
-        if (contact) {
-            if (!acc[contact.id]) acc[contact.id] = { id: contact.id, nom: contact.nom, total: 0 };
-            acc[contact.id].total += inv.total_amount ?? 0;
-        }
-        return acc;
-    }, {});
-    const topClients: TopClient[] = Object.values(clientRevenue).sort((a, b) => b.total - a.total).slice(0, 5).map(c => ({ id: c.id, nom: c.nom, total_invoiced: c.total }));
-
-    const leadSourcesData = leadSourcesRes.data || [];
-    const leadSourcesCount = leadSourcesData.reduce<Record<string, number>>((acc, op) => {
-        const source = op.source || 'Desconegut';
-        acc[source] = (acc[source] || 0) + 1;
-        return acc;
-    }, {});
-    const leadSources: LeadSource[] = Object.entries(leadSourcesCount).map(([source, count]) => ({ source, count }));
-    // --- PROCESSAMENT: Antiguitat d'Oportunitats per Etapa ---
-    const allOpportunities = allOpportunitiesRes.data || [];
-    const agingData: Record<string, { total_days: number, count: number }> = {};
-
-    allOpportunities
-        .filter(op => op.stage_name !== 'Guanyat' && op.stage_name !== 'Perdut')
-        .forEach(op => {
-            if (!op.stage_name) return;
-            if (!agingData[op.stage_name]) {
-                agingData[op.stage_name] = { total_days: 0, count: 0 };
-            }
-            if (!op.created_at) return;
-            const createdDate = new Date(op.created_at);
-            const diffTime = Math.abs(now.getTime() - createdDate.getTime());
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            agingData[op.stage_name].total_days += diffDays;
-            agingData[op.stage_name].count++;
-        });
-
-    const opportunityAging: OpportunityAgingData[] = Object.entries(agingData).map(([stage_name, data]) => ({
-        stage_name,
-        avg_days: Math.round(data.total_days / data.count)
-    }));
-
-
-    // --- PROCESSAMENT: Taxa de Conversió per Font de Lead ---
-    const conversionData: Record<string, { total: number, won: number }> = {};
-
-    allOpportunities.forEach(op => {
-        const source = op.source || 'Desconegut';
-        if (!conversionData[source]) {
-            conversionData[source] = { total: 0, won: 0 };
-        }
-        conversionData[source].total++;
-        if (op.stage_name === 'Guanyat') {
-            conversionData[source].won++;
-        }
-    });
-
-    const leadConversion: LeadConversionData[] = Object.entries(conversionData).map(([source, data]) => ({
-        source,
-        conversion_rate: (data.won / data.total) * 100,
-        total: data.total,
-    }));
-    const data: CrmData = {
-        stats: {
-            totalContacts: { value: totalContacts, trend: calculateTrend(totalContacts, totalContactsLastMonth) },
-            newContactsThisMonth: { value: newContactsThisMonth, trend: calculateTrend(newContactsThisMonth, newContactsLastMonth) },
-            opportunities: { value: opportunitiesCount, trend: calculateTrend(opportunitiesCount, opportunitiesCountLastMonth) },
-            pipelineValue: { value: `€${pipelineValue.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, trend: calculateTrend(pipelineValue, pipelineValueLastMonth) },
-            avgRevenuePerClient: { value: `€${avgRevenuePerClient.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, trend: calculateTrend(avgRevenuePerClient, avgRevenuePerClientLastMonth) },
-            conversionRate: { value: `${conversionRate.toFixed(1)}%`, trend: calculateTrend(conversionRate, conversionRateLastMonth) },
-            salesVelocity: { value: `€${salesVelocity.toFixed(0)}/dia`, trend: 0 }, // Trend not calculated for simplicity
-            avgConversionTimeDays: { value: `${avgConversionTimeDays} dies`, trend: 0 }, // Trend not calculated
-        },
-        funnel: {
-            leads: funnelLeadsCountRes.count ?? 0,
-            quoted: new Set(funnelQuotedCountRes.data?.map(q => q.contact_id)).size,
-            clients: funnelClientsCountRes.count ?? 0
-        },
-        revenue: {
-            monthlyForecast: pipelineValue * (conversionRate / 100),
-            currentMonthRevenue: paidInvoices.filter(inv => inv.issue_date && new Date(inv.issue_date).getMonth() === now.getMonth()).reduce((sum, inv) => sum + (inv.total_amount ?? 0), 0),
-        },
-        unreadActivities: (unreadActivitiesRes.data as UnreadActivity[]) || [],
-        topClients: topClients,
-        coldContacts: (coldContactsRes.data as ColdContact[]) || [],
-        leadSources: leadSources,
-        opportunityAging,
-        leadConversion,
-        campaignPerformance,
-        dailySummary,
-    };
-
-    return <CrmClient initialData={data} />;
+  if (error || !data) {
+    console.error("Error en carregar CrmData (Component):", error);
+    return <CrmClient initialData={null} />;
+  }
+  
+  // ✅ 5. Passem les dades processades al client
+  return <CrmClient initialData={data} />;
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/general/_components/CrmSkeleton.tsx ===================
@@ -12288,7 +12160,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { formatDistanceToNow } from 'date-fns';
 import { ca, es, enUS } from 'date-fns/locale';
 import { AlertTriangle, Mail, Check } from 'lucide-react';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard';
+import { ModuleCard } from '@/components/shared/ModuleCard';
 import { Button } from '@/components/ui/button';
 import { type UnreadActivity } from '../CrmData';
 
@@ -12344,13 +12216,13 @@ export const ActivityList: FC<ActivityListProps> = ({ activities, onMarkAsRead, 
     }
 
     return (
-        <DashboardCard title={t('recentAlerts', { count: activities.length })} icon={AlertTriangle} variant="activity">
+        <ModuleCard title={t('recentAlerts', { count: activities.length })} icon={AlertTriangle} variant="activity">
             <div className="space-y-1 max-h-72 overflow-y-auto pr-2 -mr-4">
                 {activities.map(activity => (
                     <ActivityItem key={activity.id} activity={activity} onMarkAsRead={onMarkAsRead} onReply={onReply} />
                 ))}
             </div>
-        </DashboardCard>
+        </ModuleCard>
     );
 };
 
@@ -12703,6 +12575,7 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
                 <DragDropContext onDragEnd={onDragEnd}>
                     {viewMode === 'columns' ? (
                         <ColumnsView
+                        
                             stages={initialStages}
                             opportunitiesByStage={opportunitiesByStage}
                             onEditOpportunity={(op) => handleOpenDialog(op)}
@@ -12737,6 +12610,7 @@ interface ColumnsViewProps {
 
 export const ColumnsView: React.FC<ColumnsViewProps> = ({ stages, opportunitiesByStage, onEditOpportunity, onAddClick }) => {
     return (
+        //console.log("Renderitzant ColumnsView amb etapes:", stages),
         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-h-0">
             {stages.map(stage => (
                 <StageColumn
@@ -12982,49 +12856,48 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
 
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/PipelineData.tsx ===================
 
-// /app/[locale]/(app)/crm/pipeline/_components/PipelineData.tsx (Refactoritzat)
-
 import { PipelineClient } from '../pipeline-client';
 import { validatePageSession } from "@/lib/supabase/session";
-import { type Database } from '@/types/supabase';
+// ✅ 1. Importem el *servei* i els *tipus* que aquest exposa
+import { 
+  getPipelineData, 
+  type Stage, 
+  type Contact, 
+  type OpportunityWithContact 
+} from '@/lib/services/pipline.service'; // Ruta al nou servei
 
-// ✅ 1. Definim els tipus necessaris a partir de la base de dades.
-
-// Tipus per a una etapa del pipeline.
-export type Stage = Database['public']['Tables']['pipeline_stages']['Row'];
-// Tipus per a un contacte, només amb les dades que necessitem.
-export type Contact = Pick<Database['public']['Tables']['contacts']['Row'], 'id' | 'nom'>;
-// Tipus per a una oportunitat, enriquida amb la informació del contacte associat.
-export type OpportunityWithContact = Database['public']['Tables']['opportunities']['Row'] & {
-  contacts: Pick<Database['public']['Tables']['contacts']['Row'], 'id' | 'nom'> | null;
-};
+// ✅ 2. Exportem els tipus perquè el Client Component (PipelineClient) els pugui inferir
+export type { Stage, Contact, OpportunityWithContact };
 
 export async function PipelineData() {
-    const { supabase } = await validatePageSession();
-    
-    // ✅ 2. Les consultes es mantenen, però ara sabem que els tipus són els correctes.
-    const [stagesRes, contactsRes, opportunitiesRes] = await Promise.all([
-        supabase.from('pipeline_stages').select('id, name, position').order('position', { ascending: true }),
-        supabase.from('contacts').select('id, nom'),
-        supabase.from('opportunities').select('*, contacts(id, nom)')
-    ]);
-    
-    if (stagesRes.error) console.error("Error en carregar etapes (RLS?):", stagesRes.error);
-    if (contactsRes.error) console.error("Error en carregar contactes (RLS?):", contactsRes.error);
-    if (opportunitiesRes.error) console.error("Error en carregar oportunitats (RLS?):", opportunitiesRes.error);
+  // ✅ 3. El component manté la responsabilitat de validar la sessió
+  const { supabase, activeTeamId } = await validatePageSession();
+  
+  // ✅ 4. Cridem la nostra capa de servei centralitzada.
+  // Tota la complexitat de la consulta (Promise.all, filtres) està amagada.
+  const { data, error } = await getPipelineData(supabase, activeTeamId);
 
-    // ✅ 3. Passem les dades al client amb els tipus correctes, utilitzant 'as' de manera segura.
-    const stages = (stagesRes.data as Stage[]) || [];
-    const contacts = (contactsRes.data as Contact[]) || [];
-    const opportunities = (opportunitiesRes.data as OpportunityWithContact[]) || [];
-
+  // ✅ 5. Gestionem l'error a alt nivell
+  if (error || !data) {
+    console.error("Error en carregar les dades del pipeline (Component):", error);
+    // Retornem el client buit per a un 'graceful failure'
     return (
-        <PipelineClient 
-            initialStages={stages}
-            initialContacts={contacts}
-            initialOpportunities={opportunities}
-        />
+      <PipelineClient 
+        initialStages={[]}
+        initialContacts={[]}
+        initialOpportunities={[]}
+      />
     );
+  }
+
+  // ✅ 6. Passem les dades netes al component client
+  return (
+    <PipelineClient 
+      initialStages={data.stages}
+      initialContacts={data.contacts}
+      initialOpportunities={data.opportunities}
+    />
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/_components/PipelineSkeleton.tsx ===================
@@ -16444,7 +16317,7 @@ import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar, Quote, Mail } from "lucide-react";
 
-import { DashboardCard } from "./_components/DashboardCard";
+import { ModuleCard } from "@/components/shared/ModuleCard";
 import { SalesPerformance } from "./_components/SalesPerformance";
 import { RecentActivities } from "./_components/RecentActivities";
 import { Radar } from "./_components/Radar";
@@ -16643,36 +16516,36 @@ export function DashboardClient({
         transition={{ duration: 0.5 }}
       >
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-          <DashboardCard title={t('recentQuotes')} icon={Quote} variant="quotes" className={midaCardsSuperiors}>
+          <ModuleCard title={t('recentQuotes')} icon={Quote} variant="quotes" className={midaCardsSuperiors}>
             <RecentQuotes quotes={initialData.recentQuotes} />
-          </DashboardCard>
-          <DashboardCard title={t('inbox.title')} icon={Mail} variant="inbox" className={midaCardsSuperiors}>
+          </ModuleCard>
+          <ModuleCard title={t('inbox.title')} icon={Mail} variant="inbox" className={midaCardsSuperiors}>
             <RecentEmails emails={initialData.recentEmails} />
-          </DashboardCard>
-          <DashboardCard title={t('recentActivities')} icon={Activity} variant="activity" className={midaCardsSuperiors}>
+          </ModuleCard>
+          <ModuleCard title={t('recentActivities')} icon={Activity} variant="activity" className={midaCardsSuperiors}>
             <RecentActivities activities={initialData.recentActivities} />
-          </DashboardCard>
-          <DashboardCard title={t('radar')} icon={RadarIcon} variant="radar" className={midaCardsSuperiors}>
+          </ModuleCard>
+          <ModuleCard title={t('radar')} icon={RadarIcon} variant="radar" className={midaCardsSuperiors}>
             <Radar
               attentionContacts={initialData.attentionContacts}
               overdueInvoices={initialData.overdueInvoices}
               notifications={initialData.notifications}
             />
-          </DashboardCard>
+          </ModuleCard>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2">
-            <DashboardCard title={t('salesPerformance')} icon={BarChart2} variant="sales">
+            <ModuleCard title={t('salesPerformance')} icon={BarChart2} variant="sales">
               <SalesPerformance
                 stats={initialData.stats}
                 percentGoal={Math.round((initialData.stats.invoiced / MONTHLY_GOAL) * 100)}
                 monthlyGoal={MONTHLY_GOAL}
               />
-            </DashboardCard>
+            </ModuleCard>
           </div>
           <div className="lg:col-span-3">
-            <DashboardCard
+            <ModuleCard
               title={t('agenda.title')}
               icon={ListChecks}
               variant="agenda"
@@ -16704,7 +16577,7 @@ export function DashboardClient({
                 onToggleTask={handleToggleTask}
                 onTaskMutation={handleTaskMutation}
               />
-            </DashboardCard>
+            </ModuleCard>
           </div>
         </div>
 
@@ -17320,184 +17193,12 @@ export function AIOracleSkeleton() {
   );
 }
 
-// =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardBottomGrid.tsx ===================
-
-"use client";
-
-import React, { memo } from "react";
-import { Agenda, type TaskFilterStatus } from "./agenda/Agenda"; // ✅ 1. Importem el nou tipus de filtre
-import { Radar } from "./Radar";
-import { Tables } from "@/types/supabase";
-// ✅ 2. Importem el tipus de tasca més complet
-import { type EnrichedTask } from "@/components/features/tasks/TaskDialogManager";
-
-interface DashboardBottomGridProps {
-  tasks: EnrichedTask[]; // ✅ 3. Canviem al tipus EnrichedTask[]
-  activeFilter: TaskFilterStatus; // ✅ 4. Usem el tipus de filtre correcte
-  onFilterChange: (filter: TaskFilterStatus) => void; // ✅ 5. Usem el tipus de filtre correcte
-  onOpenNewTask: () => void;
-  onToggleTask: (taskId: number, currentStatus: boolean) => void;
-  onViewTask: (task: EnrichedTask) => void; // ✅ 6. Canviem al tipus EnrichedTask
-  pendingCount: number;
-  completedCount: number;
-  attentionContacts: Tables<"contacts">[];
-  overdueInvoices: (Tables<'invoices'> & { contacts: { nom: string } | null })[];
-  notifications: Tables<"notifications">[];
-  children: React.ReactNode;
-  departments: Tables<'departments'>[];
-  departmentFilter: number | 'all';
-  onDepartmentFilterChange: (filter: number | 'all') => void;
-  
-  // ✅ 7. Afegim les props que falten per a la cerca i el comptador d'assignades
-  assignedCount: number;
-  searchTerm: string;
-  onSearchChange: (term: string) => void;
-}
-
-export const DashboardBottomGrid = memo(
-  ({
-    tasks,
-    activeFilter,
-    onFilterChange,
-    onToggleTask,
-
-  onViewTask,
-    pendingCount,
-    completedCount,
-    attentionContacts,
-    overdueInvoices,
-    notifications,
-    children,
-    departments,
-    departmentFilter,
-    onDepartmentFilterChange,
-    // ✅ 8. Rebem les noves props
-    assignedCount,
-    searchTerm,
-    onSearchChange,
-  }: DashboardBottomGridProps) => {
-    return (
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 🗓️ Agenda de tasques */}
-        <Agenda
-          tasks={tasks}
-          activeFilter={activeFilter}
-          onFilterChange={onFilterChange}
-          onToggleTask={onToggleTask}
-          // onOpenNewTask={onOpenNewTask} // Aquesta prop no l'espera Agenda, però no fa mal
-          onViewTask={onViewTask}
-          pendingCount={pendingCount}
-          completedCount={completedCount}
-          departments={departments}
-          departmentFilter={departmentFilter}
-          onDepartmentFilterChange={onDepartmentFilterChange}
-          // ✅ 9. Passem les noves props al component Agenda
-          assignedCount={assignedCount}
-          searchTerm={searchTerm}
-          onSearchChange={onSearchChange}
-        />
-
-        {/* 🎯 Radar + Oracle IA */}
-        <div className="space-y-6">
-          <Radar
-            attentionContacts={attentionContacts}
-            overdueInvoices={overdueInvoices}
-            notifications={notifications}
-          />
-          {/* 🧠 Oracle d’IA (streaming des del servidor) */}
-          {children}
-        </div>
-      </div>
-    );
-  }
-);
-
-DashboardBottomGrid.displayName = "DashboardBottomGrid";
-
-// =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardCard.tsx ===================
-
-"use client";
-
-import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { ChevronUp, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils/utils";
-
-const cardHeaderVariants = cva(
-  "flex items-center justify-between p-2 text-primary-foreground rounded-t-xl",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary",
-        sales: "bg-blue-600",
-        agenda: "bg-green-700",
-        activity: "bg-orange-500",
-        radar: "bg-purple-600",
-        invoices: "bg-red-600",
-        quotes: "bg-teal-600",
-        tasks: "bg-yellow-600",
-        inbox: "bg-indigo-600",
-        iphone: "bg-gray-600",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-);
-
-interface DashboardCardProps extends VariantProps<typeof cardHeaderVariants> {
-  title: string;
-  icon: React.ElementType;
-  children: React.ReactNode;
-  className?: string;
-  defaultOpen?: boolean;
-  actions?: React.ReactNode;
-}
-
-export function DashboardCard({ title, icon: Icon, children, className, variant, defaultOpen = true, actions }: DashboardCardProps) {
-  const [isOpen, setIsOpen] = React.useState(defaultOpen);
-
-  return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
-      className={cn("rounded-xl border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-300", className)}
-    >
-      <div className={cn(cardHeaderVariants({ variant }))}>
-        <div className="flex items-center gap-3"><Icon className="w-5 h-5 text-primary-foreground/80" />
-          <h2 className="text-lg font-semibold">{title}</h2>
-        </div>
-        <div className="flex items-center gap-1">
-          {actions}
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10">
-              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span className="sr-only">Toggle</span>
-            </Button>
-          </CollapsibleTrigger>
-        </div>
-      </div>
-
-      <CollapsibleContent>
-        {/* ✅ CORRECCIÓ: Canviat 'bg-white' a 'bg-card' per adaptar-se al tema */}
-        <div className="p-6 bg-card flex flex-col h-full">
-          {children}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
 // =================== FILE: src/app/[locale]/(app)/dashboard/_components/DashboardData.tsx ===================
 
 // src/app/[locale]/(app)/dashboard/_components/DashboardData.tsx
 
 import React from 'react';
 import { validatePageSession } from '@/lib/supabase/session';
-import { getActiveTeam } from '@/lib/supabase/teams';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, Tables } from '@/types/supabase';
 import { DashboardClient } from '../dashboard-client';
@@ -17520,12 +17221,8 @@ const calculatePercentageChange = (current: number, previous: number): string =>
 };
 
 export async function DashboardData({ children }: { children: React.ReactNode }) {
-    const { supabase, user } = await validatePageSession();
-    const team = await getActiveTeam();
-
-    if (!team) {
-        return <div>No s'ha trobat un equip actiu.</div>;
-    }
+    // 1. Obtenim TOT el que necessitem d'UNA sola crida.
+    const { supabase, user, activeTeamId } = await validatePageSession();
 
     const typedSupabase = supabase as SupabaseClient<Database>;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -17533,7 +17230,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
     const { data: permissions } = await typedSupabase
         .from('inbox_permissions')
         .select('target_user_id')
-        .eq('team_id', team.id)
+        .eq('team_id', activeTeamId) // ⬅️ Fem servir activeTeamId
         .eq('grantee_user_id', user.id);
 
     const visibleUserIds = [user.id, ...(permissions?.map(p => p.target_user_id) || [])];
@@ -17549,14 +17246,15 @@ export async function DashboardData({ children }: { children: React.ReactNode })
         recentQuotesRes,
         recentEmailsRes,
     ] = await Promise.all([
-        getStats(typedSupabase),
-        getTasks(typedSupabase, team.id),
-        getOverdueInvoices(typedSupabase),
-        getRecentContacts(typedSupabase, team.id),
+        // 2. Passem 'activeTeamId' a les funcions que ho necessiten.
+        getStats(typedSupabase), 
+        getTasks(typedSupabase, activeTeamId), // ✅ Fem servir activeTeamId
+        getOverdueInvoices(typedSupabase, activeTeamId), // ✅ PASSEM L'ID (hauràs d'actualitzar getOverdueInvoices)
+        getRecentContacts(typedSupabase, activeTeamId), // ✅ Fem servir activeTeamId
         typedSupabase.from('notifications').select('*').eq('user_id', user.id).eq('is_read', false),
-        typedSupabase.from('departments').select('*').eq('team_id', team.id),
-        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', team.id),
-        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', team.id).order('created_at', { ascending: false }).limit(10),
+        typedSupabase.from('departments').select('*').eq('team_id', activeTeamId), // ✅ Fem servir activeTeamId
+        typedSupabase.from('team_members_with_profiles').select('*').eq('team_id', activeTeamId), // ✅ Fem servir activeTeamId
+        typedSupabase.from('quotes').select('*, contacts(nom)').eq('team_id', activeTeamId).order('created_at', { ascending: false }).limit(10), // ✅ Fem servir activeTeamId(10),
 
         // ✅ SOLUCIÓ DEFINITIVA: Consulta directa a la taula 'tickets'.
         // ✅ CONSULTA DE DIAGNÒSTIC: la fem el més simple possible.
@@ -17567,7 +17265,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             .order('created_at', { ascending: false }) // Ordenem per creació, que sempre hi serà
             .limit(10)
     ]);
-// --- SECCIÓ DE DEPURACIÓ EXPLÍCITA ---
+    // --- SECCIÓ DE DEPURACIÓ EXPLÍCITA ---
     console.log('\n\n--- INICI DEPURACIÓ DADES INBOX DASHBOARD ---');
     if (recentEmailsRes.error) {
         console.error('>> ERROR EN LA CONSULTA DIRECTA A "tickets":', recentEmailsRes.error);
@@ -17612,6 +17310,7 @@ export async function DashboardData({ children }: { children: React.ReactNode })
             initialData={initialData}
             teamMembers={teamMembersRes.data as Tables<'team_members_with_profiles'>[] ?? []}
             userId={user.id}
+            activeTeamId={activeTeamId} // ✅ LÍNIA AFEGIDA: Passem la propietat que faltava
         >
             {children}
         </DashboardClient>
@@ -23111,7 +22810,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useTranslations } from "next-intl";
 // Importa el mapa d'estats per omplir el selector
-import { INVOICE_STATUS_MAP, type InvoiceStatus } from "@/types/finances/invoices";
+import { INVOICE_STATUS_MAP, type InvoiceStatus } from "@/config/invoices";
 
 interface InvoiceFiltersProps {
   searchTerm: string;
@@ -27264,7 +26963,7 @@ import { useTranslations } from 'next-intl';
 
 import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
 import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard'; // Assegura't que la ruta sigui correcta
+import { ModuleCard } from '@/components/shared/ModuleCard'; // Assegura't que la ruta sigui correcta
 import { type Database } from '@/types/supabase';
 
 
@@ -27279,7 +26978,7 @@ function PipelineStagesManager({ initialStages }: { initialStages: Stage[] }) {
   const handleNotImplemented = () => toast.info("Funcionalitat no implementada.");
 
   return (
-    <DashboardCard title={t('pipelineTitle')} icon={Network} variant="default">
+    <ModuleCard title={t('pipelineTitle')} icon={Network} variant="default">
       <div className="space-y-3">
         {stages.map(stage => (
           <div key={stage.id} className="flex items-center gap-3 p-2 bg-muted dark:bg-muted/50 rounded-lg border">
@@ -27294,7 +26993,7 @@ function PipelineStagesManager({ initialStages }: { initialStages: Stage[] }) {
           <Plus className="w-4 h-4 mr-2" />{t('newStageButton')}
         </Button>
       </div>
-    </DashboardCard>
+    </ModuleCard>
   );
 }
 
@@ -27306,7 +27005,7 @@ function ContactTagsManager({ initialTags }: { initialTags: Tag[] }) {
   const handleNotImplemented = () => toast.info("Funcionalitat no implementada.");
 
   return (
-    <DashboardCard title={t('tagsTitle')} icon={Palette} variant="default">
+    <ModuleCard title={t('tagsTitle')} icon={Palette} variant="default">
       <div className="flex flex-wrap gap-3">
         {tags.map(tag => (
           <div key={tag.id} className="flex items-center gap-2 pl-3 pr-2 py-1 rounded-full text-sm border font-medium" style={{ backgroundColor: `${tag.color}20`, borderColor: `${tag.color}40`, color: tag.color || undefined }}>
@@ -27321,7 +27020,7 @@ function ContactTagsManager({ initialTags }: { initialTags: Tag[] }) {
       <Button onClick={handleNotImplemented} variant="outline" className="w-full mt-6">
           <Plus className="w-4 h-4 mr-2" />{t('newTagButton')}
       </Button>
-    </DashboardCard>
+    </ModuleCard>
   );
 }
 
@@ -27347,15 +27046,15 @@ export function CustomizationClient({ initialStages, initialTags }: {
 
       {/* Columna lateral */}
       <div className="lg:col-span-1 space-y-8">
-        <DashboardCard title={t('themeTitle')} icon={Settings} variant="default">
+        <ModuleCard title={t('themeTitle')} icon={Settings} variant="default" >
             <p className="text-sm text-muted-foreground mb-4">{t('themeDescription')}</p>
             <ThemeSwitcher />
-        </DashboardCard>
-        
-        <DashboardCard title={t('languageTitle')} icon={Languages} variant="default">
+        </ModuleCard>
+
+        <ModuleCard title={t('languageTitle')} icon={Languages} variant="default">
             <p className="text-sm text-muted-foreground mb-4">{t('languageDescription')}</p>
             <LanguageSwitcher />
-        </DashboardCard>
+        </ModuleCard>
       </div>
     </motion.div>
   );
@@ -27614,7 +27313,7 @@ import { Button } from '@/components/ui/button';
 import { Download, CheckCircle, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils/utils';
-import { DashboardCard } from '@/app/[locale]/(app)/dashboard/_components/DashboardCard'; // Assegura't que la ruta és correcta
+import { ModuleCard } from '@/components/shared/ModuleCard'; // Assegura't que la ruta és correcta
 import { AppleIcon, AndroidIcon, DesktopIcon } from './DeviceIcons';
 import Image from 'next/image'; // ✅ Importem el component Image de Next.js
 
@@ -27670,7 +27369,7 @@ interface InstructionCardProps {
   buttonText?: string;
   onButtonClick?: () => void;
   isRecommended: boolean;
-  variant: "sales" | "agenda" | "iphone"; // Reutilitzem variants de color existents
+  variant: "sales" | "agenda" | "info"; // Reutilitzem variants de color existents, "info" substitueix "iphone"
   deviceType: 'desktop' | 'mobile'; // ✅ Nova prop per al tipus de dispositiu
 }
 
@@ -27680,7 +27379,7 @@ const InstructionCard: FC<InstructionCardProps> = ({ icon, title, instructions, 
   transition={{ duration: 0.5 }}
   className={cn("h-full", isRecommended && "ring-2 ring-offset-2 ring-offset-background ring-primary")}
 >
-  <DashboardCard title={title} icon={() => icon} variant={variant} className="h-full">
+  <ModuleCard title={title} icon={() => icon} variant={variant} className="h-full">
     {isRecommended && (
       <div className="absolute top-2 right-2 flex items-center gap-1 text-xs font-semibold bg-primary-foreground text-primary px-2 py-1 rounded-full">
         <Star className="w-3 h-3" /> Recomanat
@@ -27700,7 +27399,7 @@ const InstructionCard: FC<InstructionCardProps> = ({ icon, title, instructions, 
         </Button>
       )}
     </div>
-  </DashboardCard>
+  </ModuleCard>
 </motion.div>
 );
 
@@ -27786,7 +27485,7 @@ export function InstallationManager({ texts }: InstallationManagerProps) {
           title={texts.ios_title}
           instructions={texts.ios_instructions}
           isRecommended={userOS === 'ios'}
-          variant="iphone" // Taronja
+          variant="info" // Substituïm "iphone" per "info"
           deviceType="mobile" // ✅ Passem el tipus de dispositiu
         />
       </div>
@@ -28852,7 +28551,7 @@ export default async function ProfilePage() {
   const t = await getTranslations('SettingsPage.nav');
 
   return (
-    <div className="space-y-8">
+    <div className="">
       {/* ✅ NOU: Afegim el títol aquí, però només el mostrem en pantalles petites (lg:hidden)
           perquè en escriptori ja apareix al menú lateral. */}
       <h1 className="text-3xl font-bold lg:hidden">{t('title')}</h1>
@@ -28868,8 +28567,10 @@ export default async function ProfilePage() {
 
 // =================== FILE: src/app/[locale]/(app)/settings/profile/_components/ProfileData.tsx ===================
 
+// src/app/[locale]/(app)/settings/profile/_components/ProfileData.tsx
+
 import { validatePageSession } from '@/lib/supabase/session';
-import { getActiveTeam } from '@/lib/supabase/teams'; // ✅ 1. Importem la nostra funció robusta
+import { getActiveTeam } from '@/lib/supabase/teams';
 import { ProfileForm } from "./ProfileForm";
 import type { Profile, Team } from "@/types/settings";
 import { Role } from '@/lib/permissions.config';
@@ -28877,38 +28578,25 @@ import { Role } from '@/lib/permissions.config';
 export async function ProfileData() {
   const { supabase, user } = await validatePageSession();
 
-  // Obtenim l'ID de l'equip actiu des del token, que és la font més fiable
   const activeTeamId = user.app_metadata.active_team_id;
 
-  // Si no hi ha equip actiu, només carreguem el perfil
-  if (!activeTeamId) {
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
-    return (
-      <ProfileForm 
-        email={user.email || ''}
-        profile={profile as Profile} 
-        team={null}
-        role={null}
-      />
-    );
-  }
-
-  // ✅ 2. Fem les consultes en paral·lel per a màxima eficiència
-  const [profileRes, teamRes, memberRes] = await Promise.all([
+  // Fem les consultes en paral·lel per a màxima eficiència
+  const [profileRes, team, memberRes] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    getActiveTeam(), // Reutilitzem la nostra funció! Ja sap quin equip obtenir.
-    supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single()
+    // Només cridem a getActiveTeam si realment hi ha un ID, sinó passem null.
+    activeTeamId ? getActiveTeam(supabase, activeTeamId) : Promise.resolve(null),
+    activeTeamId ? supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single() : Promise.resolve({ data: null })
   ]);
   
   const profile = profileRes.data as Profile | null;
-  const team = teamRes as Team | null; // getActiveTeam ja retorna l'objecte correcte
-  const role = memberRes.data?.role as Role | null;
+  const role = memberRes?.data?.role as Role | null;
 
   return (
     <ProfileForm 
       email={user.email || ''}
-      profile={profile as Profile} 
-      team={team}
+      // Assegurem que profile mai sigui null per evitar errors
+      profile={profile!} 
+      team={team as Team | null}
       role={role}
     />
   );
@@ -28916,34 +28604,39 @@ export async function ProfileData() {
 
 // =================== FILE: src/app/[locale]/(app)/settings/profile/_components/ProfileForm.tsx ===================
 
+// src/app/[locale]/(app)/settings/profile/_components/ProfileForm.tsx
+
 "use client";
 
 import React, { useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { Loader2, Upload } from "lucide-react";
+import { useTranslations } from 'next-intl'; // ✅ 1. Importem el hook de traduccions
+import { Loader2, Upload, User, Building, Settings } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ModuleCard } from '@/components/shared/ModuleCard';
+import { LanguageSwitcher } from '../../customization/_components/LanguageSwitcher'; // ✅ Importem els switchers
+import { ThemeSwitcher } from '../../customization/_components/ThemeSwitcher';   // ✅ (hauràs de moure'ls a /components)
 
 import { createClient } from '@/lib/supabase/client';
 import { updateUserProfileAction, updateTeamAction } from '../actions';
 import type { Profile, Team } from '@/types/settings';
-
-import { hasPermission, PERMISSIONS } from '@/lib/permissions.config';
+import { hasPermission, PERMISSIONS, Role } from '@/lib/permissions.config';
 
 interface ProfileFormProps {
     email: string;
     profile: Profile;
     team: Team | null;
-    role: 'owner' | 'admin' | 'member' | null;
+    role: Role | null;
 }
 
 export function ProfileForm({ email, profile, team, role }: ProfileFormProps) {
+    const t = useTranslations('SettingsPage.SettingsProfile'); // ✅ 2. Instanciem el hook amb la nostra secció
     const [isProfilePending, startProfileTransition] = useTransition();
     const [isTeamPending, startTeamTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
@@ -28960,11 +28653,12 @@ export function ProfileForm({ email, profile, team, role }: ProfileFormProps) {
         const { error } = await createClient().storage.from('logos').upload(filePath, file, { upsert: true });
 
         if (error) {
-            toast.error("Error al pujar el logo", { description: error.message });
+            // ✅ Fem servir traduccions per als toasts
+            toast.error(t('toasts.logoUploadErrorTitle'), { description: t('toasts.logoUploadErrorDesc') });
         } else {
             const { data } = createClient().storage.from('logos').getPublicUrl(filePath);
             setLogoUrl(data.publicUrl);
-            toast.success("Logo pujat correctament");
+            toast.success(t('toasts.logoUploadSuccess'));
         }
         setIsUploading(false);
     };
@@ -28972,6 +28666,7 @@ export function ProfileForm({ email, profile, team, role }: ProfileFormProps) {
     const handleUpdateProfile = (formData: FormData) => {
         startProfileTransition(async () => {
             const result = await updateUserProfileAction(formData);
+            // Els missatges de la 'action' ja vénen traduïts del servidor (si ho has configurat)
             if (result.success) toast.success(result.message);
             else toast.error(result.message);
         });
@@ -28987,124 +28682,129 @@ export function ProfileForm({ email, profile, team, role }: ProfileFormProps) {
     };
 
     return (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-            {/* --- Formulari de Perfil Personal --- */}
-            <form action={handleUpdateProfile}>
-                <Card>
-                    <CardHeader>
-                        <CardTitle>El Meu Perfil</CardTitle>
-                        <CardDescription>Aquestes són les teves dades personals.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        {/* ✅ MILLORA: Graella de 2 columnes per al perfil */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label>Email</Label>
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start"
+        >
+            {/* --- Columna Esquerra --- */}
+            <div className="lg:col-span-2 space-y-8">
+                <form action={handleUpdateProfile}>
+                    <ModuleCard title={t('personalProfile.title')} icon={User} isCollapsible={false}>
+                        <div className="space-y-4">
+                             <div className="space-y-2">
+                                <Label>{t('personalProfile.emailLabel')}</Label>
                                 <Input type="email" value={email} disabled />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="full_name">Nom i Cognoms</Label>
+                                <Label htmlFor="full_name">{t('personalProfile.fullNameLabel')}</Label>
                                 <Input id="full_name" name="full_name" defaultValue={profile?.full_name || ''} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="phone">Telèfon Personal</Label>
+                                <Label htmlFor="phone">{t('personalProfile.phoneLabel')}</Label>
                                 <Input id="phone" name="phone" defaultValue={profile?.phone || ''} />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="job_title">Càrrec</Label>
-                                <Input id="job_title" name="job_title" defaultValue={profile?.job_title || ''} placeholder="Ex: Director Comercial" />
+                                <Label htmlFor="job_title">{t('personalProfile.jobTitleLabel')}</Label>
+                                <Input id="job_title" name="job_title" defaultValue={profile?.job_title || ''} placeholder={t('personalProfile.jobTitlePlaceholder')} />
                             </div>
                         </div>
-                    </CardContent>
-                    <CardFooter>
-                        <Button type="submit" disabled={isProfilePending}>{isProfilePending ? "Desant..." : "Desar Perfil"}</Button>
-                    </CardFooter>
-                </Card>
-            </form>
+                        <div className="mt-6 flex justify-end">
+                             <Button type="submit" disabled={isProfilePending}>{isProfilePending ? t('personalProfile.savingButton') : t('personalProfile.saveButton')}</Button>
+                        </div>
+                    </ModuleCard>
+                </form>
 
-            {/* --- Formulari de l'Empresa --- */}
-            {canManageTeam && team && (
-                <form action={handleUpdateTeam}>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Dades de l'Empresa</CardTitle>
-                            <CardDescription>Aquesta informació s'utilitzarà a les teves factures i pressupostos.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Nom de l'empresa</Label>
-                                    <Input id="name" name="name" defaultValue={team.name || ''} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="tax_id">NIF/CIF</Label>
-                                    <Input id="tax_id" name="tax_id" defaultValue={team.tax_id || ''} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email de l'empresa</Label>
-                                    <Input id="email" name="email" type="email" defaultValue={team.email || ''} />
-                                </div>
+                <ModuleCard title={t('preferences.title')} icon={Settings} isCollapsible={false}>
+                     <div className="space-y-6">
+                        <div>
+                            <Label className="text-sm font-medium">{t('preferences.themeTitle')}</Label>
+                            <p className="text-sm text-muted-foreground mb-3">{t('preferences.themeDescription')}</p>
+                            <ThemeSwitcher />
+                        </div>
+                        <div>
+                            <Label className="text-sm font-medium">{t('preferences.languageTitle')}</Label>
+                            <p className="text-sm text-muted-foreground mb-3">{t('preferences.languageDescription')}</p>
+                            <LanguageSwitcher />
+                        </div>
+                    </div>
+                </ModuleCard>
+            </div>
 
-                                {/* ✅ segona graella */}
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="phone">Telèfon de l'empresa</Label>
-                                    <Input id="phone" name="phone" defaultValue={team.phone || ''} />
+            {/* --- Columna Dreta --- */}
+            <div className="lg:col-span-3">
+                {canManageTeam && team && (
+                    <form action={handleUpdateTeam}>
+                        <ModuleCard title={t('companyProfile.title')} icon={Building} isCollapsible={false}>
+                            <p className="text-sm text-muted-foreground mb-6">{t('companyProfile.description')}</p>
+                            
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">{t('companyProfile.nameLabel')}</Label>
+                                        <Input id="name" name="name" defaultValue={team.name || ''} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="tax_id">{t('companyProfile.taxIdLabel')}</Label>
+                                        <Input id="tax_id" name="tax_id" defaultValue={team.tax_id || ''} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="company_email">{t('companyProfile.emailLabel')}</Label>
+                                        <Input id="company_email" name="company_email" type="email" defaultValue={team.email || ''} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="company_phone">{t('companyProfile.phoneLabel')}</Label>
+                                        <Input id="company_phone" name="company_phone" defaultValue={team.phone || ''} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sector">{t('companyProfile.sectorLabel')}</Label>
+                                        <Input id="sector" name="sector" defaultValue={team.sector || ''} placeholder={t('companyProfile.sectorPlaceholder')} />
+                                    </div>
+                                     <div className="space-y-2">
+                                        <Label htmlFor="country">{t('companyProfile.countryLabel')}</Label>
+                                        <Input id="country" name="country" defaultValue={team.country || ''} />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <Label htmlFor="street">{t('companyProfile.addressLabel')}</Label>
+                                        <Input id="street" name="street" defaultValue={team.street || ''} placeholder={t('companyProfile.addressPlaceholder')} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="city">{t('companyProfile.cityLabel')}</Label>
+                                        <Input id="city" name="city" defaultValue={team.city || ''} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="postal_code">{t('companyProfile.postalCodeLabel')}</Label>
+                                        <Input id="postal_code" name="postal_code" defaultValue={team.postal_code || ''} />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <Label htmlFor="website">{t('companyProfile.websiteLabel')}</Label>
+                                        <Input id="website" name="website" type="url" defaultValue={team.website || ''} placeholder={t('companyProfile.websitePlaceholder')} />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-2">
+                                        <Label htmlFor="summary">{t('companyProfile.summaryLabel')}</Label>
+                                        <Textarea id="summary" name="summary" defaultValue={team.summary || ''} placeholder={t('companyProfile.summaryPlaceholder')} rows={3} />
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="sector">Sector</Label>
-                                    <Input id="sector" name="sector" defaultValue={team.sector || ''} placeholder="Ex: Tecnologia, Construcció" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="country">País</Label>
-                                    <Input id="country" name="country" defaultValue={team.country || ''} placeholder="País" />
-                                </div>
-
-
-                                {/* ✅ tercera graella */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="street">Carrer</Label>
-                                    <Input id="street" name="street" defaultValue={team.street || ''} placeholder="Carrer, Número, Ciutat, CP, País" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="postal_code">Codi Postal</Label>
-                                    <Input id="postal_code" name="postal_code" defaultValue={team.postal_code || ''} placeholder="Codi Postal" />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="city">Població</Label>
-                                    <Input id="city" name="city" defaultValue={team.city || ''} placeholder="Població" />
-                                </div>
-
-
-
-                                <div className="md:col-span-2 space-y-2">
-                                    <Label htmlFor="website">Pàgina web</Label>
-                                    <Input id="website" name="website" type="url" defaultValue={team.website || ''} placeholder="https://elteudomini.com" />
-                                </div>
-                                <div className="md:col-span-2 space-y-2">
-                                    <Label htmlFor="summary">Descripció curta</Label>
-                                    <Textarea id="summary" name="summary" defaultValue={team.summary || ''} placeholder="Una breu descripció del que fa la teva empresa." />
-                                </div>
-                                <div className="md:col-span-2 space-y-2">
-                                    <Label>Logo</Label>
-                                    <div className="mt-2 flex items-center gap-4">
-                                        {logoUrl ? <Image src={logoUrl} alt="Logo" width={64} height={64} className="object-contain rounded-lg border p-1" /> : <div className="h-16 w-16 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">Logo</div>}
+                                    <Label>{t('companyProfile.logoLabel')}</Label>
+                                    <div className="flex items-center gap-4">
+                                        {logoUrl ? <Image src={logoUrl} alt="Logo" width={56} height={56} className="object-contain rounded-lg border p-1 bg-white" /> : <div className="h-14 w-14 bg-muted rounded-lg flex items-center justify-center text-muted-foreground">Logo</div>}
                                         <Button asChild variant="outline">
                                             <label htmlFor="logo-upload" className="cursor-pointer">
-                                                {isUploading ? <Loader2 className="animate-spin" /> : <Upload className="w-4 h-4 mr-2" />} Cambiar Logo
+                                                {isUploading ? <Loader2 className="animate-spin" /> : <Upload className="w-4 h-4 mr-2" />} {t('companyProfile.changeLogoButton')}
                                             </label>
                                         </Button>
                                         <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploading} />
                                     </div>
                                 </div>
                             </div>
-                        </CardContent>
-                        <CardFooter>
-                            <Button type="submit" disabled={isTeamPending}>{isTeamPending ? "Desant..." : "Desar Dades de l'Empresa"}</Button>
-                        </CardFooter>
-                    </Card>
-                </form>
-            )}
+                            <div className="mt-8 flex justify-end">
+                                <Button type="submit" disabled={isTeamPending}>{isTeamPending ? t('companyProfile.savingButton') : t('companyProfile.saveButton')}</Button>
+                            </div>
+                        </ModuleCard>
+                    </form>
+                )}
+            </div>
         </motion.div>
     );
 }
@@ -37255,7 +36955,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils/utils";
 
-// Els teus estils de variant existents. Són perfectes.
+// Els estils de CVA es mantenen igual.
 const cardHeaderVariants = cva(
   "flex items-center justify-between p-2 text-primary-foreground rounded-t-xl",
   {
@@ -37270,10 +36970,9 @@ const cardHeaderVariants = cva(
         quotes: "bg-teal-600",
         tasks: "bg-yellow-600",
         inbox: "bg-indigo-600",
-        // Afegim algunes de les noves variants semàntiques si vols
-        info: "bg-blue-600", // Mapejat a 'sales'
-        success: "bg-green-700", // Mapejat a 'agenda'
-        warning: "bg-yellow-600", // Mapejat a 'tasks'
+        info: "bg-blue-600",
+        success: "bg-green-700",
+        warning: "bg-yellow-600",
       },
     },
     defaultVariants: {
@@ -37282,6 +36981,7 @@ const cardHeaderVariants = cva(
   }
 );
 
+// ✅ 1. Afegim les noves propietats a la interfície.
 interface ModuleCardProps extends VariantProps<typeof cardHeaderVariants> {
   title: string;
   icon: React.ElementType;
@@ -37289,36 +36989,62 @@ interface ModuleCardProps extends VariantProps<typeof cardHeaderVariants> {
   className?: string;
   defaultOpen?: boolean;
   actions?: React.ReactNode;
+  isCollapsible?: boolean; // Per controlar el botó de desplegar.
+  isVisible?: boolean;     // Per controlar la visibilitat total.
 }
 
-// Canviem el nom de la funció exportada
-export function ModuleCard({ title, icon: Icon, children, className, variant, defaultOpen = true, actions }: ModuleCardProps) {
+export function ModuleCard({ 
+  title, 
+  icon: Icon, 
+  children, 
+  className, 
+  variant, 
+  defaultOpen = true, 
+  actions,
+  // ✅ 2. Definim els valors per defecte de les noves props.
+  isCollapsible = true,
+  isVisible = true 
+}: ModuleCardProps) {
   const [isOpen, setIsOpen] = React.useState(defaultOpen);
+
+  // ✅ 3. Lògica de visibilitat. Si isVisible és false, no renderitzem res.
+  // Aquesta és la manera més neta de gestionar l'ocultació d'un component.
+  if (!isVisible) {
+    return null;
+  }
 
   return (
     <Collapsible
-      open={isOpen}
+      // Si no és desplegable, sempre estarà obert. Altrament, respectem l'estat.
+      open={!isCollapsible || isOpen} 
       onOpenChange={setIsOpen}
+      // La propietat 'disabled' és perfecta per a aquest cas d'ús.
+      // Evita que l'usuari pugui interactuar amb el desplegable si no volem.
+      disabled={!isCollapsible}
       className={cn("rounded-xl border bg-card text-card-foreground shadow-lg overflow-hidden transition-all duration-300", className)}
     >
       <div className={cn(cardHeaderVariants({ variant }))}>
         <div className="flex items-center gap-3">
           <Icon className="w-5 h-5 text-primary-foreground/80" />
-          <h2 className="text-base font-semibold">{title}</h2> {/* Reduït lleugerament per a consistència */}
+          <h2 className="text-base font-semibold">{title}</h2>
         </div>
         <div className="flex items-center gap-1">
           {actions}
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10 h-8 w-8">
-              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              <span className="sr-only">Toggle</span>
-            </Button>
-          </CollapsibleTrigger>
+          
+          {/* ✅ 4. Renderitzem el botó de desplegar NOMÉS si isCollapsible és true. */}
+          {isCollapsible && (
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10 h-8 w-8">
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                <span className="sr-only">Toggle</span>
+              </Button>
+            </CollapsibleTrigger>
+          )}
         </div>
       </div>
 
       <CollapsibleContent>
-        <div className="p-4 md:p-6 bg-card flex flex-col h-full"> {/* Augmentat el padding per a més espai */}
+        <div className="p-4 md:p-6 bg-card flex flex-col h-full">
           {children}
         </div>
       </CollapsibleContent>
@@ -40924,6 +40650,26 @@ export type TicketStatus = typeof TICKET_STATUS_MAP[number]['dbValue'];
 // Tipus per als filtres de la interfície d'usuari.
 export type TicketFilter = 'tots' | 'rebuts' | 'enviats' | 'noLlegits';
 
+// =================== FILE: src/config/invoices.ts ===================
+
+// Mapa de dades per als estats (basat en el teu exemple)
+// Adaptat per coincidir amb els valors ENUM de Supabase si els tens,
+// o els valors 'text' que fas servir a la columna 'status'.
+export const INVOICE_STATUS_MAP = [
+ { dbValue: 'Draft',     key: 'draft',   colorClass: 'bg-gray-500/10 text-gray-400 border border-gray-400/30' },
+ { dbValue: 'Sent',      key: 'sent',    colorClass: 'bg-blue-500/10 text-blue-400 border border-blue-400/30' }, // Canviat de Issued a Sent per coincidir amb ENUM
+ { dbValue: 'Paid',      key: 'paid',    colorClass: 'bg-green-500/10 text-green-400 border border-green-400/30' },
+ { dbValue: 'Overdue',   key: 'overdue', colorClass: 'bg-red-500/10 text-red-400 border border-red-400/30' },
+ { dbValue: 'Cancelled', key: 'cancelled', colorClass: 'bg-yellow-500/10 text-yellow-400 border border-yellow-400/30' }, // Canviat de Cancelled per consistència
+] as const;
+
+
+// Tipus per a l'estat, derivat del mapa o de l'ENUM de Supabase
+// Si 'status' a Supabase és ENUM 'invoice_status', pots usar:
+// export type InvoiceStatus = Database['public']['Enums']['invoice_status'];
+// Si és 'text', definim els valors esperats:
+export type InvoiceStatus = typeof INVOICE_STATUS_MAP[number]['dbValue'];
+
 // =================== FILE: src/config/navigation.ts ===================
 
 import {
@@ -41075,6 +40821,8 @@ export const QUOTE_STATUS_MAP = [
   { dbValue: 'Accepted', key: 'accepted', colorClass: 'bg-green-900/50 text-green-300' },
   { dbValue: 'Declined', key: 'declined', colorClass: 'bg-red-900/50 text-red-300' },
 ] as const;
+
+export type QuoteStatus = typeof QUOTE_STATUS_MAP[number]['dbValue'];
 
 
 // =================== FILE: src/config/styles/task.ts ===================
@@ -41445,7 +41193,7 @@ type DashboardStats = {
     total_contacts: number; active_clients: number; opportunities: number; invoiced_current_month: number;
     invoiced_previous_month: number; pending_total: number; expenses_current_month: number; expenses_previous_month: number;
 };
-export const getStats = async (supabase: SupabaseClient<Database>): Promise<DashboardStats> => {
+export const getStats = async (supabase: SupabaseClient<Database> ): Promise<DashboardStats> => {
     const { data, error } = await supabase.rpc('get_dashboard_stats');
     if (error) { console.error('Error fetching dashboard stats:', error); return { total_contacts: 0, active_clients: 0, opportunities: 0, invoiced_current_month: 0, invoiced_previous_month: 0, pending_total: 0, expenses_current_month: 0, expenses_previous_month: 0 }; }
     return data?.[0] || { total_contacts: 0, active_clients: 0, opportunities: 0, invoiced_current_month: 0, invoiced_previous_month: 0, pending_total: 0, expenses_current_month: 0, expenses_previous_month: 0 };
@@ -41455,10 +41203,19 @@ export const getTasks = async (supabase: SupabaseClient<Database>, teamId: strin
     if (error) { console.error('Error fetching tasks:', error); return []; }
     return data as unknown as EnrichedTask[];
 };
-export const getOverdueInvoices = async (supabase: SupabaseClient<Database>): Promise<(Tables<'invoices'> & { contacts: { nom: string } | null })[]> => {
-    const { data, error } = await supabase.from('invoices').select('*, contacts(nom)').in('status', ['Sent', 'Overdue']).lt('due_date', new Date().toISOString());
-    if (error) { console.error('Error fetching overdue invoices:', error); return []; }
-    return data ?? [];
+export const getOverdueInvoices = async (
+    supabase: SupabaseClient<Database>, 
+    teamId: string // <-- 1. AFEGIM EL PARÀMETRE
+): Promise<(Tables<'invoices'> & { contacts: { nom: string } | null })[]> => {
+    const { data, error } = await supabase
+        .from('invoices')
+        .select('*, contacts(nom)')
+        .eq('team_id', teamId) // <-- 2. AFEGIM EL FILTRE
+        .in('status', ['Sent', 'Overdue'])
+        .lt('due_date', new Date().toISOString());
+        
+    if (error) { console.error('Error fetching overdue invoices:', error); return []; }
+    return data ?? [];
 };
 export const getRecentContacts = async (supabase: SupabaseClient<Database>, teamId: string): Promise<Tables<'contacts'>[]> => {
     const { data, error } = await supabase.from('contacts').select('*').eq('team_id', teamId).order('created_at', { ascending: false });
@@ -41632,6 +41389,1286 @@ export async function validateSessionAndPermission(
     return { supabase, user, activeTeamId, userRole: userRole! };
 }
 
+// =================== FILE: src/lib/services/activities.service.ts ===================
+
+import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+// 1. El tipus de dada es defineix al servei, que és el "contracte"
+export type ActivityWithContact = Database['public']['Tables']['activities']['Row'] & {
+  contacts: Database['public']['Tables']['contacts']['Row'] | null;
+};
+
+/**
+ * Obté totes les activitats d'un equip, enriquides amb la informació del contacte.
+ */
+export async function getActivities(
+  supabase: SupabaseClient<Database>, 
+  teamId: string
+): Promise<{ data: ActivityWithContact[] | null; error: PostgrestError | null }> {
+  
+  const { data, error } = await supabase
+    .from('activities')
+    .select('*, contacts(*)')
+    .eq('team_id', teamId) // ⬅️ CORRECCIÓ DE SEGURETAT: Filtrem per equip
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error in getActivities (service):", error.message);
+    return { data: null, error };
+  }
+  
+  // 2. El 'casting' de tipus es fa dins del servei
+  return { data: data as ActivityWithContact[], error: null };
+}
+
+// =================== FILE: src/lib/services/calendar.service.ts ===================
+
+// src/lib/services/calendar.service.ts
+
+import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type Database, type Tables } from '@/types/supabase';
+import { type TaskWithAssignee } from '@/types/crm'; // Assegura't que la ruta és correcta
+import { type ActiveSources } from '@/types/crm/calendar'; // Importem el tipus dels filtres
+import { z } from 'zod';
+
+// Serveis d'entitat que orquestrarem
+import { getTeamMembers } from './team.service';
+import { getAllContacts } from './contacts.service';
+import { getDepartments } from './departments.service';
+
+// --- Tipus de Dades ---
+export type EnrichedTaskForCalendar = TaskWithAssignee & {
+  contacts: Tables<'contacts'> | null;
+  departments: Tables<'departments'> | null;
+};
+export type EnrichedQuoteForCalendar = Tables<'quotes'> & {
+  contacts: Pick<Tables<'contacts'>, 'id' | 'nom'> | null;
+};
+export type EnrichedEmailForCalendar = Tables<'tickets'> & {
+  contacts: Pick<Tables<'contacts'>, 'id' | 'nom'> | null;
+};
+
+// --- Tipus de Payloads ---
+export type CalendarEventsPayload = {
+  tasks: EnrichedTaskForCalendar[];
+  quotes: EnrichedQuoteForCalendar[];
+  sentEmails: EnrichedEmailForCalendar[];
+  receivedEmails: EnrichedEmailForCalendar[];
+};
+export type TeamMember = { id: string; full_name: string | null };
+export type CalendarMetadataPayload = {
+  teamUsers: TeamMember[];
+  contacts: Tables<'contacts'>[];
+  departments: Tables<'departments'>[];
+};
+
+// --- Tipus d'Errors ---
+export type CalendarEventsError = {
+    tasksError?: PostgrestError | null;
+    quotesError?: PostgrestError | null;
+    sentEmailsError?: PostgrestError | null;
+    receivedEmailsError?: PostgrestError | null;
+    membersError?: PostgrestError | null;
+    validationError?: string;
+};
+export type CalendarMetadataError = {
+  usersError?: PostgrestError | null;
+  contactsError?: PostgrestError | null;
+  departmentsError?: PostgrestError | null;
+};
+
+// --- FUNCIÓ 1: Obtenir Events (Lògica central integrada des de 'actions') ---
+export async function getCalendarEvents(
+  supabase: SupabaseClient<Database>,
+  teamId: string, // Rep teamId com a paràmetre
+  startDate: string,
+  endDate: string,
+  activeSources?: ActiveSources
+): Promise<{ data: CalendarEventsPayload | null; error: CalendarEventsError | null }> {
+
+  // 1. Definim filtres per defecte
+  const filters: ActiveSources = activeSources || {
+    tasks: true,
+    quotes: false,
+    emails: false,
+    receivedEmails: false,
+  };
+
+  // 2. Validació de dades d'entrada
+  const dateSchema = z.string().datetime({ message: 'La data ha de ser una ISO 8601 string vàlida.' });
+  if (!dateSchema.safeParse(startDate).success || !dateSchema.safeParse(endDate).success) {
+    console.error("Validation error in getCalendarEvents:", { startDate, endDate });
+    return { data: null, error: { validationError: 'Rang de dates invàlid.' } };
+  }
+
+  // 3. Obtenim IDs d'usuaris condicionalment
+  let userIdsInTeam: string[] = [];
+  if (filters.emails || filters.receivedEmails) {
+    const { data: teamMembers, error } = await supabase // Utilitza el 'supabase' rebut
+      .from('team_members')
+      .select('user_id')
+      .eq('team_id', teamId); // Utilitza el 'teamId' rebut
+
+    if (error) {
+      console.error("Error fetching team members for calendar (service):", error);
+      return { data: null, error: { membersError: error } };
+    }
+    userIdsInTeam = teamMembers.map(member => member.user_id);
+  }
+
+  // 4. Executem consultes condicionalment
+  const promises = [];
+
+  // 1. Tasques
+  if (filters.tasks) {
+    promises.push(
+      supabase // Utilitza el 'supabase' rebut
+        .from('tasks')
+        .select('*, profiles:user_asign_id (id, full_name, avatar_url), contacts(id, nom), departments(id, name)')
+        .eq('team_id', teamId) // Utilitza el 'teamId' rebut
+        .gte('due_date', startDate)
+        .lte('due_date', endDate)
+    );
+  } else {
+    promises.push(Promise.resolve({ data: [] as EnrichedTaskForCalendar[], error: null }));
+  }
+
+  // 2. Pressupostos
+  if (filters.quotes) {
+    promises.push(
+      supabase // Utilitza el 'supabase' rebut
+        .from('quotes')
+        .select('*, contacts (id, nom)')
+        .eq('team_id', teamId) // Utilitza el 'teamId' rebut
+        .not('expiry_date', 'is', null)
+        .gte('expiry_date', startDate)
+        .lte('expiry_date', endDate)
+    );
+  } else {
+    promises.push(Promise.resolve({ data: [] as EnrichedQuoteForCalendar[], error: null }));
+  }
+
+  // 3. Correus Enviats
+  if (filters.emails && userIdsInTeam.length > 0) {
+    promises.push(
+      supabase // Utilitza el 'supabase' rebut
+        .from('tickets')
+        .select('*, contacts (id, nom)')
+        .in('user_id', userIdsInTeam)
+        .eq('type', 'enviat')
+        .not('sent_at', 'is', null)
+        .gte('sent_at', startDate)
+        .lte('sent_at', endDate)
+    );
+  } else {
+    promises.push(Promise.resolve({ data: [] as EnrichedEmailForCalendar[], error: null }));
+  }
+
+  // 4. Correus Rebuts
+  if (filters.receivedEmails && userIdsInTeam.length > 0) {
+    promises.push(
+      supabase // Utilitza el 'supabase' rebut
+        .from('tickets')
+        .select('*, contacts (id, nom)')
+        .in('user_id', userIdsInTeam)
+        .eq('type', 'rebut')
+        .not('sent_at', 'is', null)
+        .gte('sent_at', startDate)
+        .lte('sent_at', endDate)
+    );
+  } else {
+    promises.push(Promise.resolve({ data: [] as EnrichedEmailForCalendar[], error: null }));
+  }
+
+  const [tasksResult, quotesResult, sentEmailsResult, receivedEmailsResult] = await Promise.all(promises);
+
+  // 5. Gestió d'errors millorada
+  const errors: CalendarEventsError = {};
+  if (tasksResult.error) errors.tasksError = tasksResult.error;
+  if (quotesResult.error) errors.quotesError = quotesResult.error;
+  if (sentEmailsResult.error) errors.sentEmailsError = sentEmailsResult.error;
+  if (receivedEmailsResult.error) errors.receivedEmailsError = receivedEmailsResult.error;
+
+  if (Object.keys(errors).length > 0) {
+    console.error("Error fetching calendar data (service):", errors);
+    return { data: null, error: errors };
+  }
+
+  // 6. Retornem les dades amb 'casting' segur
+  return {
+    data: {
+      // Afegim '?? []' per assegurar que sempre retornem un array
+      tasks: (tasksResult.data as EnrichedTaskForCalendar[] ?? []),
+      quotes: (quotesResult.data as EnrichedQuoteForCalendar[] ?? []),
+      sentEmails: (sentEmailsResult.data as EnrichedEmailForCalendar[] ?? []),
+      receivedEmails: (receivedEmailsResult.data as EnrichedEmailForCalendar[] ?? []),
+    },
+    error: null
+  };
+}
+
+
+// --- FUNCIÓ 2: Obtenir Metadata (Sense canvis respecte a la versió anterior) ---
+export async function getCalendarMetadata(
+  supabase: SupabaseClient<Database>,
+  teamId: string
+): Promise<{ data: CalendarMetadataPayload | null; error: CalendarMetadataError | null }> {
+
+  const [usersResult, contactsResult, departmentsResult] = await Promise.all([
+    getTeamMembers(supabase, teamId),
+    getAllContacts(supabase, teamId),
+    getDepartments(supabase, teamId)
+  ]);
+
+  const errors: CalendarMetadataError = {};
+  if (usersResult.error) errors.usersError = usersResult.error;
+  if (contactsResult.error) errors.contactsError = contactsResult.error;
+  if (departmentsResult.error) errors.departmentsError = departmentsResult.error;
+
+  if (Object.keys(errors).length > 0) {
+    console.error('Error a getCalendarMetadata (service):', errors);
+    return { data: null, error: errors };
+  }
+
+  // Processament d'usuaris
+  const users = usersResult.data
+    ?.filter(member => member.user_id)
+    .map(member => ({ id: member.user_id!, full_name: member.full_name })) ?? [];
+
+  return {
+    data: {
+      teamUsers: users,
+      contacts: contactsResult.data ?? [],
+      departments: departmentsResult.data ?? []
+    },
+    error: null
+  };
+}
+
+
+// --- FUNCIÓ 3: "Cas d'Ús" per a la Càrrega Inicial (Sense canvis) ---
+export async function getCalendarPageData(
+  supabase: SupabaseClient<Database>,
+  teamId: string,
+  startDate: string,
+  endDate: string,
+  activeSources?: ActiveSources
+): Promise<{
+  data: { events: CalendarEventsPayload, metadata: CalendarMetadataPayload } | null;
+  error: { eventsError?: CalendarEventsError | null, metadataError?: CalendarMetadataError | null } | null
+}> {
+
+  const [eventsResult, metadataResult] = await Promise.all([
+    getCalendarEvents(supabase, teamId, startDate, endDate, activeSources),
+    getCalendarMetadata(supabase, teamId)
+  ]);
+
+  const combinedError: { eventsError?: CalendarEventsError | null, metadataError?: CalendarMetadataError | null } = {};
+  if (eventsResult.error) combinedError.eventsError = eventsResult.error;
+  if (metadataResult.error) combinedError.metadataError = metadataResult.error;
+
+  if (Object.keys(combinedError).length > 0) {
+    console.error("Error a getCalendarPageData (service):", combinedError);
+    return { data: null, error: combinedError };
+  }
+
+  // Assegurem que data no sigui null si no hi ha error
+  return {
+    data: {
+      events: eventsResult.data!,
+      metadata: metadataResult.data!
+    },
+    error: null
+  };
+}
+
+// =================== FILE: src/lib/services/comunicacio/inbox.service.ts ===================
+
+import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase'; // Importem Tables
+import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db'; // Assegurem que la ruta és correcta
+import { getTeamMembersWithProfiles } from "@/lib/supabase/teams"; // Mantenim la importació específica
+
+// --- Tipus de Retorn del Servei ---
+export type InboxInitialData = {
+    permissions: InboxPermission[];
+    teamMembers: TeamMemberWithProfile[];
+    allTeamContacts: Contact[];
+    templates: Template[];
+    receivedCount: number;
+    sentCount: number;
+    tickets: EnrichedTicket[];
+};
+
+// Tipus per a errors detallats
+export type InboxDataError = {
+    permissionsError?: PostgrestError | null;
+    teamMembersError?: PostgrestError | { message: string } | null; // getTeamMembers pot retornar { error: { message: '...' } }
+    contactsError?: PostgrestError | null;
+    templatesError?: PostgrestError | null;
+    receivedCountError?: PostgrestError | null;
+    sentCountError?: PostgrestError | null;
+    ticketsError?: PostgrestError | null;
+};
+
+/**
+ * Obté totes les dades inicials necessàries per a la pàgina de l'Inbox.
+ *
+ * @param supabase Client Supabase autenticat.
+ * @param userId ID de l'usuari actual.
+ * @param teamId ID de l'equip actiu.
+ * @returns Objecte amb les dades o un error detallat.
+ */
+export async function getInboxInitialData(
+    supabase: SupabaseClient<Database>,
+    userId: string,
+    teamId: string
+): Promise<{ data: InboxInitialData | null; error: InboxDataError | null }> {
+
+    // 1. Obtenir permisos de l'usuari
+    const { data: permissions, error: permissionsError } = await supabase
+        .from('inbox_permissions')
+        .select('*')
+        .eq('team_id', teamId)
+        .eq('grantee_user_id', userId);
+
+    if (permissionsError) {
+        console.error("Error en carregar els permisos de l'inbox (service):", permissionsError);
+        // Retornem error aviat si els permisos fallen, ja que són necessaris per a altres consultes
+        return { data: null, error: { permissionsError } };
+    }
+
+    const safePermissions: InboxPermission[] = permissions || [];
+    const visibleUserIds = [userId, ...(safePermissions.map(p => p.target_user_id).filter(Boolean) || [])];
+
+    // 2. Executar la resta de consultes en paral·lel
+    const [
+        teamMembersRes,
+        allTeamContactsRes,
+        templatesRes,
+        receivedCountRes,
+        sentCountRes,
+        ticketsRes
+    ] = await Promise.all([
+        getTeamMembersWithProfiles(supabase, teamId), // Funció específica
+        supabase.from('contacts').select('*').eq('team_id', teamId),
+        supabase.from("email_templates").select("*").eq('team_id', teamId),
+        supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds }),
+        supabase.rpc('get_inbox_sent_count', { p_visible_user_ids: visibleUserIds }),
+        supabase.rpc('get_inbox_tickets', {
+            p_user_id: userId,
+            p_team_id: teamId,
+            p_visible_user_ids: visibleUserIds,
+            p_limit: 50, // Límit inicial
+            p_offset: 0, // Offset inicial
+            p_search_term: '', // Terme de cerca inicial buit
+            p_active_filter: '' // Afegim el filtre actiu per defecte (buit)
+        })
+    ]);
+
+    // 3. Comprovar errors de les consultes paral·leles
+    const errors: InboxDataError = {};
+    if (teamMembersRes.error) errors.teamMembersError = teamMembersRes.error;
+    if (allTeamContactsRes.error) errors.contactsError = allTeamContactsRes.error;
+    if (templatesRes.error) errors.templatesError = templatesRes.error;
+    if (receivedCountRes.error) errors.receivedCountError = receivedCountRes.error;
+    if (sentCountRes.error) errors.sentCountError = sentCountRes.error;
+    if (ticketsRes.error) errors.ticketsError = ticketsRes.error;
+
+    if (Object.keys(errors).length > 0) {
+        console.error("Error(s) a getInboxInitialData (service):", errors);
+        // Afegim l'error de permisos si ja existia
+        if (permissionsError) errors.permissionsError = permissionsError;
+        return { data: null, error: errors };
+    }
+
+    // 4. Construir i retornar les dades
+    const data: InboxInitialData = {
+        permissions: safePermissions,
+        teamMembers: (teamMembersRes.data as TeamMemberWithProfile[]) || [], // Casting necessari si getTeamMembers retorna any
+        allTeamContacts: (allTeamContactsRes.data as Contact[]) || [],
+        templates: (templatesRes.data as Template[]) || [],
+        receivedCount: receivedCountRes.data || 0,
+        sentCount: sentCountRes.data || 0,
+        tickets: (ticketsRes.data as EnrichedTicket[] || [])
+    };
+
+    return { data, error: null };
+}
+
+// Podries afegir aquí la funció per obtenir més tiquets (paginació/cerca)
+// export async function getInboxTickets(...) -> cridaria a supabase.rpc('get_inbox_tickets', ...)
+
+// =================== FILE: src/lib/services/comunicacio/socialPlanner.service.ts ===================
+
+import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type Database} from '@/types/supabase';
+import type { SocialPost } from "@/types/comunicacio/SocialPost"; // Assegura't que la ruta és correcta
+export { type SocialPost } from "@/types/comunicacio/SocialPost"; // Re-exportem per a ús extern
+// Tipus per a l'estat de connexió
+export type ConnectionStatuses = {
+    linkedin: boolean;
+    facebook: boolean;
+    instagram: boolean;
+};
+
+// Tipus de retorn del servei
+export type SocialPlannerInitialData = {
+    posts: SocialPost[];
+    connectionStatuses: ConnectionStatuses;
+};
+
+// Tipus d'error detallat
+export type SocialPlannerDataError = {
+    postsError?: PostgrestError | null;
+    userCredsError?: PostgrestError | null;
+    teamCredsError?: PostgrestError | null;
+};
+
+/**
+ * Obté les dades inicials per al Planificador Social.
+ *
+ * @param supabase Client Supabase autenticat.
+ * @param userId ID de l'usuari actual.
+ * @param teamId ID de l'equip actiu.
+ * @returns Objecte amb les dades inicials o un error detallat.
+ */
+export async function getSocialPlannerInitialData(
+    supabase: SupabaseClient<Database>,
+    userId: string,
+    teamId: string
+): Promise<{ data: SocialPlannerInitialData | null; error: SocialPlannerDataError | null }> {
+
+    const [postsRes, userCredsRes, teamCredsRes] = await Promise.all([
+        supabase
+            .from('social_posts')
+            .select('*')
+            .eq('team_id', teamId) // RLS hauria de fer el mateix, però és bona pràctica ser explícit
+            .order('created_at', { ascending: false }),
+        supabase.from('user_credentials').select('provider').eq('user_id', userId),
+        supabase.from('team_credentials').select('provider').eq('team_id', teamId)
+    ]);
+
+    // Comprovar errors
+    const errors: SocialPlannerDataError = {};
+    if (postsRes.error) errors.postsError = postsRes.error;
+    if (userCredsRes.error) errors.userCredsError = userCredsRes.error;
+    if (teamCredsRes.error) errors.teamCredsError = teamCredsRes.error;
+
+    if (Object.keys(errors).length > 0) {
+        console.error("Error(s) a getSocialPlannerInitialData (service):", errors);
+        return { data: null, error: errors };
+    }
+
+    // Processar dades
+    const posts = (postsRes.data as SocialPost[]) || [];
+
+    const userProviders = userCredsRes.data?.map(c => c.provider) || [];
+    const teamProviders = teamCredsRes.data?.map(c => c.provider) || [];
+    const allConnectedProviders = new Set([...userProviders, ...teamProviders]);
+
+    const connectionStatuses: ConnectionStatuses = {
+        linkedin: allConnectedProviders.has('linkedin'),
+        facebook: allConnectedProviders.has('facebook'),
+        instagram: allConnectedProviders.has('instagram'),
+    };
+
+    const data: SocialPlannerInitialData = {
+        posts,
+        connectionStatuses
+    };
+
+    return { data, error: null };
+}
+
+// =================== FILE: src/lib/services/contacts.service.ts ===================
+
+import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type Database } from "@/types/supabase";
+
+const ITEMS_PER_PAGE = 50;
+
+// 1. Tipus que retorna la nostra consulta
+export type ContactWithOpportunities = Database['public']['Tables']['contacts']['Row'] & {
+  opportunities: Pick<Database['public']['Tables']['opportunities']['Row'], 'id' | 'value'>[] | null;
+};
+
+// 2. Opcions de filtre i paginació que accepta la nostra funció
+export interface GetContactsOptions {
+  teamId: string; // El teamId és obligatori
+  page?: number;
+  sortBy?: string;
+  status?: string;
+  searchTerm?: string;
+}
+
+// 3. El payload de retorn, que inclou dades de paginació
+export interface GetContactsPayload {
+  contacts: ContactWithOpportunities[];
+  totalPages: number;
+  currentPage: number;
+  totalCount: number;
+}
+
+/**
+ * Obté una llista paginada i filtrada de contactes per a un equip.
+ * * @param supabase - Instància del client Supabase
+ * @param options - Opcions de filtre, paginació i teamId
+ * @returns Un objecte amb 'data' (payload) o 'error'
+ */
+export async function getPaginatedContacts(
+  supabase: SupabaseClient<Database>,
+  options: GetContactsOptions
+): Promise<{ data: GetContactsPayload | null; error: PostgrestError | null }> {  
+  
+    // 4. Desestructurem les opcions
+  const { teamId, status, searchTerm, sortBy } = options;
+  const currentPage = Number(options.page) || 1;
+  const from = (currentPage - 1) * ITEMS_PER_PAGE;
+  const to = from + ITEMS_PER_PAGE - 1;
+
+  // 5. Construïm la consulta. Tota la lògica de Supabase viu aquí.
+  let query = supabase
+    .from('contacts')
+    .select('*, opportunities(id, value)', { count: 'exact' })
+    // El filtre de 'team_id' és la primera regla, essencial per seguretat.
+    .eq('team_id', teamId); 
+
+  if (searchTerm) {
+    query = query.or(`nom.ilike.%${searchTerm}%,empresa.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+  }
+  if (status && status !== 'all') {
+    query = query.eq('estat', status);
+  }
+  
+  if (sortBy === 'oldest') {
+    query = query.order('created_at', { ascending: true });
+  } else {
+    // Per defecte, els més nous primer
+    query = query.order('created_at', { ascending: false });
+  }
+  
+  query = query.range(from, to);
+
+  // 6. Executem la consulta
+  const { data: contacts, error, count } = await query;
+
+  if (error) {
+    console.error("Error a getPaginatedContacts (service):", error.message);
+    return { data: null, error };
+  }
+
+  const totalCount = count || 0;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  // 7. Retornem el payload
+  return {
+    data: {
+      contacts: contacts as ContactWithOpportunities[] || [],
+      totalPages,
+      currentPage,
+      totalCount
+    },
+    error: null
+  };
+}
+
+/**
+ * Obté una llista bàsica de contactes (ID i nom) per un equip.
+ * Ideal per a dropdowns o selectors.
+ */
+export async function getBasicContacts(supabase: SupabaseClient<Database>, teamId: string) {
+  return supabase
+    .from('contacts')
+    .select('id, nom')
+    .eq('team_id', teamId);
+}
+
+
+export async function getAllContacts(
+  supabase: SupabaseClient<Database>, 
+  teamId: string
+) {
+  return supabase
+    .from('contacts')
+    .select('*')
+    .eq('team_id', teamId);
+}
+
+// =================== FILE: src/lib/services/crm/campaignPerformance.service.ts ===================
+
+import { type CampaignPerformanceData } from './types'; // Importa tipus
+
+// Abans _processCampaignPerformance
+export function processCampaignPerformance(): CampaignPerformanceData[] {
+    // Mantenim les dades mock ja que la consulta a BD fallava
+    const mockCampaigns = [
+        { name: "Campanya Estiu", cost: 500, revenue_generated: 1500 },
+        { name: "Black Friday", cost: 1000, revenue_generated: 4500 },
+        { name: "Llançament Producte", cost: 200, revenue_generated: 300 },
+    ];
+    const campaignColors = ["#8b5cf6", "#3b82f6", "#10b981", "#f97316"];
+    return mockCampaigns.map((campaign, index) => {
+        const cost = campaign.cost ?? 0;
+        const revenue = campaign.revenue_generated ?? 0;
+        let roi: number | typeof Infinity = 0;
+        if (cost > 0) roi = Math.round(((revenue - cost) / cost) * 100);
+        else if (revenue > 0) roi = Infinity;
+        return {
+            name: campaign.name,
+            roi: roi,
+            fill: campaignColors[index % campaignColors.length],
+        };
+    });
+}
+
+// =================== FILE: src/lib/services/crm/charts.service.ts ===================
+
+import { type Tables } from '@/types/supabase';
+import { type RawCrmDataResults, type LeadSource, type OpportunityAgingData, type LeadConversionData } from './types'; // Importa tipus
+
+// Abans _processCharts
+export function processCharts(rawData: RawCrmDataResults): {
+    leadSources: LeadSource[];
+    opportunityAging: OpportunityAgingData[];
+    leadConversion: LeadConversionData[];
+} {
+    const now = new Date(); // Necessari per aging
+
+    // Lead Sources
+    type OpportunitySource = Pick<Tables<'opportunities'>, 'source'>;
+    const leadSourcesData = rawData.leadSourcesRes.data || [];
+    const leadSourcesCount = leadSourcesData.reduce<Record<string, number>>((acc, op: OpportunitySource) => {
+        const source = op.source || 'Desconegut';
+        acc[source] = (acc[source] || 0) + 1;
+        return acc;
+    }, {});
+    const leadSources: LeadSource[] = Object.entries(leadSourcesCount).map(([source, count]) => ({ source, count }));
+
+    // Opportunity Aging & Conversion by Source
+    type OpportunityForProcessing = Pick<Tables<'opportunities'>, 'created_at' | 'stage_name' | 'source'>;
+    const allOpportunities = (rawData.allOpportunitiesRes.data || []) as OpportunityForProcessing[];
+
+    const agingData: Record<string, { total_days: number; count: number }> = {};
+    const conversionData: Record<string, { total: number; won: number }> = {};
+
+    allOpportunities.forEach(op => {
+        const source = op.source || 'Desconegut';
+        // Processament Conversió
+        if (!conversionData[source]) conversionData[source] = { total: 0, won: 0 };
+        conversionData[source].total++;
+        if (op.stage_name === 'Guanyat') conversionData[source].won++;
+
+        // Processament Aging (només si no està tancada)
+        if (op.stage_name !== null && op.stage_name !== 'Guanyat' && op.stage_name !== 'Perdut') {
+             if (op.created_at) {
+                const stageName = op.stage_name;
+                if (!agingData[stageName]) agingData[stageName] = { total_days: 0, count: 0 };
+                const createdDate = new Date(op.created_at);
+                const diffTime = Math.abs(now.getTime() - createdDate.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                agingData[stageName].total_days += diffDays;
+                agingData[stageName].count++;
+             }
+        }
+    });
+
+    const opportunityAging: OpportunityAgingData[] = Object.entries(agingData).map(([stage_name, data]) => ({
+        stage_name,
+        avg_days: data.count > 0 ? Math.round(data.total_days / data.count) : 0
+    }));
+    const leadConversion: LeadConversionData[] = Object.entries(conversionData).map(([source, data]) => ({
+        source,
+        conversion_rate: data.total > 0 ? Math.round((data.won / data.total) * 100) : 0,
+        total: data.total,
+    }));
+
+    return { leadSources, opportunityAging, leadConversion };
+}
+
+// =================== FILE: src/lib/services/crm/dailySummary.service.ts ===================
+
+import { type Tables } from '@/types/supabase';
+import { type RawCrmDataResults } from './data.service';
+import { type DailySummaryData } from '../crm.service'; // Importa el tipus des de l'arxiu principal
+
+// Abans _processDailySummary
+export function processDailySummary(rawData: RawCrmDataResults): DailySummaryData {
+    const dailyActivities = rawData.dailyActivitiesRes.data || [];
+    type DailyActivityType = Pick<Tables<'activities'>, 'type'>;
+    return {
+        tasks_completed: 0, // Fixat a 0 temporalment
+        emails_sent: dailyActivities.filter((a: DailyActivityType) => a.type === "Email").length,
+        quotes_sent: rawData.dailyQuotesRes.count ?? 0,
+        meetings_held: dailyActivities.filter((a: DailyActivityType) => a.type === "Reunió").length,
+    };
+}
+
+// =================== FILE: src/lib/services/crm/data.service.ts ===================
+
+// src/lib/services/crm/data.service.ts
+
+import { type SupabaseClient } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+import { startOfMonth, subMonths, subDays, startOfDay, endOfDay } from 'date-fns';
+import { type RawCrmDataResults} from './types'; // Importem els tipus necessaris
+
+// Helper per definir els tipus de retorn de cada promesa individualment
+// Això fa que el resultat de Promise.all sigui un tuple amb tipus coneguts
+const definePromises = (supabase: SupabaseClient<Database>, teamId: string, dates: ReturnType<typeof getDateRanges>) => {
+    const { startOfCurrentMonth, startOfLastMonth, thirtyDaysAgo, todayStart, todayEnd } = dates;
+
+    // Definim cada promesa amb el seu tipus de retorn esperat
+    return [
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', teamId), // 0
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', teamId).gte('created_at', startOfCurrentMonth), // 1
+        supabase.from('opportunities').select('value', { count: 'exact' }).eq('team_id', teamId).not('stage_name', 'in', '("Guanyat", "Perdut")'), // 2
+        supabase.from('invoices').select('total_amount, contact_id, issue_date').eq('team_id', teamId).eq('status', 'Paid'), // 3
+        supabase.from('opportunities').select('created_at, last_updated_at, value').eq('team_id', teamId).eq('stage_name', 'Guanyat').gte('last_updated_at', startOfCurrentMonth), // 4
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', teamId).lt('created_at', startOfCurrentMonth), // 5
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', teamId).gte('created_at', startOfLastMonth).lt('created_at', startOfCurrentMonth), // 6
+        supabase.from('opportunities').select('value', { count: 'exact' }).eq('team_id', teamId).not('stage_name', 'in', '("Guanyat", "Perdut")').gte('created_at', startOfLastMonth).lt('created_at', startOfCurrentMonth), // 7
+        supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('team_id', teamId).gte('created_at', startOfLastMonth).lt('created_at', startOfCurrentMonth), // 8
+        supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('team_id', teamId).eq('stage_name', 'Guanyat').gte('last_updated_at', startOfLastMonth).lt('last_updated_at', startOfCurrentMonth), // 9
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', teamId).eq('estat', 'Lead'), // 10
+        supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('team_id', teamId).eq('estat', 'Client'), // 11
+        supabase.from('quotes').select('contact_id').eq('team_id', teamId).not('contact_id', 'is', null), // 12
+        supabase.from('activities').select('*, contacts(nom, email)').eq('team_id', teamId).eq('is_read', false).order('created_at', { ascending: false }).limit(5), // 13
+        supabase.from('invoices').select('total_amount, contacts(id, nom)').eq('team_id', teamId).eq('status', 'Paid'), // 14
+        supabase.from('contacts').select('id, nom, last_interaction_at').eq('team_id', teamId).lt('last_interaction_at', thirtyDaysAgo).order('last_interaction_at', { ascending: true }).limit(5), // 15
+        supabase.from('opportunities').select('source').eq('team_id', teamId), // 16
+        supabase.from('invoices').select('total_amount, contact_id').eq('team_id', teamId).eq('status', 'Paid').gte('issue_date', startOfLastMonth).lt('issue_date', startOfCurrentMonth), // 17
+        supabase.from('opportunities').select('created_at, stage_name, source').eq('team_id', teamId), // 18
+        supabase.from('activities').select('type').eq('team_id', teamId).gte('created_at', todayStart).lte('created_at', todayEnd), // 19
+        supabase.from('quotes').select('id', { count: 'exact', head: true }).eq('team_id', teamId).gte('sent_at', todayStart).lte('sent_at', todayEnd), // 20
+    ] as const; // ✅ Usar 'as const' ajuda TypeScript a inferir un tuple type
+};
+
+// Helper per a les dates
+const getDateRanges = (now: Date = new Date()) => ({
+    now,
+    startOfCurrentMonth: startOfMonth(now).toISOString(),
+    startOfLastMonth: startOfMonth(subMonths(now, 1)).toISOString(),
+    thirtyDaysAgo: subDays(now, 30).toISOString(),
+    todayStart: startOfDay(now).toISOString(),
+    todayEnd: endOfDay(now).toISOString(),
+});
+
+
+// Funció principal per obtenir les dades
+export async function fetchAllCrmRawData(supabase: SupabaseClient<Database>, teamId: string): Promise<RawCrmDataResults> {
+
+    const dates = getDateRanges();
+    const promises = definePromises(supabase, teamId, dates);
+
+    // ✅ Promise.all ara retorna un tuple amb tipus inferits gràcies a 'as const'
+    const results = await Promise.all(promises);
+
+    // Mapeig manual (ara hauria de ser type-safe si els índexs són correctes)
+    const namedResults: RawCrmDataResults = {
+        contactsRes: results[0], newContactsRes: results[1], opportunitiesRes: results[2], paidInvoicesRes: results[3], wonOpportunitiesRes: results[4],
+        contactsLastMonthRes: results[5], newContactsLastMonthRes: results[6], opportunitiesLastMonthRes: results[7], allOpportunitiesLastMonthRes: results[8], wonOpportunitiesLastMonthRes: results[9],
+        funnelLeadsCountRes: results[10], funnelClientsCountRes: results[11], funnelQuotedCountRes: results[12],
+        // Castings explícits per a resultats amb joins complexos que TS potser no infereix perfectament
+        unreadActivitiesRes: results[13] as unknown as RawCrmDataResults['unreadActivitiesRes'],
+        topClientsRes: results[14] as unknown as RawCrmDataResults['topClientsRes'],
+        coldContactsRes: results[15] as unknown as RawCrmDataResults['coldContactsRes'],
+        leadSourcesRes: results[16], paidInvoicesLastMonthRes: results[17], allOpportunitiesRes: results[18],
+        dailyActivitiesRes: results[19], dailyQuotesRes: results[20],
+        dailyTasksRes: { data: null, error: null, count: 0 }, // Dummy
+    };
+
+    // Comprovació d'errors (simplificada)
+    const queryNames = Object.keys(namedResults);
+    for (let i = 0; i < promises.length; i++) { // Iterem sobre l'índex de promeses/resultats
+        const res = results[i]; // Accedim al resultat per índex
+        if (res.error) {
+            const queryName = queryNames[i] || `Consulta Índex ${i}`;
+            console.error(`🚨 Error en la consulta "${queryName}":`, res.error);
+            throw new Error(`Error carregant dades CRM (${queryName}): ${res.error.message || 'Error desconegut (possible RLS?)'}`);
+        }
+    }
+
+    // Retornem l'objecte amb tipus correcte
+    return namedResults;
+}
+
+// =================== FILE: src/lib/services/crm/funnel.service.ts ===================
+
+import { type RawCrmDataResults, type CrmData } from './types'; // Importa tipus
+
+// Abans _processFunnel
+export function processFunnel(rawData: RawCrmDataResults): CrmData['funnel'] {
+    const funnelLeadsCount = rawData.funnelLeadsCountRes.count ?? 0;
+    const funnelClientsCount = rawData.funnelClientsCountRes.count ?? 0;
+    // Comptem contactes únics que han rebut pressupost
+    const funnelQuotedContacts = new Set(rawData.funnelQuotedCountRes.data?.map(q => q.contact_id).filter(Boolean) ?? []).size;
+
+    return {
+        leads: funnelLeadsCount,
+        quoted: funnelQuotedContacts,
+        clients: funnelClientsCount,
+    };
+}
+
+// =================== FILE: src/lib/services/crm/lists.service.ts ===================
+
+import { type Tables } from '@/types/supabase';
+import { type RawCrmDataResults, type UnreadActivity, type TopClient, type ColdContact } from './types'; // Importa tipus
+
+// Abans _processLists
+export function processLists(rawData: RawCrmDataResults): {
+    unreadActivities: UnreadActivity[];
+    topClients: TopClient[];
+    coldContacts: ColdContact[];
+} {
+    const unreadActivities = (rawData.unreadActivitiesRes.data as UnreadActivity[] ?? []);
+
+    type TopClientInvoice = Pick<Tables<'invoices'>, 'total_amount'> & {
+        contacts: Pick<Tables<'contacts'>, 'id' | 'nom'> | null
+    };
+    const clientRevenueMap = (rawData.topClientsRes.data ?? []).reduce<Record<string, { id: number; nom: string | null; total: number }>>((acc, inv: TopClientInvoice) => {
+        const contact = inv.contacts;
+        if (contact && contact.id) {
+            if (!acc[contact.id]) acc[contact.id] = { id: contact.id, nom: contact.nom, total: 0 };
+            acc[contact.id].total += inv.total_amount ?? 0;
+        }
+        return acc;
+    }, {});
+    const topClients: TopClient[] = Object.values(clientRevenueMap)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5)
+        .map(c => ({ id: c.id, nom: c.nom, total_invoiced: c.total }));
+
+    const coldContacts = (rawData.coldContactsRes.data as ColdContact[] ?? []);
+
+    return { unreadActivities, topClients, coldContacts };
+}
+
+// =================== FILE: src/lib/services/crm/revenue.service.ts ===================
+
+import { type Tables } from '@/types/supabase';
+import { type RawCrmDataResults, type CrmData } from './types'; // Importa tipus
+import { startOfMonth } from 'date-fns';
+
+// Abans _processRevenue
+export function processRevenue(
+    rawData: RawCrmDataResults,
+    // Rep els stats ja processats per obtenir pipelineValue i conversionRate
+    stats: CrmData['stats']
+): CrmData['revenue'] {
+    const now = new Date();
+    const startOfCurrentMonth = startOfMonth(now).toISOString();
+
+    const paidInvoices = rawData.paidInvoicesRes.data ?? [];
+    type PaidInvoice = Pick<Tables<'invoices'>, 'total_amount' | 'contact_id' | 'issue_date'>;
+
+    const currentMonthRevenue = paidInvoices
+        .filter(inv => inv.issue_date && new Date(inv.issue_date) >= new Date(startOfCurrentMonth))
+        .reduce((sum: number, inv: PaidInvoice) => sum + (inv.total_amount ?? 0), 0);
+
+    // Parsejem pipelineValue i conversionRate dels stats processats
+    const pipelineValue = parseFloat(String(stats.pipelineValue.value).replace(/[€.]/g, '').replace(',', '.')) || 0;
+    const conversionRate = parseFloat(String(stats.conversionRate.value).replace('%', '')) || 0;
+
+    return {
+        monthlyForecast: pipelineValue * (conversionRate / 100),
+        currentMonthRevenue: currentMonthRevenue,
+    };
+}
+
+// =================== FILE: src/lib/services/crm/stats.service.ts ===================
+
+import { type Tables } from '@/types/supabase';
+import { type RawCrmDataResults } from './data.service'; // Importa el tipus de dades brutes
+// Afegeix la importació o definició del tipus CrmData
+import type { CrmData } from '../crm.service'; // Assegura't que CrmData està exportat a crm.service.ts, o canvia el path segons correspongui
+
+// Helper privat si només s'usa aquí
+const calculateTrend = (current: number, previous: number): number => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Math.round(((current - previous) / previous) * 100);
+};
+
+// Abans _processStats
+export function processStats(rawData: RawCrmDataResults): CrmData['stats'] {
+    const totalContacts = rawData.contactsRes.count ?? 0;
+    const totalContactsLastMonth = rawData.contactsLastMonthRes.count ?? 0;
+    const newContactsThisMonth = rawData.newContactsRes.count ?? 0;
+    const newContactsLastMonth = rawData.newContactsLastMonthRes.count ?? 0;
+    const opportunitiesCount = rawData.opportunitiesRes.count ?? 0;
+    const opportunitiesCountLastMonth = rawData.opportunitiesLastMonthRes.count ?? 0;
+
+    type OpportunityValue = Pick<Tables<'opportunities'>, 'value'>;
+    const pipelineValue = rawData.opportunitiesRes.data?.reduce((sum: number, op: OpportunityValue) => sum + (op.value ?? 0), 0) ?? 0;
+    const pipelineValueLastMonth = rawData.opportunitiesLastMonthRes.data?.reduce((sum: number, op: OpportunityValue) => sum + (op.value ?? 0), 0) ?? 0;
+
+    type PaidInvoice = Pick<Tables<'invoices'>, 'total_amount' | 'contact_id' | 'issue_date'>;
+    const paidInvoices = rawData.paidInvoicesRes.data ?? [];
+    const totalRevenue = paidInvoices.reduce((sum: number, inv: PaidInvoice) => sum + (inv.total_amount ?? 0), 0);
+    const uniqueClientsWithRevenue = new Set(paidInvoices.map(inv => inv.contact_id).filter(Boolean)).size;
+    const avgRevenuePerClient = uniqueClientsWithRevenue > 0 ? totalRevenue / uniqueClientsWithRevenue : 0;
+
+    type PaidInvoiceLastMonth = Pick<Tables<'invoices'>, 'total_amount' | 'contact_id'>;
+    const paidInvoicesLastMonth = rawData.paidInvoicesLastMonthRes.data ?? [];
+    const totalRevenueLastMonth = paidInvoicesLastMonth.reduce((sum: number, inv: PaidInvoiceLastMonth) => sum + (inv.total_amount ?? 0), 0);
+    const uniqueClientsLastMonth = new Set(paidInvoicesLastMonth.map(inv => inv.contact_id).filter(Boolean)).size;
+    const avgRevenuePerClientLastMonth = uniqueClientsLastMonth > 0 ? totalRevenueLastMonth / uniqueClientsLastMonth : 0;
+
+    const funnelLeadsCount = rawData.funnelLeadsCountRes.count ?? 0;
+    const funnelClientsCount = rawData.funnelClientsCountRes.count ?? 0;
+    const conversionRate = funnelLeadsCount > 0 ? (funnelClientsCount / funnelLeadsCount) * 100 : 0;
+    const totalOpportunitiesCreatedLastMonth = rawData.allOpportunitiesLastMonthRes.count ?? 0;
+    const wonOpportunitiesLastMonthCount = rawData.wonOpportunitiesLastMonthRes.count ?? 0;
+    const conversionRateLastMonth = totalOpportunitiesCreatedLastMonth > 0 ? (wonOpportunitiesLastMonthCount / totalOpportunitiesCreatedLastMonth) * 100 : 0;
+
+    type WonOpportunityTiming = Pick<Tables<'opportunities'>, 'created_at' | 'last_updated_at' | 'value'>;
+    const wonOpportunities = rawData.wonOpportunitiesRes.data ?? [];
+    const totalConversionTimeMillis = wonOpportunities.reduce((sum: number, op: WonOpportunityTiming) => {
+        if (op.created_at && op.last_updated_at) {
+          const timeDiff = new Date(op.last_updated_at).getTime() - new Date(op.created_at).getTime();
+          return sum + (timeDiff > 0 ? timeDiff : 0);
+        }
+        return sum;
+    }, 0);
+    const avgConversionTimeDays = wonOpportunities.length > 0 ? Math.round(totalConversionTimeMillis / wonOpportunities.length / (1000 * 60 * 60 * 24)) : 0;
+    const avgDealValue = wonOpportunities.length > 0 ? wonOpportunities.reduce((sum: number, op: WonOpportunityTiming) => sum + (op.value ?? 0), 0) / wonOpportunities.length : 0;
+    const salesVelocity = avgConversionTimeDays > 0 ? (opportunitiesCount * avgDealValue * (conversionRate / 100)) / avgConversionTimeDays : 0;
+
+    return {
+        totalContacts: { value: totalContacts, trend: calculateTrend(totalContacts, totalContactsLastMonth) },
+        newContactsThisMonth: { value: newContactsThisMonth, trend: calculateTrend(newContactsThisMonth, newContactsLastMonth) },
+        opportunities: { value: opportunitiesCount, trend: calculateTrend(opportunitiesCount, opportunitiesCountLastMonth) },
+        pipelineValue: { value: `€${pipelineValue.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, trend: calculateTrend(pipelineValue, pipelineValueLastMonth) },
+        avgRevenuePerClient: { value: `€${avgRevenuePerClient.toLocaleString('es-ES', { maximumFractionDigits: 0 })}`, trend: calculateTrend(avgRevenuePerClient, avgRevenuePerClientLastMonth) },
+        conversionRate: { value: `${conversionRate.toFixed(1)}%`, trend: calculateTrend(conversionRate, conversionRateLastMonth) },
+        salesVelocity: { value: `€${salesVelocity.toLocaleString('es-ES', { maximumFractionDigits: 0 })}/dia`, trend: 0 },
+        avgConversionTimeDays: { value: `${avgConversionTimeDays} dies`, trend: 0 },
+    };
+}
+
+// =================== FILE: src/lib/services/crm/types.ts ===================
+
+// src/lib/services/crm/types.ts
+
+import {  type Tables } from '@/types/supabase';
+import { type PostgrestError } from '@supabase/supabase-js';
+
+// --- Tipus de Dades Específics del Dashboard ---
+export type CampaignPerformanceData = {
+    name: string;
+    roi: number | typeof Infinity;
+    fill: string;
+};
+export type DailySummaryData = {
+    tasks_completed: number;
+    emails_sent: number;
+    quotes_sent: number;
+    meetings_held: number;
+};
+export type KpiData = {
+    value: number | string;
+    trend: number;
+};
+export type UnreadActivity = Tables<'activities'> & {
+    contacts: Pick<Tables<'contacts'>, 'nom' | 'email'> | null;
+};
+export type TopClient = { id: number; nom: string | null; total_invoiced: number; };
+export type ColdContact = Pick<Tables<'contacts'>, 'id' | 'nom' | 'last_interaction_at'>;
+export type LeadSource = { source: string; count: number; };
+export type OpportunityAgingData = {
+    stage_name: string;
+    avg_days: number;
+};
+export type LeadConversionData = {
+    source: string;
+    conversion_rate: number;
+    total: number;
+};
+
+// --- Payload Principal ---
+export type CrmData = {
+    stats: {
+        totalContacts: KpiData;
+        newContactsThisMonth: KpiData;
+        opportunities: KpiData;
+        pipelineValue: KpiData;
+        avgRevenuePerClient: KpiData;
+        conversionRate: KpiData;
+        salesVelocity: KpiData;
+        avgConversionTimeDays: KpiData;
+    };
+    funnel: {
+        leads: number;
+        quoted: number; // Nombre de contactes únics amb pressupost
+        clients: number;
+    };
+    revenue: {
+        monthlyForecast: number;
+        currentMonthRevenue: number;
+    };
+    unreadActivities: UnreadActivity[];
+    topClients: TopClient[];
+    coldContacts: ColdContact[];
+    leadSources: LeadSource[];
+    opportunityAging: OpportunityAgingData[];
+    leadConversion: LeadConversionData[];
+    campaignPerformance: CampaignPerformanceData[];
+    dailySummary: DailySummaryData;
+};
+
+// --- Tipus de Retorn del Servei Principal ---
+export type CrmServiceResponse = Promise<{ data: CrmData | null; error: { message: string, details?: unknown } | null }>;
+
+// --- Tipus per a les Dades Brutes Obtingudes ---
+// Definim un tipus genèric per a les respostes de Supabase amb possibles errors
+type SupabaseResponse<T> = { data: T | null; error: PostgrestError | null; count?: number | null };
+
+// Usem el tipus genèric per definir RawCrmDataResults
+export type RawCrmDataResults = {
+    contactsRes: SupabaseResponse<Pick<Tables<'contacts'>, 'id'>[]>;
+    newContactsRes: SupabaseResponse<Pick<Tables<'contacts'>, 'id'>[]>;
+    opportunitiesRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'value'>[]>;
+    paidInvoicesRes: SupabaseResponse<Pick<Tables<'invoices'>, 'total_amount' | 'contact_id' | 'issue_date'>[]>;
+    wonOpportunitiesRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'created_at' | 'last_updated_at' | 'value'>[]>;
+    contactsLastMonthRes: SupabaseResponse<Pick<Tables<'contacts'>, 'id'>[]>;
+    newContactsLastMonthRes: SupabaseResponse<Pick<Tables<'contacts'>, 'id'>[]>;
+    opportunitiesLastMonthRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'value'>[]>;
+    allOpportunitiesLastMonthRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'id'>[]>;
+    wonOpportunitiesLastMonthRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'id'>[]>;
+    funnelLeadsCountRes: SupabaseResponse<Pick<Tables<'contacts'>, 'id'>[]>;
+    funnelClientsCountRes: SupabaseResponse<Pick<Tables<'contacts'>, 'id'>[]>;
+    funnelQuotedCountRes: SupabaseResponse<Pick<Tables<'quotes'>, 'contact_id'>[]>;
+    unreadActivitiesRes: SupabaseResponse<UnreadActivity[]>;
+    topClientsRes: SupabaseResponse<(Pick<Tables<'invoices'>, 'total_amount'> & { contacts: Pick<Tables<'contacts'>, 'id' | 'nom'> | null })[]>;
+    coldContactsRes: SupabaseResponse<ColdContact[]>;
+    leadSourcesRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'source'>[]>;
+    paidInvoicesLastMonthRes: SupabaseResponse<Pick<Tables<'invoices'>, 'total_amount' | 'contact_id'>[]>;
+    allOpportunitiesRes: SupabaseResponse<Pick<Tables<'opportunities'>, 'created_at' | 'stage_name' | 'source'>[]>;
+    dailyActivitiesRes: SupabaseResponse<Pick<Tables<'activities'>, 'type'>[]>;
+    dailyQuotesRes: SupabaseResponse<Pick<Tables<'quotes'>, 'id'>[]>;
+    dailyTasksRes: { data: null; error: null; count: number }; // Resultat dummy
+};
+
+// =================== FILE: src/lib/services/crm.service.ts ===================
+
+import { type SupabaseClient } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+// Importa els tipus principals des del nou arxiu
+import { 
+    type CrmData, 
+    type CrmServiceResponse,
+    type CampaignPerformanceData, // Re-exporta els tipus necessaris per al component
+    type DailySummaryData, 
+    type KpiData, 
+    type UnreadActivity, 
+    type TopClient, 
+    type ColdContact, 
+    type LeadSource, 
+    type OpportunityAgingData, 
+    type LeadConversionData 
+} from './crm/types';
+
+// Importa les funcions de servei modulars
+import { fetchAllCrmRawData } from './crm/data.service';
+import { processStats } from './crm/stats.service';
+import { processFunnel } from './crm/funnel.service';
+import { processRevenue } from './crm/revenue.service';
+import { processLists } from './crm/lists.service';
+import { processCharts } from './crm/charts.service';
+import { processCampaignPerformance } from './crm/campaignPerformance.service';
+import { processDailySummary } from './crm/dailySummary.service';
+
+
+/**
+ * Obté i processa TOTES les dades per al Dashboard del CRM (Cas d'Ús).
+ * Orquestra l'obtenció i processament de dades des de serveis específics.
+ */
+export async function getCrmDashboardData(
+  supabase: SupabaseClient<Database>,
+  teamId: string,
+): CrmServiceResponse {
+    try {
+        // 1. Obtenir totes les dades brutes
+        const rawData = await fetchAllCrmRawData(supabase, teamId);
+
+        // 2. Processar les dades en blocs lògics
+        const stats = processStats(rawData);
+        const funnel = processFunnel(rawData);
+        const revenue = processRevenue(rawData, stats); // Passa stats si és necessari
+        const lists = processLists(rawData);
+        const charts = processCharts(rawData);
+        const campaignPerformance = processCampaignPerformance(); // Usa mocks internament
+        const dailySummary = processDailySummary(rawData);
+
+        // 3. Construir l'objecte final
+        const data: CrmData = {
+            stats,
+            funnel,
+            revenue,
+            unreadActivities: lists.unreadActivities,
+            topClients: lists.topClients,
+            coldContacts: lists.coldContacts,
+            leadSources: charts.leadSources,
+            opportunityAging: charts.opportunityAging,
+            leadConversion: charts.leadConversion,
+            campaignPerformance,
+            dailySummary,
+        };
+
+        return { data, error: null };
+
+    } catch (err: unknown) {
+        const error = err as Error;
+        // L'error ja s'hauria logat a fetchAllCrmRawData si és de Supabase
+        if (!error.message.startsWith('Error carregant dades CRM')) {
+             console.error("Error catastròfic processant dades a getCrmDashboardData (service):", error.message, error.stack);
+        }
+        return {
+            data: null,
+            // Retornem l'error capturat (pot ser de fetch o de processament)
+            error: { message: `Error inesperat obtenint dades del CRM: ${error.message}`, details: error }
+        };
+    }
+}
+
+// Re-exporta els tipus necessaris per al component CrmDataDashboard
+export type { CampaignPerformanceData, DailySummaryData, KpiData, UnreadActivity, TopClient, ColdContact, LeadSource, OpportunityAgingData, LeadConversionData, CrmData };
+
+// =================== FILE: src/lib/services/departments.service.ts ===================
+
+import { type SupabaseClient } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+export async function getDepartments(
+  supabase: SupabaseClient<Database>, 
+  teamId: string
+) {
+  return supabase
+    .from('departments')
+    .select('*')
+    .eq('team_id', teamId);
+}
+
+// =================== FILE: src/lib/services/opportunities.service.ts ===================
+
+import { type SupabaseClient } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+export async function getOpportunitiesWithContact(supabase: SupabaseClient<Database>, teamId: string) {
+  return supabase
+    .from('opportunities')
+    .select('*, contacts(id, nom)')
+    .eq('team_id', teamId);
+}
+
+// =================== FILE: src/lib/services/pipline.service.ts ===================
+
+import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+// ✅ 1. Importem les nostres funcions de servei d'entitat
+import { getPipelineStages } from './stages.service';
+import { getBasicContacts } from './contacts.service';
+import { getOpportunitiesWithContact } from './opportunities.service';
+
+// 2. Les definicions de tipus es mantenen igual. Són el "contracte" públic.
+export type Stage = Database['public']['Tables']['pipeline_stages']['Row'];
+export type Contact = Pick<Database['public']['Tables']['contacts']['Row'], 'id' | 'nom'>;
+export type OpportunityWithContact = Database['public']['Tables']['opportunities']['Row'] & {
+  contacts: Pick<Database['public']['Tables']['contacts']['Row'], 'id' | 'nom'> | null;
+};
+
+export type PipelineDataPayload = {
+  stages: Stage[];
+  contacts: Contact[];
+  opportunities: OpportunityWithContact[];
+};
+
+// ✅ CORRECCIÓ 1:
+// Substituïm 'any' per 'PostgrestError | null' per als errors de Supabase.
+// Fem 'null' opcional perquè un error pot no existir.
+export type PipelineDataError = {
+  stagesError?: PostgrestError | null;
+  contactsError?: PostgrestError | null;
+  opportunitiesError?: PostgrestError | null;
+}
+/**
+ * Obté totes les dades necessàries per a la vista del Pipeline (Cas d'Ús).
+ * Orquestra crides a altres serveis d'entitat en paral·lel.
+ */
+export async function getPipelineData(
+  supabase: SupabaseClient<Database>, 
+  teamId: string
+): Promise<{ data: PipelineDataPayload | null; error: PipelineDataError | null }> {
+  
+  // ✅ 3. La lògica de la consulta ARA ORQUESTRA ALTRES SERVEIS.
+  // El Promise.all es manté aquí per garantir el rendiment.
+  const [stagesRes, contactsRes, opportunitiesRes] = await Promise.all([
+    getPipelineStages(supabase, teamId),
+    getBasicContacts(supabase, teamId),
+    getOpportunitiesWithContact(supabase, teamId)
+  ]);
+
+  // 4. La gestió d'errors es manté idèntica.
+  if (stagesRes.error || contactsRes.error || opportunitiesRes.error) {
+    console.error("Error a getPipelineData (service):", { 
+      stages: stagesRes.error, 
+      contacts: contactsRes.error, 
+      opps: opportunitiesRes.error 
+    });
+    
+    return {
+      data: null,
+      error: {
+        stagesError: stagesRes.error,
+        contactsError: contactsRes.error,
+        opportunitiesError: opportunitiesRes.error
+      }
+    };
+  }
+
+  // 5. El payload es manté idèntic.
+  const payload: PipelineDataPayload = {
+    stages: (stagesRes.data as Stage[]) || [],
+    contacts: (contactsRes.data as Contact[]) || [],
+    opportunities: (opportunitiesRes.data as OpportunityWithContact[]) || []
+  };
+  
+  return { data: payload, error: null };
+}
+
+// =================== FILE: src/lib/services/stages.service.ts ===================
+
+import { type SupabaseClient } from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+export async function getPipelineStages(supabase: SupabaseClient<Database>, teamId: string) {
+  return supabase
+    .from('pipeline_stages')
+    .select('id, name, position')
+    .eq('team_id', teamId)
+    .order('position', { ascending: true });
+}
+
+// =================== FILE: src/lib/services/team.service.ts ===================
+
+import { type SupabaseClient} from '@supabase/supabase-js';
+import { type Database } from '@/types/supabase';
+
+export async function getTeamMembers(
+  supabase: SupabaseClient<Database>, 
+  teamId: string
+) {
+  // Retornem la consulta directament; la gestió d'errors es farà al servei orquestrador
+  return supabase
+    .from('team_members_with_profiles')
+    .select('user_id, full_name')
+    .eq('team_id', teamId);
+}
+
 // =================== FILE: src/lib/supabase/admin.ts ===================
 
 // A /lib/supabase/admin.ts
@@ -41750,15 +42787,31 @@ export type SessionError = {
 
 // Funció base que conté la lògica comuna
 async function getSessionCore() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = createClient(); // Tipat amb <Database> per defecte
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-        return { user: null, supabase: null, activeTeamId: null };
-    }
+    if (!user) {
+        return { user: null, supabase: null, activeTeamId: null };
+    }
 
-    const activeTeamId = user.app_metadata?.active_team_id as string | null;
-    return { user, supabase, activeTeamId };
+    // 1. (FONT PRIMÀRIA) Intentem obtenir-ho del token (metadades)
+    let activeTeamId = user.app_metadata?.active_team_id as string | null;
+
+    // 2. (FALLBACK) Si no hi és, el busquem al perfil.
+    // Aquesta lògica ara està centralitzada aquí.
+    if (!activeTeamId) {
+        console.warn("active_team_id no trobat a app_metadata. Fent fallback a 'profiles'.");
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('active_team_id')
+            .eq('id', user.id)
+            .single();
+        
+        activeTeamId = profile?.active_team_id ?? null;
+    }
+
+    // 3. Retornem la informació de sessió bàsica
+    return { user, supabase, activeTeamId };
 }
 
 // Nova versió per a Server Actions
@@ -41787,34 +42840,46 @@ export async function validatePageSession() {
         // Redirigim a un lloc on pugui crear o seleccionar un equip
         redirect('/settings/team');
     }
-
+    
     // El redirect atura l'execució, així que sabem que aquí tot és vàlid
+    // supabase! és segur gràcies a la comprovació de !user
+  
     return { supabase: supabase!, user, activeTeamId };
 }
 
 // =================== FILE: src/lib/supabase/teams.ts ===================
 
+// A /lib/supabase/teams.ts (o on sigui que visqui getActiveTeam)
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server"; // Importem el server client
+import { Database } from "@/types/supabase";
 
-// Definim el tipus de retorn esperat per a tenir un codi ben tipat
-export type TeamMemberWithProfile = {
-    role: string;
-    profiles: {
-        id: string;
-        full_name: string | null;
-        email: string | null;
-        avatar_url: string | null;
-    } | null;
-};
+type Team = Database['public']['Tables']['teams']['Row'];
 
 /**
- * Funció reutilitzable que obté tots els membres d'un equip juntament amb
- * les dades dels seus perfils. Encapsula la lògica del "join manual".
- * @param supabase - La instància del client de Supabase.
- * @param teamId - L'ID de l'equip del qual volem obtenir els membres.
- * @returns Una promesa que resol a una llista de membres amb els seus perfils.
+ * Obté les dades d'un equip específic pel seu ID.
+ * @param supabase El client de Supabase.
+ * @param teamId L'ID de l'equip a obtenir.
+ * @returns Les dades de l'equip o null si no es troba o hi ha error.
  */
+export async function getActiveTeam(
+    supabase: SupabaseClient<Database>, 
+    teamId: string
+): Promise<Team | null> {
+    
+    const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('id', teamId)
+        .single();
+
+    if (teamError) {
+        console.error("Error en obtenir les dades de l'equip:", teamError.message);
+        return null;
+    }
+
+    return team;
+}
+
 // Aquesta funció es torna molt més simple i ràpida
 export async function getTeamMembersWithProfiles(
     supabase: SupabaseClient,
@@ -41830,63 +42895,6 @@ export async function getTeamMembersWithProfiles(
     // Si hi ha un error, 'response.error' tindrà valor.
     // Si no, 'response.data' tindrà valor. Però el format és el mateix.
     return response;
-}
-
-
-/**
- * Obté les dades completes de l'equip actiu d'un usuari des d'un Server Component.
- * Aquesta versió és robusta i soluciona la 'race condition' del registre.
- *
- * ESTRATÈGIA:
- * 1. (FONT PRIMÀRIA) Intenta obtenir l'ID de l'equip des del token de l'usuari (app_metadata).
- * Això és instantani i fiable després de l'autenticació.
- * 2. (FALLBACK) Si no existeix al token, el busca a la taula de perfils.
- * Això garanteix compatibilitat amb usuaris antics.
- *
- * @returns Una promesa que resol a les dades de l'equip o null si no se'n troba cap.
- */
-export async function getActiveTeam() {
-  // ✅ CORRECCIÓ: Cridem a la funció sense passar-li el tipus. Ja el porta per defecte.
-  const supabase = createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return null;
-  }
-
-  let activeTeamId: string | null | undefined = user.app_metadata?.active_team_id;
-
-  // Fallback...
-  if (!activeTeamId) {
-    console.warn("active_team_id no trobat a app_metadata. Fent fallback a la taula de perfils.");
-    // Ara 'supabase.from('profiles')' tindrà autocompletat i seguretat de tipus!
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('active_team_id')
-      .eq('id', user.id)
-      .single();
-    
-    activeTeamId = profile?.active_team_id;
-  }
-
-  // Si després de tot no tenim un ID, no podem continuar
-   if (!activeTeamId) {
-    console.error("No s'ha pogut determinar l'equip actiu ni des del token ni des del perfil.");
-    return null;
-  }
-
-  const { data: team, error: teamError } = await supabase
-    .from('teams')
-    .select('*')
-    .eq('id', activeTeamId)
-    .single();
-
-  if (teamError) {
-    console.error("Error en obtenir les dades de l'equip actiu:", teamError.message);
-    return null;
-  }
-
-  return team;
 }
 
 // =================== FILE: src/lib/utils/formatters.ts ===================
@@ -42230,17 +43238,9 @@ export interface NavItem {
 
 import { z } from 'zod';
 import type { Contact } from '../crm/index';
-
+import { TicketStatus, TICKET_STATUS_MAP} from '@/config/inbox';
 // --- MAPA I TIPUS D'ESTAT DE TIQUET ---
 
-
-export const TICKET_STATUS_MAP = [
-  // ✅ CANVI: D'"Obert" a "NoLlegit"
-  { dbValue: 'NoLlegit', key: 'unread' }, 
-  { dbValue: 'Llegit', key: 'read' },
-  { dbValue: 'Respost', key: 'replied' },
-] as const;
-export type TicketStatus = typeof TICKET_STATUS_MAP[number]['dbValue'];
 
 // --- TIPUS PRINCIPALS (AMB ZOD PER A MÉS SEGURETAT) ---
 export type TicketFilter = 'tots' | 'rebuts' | 'enviats' | 'noLlegits';
@@ -42416,16 +43416,10 @@ export type FormState = {
 
 // Importem tipus d'altres mòduls a través del fitxer 'index.ts' per evitar errors de dependència circular.
 import type { Activity, Quote, Opportunity, Invoice, Task , CrmNotification} from './index';
-
+import type { ContactStatusCode } from '@/config/contacts';
 // --- MAPA I TIPUS D'ESTAT DE CONTACTE ---
 
-export const CONTACT_STATUS_MAP = [
-  { code: 'L', key: 'Lead' },
-  { code: 'P', key: 'Proveidor' },
-  { code: 'C', key: 'Client' },
-] as const;
 
-type ContactStatusCode = typeof CONTACT_STATUS_MAP[number]['code'];
 
 // --- TIPUS PRINCIPALS ---
 
@@ -42599,13 +43593,13 @@ export * from './general';
 export * from './products';
 export * from './deals';
 export * from './quotes';
-export * from './pipelines';
+
 export * from '../shared/notification';
 export * from './calendar';
 
 // =================== FILE: src/types/crm/opportunitys.ts ===================
 
-import type {PipelineStageName} from "@/types/crm";
+import type {PipelineStageName} from "@/config/pipeline";
 import type { Contact } from "./contacts";  
 
 export type OpportunityPipline = { 
@@ -42630,18 +43624,6 @@ export type Opportunity= {
   contact_id: string;
   contacts: Contact | null;
 };
-
-// =================== FILE: src/types/crm/pipelines.ts ===================
-
-export const PIPELINE_STAGES_MAP = [
-  { name: 'Prospecte', key: 'prospect' },
-  { name: 'Contactat', key: 'contacted' },
-  { name: 'Proposta Enviada', key: 'proposalSent' },
-  { name: 'Negociació', key: 'negotiation' },
-  { name: 'Guanyat', key: 'won' },
-  { name: 'Perdut', key: 'lost' },
-] as const;
-export type PipelineStageName = typeof PIPELINE_STAGES_MAP[number]['name'];
 
 // =================== FILE: src/types/crm/products.ts ===================
 
@@ -42669,25 +43651,9 @@ export type Product = {
 
 import type {Contact} from "@/types/crm";
 import type { Team as CompanyProfile } from "@/types/settings/team";
+import type { InvoiceStatus } from "@/config/invoices";
+import type { QuoteStatus } from "@/config/styles/quotes";
 // --- MAPES I TIPUS D'ESTATS ---
-
-
-export const QUOTE_STATUS_MAP = [
-  { dbValue: 'Draft',    key: 'draft',    colorClass: 'bg-yellow-900/50 text-yellow-300' },
-  { dbValue: 'Sent',     key: 'sent',     colorClass: 'bg-blue-900/50 text-blue-300' },
-  { dbValue: 'Accepted', key: 'accepted', colorClass: 'bg-green-900/50 text-green-300' },
-  { dbValue: 'Declined', key: 'declined', colorClass: 'bg-red-900/50 text-red-300' },
-] as const;
-type QuoteStatus = typeof QUOTE_STATUS_MAP[number]['dbValue'];
-
-export const INVOICE_STATUS_MAP = [
-  { dbValue: 'Draft',     key: 'draft' },
-  { dbValue: 'Sent',      key: 'sent' },
-  { dbValue: 'Paid',      key: 'paid' },
-  { dbValue: 'Overdue',   key: 'overdue' },
-  { dbValue: 'Cancelled', key: 'cancelled' },
-] as const;
-type InvoiceStatus = typeof INVOICE_STATUS_MAP[number]['dbValue'];
 
 // --- TIPUS PRINCIPALS ---
 
@@ -42977,6 +43943,7 @@ export * from './scheams';
 
 // src/types/finances/invoices.ts
 import { type Database } from '@/types/supabase';
+import type { InvoiceStatus } from "@/config/invoices";
 
 // --- Tipus Base (Reflectint Supabase - S'actualitzaran amb 'npx supabase gen types...') ---
 export type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
@@ -42984,23 +43951,7 @@ export type InvoiceItemRow = Database['public']['Tables']['invoice_items']['Row'
 export type InvoiceAttachmentRow = Database['public']['Tables']['invoice_attachments']['Row'];
 // --- Constants i Tipus per a Status ---
 
-// Mapa de dades per als estats (basat en el teu exemple)
-// Adaptat per coincidir amb els valors ENUM de Supabase si els tens,
-// o els valors 'text' que fas servir a la columna 'status'.
-export const INVOICE_STATUS_MAP = [
- { dbValue: 'Draft',     key: 'draft',   colorClass: 'bg-gray-500/10 text-gray-400 border border-gray-400/30' },
- { dbValue: 'Sent',      key: 'sent',    colorClass: 'bg-blue-500/10 text-blue-400 border border-blue-400/30' }, // Canviat de Issued a Sent per coincidir amb ENUM
- { dbValue: 'Paid',      key: 'paid',    colorClass: 'bg-green-500/10 text-green-400 border border-green-400/30' },
- { dbValue: 'Overdue',   key: 'overdue', colorClass: 'bg-red-500/10 text-red-400 border border-red-400/30' },
- { dbValue: 'Cancelled', key: 'cancelled', colorClass: 'bg-yellow-500/10 text-yellow-400 border border-yellow-400/30' }, // Canviat de Cancelled per consistència
-] as const;
 
-
-// Tipus per a l'estat, derivat del mapa o de l'ENUM de Supabase
-// Si 'status' a Supabase és ENUM 'invoice_status', pots usar:
-// export type InvoiceStatus = Database['public']['Enums']['invoice_status'];
-// Si és 'text', definim els valors esperats:
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Cancelled';
 
 // --- Tipus Enriquits ---
 
@@ -46557,11 +47508,11 @@ export type Database = {
         Returns: unknown
       }
       st_generatepoints:
-        | { Args: { area: unknown; npoints: number }; Returns: unknown }
         | {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
@@ -46829,11 +47780,11 @@ export type Database = {
           }
       st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
       st_union:
-        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
         | {
             Args: { geom1: unknown; geom2: unknown; gridsize: number }
             Returns: unknown
           }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
       st_voronoilines: {
         Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
         Returns: unknown
