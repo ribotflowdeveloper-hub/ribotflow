@@ -1,61 +1,49 @@
+// src/app/[locale]/(app)/finances/suppliers/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient as createServerActionClient } from "@/lib/supabase/server";
 import { validateUserSession } from "@/lib/supabase/session";
-import { type Supplier } from "@/types/finances/suppliers";
+import { type Supplier } from "@/types/finances/suppliers"; // Tipus Supplier
 import { type Database } from "@/types/supabase";
-import { type ActionResult } from "@/types/shared/index";
+import { type ActionResult } from "@/types/shared/actionResult"; // ActionResult
+import {
+  type PaginatedActionParams,
+  type PaginatedResponse
+} from '@/hooks/usePaginateResource'; // Tipus genèrics
+import { createClient as createServerActionClient } from "@/lib/supabase/server"; // Client de servidor per a accions
 
 // --- Tipus Específics ---
 type SupplierRow = Database['public']['Tables']['suppliers']['Row'];
 export type SupplierFormData = Omit<SupplierRow, 'id' | 'created_at' | 'user_id' | 'team_id'>;
 
-export interface PaginatedSuppliersResponse {
-    data: Supplier[];
-    count: number;
-}
+// Filtres per a la pàgina de proveïdors (TFilters) - Buit per ara
+export type SupplierPageFilters = object;
 
+// Alias per al hook genèric
+type FetchSuppliersParams = PaginatedActionParams<SupplierPageFilters>; // <-- Usa SupplierPageFilters
+type PaginatedSuppliersData = PaginatedResponse<Supplier>; // <-- Usa Supplier
 
-// ✅ Tornem a necessitar aquest tipus com a argument
-export interface SupplierFilters {
-    searchTerm?: string;
-    sortBy?: string;
-    sortOrder?: 'asc' | 'desc';
-    limit?: number;
-    offset?: number;
-}
-// --- Funcions Públiques (Server Actions) ---
-
-/**
- * Obté la llista paginada de proveïdors.
- * ✅ REVERTIT: Ara accepta l'objecte 'filters' un altre cop.
- */
+// --- Acció per Obtenir Dades Paginades (Refactoritzada) ---
 export async function fetchPaginatedSuppliers(
-    filters: SupplierFilters // <-- Accepta 'filters'
-): Promise<PaginatedSuppliersResponse> {
+    params: FetchSuppliersParams // <-- Accepta paràmetres genèrics
+): Promise<PaginatedSuppliersData> { // <-- Retorna tipus genèric
+
+    const { searchTerm, sortBy, sortOrder, limit, offset } = params; // Desestructurem
+
     const session = await validateUserSession();
-    if ("error" in session) { /* ... gestió error ... */ return { data: [], count: 0 }; }
+    if ("error" in session) {
+        console.error("Session error fetching suppliers:", session.error);
+        return { data: [], count: 0 };
+    }
     const { supabase, activeTeamId } = session;
 
-    // ✅ Llegim els valors des de l'objecte 'filters'
-    const {
-        searchTerm,
-        sortBy = 'nom',
-        sortOrder = 'asc',
-        limit = 10, // Pren valor per defecte si no ve a filters
-        offset = 0  // Pren valor per defecte si no ve a filters
-    } = filters;
-
-    console.log('fetchPaginatedSuppliers - Received Filters:', filters);
-
-    // --- Consulta de Dades (la lògica aquí es queda igual) ---
+    // Construcció de la consulta (similar a l'anterior)
     let query = supabase
         .from('suppliers')
         .select('*', { count: 'exact' })
         .eq('team_id', activeTeamId)
-        .order(sortBy, { ascending: sortOrder === 'asc' })
-        .range(offset, offset + limit - 1); // offset + limit - 1 és correcte
+        .order(sortBy || 'nom', { ascending: sortOrder === 'asc' }) // Ordenació per defecte
+        .range(offset, offset + limit - 1);
 
     if (searchTerm) {
         query = query.or(`nom.ilike.%${searchTerm}%,nif.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
@@ -63,14 +51,57 @@ export async function fetchPaginatedSuppliers(
 
     const { data, error, count } = await query;
 
-    if (error) { /* ... gestió error ... */ return { data: [], count: 0 }; }
+    if (error) {
+        console.error("Error fetching paginated suppliers:", error);
+        return { data: [], count: 0 };
+    }
 
     return {
         data: data || [],
         count: count ?? 0
     };
 }
-// ... (fetchSupplierDetail, saveSupplierAction, deleteSupplierAction, fetchSuppliers, searchSuppliers es queden igual) ...
+
+/**
+ * Esborra un proveïdor.
+ * ✅ Adaptat per retornar ActionResult.
+ */
+export async function deleteSupplierAction(supplierId: string): Promise<ActionResult> { // <-- Retorna ActionResult
+    const session = await validateUserSession();
+    if ("error" in session) return { success: false, message: session.error.message };
+    const { supabase, activeTeamId } = session;
+
+    // Comprovem si hi ha despeses associades PRIMER
+    const { count: expenseCount, error: expenseError } = await supabase
+        .from('expenses')
+        .select('id', { count: 'exact', head: true })
+        .eq('supplier_id', supplierId)
+        .eq('team_id', activeTeamId);
+
+     if (expenseError) {
+        console.error("Error checking related expenses:", expenseError);
+        return { success: false, message: "Error en comprovar despeses relacionades." };
+    }
+
+    if (expenseCount && expenseCount > 0) {
+        return { success: false, message: `No es pot eliminar. Hi ha ${expenseCount} despesa(es) associada(es) a aquest proveïdor.` };
+    }
+
+    // Si no hi ha despeses, procedim a eliminar
+    const { error: deleteError } = await supabase
+        .from('suppliers')
+        .delete()
+        .eq('id', supplierId)
+        .eq('team_id', activeTeamId);
+
+    if (deleteError) {
+        console.error("Error deleting supplier:", deleteError);
+        return { success: false, message: `Error esborrant proveïdor: ${deleteError.message}` };
+    }
+
+    revalidatePath('/finances/suppliers');
+    return { success: true, message: "Proveïdor esborrat amb èxit." }; // <-- Retorn adaptat
+}
 
 /**
  * Obté el detall d'un únic proveïdor.
@@ -126,21 +157,7 @@ export async function saveSupplierAction(
     }
 }
 
-/**
- * Esborra un proveïdor.
- */
-export async function deleteSupplierAction(supplierId: string): Promise<ActionResult> {
-    const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message };
-    const { supabase, activeTeamId } = session;
-    const { error } = await supabase.from('suppliers').delete().eq('id', supplierId).eq('team_id', activeTeamId);
-    if (error) {
-        console.error("Error deleting supplier:", error);
-        return { success: false, message: `Error esborrant proveïdor: ${error.message}` };
-    }
-    revalidatePath('/finances/suppliers');
-    return { success: true, message: "Proveïdor esborrat amb èxit." };
-}
+
 
 /**
  * Obté la llista completa de proveïdors (per a selectors, etc.).

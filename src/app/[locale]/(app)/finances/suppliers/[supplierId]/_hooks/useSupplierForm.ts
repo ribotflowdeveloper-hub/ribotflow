@@ -9,7 +9,7 @@ import { type z } from 'zod';
 import { type Supplier } from '@/types/finances/suppliers';
 import { type SupplierFormData, saveSupplierAction } from '../../actions';
 // Assumeix que tens 'schemas.ts' a '../../schemas'
-import { type supplierFormSchema } from '../../schemas';
+import { type supplierFormSchema } from '../schemas';
 
 type SupplierFormValues = z.infer<typeof supplierFormSchema>;
 

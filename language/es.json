@@ -614,19 +614,22 @@
     "newQuoteButton": "Nuevo Presupuesto",
     "toast": {
       "successTitle": "¡Éxito!",
-      "errorTitle": "Error"
+      "errorTitle": "Error",
+      "deleteSuccess": "Presupuesto eliminado correctamente."
     },
     "status": {
-      "draft": "Borrador",
-      "sent": "Enviado",
-      "accepted": "Aceptado",
-      "declined": "Rechazado",
-      "unknown": "Desconocido"
+      "Draft": "Borrador",
+      "Sent": "Enviado",
+      "Accepted": "Aceptado",
+      "Declined": "Rechazado",
+      "Unknown": "Desconocido",
+      "all": "Todos",
+      "Invoiced": "Facturado"
     },
     "table": {
       "number": "Número",
       "client": "Cliente",
-      "issueDate": "Fecha Emisión",
+      "issueDate": "Fecha de Emisión",
       "total": "Total",
       "status": "Estado",
       "actions": "Acciones"
@@ -639,10 +642,19 @@
     "emptyState": "No se han encontrado presupuestos. ¡Crea uno nuevo!",
     "deleteDialog": {
       "title": "¿Estás absolutamente seguro?",
-      "description1": "Esta acción no se puede deshacer. Se eliminará permanentemente el presupuesto",
+      "description1": "Esta acción no se puede deshacer. El presupuesto se eliminará permanentemente.",
       "cancelButton": "Cancelar",
-      "confirmButton": "Sí, elimínalo",
+      "confirmButton": "Sí, eliminar",
       "deleting": "Eliminando..."
+    },
+    "filters": {
+      "searchPlaceholder": "Buscar por número o cliente...",
+      "statusPlaceholder": "Filtrar por estado",
+      "all": "Todos",
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "accepted": "Aceptado",
+      "declined": "Rechazado"
     }
   },
   "QuoteEditor": {
@@ -1633,12 +1645,14 @@
     "table": {
       "actions": "Acciones",
       "view": "Vista",
-      "toggleColumns": "Activa/desactiva columnas"
+      "toggleColumns": "Activar/desactivar columnas"
     },
     "actions": {
       "edit": "Editar",
       "delete": "Eliminar",
-      "view": "Ver detalle"
+      "view": "Ver detalle",
+      "openMenu": "Abrir menú",
+      "title": "Acciones"
     },
     "deleteDialog": {
       "title": "¿Estás seguro?",
@@ -1646,7 +1660,8 @@
       "description2": "Los datos eliminados no se podrán recuperar.",
       "confirmButton": "Sí, eliminar",
       "cancelButton": "Cancelar",
-      "deleting": "Eliminando..."
+      "deleting": "Eliminando...",
+      "confirm": "Eliminar {item}"
     },
     "pagination": {
       "previous": "Anterior",
@@ -1654,7 +1669,55 @@
       "showing": "Mostrando",
       "to": "a",
       "of": "de",
-      "entries": "registros"
+      "entries": "registros",
+      "firstPage": "Primera página",
+      "lastPage": "Última página",
+      "rowsPerPage": "Filas:",
+      "pageInfo": "Página {currentPage} de {totalPages}"
+    },
+    "InvoicesPage": {
+      "allStatuses": "Todos los estados",
+      "status": {
+        "Draft": "Borrador",
+        "Sent": "Enviada",
+        "Paid": "Pagada",
+        "Overdue": "Vencida",
+        "Cancelled": "Cancelada"
+      },
+      "deleteDialog": {
+        "title": "¿Quieres eliminar esta factura?"
+      }
+    },
+    "dataTable": {
+      "columnsButton": "Columnas",
+      "columnsLabel": "Mostrar/Ocultar Columnas",
+      "noResults": "No se han encontrado resultados.",
+      "selectedRows": "{selected} de {total} fila(s) seleccionada(s).",
+      "rowsPerPage": "Filas por página",
+      "pageInfo": "Página {page} de {pageCount}",
+      "firstPage": "Ir a la primera página",
+      "previousPage": "Ir a la página anterior",
+      "nextPage": "Ir a la página siguiente",
+      "lastPage": "Ir a la última página",
+      "sortAscending": "Ascendente",
+      "sortDescending": "Descendente"
+    },
+    "ExpensesPage": {
+      "deleteDialog": {
+        "title": "¿Estás seguro?",
+        "description": "Esta acción no se puede deshacer. El registro se eliminará permanentemente."
+      }
+    },
+    "SuppliersPage": {
+      "deleteDialog": {
+        "title": "¿Estás seguro?",
+        "description": "Esta acción no se puede deshacer. El registro se eliminará permanentemente."
+      }
+    },
+    "QuotesPage": {
+      "deleteDialog": {
+        "title": "¿Quieres eliminar este presupuesto?"
+      }
     }
   },
   "SuppliersPage": {

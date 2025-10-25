@@ -562,14 +562,17 @@
     "newQuoteButton": "New Quote",
     "toast": {
       "successTitle": "Success!",
-      "errorTitle": "Error"
+      "errorTitle": "Error",
+      "deleteSuccess": "Quote deleted successfully."
     },
     "status": {
-      "draft": "Draft",
-      "sent": "Sent",
-      "accepted": "Accepted",
-      "declined": "Declined",
-      "unknown": "Unknown"
+      "Draft": "Draft",
+      "Sent": "Sent",
+      "Accepted": "Accepted",
+      "Declined": "Declined",
+      "Unknown": "Unknown",
+      "all": "All",
+      "Invoiced": "Invoiced"
     },
     "table": {
       "number": "Number",
@@ -587,10 +590,19 @@
     "emptyState": "No quotes found. Create a new one!",
     "deleteDialog": {
       "title": "Are you absolutely sure?",
-      "description1": "This action cannot be undone. The quote will be permanently deleted",
+      "description1": "This action cannot be undone. The quote will be permanently deleted.",
       "cancelButton": "Cancel",
       "confirmButton": "Yes, delete it",
       "deleting": "Deleting..."
+    },
+    "filters": {
+      "searchPlaceholder": "Search by number or client...",
+      "statusPlaceholder": "Filter by status",
+      "all": "All",
+      "draft": "Draft",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "declined": "Declined"
     }
   },
   "QuoteEditor": {
@@ -1645,7 +1657,9 @@
     "actions": {
       "edit": "Edit",
       "delete": "Delete",
-      "view": "View details"
+      "view": "View details",
+      "openMenu": "Open menu",
+      "title": "Actions"
     },
     "deleteDialog": {
       "title": "Are you sure?",
@@ -1653,7 +1667,8 @@
       "description2": "Deleted data cannot be recovered.",
       "confirmButton": "Yes, delete",
       "cancelButton": "Cancel",
-      "deleting": "Deleting..."
+      "deleting": "Deleting...",
+      "confirm": "Delete {item}"
     },
     "pagination": {
       "previous": "Previous",
@@ -1661,7 +1676,55 @@
       "showing": "Showing",
       "to": "to",
       "of": "of",
-      "entries": "entries"
+      "entries": "entries",
+      "firstPage": "First page",
+      "lastPage": "Last page",
+      "rowsPerPage": "Rows:",
+      "pageInfo": "Page {currentPage} of {totalPages}"
+    },
+    "InvoicesPage": {
+      "allStatuses": "All statuses",
+      "status": {
+        "Draft": "Draft",
+        "Sent": "Sent",
+        "Paid": "Paid",
+        "Overdue": "Overdue",
+        "Cancelled": "Cancelled"
+      },
+      "deleteDialog": {
+        "title": "Do you want to delete this invoice?"
+      }
+    },
+    "dataTable": {
+      "columnsButton": "Columns",
+      "columnsLabel": "Show/Hide Columns",
+      "noResults": "No results found.",
+      "selectedRows": "{selected} of {total} row(s) selected.",
+      "rowsPerPage": "Rows per page",
+      "pageInfo": "Page {page} of {pageCount}",
+      "firstPage": "Go to first page",
+      "previousPage": "Go to previous page",
+      "nextPage": "Go to next page",
+      "lastPage": "Go to last page",
+      "sortAscending": "Ascending",
+      "sortDescending": "Descending"
+    },
+    "ExpensesPage": {
+      "deleteDialog": {
+        "title": "Are you sure?",
+        "description": "This action cannot be undone. The record will be permanently deleted."
+      }
+    },
+    "SuppliersPage": {
+      "deleteDialog": {
+        "title": "Are you sure?",
+        "description": "This action cannot be undone. The record will be permanently deleted."
+      }
+    },
+    "QuotesPage": {
+      "deleteDialog": {
+        "title": "Do you want to delete this quote?"
+      }
     }
   },
   "SuppliersPage": {

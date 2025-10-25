@@ -1,7 +1,9 @@
 // src/types/finances/invoices.ts
 import { type Database } from '@/types/supabase';
 import type { InvoiceStatus } from "@/config/invoices";
-
+export type {
+  InvoiceStatus
+} from "@/config/invoices"; 
 // --- Tipus Base (Reflectint Supabase - S'actualitzaran amb 'npx supabase gen types...') ---
 export type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
 export type InvoiceItemRow = Database['public']['Tables']['invoice_items']['Row'];

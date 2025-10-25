@@ -2750,53 +2750,70 @@ export type Database = {
         Args: { provider_name: string; refresh_token_value: string }
         Returns: undefined
       }
-      search_expenses:
-        | {
-            Args: {
-              p_category?: string
-              p_limit?: number
-              p_offset?: number
-              p_search_term?: string
-              p_sort_by?: string
-              p_sort_order?: string
-              p_status?: string
-              p_team_id: string
-            }
-            Returns: {
-              category: string
-              description: string
-              expense_date: string
-              id: number
-              invoice_number: string
-              is_billable: boolean
-              is_reimbursable: boolean
-              payment_date: string
-              project_id: string
-              status: string
-              supplier_id: string
-              supplier_nom: string
-              total_amount: number
-            }[]
-          }
-        | {
-            Args: {
-              p_category?: string
-              p_search_term?: string
-              p_sort_by?: string
-              p_sort_order?: string
-              p_team_id: string
-            }
-            Returns: {
-              category: string
-              description: string
-              expense_date: string
-              id: number
-              invoice_number: string
-              supplier_id: string
-              supplier_nom: string
-              total_amount: number
-            }[]
-          }
+      search_expenses: {
+        Args: {
+          p_category: string
+          p_limit: number
+          p_offset: number
+          p_search_term: string
+          p_sort_by: string
+          p_sort_order: string
+          p_status: string
+          p_team_id: string
+        }
+        Returns: {
+          category: string
+          created_at: string
+          description: string
+          discount_amount: number
+          expense_date: string
+          extra_data: Json
+          id: number
+          invoice_number: string
+          is_billable: boolean
+          is_reimbursable: boolean
+          notes: string
+          payment_date: string
+          payment_method: string
+          project_id: string
+          status: Database["public"]["Enums"]["expense_status"]
+          subtotal: number
+          supplier_id: string
+          supplier_nom: string
+          tax_amount: number
+          tax_rate: number
+          team_id: string
+          total_amount: number
+          total_count: number
+          user_id: string
+        }[]
+      }
+      search_invoices: {
+        Args: {
+          page_limit: number
+          page_offset: number
+          search_term: string
+          sort_direction: string
+          sort_field: string
+          status_filter?: string
+        }
+        Returns: {
+          client_name: string
+          contact_id: number
+          created_at: string
+          due_date: string
+          id: number
+          invoice_number: string
+          issue_date: string
+          notes: string
+          secure_id: string
+          status: string
+          team_id: string
+          total_amount: number
+          total_count: number
+          user_id: string
+        }[]
+      }
       search_paginated_invoices: {
         Args: {
           contact_id_param: number
@@ -2818,6 +2835,30 @@ export type Database = {
           issue_date: string
           status: string
           total_amount: number
+          total_count: number
+        }[]
+      }
+      search_paginated_quotes: {
+        Args: {
+          limit_param?: number
+          offset_param?: number
+          search_term_param?: string
+          sort_by_param?: string
+          sort_order_param?: string
+          status_param?: Database["public"]["Enums"]["quote_status"]
+          team_id_param: string
+        }
+        Returns: {
+          client_name: string
+          contact_empresa: string
+          contact_id: number
+          contact_nom: string
+          expiry_date: string
+          id: number
+          issue_date: string
+          quote_number: string
+          status: Database["public"]["Enums"]["quote_status"]
+          total: number
           total_count: number
         }[]
       }

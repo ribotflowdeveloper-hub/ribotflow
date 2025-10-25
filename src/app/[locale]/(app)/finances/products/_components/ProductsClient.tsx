@@ -1,186 +1,251 @@
-// /app/[locale]/(app)/crm/products/_components/ProductsClient.tsx (Refactoritzat)
+// /app/[locale]/(app)/crm/products/_components/ProductsClient.tsx
 "use client";
 
-import React from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useMemo, useState } from 'react'; // Afegim useState per al diàleg
+import Link from 'next/link'; // Per a enllaços (opcional)
+import { useLocale, useTranslations } from 'next-intl';
+import { PlusCircle, Edit, Plus } from 'lucide-react'; // Importem Edit
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { PlusCircle, List, LayoutGrid, Loader2, FilePlus2, Upload, Download } from "lucide-react";
-// ✅ 1. Importem el tipus des del seu nou origen.
-import type { Product } from "./ProductsData";
-import { ProductForm } from "./ProductForm";
-import { ProductsTableView } from "./ProductsTableView";
-import { ProductsCardView } from "./ProductsCardView";
-import { useTranslations } from "next-intl";
-import { useProducts } from "../_hooks/useProducts";
-import { startTransition } from "react";
-import { toast } from "sonner";
-import { exportToExcel, importFromExcel } from '@/app/[locale]/(app)/excel/actions';
-import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
 
-export function ProductsClient({ initialProducts }: { initialProducts: Product[] }) {
-    const t = useTranslations('ProductsPage');
-    const t2 = useTranslations('excel');
-    
-    const {
-        isFormOpen, setFormOpen,
-        selectedProduct,
-        searchTerm, setSearchTerm,
-        categoryFilter, setCategoryFilter,
-        viewMode, setViewMode,
-        categories,
-        filteredProducts,
-        isPending,
-        handleEdit,
-        handleCreate,
-        handleDelete,
-        handleSuccess,
-    } = useProducts({ initialProducts, t });
+// Tipus i Accions
+import { type Product } from "./ProductsData"; // Tipus Product
+import { type ActionResult } from '@/types/shared/actionResult';
+import { fetchPaginatedProducts, deleteProduct, type ProductPageFilters } from '../actions';
+// import { createProduct, updateProduct } from '../actions'; // Si els necessites aquí
 
-    const excelOptions: DropdownOption[] = [
-        { value: 'create', label: t2('products.create'), icon: FilePlus2 },
-        { value: 'load', label: t2('products.load'), icon: Upload },
-        { value: 'download', label: t2('products.download'), icon: Download },
-    ];
+// Components Compartits
+import { Button } from "@/components/ui/button";
+import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
+import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 
-    async function handleExportAndDownload(shouldDownload: boolean) {
-        toast.info(t2('products.startingexport'));
-        try {
-            const result = await exportToExcel('products', shouldDownload);
+// Components Específics
+import { ProductsFilters } from './ProductsFilters';
+import { ProductForm } from "./ProductForm"; // Mantenim el formulari
+import { PageHeader } from '@/components/shared/PageHeader'; // Importa PageHeader
+// Hook Genèric
+import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; // <-- Corregit 'usePaginateResource' a 'usePaginatedResource'
 
-            if (result.success && result.fileBuffer) {
-                const byteCharacters = atob(result.fileBuffer);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+// Utilitats
+import { formatCurrency } from '@/lib/utils/formatters';
 
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = result.fileName || 'export.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+// Alias i Constants
+type PaginatedProductsResponse = PaginatedResponse<Product>;
+type FetchProductsParams = PaginatedActionParams<ProductPageFilters>;
+const PRODUCT_ROWS_PER_PAGE_OPTIONS = [15, 30, 50];
 
-                toast.success(t2('successexport'));
-            } else {
-                toast.error(t2('errorexport'), { description: result.message });
-            }
-        } catch (error) {
-            toast.error(t2('unexpectederror'), { description: t2('couldnotcomplete') });
-            console.error(error);
-        }
+// Props del Component
+interface ProductsClientProps {
+  initialData: PaginatedProductsResponse;
+  categoriesForFilter: string[];
+}
+
+export function ProductsClient({ initialData, categoriesForFilter }: ProductsClientProps) {
+  const t = useTranslations('ProductsPage');
+  const tShared = useTranslations('Shared');
+  const locale = useLocale();
+
+  // Estat per al diàleg del formulari
+  const [isFormOpen, setFormOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // --- Definició de Columnes ---
+  const allColumns = useMemo<ColumnDef<Product>[]>(() => [
+    {
+      accessorKey: 'name',
+      header: t('table.name'),
+      enableSorting: true,
+      // Opcional: Fer clicable per editar? O deixar botó explícit?
+      cell: (product) => (
+        // Pots fer-lo link a una pàgina de detall si existeix, o no
+        <span className="font-medium">{product.name}</span>
+      ),
+    },
+    {
+      accessorKey: 'category',
+      header: t('table.category'),
+      enableSorting: true,
+      cell: (product) => product.category || '-',
+    },
+    {
+      accessorKey: 'price',
+      header: t('table.price'),
+      enableSorting: true,
+      cell: (product) => formatCurrency(product.price ?? 0), // Gestionem null
+      cellClassName: "text-right",
+    },
+    {
+      accessorKey: 'iva',
+      header: t('table.vat'), // Assegura't de tenir traducció
+      enableSorting: false, // Probablement no cal ordenar per IVA
+      cell: (product) => (product.iva !== null ? `${product.iva}%` : '-'),
+      cellClassName: "text-right",
+    },
+    {
+      accessorKey: 'unit',
+      header: t('table.unit'),
+      enableSorting: false,
+      cell: (product) => product.unit || '-',
+      cellClassName: "text-center", // O text-right
+    },
+    {
+      accessorKey: 'is_active',
+      header: t('table.active'), // Assegura't de tenir traducció
+      enableSorting: true,
+      cell: (product) => (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product.is_active
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+          }`}>
+          {product.is_active ? t('active') : t('inactive')}
+        </span>
+      ),
+      cellClassName: "text-center",
+    },
+    // Accions Edit/Delete
+    {
+      accessorKey: "actions_edit",
+      header: "", // Capçalera Accions (potser tShared('table.actions')?)
+      enableSorting: false,
+      cell: (product) => (
+        <Button
+          variant="ghost"
+          size="icon"
+          title={tShared('actions.edit')}
+          onClick={() => handleEditClick(product)} // Funció per obrir diàleg
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+      ),
+      cellClassName: "text-right", // Alineació del botó
     }
+  ], [t, tShared, locale]); // Afegim dependències necessàries
 
-    /* Funció del costat del client per iniciar el procés d'importació.
-    * Crea un input de fitxers i el llança.
-     */
-    function handleImport() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.xlsx, .xls';
-
-        input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) {
-                toast.error(t2('nofileselected'));
-                return;
-            }
-
-            toast.info(t2('processingfile'));
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            startTransition(async () => {
-                try {
-                    const result = await importFromExcel('products', formData);
-
-                    if (result.success) {
-                        toast.success(result.message);
-                    } else {
-                        toast.error(t2('errorloadingdata'), { description: result.message });
-                    }
-                } catch (error) {
-                    toast.error(t2('unexpectederrorloadingfile'), { description: (error as Error).message });
-                }
-            });
-        };
-
-        input.click();
+  // --- Hook Genèric ---
+  const {
+    isPending,
+    data: products, // Renombrem
+    itemToDelete: productToDelete, // Renombrem
+    setItemToDelete: setProductToDelete, // Renombrem
+    handleDelete,
+    handleSort,
+    currentSortColumn,
+    currentSortOrder,
+    searchTerm,
+    handleSearchChange,
+    filters,
+    handleFilterChange,
+    columnVisibility,
+    toggleColumnVisibility,
+    page,
+    totalPages,
+    handlePageChange,
+    rowsPerPage,
+    handleRowsPerPageChange,
+    // La funció de refetch pot ser útil després de desar el formulari
+    // forceRefetch, // Si el hook l'exposa (hauríem d'afegir-ho)
+  } = usePaginatedResource<Product, ProductPageFilters>({
+    initialData,
+    initialFilters: { category: 'all' },
+    initialSort: { column: 'name', order: 'asc' },
+    allColumns,
+    fetchAction: fetchPaginatedProducts as (params: FetchProductsParams) => Promise<PaginatedProductsResponse>,
+    deleteAction: deleteProduct as (id: string | number) => Promise<ActionResult>, // Passem directament si la signatura coincideix
+    initialRowsPerPage: PRODUCT_ROWS_PER_PAGE_OPTIONS[0],
+    rowsPerPageOptions: PRODUCT_ROWS_PER_PAGE_OPTIONS,
+    toastMessages: {
+      deleteSuccess: t('toast.deleteSuccess'), // Assegura't que existeix
     }
+  });
 
-    const handleExcelAction = (option: DropdownOption) => {
-        switch (option.value) {
-            case 'download':
-                startTransition(() => handleExportAndDownload(true)); // ➡️ ARA ES CRIDA startTransition
-                break;
-            case 'create':
-                startTransition(() => handleExportAndDownload(false)); // ➡️ I AQUÍ TAMBÉ
-                break;
-            case 'load':
-                handleImport();
-                break;
-            default:
-                break;
-        }
-    };
+  // --- Gestors per al Diàleg ---
+  const handleEditClick = (product: Product) => {
+    setSelectedProduct(product);
+    setFormOpen(true);
+  };
 
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold">{t('title')}</h1>
-                    <p className="text-muted-foreground">{t('description')}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <ExcelDropdownButton
-                        options={excelOptions}
-                        onSelect={handleExcelAction}
-                    />
-                    <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
-                        <DialogTrigger asChild>
-                            <Button onClick={handleCreate}><PlusCircle className="mr-2 h-4 w-4" />{t('newConceptButton')}</Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
-                            <DialogHeader><DialogTitle>{selectedProduct ? t('form.editTitle') : t('form.createTitle')}</DialogTitle></DialogHeader>
-                            <ProductForm product={selectedProduct} onSuccess={handleSuccess} />
-                        </DialogContent>
-                    </Dialog>
-                </div>
-            </div>
+  const handleCreateClick = () => {
+    setSelectedProduct(null);
+    setFormOpen(true);
+  };
 
-            <div className="flex flex-col md:flex-row gap-4">
-                <Input placeholder={t('searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-full md:w-[200px]"><SelectValue placeholder={t('categoryFilterPlaceholder')} /></SelectTrigger>
-                    <SelectContent>
-                        {categories.map(cat => (
-                            <SelectItem key={cat} value={cat}>
-                                {cat === 'all' ? t('allCategories') : cat}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <ToggleGroup type="single" value={viewMode} onValueChange={(value: "list" | "card") => value && setViewMode(value)} className="ml-auto">
-                    <ToggleGroupItem value="list" aria-label={t('listView')}><List className="h-4 w-4" /></ToggleGroupItem>
-                    <ToggleGroupItem value="card" aria-label={t('cardView')}><LayoutGrid className="h-4 w-4" /></ToggleGroupItem>
-                </ToggleGroup>
-            </div>
+  // Funció per tancar diàleg i potencialment refrescar dades
+  const handleFormSuccess = (/* product: Product */) => {
+    setFormOpen(false);
+    // Idealment, el hook usePaginatedResource hauria d'exposar una funció
+    // per forçar la recàrrega de la pàgina actual. Si no, podem fer:
+    // isInitialMount.current = false; // (Hauria d'estar dins del hook)
+    // setFilters(f => ({ ...f })); // Força refetch (requereix isInitialMount al hook)
+    // O simplement confiar en revalidatePath (menys immediat visualment)
+  };
 
-            <div>
-                {isPending ? (
-                    <div className="flex justify-center items-center h-64"><Loader2 className="w-8 h-8 animate-spin" /></div>
-                ) : viewMode === 'list' ? (
-                    <ProductsTableView products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
-                ) : (
-                    <ProductsCardView products={filteredProducts} onEdit={handleEdit} onDelete={handleDelete} />
-                )}
-            </div>
-        </div>
-    );
+  // --- Columnes Visibles i Descripció Esborrat ---
+  const visibleColumns = useMemo(
+    () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
+    [allColumns, columnVisibility]
+  );
+
+  const deleteDescription = (
+    <>
+      {tShared('deleteDialog.description1')}{' '}
+      <span className="font-bold">{productToDelete?.name}</span>.
+      <br />
+      {tShared('deleteDialog.description2')}
+    </>
+  );
+
+
+  // --- Renderització ---
+  return (
+    <div className="h-full flex flex-col gap-4"> {/* Afegit gap-4 */}
+      {/* Capçalera i Botons */}
+      {/* ✅ Substituïm la capçalera manual per PageHeader */}
+      <PageHeader title={t('title')}>
+        {/* El botó "Nou Producte" va com a 'children' */}
+        <Button asChild>
+          <Link href={`/${locale}/finances/products/new`}>
+            <Plus className="w-4 h-4 mr-1" /> {t('newProductButton')}
+          </Link>
+        </Button>
+      </PageHeader>
+
+      {/* Barra de Filtres / Accions */}
+      <div className="flex justify-between items-center">
+        <ProductsFilters
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          categories={categoriesForFilter}
+        />
+        <ColumnToggleButton
+          allColumns={allColumns}
+          columnVisibility={columnVisibility}
+          toggleColumnVisibility={toggleColumnVisibility}
+        />
+      </div>
+
+      {/* Taula Genèrica */}
+      <GenericDataTable<Product>
+        className="flex-grow overflow-hidden" // Per ocupar espai
+        columns={visibleColumns}
+        data={products}
+        isPending={isPending} // Passa l'estat de càrrega
+        onSort={handleSort}
+        currentSortColumn={currentSortColumn}
+        currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleRowsPerPageChange}
+        rowsPerPageOptions={PRODUCT_ROWS_PER_PAGE_OPTIONS}
+        deleteItem={productToDelete}
+        setDeleteItem={setProductToDelete}
+        onDelete={handleDelete}
+        deleteTitleKey="deleteDialog.title" // Clau genèrica
+        deleteDescription={deleteDescription}
+        emptyStateMessage={t('noProductsFound')} // Clau específica
+      />
+    </div>
+  );
 }

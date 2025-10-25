@@ -1,21 +1,19 @@
-// src/app/[locale]/(app)/finances/despeses/page.tsx
+// Exemple a src/app/[locale]/(app)/finances/expenses/page.tsx
 import { Suspense } from 'react';
 import { ExpensesData } from './_components/ExpensesData';
-import { ExpensesSkeleton } from './_components/ExpensesSkeleton';
+import { GenericDataTableSkeleton } from '@/components/shared/GenericDataTableSkeleton'; // Importa l'skeleton
 
-/**
- * Pàgina principal (Server Component) per a la gestió de despeses.
- * * ✅ ARQUITECTURA CORRECTA:
- * 1. La Pàgina (page.tsx) no ha de contenir lògica de dades.
- * 2. Utilitzem <Suspense> per gestionar l'estat de càrrega.
- * 3. <ExpensesData> és el Server Component que s'encarrega de l'autenticació
- * i de la càrrega de dades inicial (les primeres 50).
- * 4. <ExpensesSkeleton> es mostra mentre <ExpensesData> està carregant.
- */
 export default async function ExpensesPage() {
-    return (
-        <Suspense fallback={<ExpensesSkeleton />}>
-            <ExpensesData />
-        </Suspense>
-    );
+
+  // Pots calcular columnCount basant-te en les columnes visibles per defecte o un nombre fix
+  const defaultColumnCount = 7; // Ajusta segons les teves columnes + accions
+
+  return (
+    <div className="h-full"> {/* Assegura't que el contenidor té alçada */}
+      <Suspense fallback={<GenericDataTableSkeleton columnCount={defaultColumnCount} rowCount={10} />}>
+        {/* ExpensesData farà la crida asíncrona */}
+        <ExpensesData />
+      </Suspense>
+    </div>
+  );
 }

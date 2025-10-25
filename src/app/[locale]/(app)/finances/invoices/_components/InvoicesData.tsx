@@ -1,67 +1,74 @@
-import { fetchPaginatedInvoices } from '../actions';
-import { InvoicesClient } from './InvoiceClient';
-import { type InvoiceStatus, type InvoiceFilters } from '@/types/finances/invoices';
+// src/app/[locale]/(app)/finances/invoices/_components/InvoicesData.tsx
+import { redirect } from 'next/navigation'; // Per si cal redirigir
+import { InvoicesClient } from './InvoiceClient'; // El client refactoritzat
+import { fetchPaginatedInvoices, getClientsForFilter, type InvoicePageFilters } from '../actions'; // Accions actualitzades
+import { createClient as createServerActionClient } from '@/lib/supabase/server'; // Per validar sessió
+import { getTranslations } from 'next-intl/server'; // Per traduccions d'error
 
-// -------------------------------------------------------------------
-// ✅ CORRECCIÓ: La interfície ara espera un sol objecte 'searchParams'
-// -------------------------------------------------------------------
+// ✅ CORRECCIÓ: Les props ara són els paràmetres individuals
 interface InvoicesDataProps {
-  searchParams: {
-    page: string;
-    pageSize: string;
-    search?: string;
-    status?: string;
-    contactId?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  };
+  page?: string;
+  perPage?: string;
+  sort?: string;
+  status?: string;
+  search?: string;
 }
-
+// Opcions inicials (han de coincidir amb el hook)
+const INITIAL_ROWS_PER_PAGE = 10;
+const INITIAL_SORT_COLUMN = 'issue_date';
+const INITIAL_SORT_ORDER = 'desc';
 /**
- * Component ASYNC que carrega les dades de les factures basant-se
- * en els paràmetres de cerca rebuts.
+ * Component ASYNC que carrega les dades inicials per a InvoicesClient.
  */
-export async function InvoicesData({ searchParams }: InvoicesDataProps) {
-  // ✅ Desestructurem els paràmetres des de l'objecte 'searchParams'
-  const {
-    page: pageProp,
-    pageSize: pageSizeProp,
-    search,
-    status: statusProp,
-    contactId: contactIdProp,
-    sortBy: sortByProp,
-    sortOrder: sortOrderProp,
-  } = searchParams;
+export async function InvoicesData({}: InvoicesDataProps) { // Ja no necessitem searchParams directament
+  const supabase = createServerActionClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login'); // O la teva pàgina de login
+  }
 
-  // --- El codi de validació i parseig es manté pràcticament igual ---
-  const page = parseInt(pageProp, 10);
-  const pageSize = parseInt(pageSizeProp, 10);
-  const status = (statusProp as InvoiceStatus | undefined) ?? 'all';
-  const contactId = contactIdProp ?? 'all';
+  const t = await getTranslations('InvoicesPage'); // Per missatges d'error
 
-  // Validació del camp per ordenar
-  const allowedSortBy = ['issue_date', 'due_date', 'total_amount', 'status', 'invoice_number', 'client_name', 'contacts.nom'] as const;
-  type AllowedSortBy = typeof allowedSortBy[number];
-  const sortBy = (allowedSortBy.includes(sortByProp as AllowedSortBy) ? sortByProp : 'issue_date') as AllowedSortBy;
-  
-  const sortOrder = (sortOrderProp === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc';
+  try {
+    // Obtenim dades inicials i clients en paral·lel
+    const [initialDataResult, clientsResult] = await Promise.allSettled([
+      fetchPaginatedInvoices({
+        searchTerm: '', // O llegir de searchParams si ho prefereixes
+        filters: { status: 'all', contactId: 'all' } as InvoicePageFilters,
+        sortBy: INITIAL_SORT_COLUMN,
+        sortOrder: INITIAL_SORT_ORDER,
+        limit: INITIAL_ROWS_PER_PAGE,
+        offset: 0,
+      }),
+      getClientsForFilter() // Obtenim els clients per al filtre
+    ]);
 
-  // Construcció de l'objecte de filtres per a la consulta
-  const filters: InvoiceFilters = {
-    searchTerm: search || undefined,
-    status: status === 'all' ? undefined : status,
-    contactId: contactId === 'all' ? 'all' : parseInt(contactId, 10),
-    sortBy,
-    sortOrder,
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
-  };
+    // Gestionem errors
+    if (initialDataResult.status === 'rejected') {
+      console.error("Error fetching initial invoices data:", initialDataResult.reason);
+      throw new Error(t('errors.loadDataFailed') || "Error en carregar les dades inicials de factures.");
+    }
+    if (clientsResult.status === 'rejected') {
+      console.error("Error fetching clients for filter:", clientsResult.reason);
+      // Podem continuar sense el filtre de clients
+    }
 
-  // Crida a l'acció del servidor per obtenir les dades
-  const initialData = await fetchPaginatedInvoices(filters);
+    const initialData = initialDataResult.value;
+    const clientsForFilter = clientsResult.status === 'fulfilled' ? clientsResult.value : [];
 
-  // Passem les dades al component client per a la seva renderització
-  return (
-    <InvoicesClient initialData={initialData} />
-  );
+    // Passem les dades i opcions de filtre al client
+    return (
+      <InvoicesClient
+        initialData={initialData}
+        clientsForFilter={clientsForFilter}
+      />
+    );
+
+  } catch (error) {
+    console.error("Unhandled error during InvoicesData loading:", error);
+    if (error instanceof Error) {
+       throw error;
+    }
+    throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades de la pàgina de factures.");
+  }
 }

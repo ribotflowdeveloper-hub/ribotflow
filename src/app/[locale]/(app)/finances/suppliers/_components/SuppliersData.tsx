@@ -1,45 +1,43 @@
 // src/app/[locale]/(app)/finances/suppliers/_components/SuppliersData.tsx
-import { fetchPaginatedSuppliers, type SupplierFilters } from '../actions';
-import { SuppliersClient } from './SuppliersClient';
+import { redirect } from 'next/navigation';
+import { fetchPaginatedSuppliers, type SupplierPageFilters } from '../actions'; // Acció refactoritzada
+import { SuppliersClient } from './SuppliersClient'; // Client refactoritzat
+import { createClient as createServerActionClient } from '@/lib/supabase/server';
+import { getTranslations } from 'next-intl/server';
 
-// ✅ Definim les props per rebre 'searchParams'
-interface SuppliersDataProps {
-  searchParams: {
-    page?: string;
-    pageSize?: string;
-    search?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  };
-}
+// Constants inicials
+const INITIAL_ROWS_PER_PAGE = 10;
+const INITIAL_SORT_COLUMN = 'nom';
+const INITIAL_SORT_ORDER = 'asc';
 
-// Aquest component és 'async'
-export async function SuppliersData({ searchParams }: SuppliersDataProps) {
+// Ja no necessitem rebre 'searchParams' aquí
+export async function SuppliersData() {
+    const supabase = createServerActionClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        redirect('/login');
+    }
+    const t = await getTranslations('SuppliersPage'); // Per errors
 
-  // ✅ Parsegem els valors AQUÍ.
-  // Com que 'SuppliersData' té una 'key' única i està
-  // dins de <Suspense>, Next.js ara ho gestionarà correctament.
-  const page = parseInt(searchParams?.page ?? '1', 10);
-  const pageSize = parseInt(searchParams?.pageSize ?? '10', 10);
-  const search = searchParams?.search;
-  const sortBy = searchParams?.sortBy || 'nom';
-  const sortOrder = (searchParams?.sortOrder === 'desc' ? 'desc' : 'asc') as 'asc' | 'desc';
+    try {
+        // Cridem l'acció amb els paràmetres inicials
+        const initialData = await fetchPaginatedSuppliers({
+            searchTerm: '',
+            filters: {} as SupplierPageFilters, // Filtres buits
+            sortBy: INITIAL_SORT_COLUMN,
+            sortOrder: INITIAL_SORT_ORDER,
+            limit: INITIAL_ROWS_PER_PAGE,
+            offset: 0,
+        });
 
-  // Reconstruïm l'objecte 'filters'
-  const filters: SupplierFilters = {
-    searchTerm: search || undefined,
-    sortBy,
-    sortOrder,
-    limit: pageSize,
-    offset: (page - 1) * pageSize,
-  };
+        // Passem només les dades inicials al client
+        return (
+            <SuppliersClient initialData={initialData} />
+        );
 
-  console.log('SuppliersData (amb key) - Calling action with filters:', filters);
-
-  // Cridem l'acció
-  const initialData = await fetchPaginatedSuppliers(filters);
-
-  return (
-    <SuppliersClient initialData={initialData} />
-  );
+    } catch (error) {
+        console.error("Error during SuppliersData loading:", error);
+        // Gestionem l'error com als altres mòduls
+        throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades.");
+    }
 }

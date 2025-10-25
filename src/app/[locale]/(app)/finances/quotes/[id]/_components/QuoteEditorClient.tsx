@@ -54,7 +54,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
     } = useQuoteEditor(props);
     
     // Funció per a la navegació enrere
-    const handleBack = () => router.push(`/${props.locale}/crm/quotes`);
+    const handleBack = () => router.push(`/${props.locale}/finances/quotes`);
 
     // -------------------------------------------------------------
     // Funció de Renderitzat per a l'Estat d'Enviament (Card)

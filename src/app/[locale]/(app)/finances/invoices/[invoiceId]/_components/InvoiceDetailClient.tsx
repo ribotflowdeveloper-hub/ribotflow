@@ -8,14 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, Plus, Settings2, Eye, ArrowLeft } from 'lucide-react';
-import { type InvoiceDetail, type InvoiceStatus } from '@/types/finances/invoices';
+import { type InvoiceDetail, type InvoiceStatus } from '@/types/finances';
 import { useInvoiceDetail } from '../_hooks/useInvoiceDetail';
 import { InvoiceItemsEditor } from './InvoiceItemsEditor';
 import { formatCurrency } from '@/lib/utils/formatters';
 // import { CustomerCombobox } from '@/components/shared/CustomerCombobox';
 // import { DatePicker } from '@/components/ui/datepicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { INVOICE_STATUS_MAP } from '@/types/finances/invoices';
+import { INVOICE_STATUS_MAP } from '@/config/invoices';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,

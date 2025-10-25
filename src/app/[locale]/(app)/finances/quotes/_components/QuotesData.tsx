@@ -1,80 +1,48 @@
-import { QuotesClient } from './QuotesClient';
-import { validatePageSession } from "@/lib/supabase/session";
-import type { Database } from '@/types/supabase';
+// /app/[locale]/(app)/crm/quotes/_components/QuotesData.tsx
+import { redirect } from 'next/navigation';
+import { QuotesClient } from './QuotesClient'; // Client refactoritzat
+// Importem accions i tipus nous
+import { fetchPaginatedQuotes, type QuotePageFilters /*, getContactsForQuoteFilter */ } from '../actions';
+import { createClient as createServerActionClient } from '@/lib/supabase/server'; // Si cal per validar sessió aquí
+import { getTranslations } from 'next-intl/server'; // Per errors
 
-// ✅ 1. Definim els tipus necessaris localment, eliminant la dependència amb 'page.tsx'.
-type Quote = Database['public']['Tables']['quotes']['Row'];
-type Contact = Database['public']['Tables']['contacts']['Row'];
+// Constants inicials
+const INITIAL_ROWS_PER_PAGE = 10;
+const INITIAL_SORT_COLUMN = 'issue_date';
+const INITIAL_SORT_ORDER = 'desc';
 
-type QuoteWithContact = Quote & {
-  contacts: Pick<Contact, 'nom' | 'empresa'> | null;
-};
-
-// Aquest és el tipus de dades que la pàgina realment passa després de validar amb Zod.
-// És més segur i explícit.
-interface QuotesDataProps {
-  searchParams: {
-    page: string;
-    limit: string;
-    query?: string;
-    status?: string;
-    // Podries afegir aquí altres filtres si els necessites, com dates o sortBy
-    // issue_date_from?: string;
-    // sortBy?: string;
-  };
-}
-
-/**
- * Component Server-Side que carrega les dades dels pressupostos.
- */
-export async function QuotesData({ searchParams }: QuotesDataProps) {
-  try {
-    const { supabase, activeTeamId } = await validatePageSession();
-    
-    // Comencem la consulta base.
-    let query = supabase
-      .from('quotes')
-      .select('*, contacts(nom, empresa)')
-      .eq('team_id', activeTeamId);
-
-    // ✅ 2. Apliquem filtres de manera segura i directa.
-    if (searchParams.status) {
-      const allowedStatuses = ["Draft", "Sent", "Accepted", "Declined", "Invoiced"] as const;
-      type Status = typeof allowedStatuses[number];
-      const status = allowedStatuses.find(s => s === searchParams.status) as Status | undefined;
-      if (status) {
-        query = query.eq('status', status);
-      }
+// Ja no necessitem rebre searchParams aquí
+export async function QuotesData() {
+    const supabase = createServerActionClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        redirect('/login');
     }
+    const t = await getTranslations('QuotesPage'); // Per errors
 
-    if (searchParams.query) {
-      // Busca en múltiples camps si és necessari (exemple)
-      query = query.or(
-        `quote_number.ilike.%${searchParams.query}%,` +
-        `contacts.nom.ilike.%${searchParams.query}%`
-      );
+    try {
+        // Cridem l'acció per dades inicials
+        // Podríem cridar getContactsForQuoteFilter en paral·lel si l'implementem
+        const initialData = await fetchPaginatedQuotes({
+            searchTerm: '',
+            filters: { status: 'all' } as QuotePageFilters, // Filtres inicials
+            sortBy: INITIAL_SORT_COLUMN,
+            sortOrder: INITIAL_SORT_ORDER,
+            limit: INITIAL_ROWS_PER_PAGE,
+            offset: 0,
+        });
+
+        // const contactsForFilter = await getContactsForQuoteFilter(); // Si s'implementa
+
+        return (
+            <QuotesClient
+                initialData={initialData}
+                // contactsForFilter={contactsForFilter} // Passa si s'implementa
+            />
+        );
+
+    } catch (error) {
+        console.error("Error during QuotesData loading:", error);
+        throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades.");
     }
-    
-    // Ordenació per defecte (pots fer-la dinàmica si afegeixes sortBy a les props)
-    query = query.order('issue_date', { ascending: false });
-
-    // Paginació
-    const page = parseInt(searchParams.page, 10);
-    const limit = parseInt(searchParams.limit, 10);
-    const offset = (page - 1) * limit;
-    query = query.range(offset, offset + limit - 1);
-    
-    // ✅ 3. Executem la consulta amb el tipus de retorn esperat.
-    const { data: quotes, error } = await query.returns<QuoteWithContact[]>();
-    
-    if (error) throw error;
-    
-    // Passem les dades al component client.
-    return <QuotesClient initialQuotes={quotes || []} />;
-
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error loading quotes:", errorMessage);
-    return <div className="p-8 text-center text-destructive">Error loading quotes.</div>;
-  }
 }

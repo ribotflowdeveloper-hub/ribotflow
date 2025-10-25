@@ -584,11 +584,16 @@
     "vatLabel": "IVA: {iva}%",
     "editButton": "Editar",
     "deleteButton": "Eliminar",
+    "active": "Actiu",   
+    "inactive": "Inactiu", 
+    "newProductButton": "Nou Concepte",
     "table": {
       "name": "Nom",
       "category": "Categoria",
-      "price": "Preu Base",
+      "price": "Preu",
+      "vat": "IVA (%)", 
       "unit": "Unitat",
+      "active": "Estat",
       "actions": "Accions"
     },
     "form": {
@@ -616,13 +621,18 @@
       "requiredFieldsDesc": "El nom i el preu són obligatoris.",
       "productCreated": "Producte creat!",
       "productCreatedDesc": "S'ha afegit a la teva llista de productes.",
-      "productDeleted": "Producte eliminat correctament."
+      "productDeleted": "Producte eliminat correctament.",
+      "deleteSuccess": "Eliminat!",
+      "productUpdated": "Producte actualitzat correctament."
     },
     "deleteDialog": {
       "title": "Estàs segur?",
       "description": "Aquesta acció no es pot desfer. S'eliminarà permanentment el producte.",
       "cancelButton": "Cancel·lar",
       "confirmButton": "Sí, elimina'l"
+    },
+    "errors": {
+        "loadDataFailed": "Error en carregar les dades dels conceptes."
     }
   },
   "QuotesPage": {
@@ -630,14 +640,17 @@
     "newQuoteButton": "Nou Pressupost",
     "toast": {
       "successTitle": "Èxit!",
-      "errorTitle": "Error"
+      "errorTitle": "Error",
+      "deleteSuccess": "Pressupost eliminat correctament."
     },
     "status": {
-      "draft": "Esborrany",
-      "sent": "Enviat",
-      "accepted": "Acceptat",
-      "declined": "Rebutjat",
-      "unknown": "Desconegut"
+      "Draft": "Esborrany",
+      "Sent": "Enviat",
+      "Accepted": "Acceptat",
+      "Declined": "Rebutjat",
+      "Unknown": "Desconegut",
+      "all": "Tots",
+      "Invoiced": "Facturat"
     },
     "table": {
       "number": "Número",
@@ -659,6 +672,15 @@
       "cancelButton": "Cancel·lar",
       "confirmButton": "Sí, esborra'l",
       "deleting": "Esborrant..."
+    },
+    "filters": {
+      "searchPlaceholder": "Cerca per número o client...",
+      "statusPlaceholder": "Filtrar per estat",
+      "all": "Tots",
+      "draft": "Esborrany",
+      "sent": "Enviat",
+      "accepted": "Acceptat",
+      "declined": "Rebutjat"
     }
   },
   "QuoteEditor": {
@@ -947,7 +969,20 @@
       "cancelled": "Anul·lada"
     },
     "filter": {
-      "allStatuses": "Tots els estats"
+      "allStatuses": "Tots els estats",
+      "searchPlaceholder": "Busca per descripció...",
+      "allCategories": "Totes les categories"
+    },
+    "errors": {
+      "loadDataFailed": "Error en carregar les despeses"
+    },
+    "toast": {
+      "deleteSuccess": "Despesa eliminada correctament.",
+      "deleteError": "Error en eliminar la despesa."
+    },
+    "deleteDialog": {
+      "title": "Estàs segur?",
+      "description": "Aquesta acció no es pot desfer."
     }
   },
   "ExpenseDetailPage": {
@@ -1055,12 +1090,12 @@
       "statusPlaceholder": "Tots els estats",
       "allStatuses": "Tots els estats",
       "searchLabel": "Cerca",
-      "status": {
-        "Draft": "Esborrany",
-        "Sent": "Enviada",
-        "Paid": "Pagada",
-        "Overdue": "Vençuda",
-        "Cancelled": "Cancel·lada"
+      "statuses": {
+        "draft": "Esborrany",
+        "sent": "Enviada",
+        "paid": "Pagada",
+        "overdue": "Vençuda",
+        "cancelled": "Cancel·lada"
       }
     }
   },
@@ -1613,7 +1648,9 @@
     "actions": {
       "edit": "Editar",
       "delete": "Eliminar",
-      "view": "Veure detall"
+      "view": "Veure detall",
+      "openMenu": "Obrir menú",
+      "title": "Accions"
     },
     "deleteDialog": {
       "title": "Estàs segur?",
@@ -1621,7 +1658,8 @@
       "description2": "Les dades eliminades no es podran recuperar.",
       "confirmButton": "Sí, esborra",
       "cancelButton": "Cancel·la",
-      "deleting": "S'està esborrant..."
+      "deleting": "S'està esborrant...",
+      "confirm": "Esborra {item}"
     },
     "pagination": {
       "previous": "Anterior",
@@ -1629,17 +1667,54 @@
       "showing": "Mostrant",
       "to": "a",
       "of": "de",
-      "entries": "registres"
+      "entries": "registres",
+      "firstPage": "Primera pàgina",
+      "lastPage": "Última pàgina",
+      "rowsPerPage": "Files:",
+      "pageInfo": "Pàgina {currentPage} de {totalPages}"
     },
     "InvoicesPage": {
+      "allStatuses": "Tots els estats", 
       "status": {
-        "paid": "Pagada",
-        "unpaid": "No pagada",
-        "overdue": "Vencida",
-        "draft": "Esborrany"
+        "Draft": "Esborrany",
+        "Sent": "Enviada",
+        "Paid": "Pagada",
+        "Overdue": "Vençuda",
+        "Cancelled": "Cancel·lada"
       },
       "deleteDialog": {
-        "title": "Estàs segur que vols esborrar aquesta factura?"
+        "title": "Vols esborrar aquesta factura?"
+      }
+    },
+    "dataTable": {
+      "columnsButton": "Columnes",
+      "columnsLabel": "Mostra/Amaga Columnes",
+      "noResults": "No s'han trobat resultats.",
+      "selectedRows": "{selected} de {total} fila(es) seleccionada(es).",
+      "rowsPerPage": "Files per pàgina",
+      "pageInfo": "Pàgina {page} de {pageCount}",
+      "firstPage": "Anar a la primera pàgina",
+      "previousPage": "Anar a la pàgina anterior",
+      "nextPage": "Anar a la pàgina següent",
+      "lastPage": "Anar a la darrera pàgina",
+      "sortAscending": "Ascendent",
+      "sortDescending": "Descendent"
+    },
+    "ExpensesPage": {
+      "deleteDialog": {
+        "title": "Estàs segur?",
+        "description": "Aquesta acció no es pot desfer. S'esborrarà permanentment el registre"
+      }
+    },
+    "SuppliersPage": {
+      "deleteDialog": {
+        "title": "Estàs segur?",
+        "description": "Aquesta acció no es pot desfer. S'esborrarà permanentment el registre"
+      }
+    },
+    "QuotesPage": {
+      "deleteDialog": {
+        "title": "Vols esborrar aquest pressupost?"
       }
     }
   },

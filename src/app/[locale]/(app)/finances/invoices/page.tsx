@@ -1,53 +1,20 @@
+// src/app/[locale]/(app)/finances/invoices/page.tsx
 import { Suspense } from 'react';
 import { InvoicesData } from './_components/InvoicesData';
-import { InvoicesSkeleton } from './_components/InvoicesSkeleton';
-import { z } from 'zod';
+// ❗ Canvia InvoicesSkeleton per GenericDataTableSkeleton si vols usar el genèric
+import { GenericDataTableSkeleton } from '@/components/shared/GenericDataTableSkeleton';
 
-// (Opcional però recomanat) Zod schema per validar i netejar els paràmetres de cerca
-const searchParamsSchema = z.object({
-  page: z.string().optional().default('1'),
-  pageSize: z.string().optional().default('10'),
-  search: z.string().optional(),
-  status: z.string().optional(),
-  contactId: z.string().optional(),
-  sortBy: z.string().optional(),
-  sortOrder: z.string().optional(),
-});
+// Ja no necessitem rebre 'searchParams' aquí directament
+export default async function InvoicesListPage() {
 
-// -------------------------------------------------------------------
-// ✅ CORRECCIÓ: Definim el tipus de les props amb 'searchParams' com a Promise
-// -------------------------------------------------------------------
-interface InvoicesPageProps {
-  searchParams: Promise<{
-    page?: string;
-    pageSize?: string;
-    search?: string;
-    status?: string;
-    contactId?: string;
-    sortBy?: string;
-    sortOrder?: string;
-  }>;
-}
-
-/**
- * Component de pàgina per a la llista de factures.
- */
-export default async function InvoicesListPage(props: InvoicesPageProps) {
-  
-  // ✅ Resolem la promesa per obtenir els paràmetres de cerca
-  const resolvedSearchParams = await props.searchParams;
-
-  // ✅ (Recomanat) Validem els paràmetres amb Zod
-  const validatedSearchParams = searchParamsSchema.parse(resolvedSearchParams);
-
-  // Creem una 'key' única per a Suspense per assegurar que es refresca en canviar els filtres
-  const suspenseKey = JSON.stringify(validatedSearchParams);
+  // Definim el nombre de columnes per a l'skeleton (ajusta segons les teves columnes visibles per defecte)
+  const defaultColumnCount = 7; // invoice_number, client_name, issue_date, total_amount, status, edit action + delete action (implícit)
 
   return (
-    <Suspense key={suspenseKey} fallback={<InvoicesSkeleton />}>
-      {/* ✅ Passem l'objecte de paràmetres sencer, ja resolt i validat.
-          Això és més net que passar cada propietat individualment. */}
-      <InvoicesData searchParams={validatedSearchParams} />
+    // La 'key' ja no és necessària si la lògica de paràmetres és interna al hook
+    <Suspense fallback={<GenericDataTableSkeleton columnCount={defaultColumnCount} rowCount={10} />}>
+      {/* InvoicesData ara gestiona la càrrega inicial */}
+      <InvoicesData />
     </Suspense>
   );
 }

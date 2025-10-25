@@ -1,37 +1,67 @@
-// src/app/[locale]/(app)/finances/despeses/_components/ExpensesData.tsx
+// src/app/[locale]/(app)/finances/expenses/_components/ExpensesData.tsx
 import { redirect } from 'next/navigation';
 import { ExpensesClient } from './ExpensesClient';
-// ✅ Importem la nova funció
-import { fetchPaginatedExpenses } from '../actions';
+import { fetchPaginatedExpenses, getUniqueExpenseCategories } from '../actions'; // Ja importàvem les dues
 import { getTranslations } from 'next-intl/server';
-import { createClient as createServerActionClient } from '@/lib/supabase/server'; 
+import { createClient as createServerActionClient } from '@/lib/supabase/server';
+import { type ExpensePageFilters } from '../actions';
+
+const INITIAL_PAGE_LIMIT = 15;
 
 export async function ExpensesData() {
     const supabase = createServerActionClient();
+    // Validació inicial per si l'usuari no està autenticat
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-        redirect('/login'); 
+        redirect('/login');
     }
-    
-    const t = await getTranslations('ExpensesPage');
-    
-    try {
-        // ✅ Cridem la nova funció de paginació
-        const initialData = await fetchPaginatedExpenses({
-            searchTerm: '',
-            category: 'all',
-            status: 'all', // Assegura't de passar el filtre d'estat
-            sortBy: 'expense_date',
-            sortOrder: 'desc',
-            limit: 50,
-            offset: 0,
-        });
 
-        // ✅ Passem les dades inicials completes al client
-        return <ExpensesClient initialData={initialData} />;
-        
+    const t = await getTranslations('ExpensesPage');
+
+    try {
+        // Obtenim dades inicials i categories en paral·lel
+        const [initialDataResult, categoriesResult] = await Promise.allSettled([
+            fetchPaginatedExpenses({
+                searchTerm: '',
+                filters: {
+                    category: 'all',
+                    status: 'all',
+                } as ExpensePageFilters,
+                sortBy: 'expense_date',
+                sortOrder: 'desc',
+                limit: INITIAL_PAGE_LIMIT,
+                offset: 0,
+            }),
+            // getUniqueExpenseCategories ara gestiona la sessió internament
+            getUniqueExpenseCategories()
+        ]);
+
+        // Gestionem errors
+        if (initialDataResult.status === 'rejected') {
+            console.error("Error fetching initial expenses data:", initialDataResult.reason);
+            throw new Error(t('errors.loadDataFailed') || "Error en carregar les dades inicials de despeses.");
+        }
+        if (categoriesResult.status === 'rejected') {
+            console.error("Error fetching expense categories:", categoriesResult.reason);
+            console.warn("No s'han pogut carregar les categories per filtrar.");
+        }
+
+        const initialData = initialDataResult.value;
+        const categories = categoriesResult.status === 'fulfilled' ? categoriesResult.value : [];
+        console.log("ExpensesData: Passing categories to ExpensesClient:", categories);
+        // Passem dades i opcions de filtre al client
+        return (
+            <ExpensesClient
+                initialData={initialData}
+                filterOptions={{ categories }}
+            />
+        );
+
     } catch (error) {
-        console.error("Error durant la càrrega de ExpensesData:", error);
+        console.error("Unhandled error during ExpensesData loading:", error);
+        if (error instanceof Error) {
+            throw error;
+        }
         throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades de la pàgina de despeses. Si us plau, intenta-ho de nou més tard.");
     }
 }

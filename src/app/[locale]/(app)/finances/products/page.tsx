@@ -1,24 +1,22 @@
+// /app/[locale]/(app)/crm/products/page.tsx
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { ProductsData } from './_components/ProductsData';
-import { ProductsSkeleton } from './_components/ProductsSkeleton';
+// Importem l'skeleton genèric
+import { GenericDataTableSkeleton } from '@/components/shared/GenericDataTableSkeleton';
 
 export const metadata: Metadata = {
-  title: 'Conceptes | Ribot',
+  title: 'Conceptes | Ribot', // O 'Productes | Ribot'
 };
 
-
-/**
- * @summary La pàgina principal de Productes, que ara actua com a orquestrador de Suspense.
- * Aquest component es renderitza a l'instant.
- */
 export default function ProductsPage() {
+  // Ajusta el nombre de columnes segons la teva taula
+  const defaultColumnCount = 7; // name, category, price, vat, unit, active, actions
+
   return (
-    <div className="p-4 md:p-6 lg:p-8">
-      <Suspense fallback={<ProductsSkeleton />}>
-        {/* Suspense mostrarà l'esquelet a l'instant, eliminant la "congelació".
-          Mentrestant, <ProductsData /> carregarà els productes en segon pla.
-        */}
+    // Ajustem padding si cal, o deixem que el Client ho gestioni
+    <div className="h-full"> {/* Assegura't que el contenidor té alçada */}
+      <Suspense fallback={<GenericDataTableSkeleton columnCount={defaultColumnCount} rowCount={15} />}>
         <ProductsData />
       </Suspense>
     </div>

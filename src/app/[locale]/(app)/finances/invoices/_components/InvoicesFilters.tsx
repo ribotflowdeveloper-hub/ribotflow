@@ -3,72 +3,94 @@
 
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+// ❗ Eliminem Label si ja no s'usa directament per embolcallar
+// import { Label } from "@/components/ui/label";
 import { useTranslations } from "next-intl";
-// Importa el mapa d'estats per omplir el selector
-import { INVOICE_STATUS_MAP, type InvoiceStatus } from "@/config/invoices";
+import { type InvoiceStatus } from "@/types/finances/invoices"; // Manté l'import de tipus
+import { type InvoicePageFilters } from '../actions'; // Manté l'import de tipus
 
+// Opcions d'estat
+const statusOptions: { value: InvoiceStatus | 'all', labelKey: string }[] = [
+    { value: 'all', labelKey: 'allStatuses' },
+    { value: 'Draft', labelKey: 'status.Draft' },
+    { value: 'Sent', labelKey: 'status.Sent' },
+    { value: 'Paid', labelKey: 'status.Paid' },
+    { value: 'Overdue', labelKey: 'status.Overdue' },
+    { value: 'Cancelled', labelKey: 'status.Cancelled' },
+];
+
+// ✅ CORRECCIÓ: Interfície de Props Actualitzada
 interface InvoiceFiltersProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  status: InvoiceStatus | 'all';
-  onStatusChange: (value: string) => void; // El Select retorna string
-  // Podries afegir filtre per client aquí
-  // clientId: string | 'all';
-  // onClientChange: (value: string) => void;
-  // clients: { id: number; nom: string | null }[]; // Llista de clients
+  // Ara rep l'objecte 'filters'
+  filters: InvoicePageFilters;
+  // Ara rep el gestor genèric 'onFilterChange'
+  onFilterChange: (key: keyof InvoicePageFilters, value: string) => void;
+  clients?: { id: number; nom: string | null }[];
 }
 
 export function InvoiceFilters({
   searchTerm,
   onSearchChange,
-  status,
-  onStatusChange,
-  // clientId,
-  // onClientChange,
-  // clients
+  // ✅ Rebem les noves props
+  filters,
+  onFilterChange,
+  clients = [],
 }: InvoiceFiltersProps) {
-  const t = useTranslations('InvoicesPage.filters'); // Namespace per a traduccions de filtres
+  const t = useTranslations('InvoicesPage.filters');
+  const tStatus = useTranslations('Shared.InvoicesPage'); // Ajusta si cal
 
   return (
-    <div className="flex flex-col md:flex-row items-end gap-4">
-      {/* Cerca General */}
-      <div className="w-full md:w-auto">
-        <Label className="py-2" htmlFor="search-invoice">{t('searchLabel')} </Label>
-        <Input
-          id="search-invoice"
-          placeholder={t('searchPlaceholder')}
-          value={searchTerm}
-          onChange={(e) => onSearchChange(e.target.value)}
-          className="max-w-xs" // Ajusta amplada si cal
-        />
-      </div>
+    // ✅ Tornem a l'estil simple com a ExpensesFilters
+    <div className="flex items-center gap-2">
+      <Input
+        placeholder={t('searchPlaceholder') || "Busca nº o client..."}
+        value={searchTerm}
+        onChange={(e) => onSearchChange(e.target.value)}
+        className="max-w-xs h-9 bg-card border border-input" // Estil unificat
+      />
 
       {/* Filtre per Estat */}
-      <div className="w-full md:w-auto">
-        <Label className="py-2" htmlFor="status-filter">{t('statusLabel')}</Label>
-        <Select value={status} onValueChange={onStatusChange}>
-          <SelectTrigger id="status-filter" className="w-full md:w-[180px]">
-            <SelectValue placeholder={t('statusPlaceholder')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('allStatuses')}</SelectItem>
-            {INVOICE_STATUS_MAP.map((s) => (
-              <SelectItem key={s.dbValue} value={s.dbValue}>
-                {/* Hauràs d'afegir traduccions per a cada estat, ex: t(`status.${s.key}`) */}
-                {s.dbValue}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Select
+        // ✅ Llegim el valor de l'objecte 'filters'
+        value={filters.status}
+        // ✅ Cridem el gestor genèric amb la clau 'status'
+        onValueChange={(value) => onFilterChange('status', value)}
+      >
+        <SelectTrigger className="w-[160px] h-9 bg-card border border-input"> {/* Estil unificat */}
+          <SelectValue placeholder={t('statusPlaceholder')} />
+        </SelectTrigger>
+        <SelectContent>
+          {statusOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {tStatus(option.labelKey, {})}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
-       {/* TODO: Filtre per Client (si cal) */}
-       {/* <div className="w-full md:w-auto">
-         <Label htmlFor="client-filter">{t('clientLabel')}</Label>
-         <Select value={clientId} onValueChange={onClientChange}> ... </Select>
-       </div> */}
-
+      {/* Filtre per Client (Opcional) */}
+      {clients.length > 0 && (
+          <Select
+              // ✅ Llegim el valor de l'objecte 'filters'
+              value={filters.contactId}
+              // ✅ Cridem el gestor genèric amb la clau 'contactId'
+              onValueChange={(value) => onFilterChange('contactId', value)}
+          >
+              <SelectTrigger className="w-[180px] h-9 bg-card border border-input"> {/* Estil unificat */}
+                  <SelectValue placeholder={t('clientPlaceholder') || "Tots els clients"} />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="all">{t('allClients') || "Tots els clients"}</SelectItem>
+                  {clients.map((client) => (
+                      <SelectItem key={client.id} value={String(client.id)}>
+                          {client.nom || `Client #${client.id}`}
+                      </SelectItem>
+                  ))}
+              </SelectContent>
+          </Select>
+      )}
     </div>
   );
 }
