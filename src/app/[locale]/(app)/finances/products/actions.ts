@@ -2,16 +2,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { validateUserSession } from "@/lib/supabase/session";
 import { type Database } from '@/types/supabase';
+// ✅ Importem ActionResult des del seu lloc
 import {
   type PaginatedActionParams,
   type PaginatedResponse
-} from '@/hooks/usePaginateResource'; // Tipus genèrics
+} from '@/hooks/usePaginateResource';
 import { unstable_cache as cache } from 'next/cache';
-import { createAdminClient } from "@/lib/supabase/admin"; // Client admin per cache
-import { createClient } from "@/lib/supabase/client"; // Client de servidor per a page.tsx  
+import { createAdminClient } from "@/lib/supabase/admin";
+// ✅ Importem l'schema i el tipus FormState des del nou fitxer
+import { productSchema, type FormState } from './schemas';
+
 // --- Tipus Específics ---
 export type Product = Database['public']['Tables']['products']['Row'];
 
@@ -95,25 +97,6 @@ export async function getUniqueProductCategories(): Promise<string[]> {
   if ("error" in session) return [];
   return getCachedUniqueProductCategories(session.activeTeamId);
 }
-
-// Esquema de Zod per al formulari (el que rep ProductForm)
-const productSchema = z.object({
-  name: z.string().min(3, 'El nom ha de tenir almenys 3 caràcters.'),
-  price: z.coerce.number().positive('El preu ha de ser un número positiu.'),
-  iva: z.coerce.number().min(0).optional().nullable(),
-  discount: z.coerce.number().min(0).max(100).optional().nullable(),
-  description: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
-  unit: z.string().optional().nullable(),
-  is_active: z.boolean().default(true),
-});
-
-export type FormState = {
-  success: boolean;
-  message: string;
-  errors?: Record<string, string[] | undefined>;
-  data?: Product | null;
-};
 
 // --- Funcions CRUD (ja les tenies) ---
 
@@ -232,91 +215,3 @@ export async function deleteProduct(id: number): Promise<FormState> {
   return { success: true, message: 'Producte eliminat correctament.' };
 }
 
-// --- ✅ NOVA FUNCIÓ (per a ProductForm en mode edició) ---
-export async function getProductById(
-  id: number
-): Promise<{ product: Product | null; error: string | null }> {
-  const session = await validateUserSession();
-  if ('error' in session) {
-    return { product: null, error: session.error.message };
-  }
-  const { supabase, activeTeamId } = session;
-
-  const { data, error } = await supabase
-    .from('products')
-    .select('*')
-    .eq('id', id)
-    .eq('team_id', activeTeamId) // Assegurem permisos
-    .single();
-
-  if (error) {
-    return { product: null, error: error.message };
-  }
-  return { product: data, error: null };
-}
-
-// --- ✅ NOVA FUNCIÓ (per a page.tsx) ---
-// Defineix l'esquema de validació per als paràmetres de la taula
-const tableStateSchema = z.object({
-  page: z.number().min(1).default(1),
-  perPage: z.number().min(1).max(100).default(10),
-  sort: z.string().optional(),
-  name: z.string().optional(),
-  status: z.string().optional(),
-});
-
-export async function getProductsList(
-  params: z.infer<typeof tableStateSchema>
-) {
-  // Validem paràmetres (tot i que page.tsx ja ho hauria fet)
-  const validation = tableStateSchema.safeParse(params);
-  if (!validation.success) {
-    // Retornem valors per defecte en cas d'error
-    return { data: [], pageCount: 0, error: 'Paràmetres invàlids' };
-  }
-
-  const { page, perPage, sort, name, status } = validation.data;
-
-  // Necessitem un client Supabase de servidor per a aquesta funció
-
-  const supabase = createClient();
-
-  const session = await validateUserSession();
-  if ('error' in session) {
-    return { data: [], pageCount: 0, error: session.error.message };
-  }
-  const { activeTeamId } = session;
-
-  const offset = (page - 1) * perPage;
-  const [sortField, sortOrder] = sort?.split('.') || ['created_at', 'desc'];
-
-  let query = supabase
-    .from('products')
-    .select('*', { count: 'exact' })
-    .eq('team_id', activeTeamId);
-
-  // 1. Aplicar Filtres
-  if (name) {
-    query = query.ilike('name', `%${name}%`);
-  }
-  if (status) {
-    query = query.eq('is_active', status === 'active');
-  }
-
-  // 2. Aplicar Ordenació
-  query = query.order(sortField, { ascending: sortOrder === 'asc' });
-
-  // 3. Aplicar Paginació
-  query = query.range(offset, offset + perPage - 1);
-
-  // Executar la consulta
-  const { data, error, count } = await query;
-
-  if (error) {
-    return { data: [], pageCount: 0, error: error.message };
-  }
-
-  const pageCount = count ? Math.ceil(count / perPage) : 0;
-
-  return { data, pageCount, error: null };
-}

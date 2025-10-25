@@ -1,29 +1,28 @@
 // /app/[locale]/(app)/crm/products/_components/ProductsClient.tsx
 "use client";
 
-import { useMemo, useState } from 'react'; // Afegim useState per al diàleg
-import Link from 'next/link'; // Per a enllaços (opcional)
+import { useMemo} from 'react'; // Keep useState for creation dialog
+import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { PlusCircle, Edit, Plus } from 'lucide-react'; // Importem Edit
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Edit } from 'lucide-react'; // Keep Edit for link, Plus for button
 
 // Tipus i Accions
-import { type Product } from "./ProductsData"; // Tipus Product
+import { type Product } from "./ProductsData";
 import { type ActionResult } from '@/types/shared/actionResult';
 import { fetchPaginatedProducts, deleteProduct, type ProductPageFilters } from '../actions';
-// import { createProduct, updateProduct } from '../actions'; // Si els necessites aquí
+// createProduct/updateProduct actions are used within ProductForm
 
 // Components Compartits
 import { Button } from "@/components/ui/button";
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
+import { PageHeader } from '@/components/shared/PageHeader';
 
 // Components Específics
 import { ProductsFilters } from './ProductsFilters';
-import { ProductForm } from "./ProductForm"; // Mantenim el formulari
-import { PageHeader } from '@/components/shared/PageHeader'; // Importa PageHeader
+
 // Hook Genèric
-import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; // <-- Corregit 'usePaginateResource' a 'usePaginatedResource'
+import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; // Corrected path
 
 // Utilitats
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -44,20 +43,23 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
   const tShared = useTranslations('Shared');
   const locale = useLocale();
 
-  // Estat per al diàleg del formulari
-  const [isFormOpen, setFormOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // --- Definició de Columnes ---
+
+  // --- Column Definitions ---
   const allColumns = useMemo<ColumnDef<Product>[]>(() => [
     {
       accessorKey: 'name',
       header: t('table.name'),
       enableSorting: true,
-      // Opcional: Fer clicable per editar? O deixar botó explícit?
       cell: (product) => (
-        // Pots fer-lo link a una pàgina de detall si existeix, o no
-        <span className="font-medium">{product.name}</span>
+        <Link
+          // ✅ Corrected Route: crm/products/
+          href={`/${locale}/finances/products/${product.id}`}
+          className="font-medium cursor-pointer text-primary hover:underline"
+          title={`${tShared('actions.view')}: ${product.name}`}
+        >
+          {product.name}
+        </Link>
       ),
     },
     {
@@ -70,13 +72,13 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
       accessorKey: 'price',
       header: t('table.price'),
       enableSorting: true,
-      cell: (product) => formatCurrency(product.price ?? 0), // Gestionem null
+      cell: (product) => formatCurrency(product.price ?? 0),
       cellClassName: "text-right",
     },
     {
       accessorKey: 'iva',
-      header: t('table.vat'), // Assegura't de tenir traducció
-      enableSorting: false, // Probablement no cal ordenar per IVA
+      header: t('table.vat'),
+      enableSorting: false,
       cell: (product) => (product.iva !== null ? `${product.iva}%` : '-'),
       cellClassName: "text-right",
     },
@@ -85,11 +87,11 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
       header: t('table.unit'),
       enableSorting: false,
       cell: (product) => product.unit || '-',
-      cellClassName: "text-center", // O text-right
+      cellClassName: "text-center",
     },
     {
       accessorKey: 'is_active',
-      header: t('table.active'), // Assegura't de tenir traducció
+      header: t('table.active'),
       enableSorting: true,
       cell: (product) => (
         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product.is_active
@@ -101,31 +103,32 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
       ),
       cellClassName: "text-center",
     },
-    // Accions Edit/Delete
+    // Action column now only links to detail view (where edit/delete happens)
     {
-      accessorKey: "actions_edit",
-      header: "", // Capçalera Accions (potser tShared('table.actions')?)
+      accessorKey: "actions_view_edit", // Renamed for clarity
+      header: "", // Could add tShared('table.actions') if desired
       enableSorting: false,
       cell: (product) => (
-        <Button
-          variant="ghost"
-          size="icon"
-          title={tShared('actions.edit')}
-          onClick={() => handleEditClick(product)} // Funció per obrir diàleg
+        <Link
+           // ✅ Corrected Route: crm/products/
+          href={`/${locale}/finances/products/${product.id}`}
+          title={tShared('actions.edit')} // Or view/edit
         >
-          <Edit className="w-4 h-4" />
-        </Button>
+          <Button variant="ghost" size="icon">
+            <Edit className="w-4 h-4" />
+          </Button>
+        </Link>
       ),
-      cellClassName: "text-right", // Alineació del botó
+      cellClassName: "text-right",
     }
-  ], [t, tShared, locale]); // Afegim dependències necessàries
+  ], [t, tShared, locale]);
 
-  // --- Hook Genèric ---
+  // --- Generic Hook ---
   const {
     isPending,
-    data: products, // Renombrem
-    itemToDelete: productToDelete, // Renombrem
-    setItemToDelete: setProductToDelete, // Renombrem
+    data: products,
+    itemToDelete: productToDelete,
+    setItemToDelete: setProductToDelete,
     handleDelete,
     handleSort,
     currentSortColumn,
@@ -141,46 +144,41 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     handlePageChange,
     rowsPerPage,
     handleRowsPerPageChange,
-    // La funció de refetch pot ser útil després de desar el formulari
-    // forceRefetch, // Si el hook l'exposa (hauríem d'afegir-ho)
+    // Add forceRefetch if implemented in the hook
+    // forceRefetch,
   } = usePaginatedResource<Product, ProductPageFilters>({
     initialData,
     initialFilters: { category: 'all' },
     initialSort: { column: 'name', order: 'asc' },
     allColumns,
     fetchAction: fetchPaginatedProducts as (params: FetchProductsParams) => Promise<PaginatedProductsResponse>,
-    deleteAction: deleteProduct as (id: string | number) => Promise<ActionResult>, // Passem directament si la signatura coincideix
+    // ✅ Adapter for deleteProduct (Product ID is number)
+    deleteAction: async (id: string | number): Promise<ActionResult> => {
+        if (typeof id !== 'number') {
+            const msg = tShared('errors.invalidId') + " (expected number)";
+            console.error(msg, { id });
+            return { success: false, message: msg };
+        }
+        // Assuming deleteProduct expects number and returns ActionResult
+        return deleteProduct(id);
+    },
     initialRowsPerPage: PRODUCT_ROWS_PER_PAGE_OPTIONS[0],
     rowsPerPageOptions: PRODUCT_ROWS_PER_PAGE_OPTIONS,
     toastMessages: {
-      deleteSuccess: t('toast.deleteSuccess'), // Assegura't que existeix
+      deleteSuccess: t('toast.deleteSuccess'),
     }
   });
 
-  // --- Gestors per al Diàleg ---
-  const handleEditClick = (product: Product) => {
-    setSelectedProduct(product);
-    setFormOpen(true);
-  };
 
-  const handleCreateClick = () => {
-    setSelectedProduct(null);
-    setFormOpen(true);
-  };
 
-  // Funció per tancar diàleg i potencialment refrescar dades
-  const handleFormSuccess = (/* product: Product */) => {
-    setFormOpen(false);
-    // Idealment, el hook usePaginatedResource hauria d'exposar una funció
-    // per forçar la recàrrega de la pàgina actual. Si no, podem fer:
-    // isInitialMount.current = false; // (Hauria d'estar dins del hook)
-    // setFilters(f => ({ ...f })); // Força refetch (requereix isInitialMount al hook)
-    // O simplement confiar en revalidatePath (menys immediat visualment)
-  };
-
-  // --- Columnes Visibles i Descripció Esborrat ---
+  // --- Visible Columns & Delete Description ---
   const visibleColumns = useMemo(
-    () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
+    () => allColumns.filter(col => {
+        const key = ('id' in col && col.id)
+            ? col.id.toString()
+            : col.accessorKey?.toString();
+        return key ? (columnVisibility[key] ?? true) : true;
+    }),
     [allColumns, columnVisibility]
   );
 
@@ -193,10 +191,10 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     </>
   );
 
-
-  // --- Renderització ---
+  // --- Rendering ---
   return (
-    <div className="h-full flex flex-col gap-4"> {/* Afegit gap-4 */}
+    <div className="h-full flex flex-col gap-4">
+      {/* Page Header with Create Button triggering Dialog */}
       {/* Capçalera i Botons */}
       {/* ✅ Substituïm la capçalera manual per PageHeader */}
       <PageHeader title={t('title')}>
@@ -208,7 +206,7 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         </Button>
       </PageHeader>
 
-      {/* Barra de Filtres / Accions */}
+      {/* Filters Bar */}
       <div className="flex justify-between items-center">
         <ProductsFilters
           searchTerm={searchTerm}
@@ -224,12 +222,12 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         />
       </div>
 
-      {/* Taula Genèrica */}
+      {/* Data Table */}
       <GenericDataTable<Product>
-        className="flex-grow overflow-hidden" // Per ocupar espai
+        className="flex-grow overflow-hidden"
         columns={visibleColumns}
         data={products}
-        isPending={isPending} // Passa l'estat de càrrega
+        isPending={isPending}
         onSort={handleSort}
         currentSortColumn={currentSortColumn}
         currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
@@ -241,10 +239,10 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         rowsPerPageOptions={PRODUCT_ROWS_PER_PAGE_OPTIONS}
         deleteItem={productToDelete}
         setDeleteItem={setProductToDelete}
-        onDelete={handleDelete}
-        deleteTitleKey="deleteDialog.title" // Clau genèrica
+        onDelete={handleDelete} // Delete confirmation handled by GenericDataTable
+        deleteTitleKey="Shared.deleteDialog.title" // Use shared key
         deleteDescription={deleteDescription}
-        emptyStateMessage={t('noProductsFound')} // Clau específica
+        emptyStateMessage={t('noProductsFound')}
       />
     </div>
   );

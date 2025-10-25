@@ -584,35 +584,17 @@
     "vatLabel": "IVA: {iva}%",
     "editButton": "Editar",
     "deleteButton": "Eliminar",
-    "active": "Actiu",   
-    "inactive": "Inactiu", 
+    "active": "Actiu",
+    "inactive": "Inactiu",
     "newProductButton": "Nou Concepte",
     "table": {
       "name": "Nom",
       "category": "Categoria",
       "price": "Preu",
-      "vat": "IVA (%)", 
+      "vat": "IVA (%)",
       "unit": "Unitat",
       "active": "Estat",
       "actions": "Accions"
-    },
-    "form": {
-      "editTitle": "Editar Concepte",
-      "createTitle": "Crear Nou Concepte",
-      "activeLabel": "Producte actiu",
-      "activeDescription": "(Si està inactiu, no apareixerà per afegir a nous pressupostos)",
-      "nameLabel": "Nom del concepte",
-      "categoryLabel": "Categoria",
-      "categoryPlaceholder": "Ex: Disseny Web",
-      "descriptionLabel": "Descripció",
-      "descriptionPlaceholder": "Descripció detallada del servei o producte...",
-      "priceLabel": "Preu Base (€)",
-      "unitLabel": "Unitat",
-      "unitPlaceholder": "hores, unitats...",
-      "vatLabel": "IVA (%)",
-      "saving": "Desant...",
-      "saveChanges": "Desar Canvis",
-      "createConcept": "Crear Concepte"
     },
     "toast": {
       "success": "Èxit!",
@@ -632,7 +614,33 @@
       "confirmButton": "Sí, elimina'l"
     },
     "errors": {
-        "loadDataFailed": "Error en carregar les dades dels conceptes."
+      "loadDataFailed": "Error en carregar les dades dels conceptes."
+    }
+  },
+  "ProductDetalilPage": {
+    "active": "Actiu",
+    "inactive": "Inactiu",
+    "backToList": "Tornar a la llista de conceptes",
+    "actions": {
+      "edit": "Editar",
+      "delete": "Eliminar"
+    },
+    "table": {
+      "price": "Preu",
+      "vat": "IVA",
+      "unit": "Unitat",
+      "created": "Creat"
+    },
+    "form": {
+      "descriptionLabel": "Descripció",
+      "discountLabel": "Descompte (%)"
+    },
+    "deleteDialog": {
+      "title": "Estàs segur que vols eliminar aquest producte?",
+      "description": "Aquesta acció no es pot desfer. S'esborrarà permanentment el producte de la base de dades."
+    },
+    "editDialog": {
+      "title": "Editar Producte"
     }
   },
   "QuotesPage": {
@@ -1674,7 +1682,7 @@
       "pageInfo": "Pàgina {currentPage} de {totalPages}"
     },
     "InvoicesPage": {
-      "allStatuses": "Tots els estats", 
+      "allStatuses": "Tots els estats",
       "status": {
         "Draft": "Esborrany",
         "Sent": "Enviada",

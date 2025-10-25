@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Plus, Edit } from 'lucide-react';
-
+import { PageHeader } from '@/components/shared/PageHeader'; // Importa PageHeader
 // Tipus i Accions
 import { type QuoteWithContact, type QuotePageFilters, fetchPaginatedQuotes, deleteQuoteAction } from '../actions';
 import { type ActionResult } from '@/types/shared/actionResult';
@@ -170,14 +170,15 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
   return (
     <div className="flex flex-col gap-4 h-full">
       {/* Capçalera */}
-      <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">{t('title')}</h1>
-           <Button asChild>
-              <Link href={`/${locale}/finances/quotes/new`}>
-                  <Plus className="w-4 h-4 mr-2" /> {t('newQuoteButton')}
-              </Link>
-          </Button>
-      </div>
+     {/* ✅ Substituïm la capçalera manual per PageHeader */}
+          <PageHeader title={t('title')}>
+             {/* El botó "Nova Quote" va com a 'children' */}
+             <Button asChild>
+               <Link href={`/${locale}/finances/quotes/new`}>
+                 <Plus className="w-4 h-4 mr-1" /> {t('newQuoteButton')}
+               </Link>
+             </Button>
+          </PageHeader>
 
       {/* Barra de Filtres / Accions */}
       <div className="flex justify-between items-center">
