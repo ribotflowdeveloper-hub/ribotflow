@@ -1,27 +1,48 @@
-// src/app/[locale]/(app)/crm/products/[productId]/page.tsx
+// src/app/[locale]/(app)/finances/products/[productId]/page.tsx
+
 import { Suspense } from 'react';
+import { type Metadata } from 'next';
+// ✅ Assegura't que la ruta d'importació de 'actions' és correcta.
+// Si 'actions.ts' és a 'finances/products', ha de ser '../actions'.
+import { fetchProductDetail } from './actions'; 
 import { ProductDetailData } from './_components/ProductDetailData';
-// Pots crear un Skeleton específic o reutilitzar parts del GenericDataTableSkeleton
-import { Skeleton } from '@/components/ui/skeleton'; // Skeleton bàsic com a fallback
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Funció per generar Metadata (opcional però recomanat)
-// import { fetchProductDetail } from './actions'; // Importa l'acció
-// export async function generateMetadata({ params }: { params: { productId: string } }): Promise<Metadata> {
-//   const productId = parseInt(params.productId);
-//   if (isNaN(productId)) return { title: 'Producte | Ribot' };
-//   try {
-//       const product = await fetchProductDetail(productId);
-//       return { title: `${product.name} | Productes | Ribot` };
-//   } catch (error) {
-//       return { title: 'Producte no trobat | Ribot' };
-//   }
-// }
-
-
+// -------------------------------------------------------------------
+// ✅ 1. UNIFICACIÓ DE PROPS:
+// Definim UNA única interfície amb 'params' com a Promise.
+// -------------------------------------------------------------------
 interface ProductDetailPageProps {
-  params: {
+  params: Promise<{
     productId: string;
-  };
+    locale: string; // Incloem 'locale' ja que és part de la ruta
+  }>;
+}
+
+// -------------------------------------------------------------------
+// ✅ 2. generateMetadata (UTILITZANT LA PROMESA)
+// Utilitzem la mateixa interfície 'ProductDetailPageProps'.
+// -------------------------------------------------------------------
+export async function generateMetadata(props: ProductDetailPageProps): Promise<Metadata> {
+  
+  // ✅ Fem 'await' dels paràmetres, igual que a la pàgina.
+  const { productId: productIdString } = await props.params; 
+  const productId = parseInt(productIdString, 10);
+  
+  if (isNaN(productId)) {
+    return { title: 'Producte | Ribot' };
+  }
+
+  try {
+    const product = await fetchProductDetail(productId); 
+    if (!product) {
+       return { title: 'Producte no trobat | Ribot' };
+    }
+    return { title: `${product.name} | Productes | Ribot` };
+  } catch (error) {
+    // Si fetchProductDetail llança 'notFound()', Next.js ho gestionarà.
+    return { title: 'Producte no trobat | Ribot' };
+  }
 }
 
 // Skeleton simple per a la pàgina de detall
@@ -53,20 +74,24 @@ function ProductDetailSkeleton() {
     );
 }
 
+// -------------------------------------------------------------------
+// ✅ 3. Component de Pàgina (UTILITZANT LA PROMESA)
+// Aquesta part ja era correcta.
+// -------------------------------------------------------------------
+export default async function ProductDetailPage(props: ProductDetailPageProps) {
+  
+  // Resolem la promesa per obtenir els paràmetres
+  const { productId: productIdString } = await props.params;
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
-  // Validem que productId sigui un número
-  const productId = parseInt(params.productId, 10);
+  const productId = parseInt(productIdString, 10);
 
-  // Podem fer la validació aquí o dins de ProductDetailData/fetchProductDetail
   if (isNaN(productId)) {
-    // Si no és un número, podem mostrar 404 directament
     const { notFound } = await import('next/navigation');
     notFound();
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 h-full"> {/* Padding i alçada */}
+    <div className="p-4 md:p-6 lg:p-8 h-full">
       <Suspense fallback={<ProductDetailSkeleton />}>
         {/* Passem el productId validat */}
         <ProductDetailData productId={productId} />

@@ -213,14 +213,16 @@ export default function CalendarClient(props: CalendarClientProps) {
                     ...selectedTask,
                     user_id: selectedTask.user_id ?? '',
                     time_tracking_log: selectedTask.time_tracking_log ?? null // <-- AFEGEIX AQUESTA LÍNIA
-                } as EnrichedTask: null}
+                } as EnrichedTask : null}
                 open={isTaskDialogOpen}
                 onOpenChange={setIsTaskDialogOpen}
                 contacts={props.contacts}
-                departments={props.departments}
+                initialDepartments={props.departments}
                 teamMembers={props.teamUsers}
                 onTaskMutation={handleDataMutation}
                 initialDate={initialDate}
+                activeTeamId='
+'
             />
 
             <QuoteDetailDialog

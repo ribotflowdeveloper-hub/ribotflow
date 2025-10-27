@@ -33,13 +33,8 @@ export async function createDepartment(teamId: string | undefined, name: string)
     if ('error' in sessionInfo) { return { error: sessionInfo.error.message }; }
     const supabase = createServerActionClient<Database>({ cookies });
 
-    // TODO: Comprovació de Permisos Específica
 
-    // Objecte simple per inserir
-    const departmentData = {
-        name: validatedName,
-        team_id: teamId
-    };
+
 
     // Intent d'inserció
     // Tipem explícitament l'objecte per evitar 'any'

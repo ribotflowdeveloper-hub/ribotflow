@@ -63,7 +63,7 @@ export default function useCalendar(
     // -------------------------------------------------------------------------
     if (result.error) {
         // ❌ Si el servidor respon amb error, mostrem toast i revertim la data
-        toast.error("Error en actualitzar la data.", { description: result.error.message });
+        toast.error("Error en actualitzar la data.", { description: "Error"});
         onTaskMove(taskId, originalTask.due_date!);
     } else {
         // ✅ Si tot va bé, mostrem confirmació d’èxit

@@ -12,7 +12,7 @@ import {
 import { unstable_cache as cache } from 'next/cache';
 import { createAdminClient } from "@/lib/supabase/admin";
 // ✅ Importem l'schema i el tipus FormState des del nou fitxer
-import { productSchema, type FormState } from './schemas';
+import { productSchema } from './schemas';
 
 // --- Tipus Específics ---
 export type Product = Database['public']['Tables']['products']['Row'];
@@ -21,7 +21,13 @@ export type Product = Database['public']['Tables']['products']['Row'];
 export interface ProductPageFilters {
   category: string | 'all';
 }
-
+// ✅ FORMA CORRECTA (afegint 'export')
+export type FormState = { 
+  success: boolean;
+  message: string;
+  data?: Product; // Assegura't que 'Product' estigui importat o definit aquí
+  errors?: Record<string, string[]>; 
+};
 // Alias per al hook genèric
 type FetchProductsParams = PaginatedActionParams<ProductPageFilters>;
 type PaginatedProductsData = PaginatedResponse<Product>; // Directament Product, no necessitem joins complexos ara

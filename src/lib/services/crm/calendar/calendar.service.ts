@@ -7,9 +7,9 @@ import { type ActiveSources } from '@/types/crm/calendar'; // Importem el tipus 
 import { z } from 'zod';
 
 // Serveis d'entitat que orquestrarem
-import { getTeamMembers } from './team.service';
-import { getAllContacts } from './contacts.service';
-import { getDepartments } from './departments.service';
+import { getTeamMembers } from '../../team.service';
+import { getAllContacts } from '../contacts/contacts.service';
+import { getDepartments } from '../../departments.service';
 
 // --- Tipus de Dades ---
 export type EnrichedTaskForCalendar = TaskWithAssignee & {
