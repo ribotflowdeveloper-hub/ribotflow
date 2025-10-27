@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Inbox } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 
+import { useTranslations } from 'next-intl';
+
 // ✨ CANVI: Importem els tipus des de la nostra font de veritat.
 import type { EnrichedTicket, TeamMemberWithProfile, InboxPermission, TicketFilter } from '@/types/db';
 
@@ -43,6 +45,7 @@ interface TicketListProps {
 
 export const TicketList: React.FC<TicketListProps> = (props) => {
   const { tickets, selectedTicketId, onSelectTicket, onDeleteTicket, hasMore, onLoadMore, isPendingRefresh } = props;
+  const t = useTranslations('InboxPage');
 
   return (
     <div className="w-full h-full flex flex-col flex-shrink-0 border-r border-border glass-card">
@@ -63,7 +66,7 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
         ) : (
           <div className="flex flex-col items-center justify-center h-full p-4 text-center">
             <Inbox className="w-12 h-12 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">Safata d'entrada buida.</p>
+            <p className="text-muted-foreground">{t('emptyInbox')}</p>
           </div>
         )}
       </div>
@@ -71,7 +74,7 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
       {hasMore && (
         <div className="p-4 border-t border-border flex-shrink-0">
           <Button variant="outline" className="w-full" onClick={onLoadMore} disabled={isPendingRefresh}>
-            {isPendingRefresh ? "Carregant..." : "Carregar més"}
+            {isPendingRefresh ? t('loading') : t('loadMore')}
           </Button>
         </div>
       )}

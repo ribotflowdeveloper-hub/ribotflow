@@ -54,7 +54,8 @@
     "integrations": "Integrations",
     "blacklist": "Blacklist",
     "install": "Install Ribotflow",
-    "permissions": "Application Permissions"
+    "permissions": "Application Permissions",
+    "brandNameMobile": "Ribotflow"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
@@ -80,6 +81,8 @@
     "inboxUpdatedToast": "Inbox updated",
     "unknownSender": "Unknown",
     "emptyInbox": "Your inbox is empty.",
+    "loading": "Loading...",
+    "loadMore": "Load more",
     "inboxTitle": "Inbox",
     "receivedFilter": "Received",
     "sentFilter": "Sent",
@@ -101,11 +104,17 @@
     "deleteButtonTooltip": "Delete Conversation",
     "composeButtonTooltip": "Compose New Email",
     "refreshButtonTooltip": "Refresh Inbox",
-    "allFilter": "Tots",
-    "unreadFilter": "No llegits",
+    "allFilter": "All",
+    "unreadFilter": "Unread",
     "hideContactPanel": "Hide contact panel",
     "showContactPanel": "Show contact panel",
+    "closeButton": "Close detailed view",
     "fromLabel": "Label",
+    "allInboxes": "All inboxes",
+    "myEmails": "My emails",
+    "unknownMailbox": "Unknown inbox",
+    "unnamedUser": "Unnamed user",
+    "searchInboxPlaceholder": "Search inbox...",
     "toast": {
       "contactSavedSuccess": "Contact saved successfully"
     }
@@ -1467,7 +1476,12 @@
     "feature6Title": "AI Assistant & Advanced Analytics",
     "feature6DataTitle": "AI & Reports",
     "feature6Text": "The AI scores leads, suggests responses, and detects hidden opportunities. Customizable dashboards show key metrics so you can make decisions with confidence.",
-    "developedBy": "Developed by"
+    "developedBy": "Developed by",
+    "logoAlt": "Ribotflow Logo",
+    "brandNameNav": "Ribotflow",
+    "accessButton": "Login",
+    "brandNameFooter": " Ribotflow. ",
+    "developerName": "DigitAI Studios"
   },
   "CountdownView": {
     "mainTitle": "El teu negoci, sota control.",
@@ -1514,7 +1528,9 @@
   },
   "LandingNav": {
     "login": "Accedir",
-    "signup": "Registra't Gratis"
+    "signup": "Registra't Gratis",
+    "logoAlt": "Ribotflow Logo",
+    "brandName": "Ribotflow"
   },
   "SignupPage": {
     "title": "Create Your Account",
@@ -1610,7 +1626,9 @@
       "streetLabel": "Street",
       "cityLabel": "City",
       "postcodeLabel": "Postal Code",
-      "regionLabel": "Region"
+      "regionLabel": "Region",
+      "errorFetchingSuggestions": "Error fetching Mapbox suggestions:",
+      "errorRetrievingAddress": "Error retrieving Mapbox address:"
     },
     "step3": {
       "title": "Final details",
