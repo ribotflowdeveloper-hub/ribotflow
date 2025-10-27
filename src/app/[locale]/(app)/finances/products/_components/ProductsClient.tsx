@@ -1,7 +1,7 @@
 // /app/[locale]/(app)/crm/products/_components/ProductsClient.tsx
 "use client";
 
-import { useMemo} from 'react'; // Keep useState for creation dialog
+import { useMemo } from 'react'; // Keep useState for creation dialog
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Plus, Edit } from 'lucide-react'; // Keep Edit for link, Plus for button
@@ -55,7 +55,7 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         <Link
           // ✅ Corrected Route: crm/products/
           href={`/${locale}/finances/products/${product.id}`}
-          className="font-medium cursor-pointer text-primary hover:underline"
+          className="font-medium cursor-pointer hover:underline"
           title={`${tShared('actions.view')}: ${product.name}`}
         >
           {product.name}
@@ -65,29 +65,28 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     {
       accessorKey: 'category',
       header: t('table.category'),
+
       enableSorting: true,
       cell: (product) => product.category || '-',
+
     },
     {
       accessorKey: 'price',
       header: t('table.price'),
       enableSorting: true,
       cell: (product) => formatCurrency(product.price ?? 0),
-      cellClassName: "text-right",
     },
     {
       accessorKey: 'iva',
       header: t('table.vat'),
       enableSorting: false,
       cell: (product) => (product.iva !== null ? `${product.iva}%` : '-'),
-      cellClassName: "text-right",
     },
     {
       accessorKey: 'unit',
       header: t('table.unit'),
       enableSorting: false,
       cell: (product) => product.unit || '-',
-      cellClassName: "text-center",
     },
     {
       accessorKey: 'is_active',
@@ -101,7 +100,6 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
           {product.is_active ? t('active') : t('inactive')}
         </span>
       ),
-      cellClassName: "text-center",
     },
     // Action column now only links to detail view (where edit/delete happens)
     {
@@ -110,7 +108,7 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
       enableSorting: false,
       cell: (product) => (
         <Link
-           // ✅ Corrected Route: crm/products/
+          // ✅ Corrected Route: crm/products/
           href={`/${locale}/finances/products/${product.id}`}
           title={tShared('actions.edit')} // Or view/edit
         >
@@ -154,13 +152,13 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     fetchAction: fetchPaginatedProducts as (params: FetchProductsParams) => Promise<PaginatedProductsResponse>,
     // ✅ Adapter for deleteProduct (Product ID is number)
     deleteAction: async (id: string | number): Promise<ActionResult> => {
-        if (typeof id !== 'number') {
-            const msg = tShared('errors.invalidId') + " (expected number)";
-            console.error(msg, { id });
-            return { success: false, message: msg };
-        }
-        // Assuming deleteProduct expects number and returns ActionResult
-        return deleteProduct(id);
+      if (typeof id !== 'number') {
+        const msg = tShared('errors.invalidId') + " (expected number)";
+        console.error(msg, { id });
+        return { success: false, message: msg };
+      }
+      // Assuming deleteProduct expects number and returns ActionResult
+      return deleteProduct(id);
     },
     initialRowsPerPage: PRODUCT_ROWS_PER_PAGE_OPTIONS[0],
     rowsPerPageOptions: PRODUCT_ROWS_PER_PAGE_OPTIONS,
@@ -174,10 +172,10 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
   // --- Visible Columns & Delete Description ---
   const visibleColumns = useMemo(
     () => allColumns.filter(col => {
-        const key = ('id' in col && col.id)
-            ? col.id.toString()
-            : col.accessorKey?.toString();
-        return key ? (columnVisibility[key] ?? true) : true;
+      const key = ('id' in col && col.id)
+        ? col.id.toString()
+        : col.accessorKey?.toString();
+      return key ? (columnVisibility[key] ?? true) : true;
     }),
     [allColumns, columnVisibility]
   );
@@ -240,7 +238,7 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         deleteItem={productToDelete}
         setDeleteItem={setProductToDelete}
         onDelete={handleDelete} // Delete confirmation handled by GenericDataTable
-        deleteTitleKey="Shared.deleteDialog.title" // Use shared key
+        deleteTitleKey="deleteDialog.title" // Use shared key
         deleteDescription={deleteDescription}
         emptyStateMessage={t('noProductsFound')}
       />

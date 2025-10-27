@@ -1347,138 +1347,125 @@ $$;
 ALTER FUNCTION "public"."save_refresh_token"("provider_name" "text", "refresh_token_value" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text" DEFAULT NULL::"text", "p_category" "text" DEFAULT NULL::"text", "p_sort_by" "text" DEFAULT 'expense_date'::"text", "p_sort_order" "text" DEFAULT 'desc'::"text") RETURNS TABLE("id" bigint, "invoice_number" "text", "expense_date" "date", "total_amount" numeric, "category" "text", "description" "text", "supplier_id" "uuid", "supplier_nom" "text")
+CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "category" "text", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" "uuid", "subtotal" numeric, "discount_amount" numeric, "notes" "text", "tax_rate" numeric, "team_id" "uuid", "status" "public"."expense_status", "payment_date" "date", "payment_method" "text", "is_billable" boolean, "project_id" "uuid", "is_reimbursable" boolean, "supplier_nom" "text", "total_count" bigint)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
-    -- Validació per evitar SQL Injection
-    IF p_sort_order NOT IN ('asc', 'desc') THEN
-        p_sort_order := 'desc';
-    END IF;
-
-    IF p_sort_by NOT IN ('expense_date', 'suppliers.nom', 'total_amount', 'category', 'invoice_number') THEN
-        p_sort_by := 'expense_date';
-    END IF;
-
-    -- Construïm la consulta de forma dinàmica i segura
-    RETURN QUERY EXECUTE format(
-        'SELECT
-            e.id,
-            e.invoice_number,
-            e.expense_date,
-            e.total_amount,
-            e.category,
-            e.description,
-            s.id as supplier_id,
-            s.nom as supplier_nom
-        FROM
-            public.expenses e
-        LEFT JOIN
-            public.suppliers s ON e.supplier_id = s.id
+    RETURN QUERY
+    WITH filtered_expenses AS (
+        SELECT
+            e.*,
+            s.nom AS supplier_nom
+        FROM public.expenses e
+        LEFT JOIN public.suppliers s ON e.supplier_id = s.id
         WHERE
-            e.team_id = %L
+            e.team_id = p_team_id
+            -- ✅ CORRECCIÓ: Gestionar NULL per p_search_term
             AND (
-                %L IS NULL OR 
-                e.description ILIKE %L OR 
-                s.nom ILIKE %L OR
-                e.invoice_number ILIKE %L -- ✅ MILLORA AFEGIDA AQUÍ
+                p_search_term IS NULL OR BTRIM(p_search_term) = '' OR -- Si és NULL o buit, no filtra per text
+                e.description ILIKE ('%' || BTRIM(p_search_term) || '%') OR
+                s.nom ILIKE ('%' || BTRIM(p_search_term) || '%') OR
+                e.invoice_number ILIKE ('%' || BTRIM(p_search_term) || '%')
             )
-            AND (%L IS NULL OR %L = ''all'' OR e.category = %L)
-        ORDER BY %I %s',
-        p_team_id,
-        p_search_term, 
-        '%' || p_search_term || '%', 
-        '%' || p_search_term || '%',
-        '%' || p_search_term || '%', -- Paràmetre per a invoice_number
-        p_category, p_category, p_category,
-        CASE 
-            WHEN p_sort_by = 'suppliers.nom' THEN 'supplier_nom' 
-            ELSE p_sort_by 
-        END,
-        p_sort_order
-    );
-END;
-$$;
-
-
-ALTER FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text" DEFAULT NULL::"text", "p_category" "text" DEFAULT NULL::"text", "p_status" "text" DEFAULT NULL::"text", "p_sort_by" "text" DEFAULT 'expense_date'::"text", "p_sort_order" "text" DEFAULT 'desc'::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "invoice_number" "text", "expense_date" "date", "total_amount" numeric, "category" "text", "description" "text", "supplier_id" "uuid", "supplier_nom" "text", "status" "text", "payment_date" "date", "is_billable" boolean, "project_id" "uuid", "is_reimbursable" boolean)
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-    sort_col TEXT;
-    sort_dir TEXT;
-BEGIN
-    -- 1. Validació i normalització de l'ordenació
-    IF p_sort_order NOT IN ('asc', 'desc') THEN
-        p_sort_order := 'desc';
-    END IF;
-    
-    -- Calculem la columna per ordenar de forma segura
-    sort_col := CASE p_sort_by
-        WHEN 'suppliers.nom' THEN 's.nom' 
-        WHEN 'total_amount' THEN 'e.total_amount'
-        WHEN 'category' THEN 'e.category'
-        WHEN 'invoice_number' THEN 'e.invoice_number'
-        ELSE 'e.expense_date' -- Per defecte
-    END;
-
-    sort_dir := p_sort_order; -- Ja validat
-
-    -- 2. Execució de la consulta amb la sintaxi EXECUTE FORMAT
-    RETURN QUERY EXECUTE format(
-        'SELECT
-            e.id,
-            e.invoice_number,
-            e.expense_date,
-            e.total_amount,
-            e.category,
-            e.description,
-            e.supplier_id,
-            s.nom AS supplier_nom,
-            e.status::text,          -- Cast a text
-            e.payment_date,
-            e.is_billable,
-            e.project_id,
-            e.is_reimbursable
-        FROM
-            public.expenses e
-        LEFT JOIN
-            public.suppliers s ON e.supplier_id = s.id
-        WHERE
-            e.team_id = %L
-            -- Filtre de Cerca (descripció, num. factura, nom proveïdor)
-            AND (
-                %L IS NULL OR 
-                e.description ILIKE %L OR 
-                s.nom ILIKE %L OR
-                e.invoice_number ILIKE %L
-            )
-            -- Filtre de Categoria
-            AND (%L IS NULL OR %L = ''all'' OR e.category = %L)
-            -- Filtre d''Estat
-            AND (%L IS NULL OR %L = ''all'' OR e.status::text = %L) 
-        ORDER BY %s %s
-        LIMIT %L OFFSET %L',
-        p_team_id,
-        p_search_term, 
-        '%%' || p_search_term || '%%', 
-        '%%' || p_search_term || '%%',
-        '%%' || p_search_term || '%%',
-        p_category, p_category, p_category,
-        p_status, p_status, p_status,
-        sort_col,
-        sort_dir,
-        p_limit,
-        p_offset
-    );
+            -- ✅ CORRECCIÓ: Gestionar NULL o 'all' per p_category
+            AND (p_category IS NULL OR p_category = 'all' OR e.category = p_category)
+            -- ✅ CORRECCIÓ: Gestionar NULL o 'all' per p_status
+            AND (p_status IS NULL OR p_status = 'all' OR e.status::text = p_status) -- Mantenim el cast per si e.status és enum
+    ),
+    counted_expenses AS (
+        -- Utilitzem bigint per al recompte
+        SELECT *, COUNT(*) OVER()::bigint as full_count FROM filtered_expenses
+    )
+    SELECT
+        -- Selecciona explícitament les columnes definides a RETURNS TABLE
+        ce.id, ce.user_id, ce.description, ce.total_amount, ce.expense_date,
+        ce.category, ce.created_at, ce.invoice_number, ce.tax_amount, ce.extra_data,
+        ce.supplier_id, ce.subtotal, ce.discount_amount, ce.notes, ce.tax_rate,
+        ce.team_id, ce.status, ce.payment_date, ce.payment_method, ce.is_billable,
+        ce.project_id, ce.is_reimbursable,
+        ce.supplier_nom,
+        ce.full_count -- Aquest és el recompte total
+    FROM counted_expenses ce
+    ORDER BY
+        -- La teva lògica d'ordenació (correcta)
+        CASE WHEN p_sort_by = 'expense_date' AND p_sort_order = 'desc' THEN ce.expense_date END DESC NULLS LAST,
+        CASE WHEN p_sort_by = 'expense_date' AND p_sort_order = 'asc' THEN ce.expense_date END ASC NULLS LAST,
+        CASE WHEN p_sort_by = 'total_amount' AND p_sort_order = 'desc' THEN ce.total_amount END DESC NULLS LAST,
+        CASE WHEN p_sort_by = 'total_amount' AND p_sort_order = 'asc' THEN ce.total_amount END ASC NULLS LAST,
+        -- Afegeix més camps si cal
+        ce.id DESC -- Ordenació de fallback
+    LIMIT p_limit
+    OFFSET p_offset;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "created_at" timestamp with time zone, "user_id" "uuid", "team_id" "uuid", "contact_id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "notes" "text", "secure_id" "uuid", "client_name" "text", "total_count" bigint)
+    LANGUAGE "plpgsql"
+    AS $_$
+BEGIN
+    -- Neteja i preparació dels paràmetres
+    search_term := BTRIM(search_term);
+    status_filter := BTRIM(status_filter);
+
+    RETURN QUERY
+    WITH filtered_invoices AS (
+        SELECT
+            i.id, i.created_at, i.user_id, i.team_id, i.contact_id,
+            i.invoice_number, i.issue_date, i.due_date, i.total_amount,
+            i.status, i.notes, i.verifactu_uuid AS secure_id, c.nom AS client_name
+        FROM
+            public.invoices i
+        LEFT JOIN
+            public.contacts c ON i.contact_id = c.id
+        WHERE
+            -- ✅ LÒGICA DE CERCA CORREGIDA
+            (
+                search_term IS NULL OR search_term = '' OR
+                -- Permet cercar per ID exacte si el terme és només un número
+                (search_term ~ '^[0-9]+$' AND i.id = search_term::BIGINT) OR
+                -- Cerca per text en número de factura o nom de client
+                i.invoice_number ILIKE '%' || search_term || '%' OR
+                c.nom ILIKE '%' || search_term || '%'
+            )
+            AND
+            -- ✅ LÒGICA DE FILTRE D'ESTAT CORREGIDA
+            (
+                status_filter IS NULL OR status_filter = 'all' OR
+                -- Comparació exacta (case-sensitive) amb el valor de la BD
+                i.status = status_filter
+            )
+    ),
+    counted_invoices AS (
+        SELECT *, COUNT(*) OVER() as full_count FROM filtered_invoices
+    )
+    SELECT
+        ci.id, ci.created_at, ci.user_id, ci.team_id, ci.contact_id,
+        ci.invoice_number::TEXT, ci.issue_date, ci.due_date, ci.total_amount,
+        ci.status::TEXT, ci.notes, ci.secure_id, ci.client_name::TEXT,
+        ci.full_count AS total_count
+    FROM counted_invoices ci
+    -- ✅ LÒGICA D'ORDENACIÓ CORREGIDA
+    ORDER BY
+        CASE WHEN sort_field = 'issue_date' AND sort_direction = 'asc' THEN ci.issue_date END ASC,
+        CASE WHEN sort_field = 'issue_date' AND sort_direction = 'desc' THEN ci.issue_date END DESC,
+        CASE WHEN sort_field = 'client_name' AND sort_direction = 'asc' THEN ci.client_name END ASC,
+        CASE WHEN sort_field = 'client_name' AND sort_direction = 'desc' THEN ci.client_name END DESC,
+        CASE WHEN sort_field = 'total_amount' AND sort_direction = 'asc' THEN ci.total_amount END ASC,
+        CASE WHEN sort_field = 'total_amount' AND sort_direction = 'desc' THEN ci.total_amount END DESC,
+        CASE WHEN sort_field = 'status' AND sort_direction = 'asc' THEN ci.status END ASC,
+        CASE WHEN sort_field = 'status' AND sort_direction = 'desc' THEN ci.status END DESC,
+        ci.created_at DESC
+    LIMIT page_limit
+    OFFSET page_offset;
+END;
+$_$;
+
+
+ALTER FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) RETURNS TABLE("id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "client_name" "text", "contact_id" bigint, "contact_nom" "text", "total_count" bigint)
@@ -1557,6 +1544,52 @@ $$;
 
 
 ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text" DEFAULT NULL::"text", "status_param" "public"."quote_status" DEFAULT NULL::"public"."quote_status", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 10, "offset_param" integer DEFAULT 0) RETURNS TABLE("id" bigint, "sequence_number" integer, "user_id" "uuid", "contact_id" bigint, "team_id" "uuid", "tax_percent" numeric, "show_quantity" boolean, "status" "public"."quote_status", "issue_date" "date", "expiry_date" "date", "subtotal" numeric, "discount" numeric, "tax" numeric, "total" numeric, "created_at" timestamp with time zone, "opportunity_id" bigint, "send_at" timestamp with time zone, "secure_id" "uuid", "sent_at" timestamp with time zone, "quote_number" "text", "notes" "text", "rejection_reason" "text", "theme_color" "text", "contact_nom" "text", "contact_empresa" "text", "total_count" bigint)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        -- ✅ Selecciona NOMÉS les columnes existents de 'quotes'
+        q.id, q.sequence_number, q.user_id, q.contact_id, q.team_id, q.tax_percent, q.show_quantity, q.status, q.issue_date, q.expiry_date, q.subtotal, q.discount, q.tax, q.total, q.created_at, q.opportunity_id, q.send_at, q.secure_id, q.sent_at, q.quote_number, q.notes, q.rejection_reason, q.theme_color,
+        -- Camps de 'contacts'
+        c.nom AS contact_nom, c.empresa AS contact_empresa,
+        -- Recompte
+        count(*) OVER() AS total_count
+    FROM
+        public.quotes q
+    LEFT JOIN
+        public.contacts c ON q.contact_id = c.id
+    WHERE
+        q.team_id = team_id_param
+        AND (status_param IS NULL OR q.status = status_param)
+        AND (
+            search_term_param IS NULL OR
+            q.quote_number ILIKE '%' || search_term_param || '%' OR
+            c.nom ILIKE '%' || search_term_param || '%'
+        )
+    ORDER BY
+        -- ✅ ORDER BY només amb columnes existents o del JOIN
+        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN q.issue_date END ASC NULLS LAST,
+        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN q.issue_date END DESC NULLS LAST,
+        CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'asc' THEN q.quote_number END ASC NULLS LAST,
+        CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'desc' THEN q.quote_number END DESC NULLS LAST,
+        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN c.nom END ASC NULLS LAST, -- Ordena per nom de contacte
+        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN c.nom END DESC NULLS LAST,
+        CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN q.total END ASC NULLS LAST,
+        CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN q.total END DESC NULLS LAST,
+        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN q.status::text END ASC NULLS LAST,
+        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN q.status::text END DESC NULLS LAST
+    LIMIT limit_param
+    OFFSET offset_param;
+
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) RETURNS "void"
@@ -4432,21 +4465,27 @@ GRANT ALL ON FUNCTION "public"."save_refresh_token"("provider_name" "text", "ref
 
 
 
-GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_sort_by" "text", "p_sort_order" "text") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
 
 
 

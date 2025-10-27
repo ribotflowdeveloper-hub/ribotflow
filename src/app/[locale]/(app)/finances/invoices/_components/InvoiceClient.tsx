@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // Mantenim router si s'usa en columnes
 import { useLocale, useTranslations } from 'next-intl';
 import { PlusCircle, Edit } from 'lucide-react'; // Importem Edit per a l'acció
+import { usePathname } from 'next/navigation'; // ✅ 1. Importar usePathname
 
 // Tipus i Accions
 import { type InvoiceListRow, type InvoiceStatus } from '@/types/finances/invoices';
@@ -47,7 +48,7 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
   const tShared = useTranslations('Shared');
   const router = useRouter(); // Per al botó 'Nova' i potser columnes
   const locale = useLocale(); // Per a enllaços
-
+  const pathname = usePathname(); // ✅ 2. Obtenir la ruta actual 
   // --- Definició de Columnes ---
   const allColumns = useMemo<ColumnDef<InvoiceListRow>[]>(() => [
     {
@@ -73,7 +74,7 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
         if (invoice.contact_id) {
           return (
             <Link
-              href={`/${locale}/crm/contactes/${invoice.contact_id}`}
+              href={`/${locale}/crm/contactes/${invoice.contact_id}?from=${pathname}`}
               className="text-primary hover:underline font-medium"
             >
               {clientDisplayName}
@@ -120,7 +121,7 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
         </Link>
       ),
     }
-  ], [t, locale, tShared]); // Afegim locale i tShared si s'usen
+  ], [t, locale, tShared, pathname]); // Afegim locale, tShared i pathname si s'usen
 
   // --- Hook Genèric ---
   const {
