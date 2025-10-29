@@ -7,6 +7,10 @@ import { z } from 'zod';
 import { validateUserSession } from '@/lib/supabase/session';
 import { Tables, Json } from '@/types/supabase';
 import { JSONContent } from '@tiptap/react';
+import { cookies } from 'next/headers';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { Database } from '@/types/supabase';
+import type { ActionResult } from '@/types/shared';
 
 type FormState = {
   error?: {
@@ -308,3 +312,114 @@ export async function setTaskActiveStatus(taskId: number, newStatus: boolean) {
 
   return { success: true };
 }
+
+/**
+ * Server Action per pujar una imatge associada a una tasca des de l'editor.
+ */
+type UploadSuccessData = {
+    signedUrl: string;
+    filePath: string;
+};
+
+export async function uploadTaskImageAction(formData: FormData): Promise<ActionResult<UploadSuccessData>> {
+    const cookieStorePromise = cookies();
+
+    // --- Lògica de Validació de Sessió (Integrada) ---
+    console.log("[uploadTaskImageAction] Iniciant validació de sessió...");
+    const supabase = createServerClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                async get(name: string) {
+                    const cookieStore = await cookieStorePromise;
+                    return cookieStore.get(name)?.value;
+                },
+                async set(name: string, value: string, options: CookieOptions) {
+                    const cookieStore = await cookieStorePromise;
+                    try { cookieStore.set({ name, value, ...options }); } catch (e) { console.error("Error setting cookie:", e); }
+                },
+                async remove(name: string, options: CookieOptions) {
+                    const cookieStore = await cookieStorePromise;
+                    try { cookieStore.set({ name, value: '', ...options }); } catch (e) { console.error("Error removing cookie:", e); }
+                },
+            },
+        }
+    );
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+        console.error("[uploadTaskImageAction] Error obtenint usuari:", userError);
+        return { success: false, message: "Sessió invàlida." };
+    }
+    console.log("[uploadTaskImageAction] Usuari autenticat:", user.id);
+
+    let activeTeamId = user.app_metadata?.active_team_id as string | null;
+    if (!activeTeamId) {
+        console.warn("[uploadTaskImageAction] Fallback a 'profiles' per activeTeamId.");
+        const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('active_team_id')
+            .eq('id', user.id)
+            .single();
+        if (profileError) {
+             console.error("[uploadTaskImageAction] Error fallback perfil:", profileError);
+             return { success: false, message: "Error verificant equip actiu." };
+        }
+        activeTeamId = profile?.active_team_id ?? null;
+    }
+
+    if (!activeTeamId) {
+        console.error("[uploadTaskImageAction] No s'ha pogut determinar l'equip actiu:", user.id);
+        return { success: false, message: "Equip actiu no determinat." };
+    }
+    console.log("[uploadTaskImageAction] Equip actiu:", activeTeamId);
+    // --- FI Lògica de Sessió ---
+
+    // --- Lògica de Fitxer ---
+    console.log("[uploadTaskImageAction] Validant fitxer...");
+    const file = formData.get('file') as File | null;
+    if (!file) return { success: false, message: "No s'ha rebut cap fitxer." };
+    if (file.size > 5 * 1024 * 1024) return { success: false, message: "Fitxer massa gran (màx 5MB)." };
+    if (!file.type.startsWith('image/')) return { success: false, message: "Format no permès (només imatges)." };
+    console.log("[uploadTaskImageAction] Fitxer vàlid:", file.name);
+
+    const fileExt = file.name.split('.').pop() || 'tmp';
+    const uniqueFileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+    const filePath = `task-uploads/${activeTeamId}/${uniqueFileName}`;
+    console.log("[uploadTaskImageAction] Path destí:", filePath);
+
+    // --- Lògica de Pujada i URL Signada ---
+    try {
+        console.log(`[uploadTaskImageAction] Iniciant pujada...`);
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('fitxers-privats') // Bucket privat
+            .upload(filePath, file);
+
+        if (uploadError) throw new Error(`Error en pujar: ${uploadError.message}`);
+        console.log("[uploadTaskImageAction] Pujada OK:", uploadData.path);
+
+        console.log("[uploadTaskImageAction] Generant URL signada...");
+        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+            .from('fitxers-privats')
+            .createSignedUrl(filePath, 60 * 5); // 5 minuts validesa
+
+        if (signedUrlError) throw new Error(`Error generant URL: ${signedUrlError.message}`);
+        console.log("[uploadTaskImageAction] URL signada OK.");
+
+        // Retorn d'èxit (message és opcional si ActionResult ho permet)
+        return {
+            success: true,
+            data: {
+                signedUrl: signedUrlData.signedUrl,
+                filePath: filePath
+            }
+        };
+
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconegut processant imatge.";
+        console.error("[uploadTaskImageAction] Error:", message, error);
+        return { success: false, message: message };
+    }
+} // <-- Final de la funció uploadTaskImageAction

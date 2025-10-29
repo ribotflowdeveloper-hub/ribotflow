@@ -2,6 +2,6 @@
 
 export type ActionResult<T = unknown> = {
     success: boolean;
-    message: string;
+    message?: string;
     data?: T; // <-- Aquí està la clau. 'T' serà el tipus de les dades que retornem.
 };

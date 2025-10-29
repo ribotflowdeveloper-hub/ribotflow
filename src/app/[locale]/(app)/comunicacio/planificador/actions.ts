@@ -4,12 +4,8 @@ import { revalidatePath } from "next/cache";
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
 import { getTranslations } from "next-intl/server";
 import { validateSessionAndPermission, PERMISSIONS } from "@/lib/permissions";
+import { type ActionResult } from "@/types/shared/index";
 
-type ActionResult<T = unknown> = {
-    success: boolean;
-    message?: string;
-    data?: T;
-};
 
 // Definim el nom del bucket centralitzat
 const bucketName = 'assets-publics'; 
