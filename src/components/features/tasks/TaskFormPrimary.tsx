@@ -1,7 +1,7 @@
 // src/components/features/tasks/TaskFormPrimary.tsx
 'use client';
 
-import EditorWysiwyg from '@/components/ui/EditorWysiwyg';
+import EditorWysiwyg from '@/components/features/EditorWysiwyg/EditorWysiwyg';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { JSONContent } from '@tiptap/react';
