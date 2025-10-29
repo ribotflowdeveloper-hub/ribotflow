@@ -1,4 +1,4 @@
-import withNextIntl from 'next-intl/plugin'; // ✅ 1. Importa el plugin
+import withNextIntl from "next-intl/plugin"; // ✅ 1. Importa el plugin
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -7,16 +7,16 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'xrloavgcssycuiuptexa.supabase.co',
-        port: '',
-        pathname: '/storage/v1/object/public/**',
+        protocol: "https",
+        hostname: "xrloavgcssycuiuptexa.supabase.co",
+        port: "",
+        pathname: "/storage/v1/object/public/assets-publics/**",
       },
       {
-        protocol: 'https',
-        hostname: 'img.icons8.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "img.icons8.com",
+        port: "",
+        pathname: "/**",
       },
     ],
   },
@@ -27,8 +27,7 @@ const nextConfig: NextConfig = {
 };
 
 // ✅ 2. Embolcalla la teva configuració amb withNextIntl
-export default withNextIntl('./src/i18n.ts')(nextConfig);
-
+export default withNextIntl("./src/i18n.ts")(nextConfig);
 
 /**import withNextIntl from 'next-intl/plugin';
 import nextBundleAnalyzer from '@next/bundle-analyzer'; // NOU: Importem el bundle analyzer

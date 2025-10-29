@@ -4,7 +4,10 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Send, Trash2, Building } from 'lucide-react';
+import { Loader2, ArrowLeft, Send, Trash2, Building, Download } from 'lucide-react';
+
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
@@ -34,9 +37,10 @@ interface QuoteEditorClientProps {
     initialOpportunities: Opportunity[];
     userId: string;
     locale: string;
+    pdfUrl: string | null; // ✅ 2. Afegim la nova prop per rebre la URL signada
 }
 
-export function QuoteEditorClient(props: QuoteEditorClientProps) {
+export function QuoteEditorClient({ pdfUrl, ...props }: QuoteEditorClientProps) { // Destructurem pdfUrl aquí
     const router = useRouter();
 
     const {
@@ -51,8 +55,8 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
         handleSave, handleDelete, handleSend,
         isSaving, isSending,
         t
-    } = useQuoteEditor(props);
-    
+    } = useQuoteEditor(props); // Passem la resta de props al hook
+
     // Funció per a la navegació enrere
     const handleBack = () => router.push(`/${props.locale}/finances/quotes`);
 
@@ -62,14 +66,14 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
     const SentStatusCard = () => {
         if (!quote.sent_at) return null;
 
-        const sentDate = new Date(quote.sent_at).toLocaleDateString(props.locale, { 
-            day: '2-digit', 
+        const sentDate = new Date(quote.sent_at).toLocaleDateString(props.locale, {
+            day: '2-digit',
             month: 'short', // 'short' per a estalviar espai a la capçalera
-            year: 'numeric' 
+            year: 'numeric'
         });
 
         return (
-            <div 
+            <div
                 // ✅ Ús de fons 'success' per indicar estat positiu, amb text negre.
                 className="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 rounded-lg text-sm font-medium whitespace-nowrap"
             >
@@ -108,13 +112,43 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                 {/* ------------------------------------------------------------- */}
                 <header className="flex justify-between items-center mb-6 flex-shrink-0">
                     <div className="flex items-center gap-4">
-                        <Button variant="outline" onClick={handleBack}> 
+                        <Button variant="outline" onClick={handleBack}>
                             <ArrowLeft className="w-4 h-4 mr-2" />{t('quoteEditor.backButton')}
                         </Button>
                         <SentStatusCard /> {/* ✅ Estat d'enviament al costat del botó de tornada */}
                     </div>
                     
                     <div className="flex items-center gap-2">
+                        {/* ✅ 3. Afegim el botó de Descàrrega PDF */}
+                        {pdfUrl && (
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => window.open(pdfUrl, '_blank')}
+                                disabled={isSending}
+                                title={t('quoteEditor.downloadPDF')}
+                            >
+                                <Download className="h-4 w-4" />
+                            </Button>
+                        )}
+                        {/* Si no hi ha PDF però el pressupost existeix, mostrem botó desactivat amb tooltip */}
+                        {!pdfUrl && typeof quote.id === 'number' && (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        {/* Span necessari per al Tooltip amb botó desactivat */}
+                                        <span>
+                                            <Button variant="outline" size="icon" disabled>
+                                                <Download className="h-4 w-4" />
+                                            </Button>
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{t('quoteEditor.pdfNotAvailableYet')}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        )}
                         <Button variant="ghost" size="icon" onClick={() => setIsProfileDialogOpen(true)} title={t('quoteEditor.companyDataTooltip')}>
                             <Building className="w-4 h-4" />
                         </Button>
@@ -151,11 +185,11 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
 
                 <main className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
                     <section className="flex flex-col gap-4 overflow-y-auto pr-4">
-                        
+
                         {/* ------------------------------------------------------------- */}
                         {/* ✅ Ús de Card per sortir del fons gris ('glass-card' a 'Card') */}
                         {/* ------------------------------------------------------------- */}
-                        <Card className="p-4"> 
+                        <Card className="p-4">
                             <QuoteMeta
                                 contact_id={quote.contact_id !== null && quote.contact_id !== undefined ? String(quote.contact_id) : null}
                                 quote_number={quote.quote_number}
@@ -166,7 +200,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             />
                         </Card>
 
-                        <Card className="p-4"> 
+                        <Card className="p-4">
                             <Label>{t('quoteEditor.clientOpportunitiesLabel')}</Label>
                             {state.contactOpportunities.length > 0 ? (
                                 <Select
@@ -190,7 +224,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             )}
                         </Card>
 
-                        <Card className="p-2"> 
+                        <Card className="p-2">
                             <QuoteItems
                                 items={quote.items || []}
                                 onItemsChange={onItemsChange}
@@ -225,7 +259,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) {
                             </CardContent>
                         </Card>
 
-                        <Card className="p-4"> 
+                        <Card className="p-4">
                             <Label>Notes Addicionals</Label>
                             <Textarea
                                 value={quote.notes ?? ''}

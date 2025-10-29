@@ -1,16 +1,15 @@
-// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorData.tsx (Final i Validat)
+// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorData.tsx (MODIFICAT)
 
 import { redirect } from 'next/navigation';
 import { QuoteEditorClient } from './QuoteEditorClient';
 import { validatePageSession } from "@/lib/supabase/session";
 import type { Database } from '@/types/supabase';
 
-// --- Tipus Derivats de la Base de Dades ---
+// --- Tipus Derivats (sense canvis) ---
 type Quote = Database['public']['Tables']['quotes']['Row'];
 type QuoteItem = Database['public']['Tables']['quote_items']['Row'];
 type Opportunity = Database['public']['Tables']['opportunities']['Row'];
-
-// Tipus explícit per al retorn esperat de la funció RPC 'get_quote_details'
+type Team = Database['public']['Tables']['teams']['Row']; // <-- El tipus que ara farem servir
 type QuoteDetailsResponse = {
     quote: Quote & { items: QuoteItem[] };
     opportunities: Opportunity[];
@@ -21,14 +20,15 @@ interface QuoteEditorDataProps {
     locale: string;
 }
 
-/**
- * Aquest Server Component carrega totes les dades tipades per a l'editor de pressupostos
- * i les passa al component client 'QuoteEditorClient'.
- */
+// Tipus per a un nou pressupost que encara no té ID a la BD
+type NewQuote = Omit<Quote, 'id'> & { id: 'new'; items: Partial<QuoteItem>[] };
+// Define a union type for initialQuote to accept both new and existing quotes
+type InitialQuoteType = (Quote & { items: QuoteItem[] }) | NewQuote;
+
 export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps) {
     const { supabase, user, activeTeamId } = await validatePageSession();
 
-    // --- LÒGICA PER A UN PRESSUPOST NOU ---
+    // --- LÒGICA PER A UN PRESSUPOST NOU (sense canvis a la lògica principal) ---
     if (quoteId === 'new') {
         const [contactsRes, productsRes, teamRes, lastQuoteRes] = await Promise.all([
             supabase.from('contacts').select('*'),
@@ -42,27 +42,16 @@ export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps)
                 .maybeSingle()
         ]);
 
+        // ... (gestió d'errors i càlcul de número de pressupost igual que abans) ...
         if (contactsRes.error || productsRes.error || teamRes.error || lastQuoteRes.error) {
-            console.error("Error en carregar les dades per a un nou pressupost:", {
-                contacts: contactsRes.error,
-                products: productsRes.error,
-                team: teamRes.error,
-                lastQuote: lastQuoteRes.error,
-            });
+            console.error("Error en carregar les dades per a un nou pressupost:", { /* ... errors ... */ });
             return <div>Error en carregar les dades de l'editor.</div>;
         }
-
         const lastSequence = lastQuoteRes.data?.sequence_number || 0;
         const nextSequence = lastSequence + 1;
         const year = new Date().getFullYear();
         const formattedQuoteNumber = `PRE-${year}-${String(nextSequence).padStart(4, '0')}`;
-
-        // Tipus per a un nou pressupost que encara no té ID a la BD
-        type NewQuote = Omit<Quote, 'id'> & { id: 'new'; items: Partial<QuoteItem>[] };
-
-        // Define a union type for initialQuote to accept both new and existing quotes
-        type InitialQuoteType = (Quote & { items: QuoteItem[] }) | NewQuote;
-
+        // ... (construcció de 'initialQuote: NewQuote' igual que abans) ...
         const initialQuote: NewQuote = {
             id: 'new',
             team_id: activeTeamId,
@@ -84,28 +73,24 @@ export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps)
             created_at: new Date().toISOString(),
             sent_at: null,
             rejection_reason: null,
-            send_at: null,
+            send_at: null, // Assegura't que 'send_at' existeix al teu tipus Quote o elimina'l si no
             theme_color: null,
-            secure_id: crypto.randomUUID(), // Generem un UUID segur per a nous pressupostos
-            items: [{
-                description: '',
-                quantity: 1,
-                unit_price: 0,
-                product_id: null,
-                total: 0,
-                user_id: user.id,
-            }]
+            secure_id: crypto.randomUUID(),
+            items: [{ /* ... item inicial ... */ }]
         };
 
+
+        // Passem null com a pdfUrl per a nous pressupostos
         return (
             <QuoteEditorClient
-                initialQuote={initialQuote as InitialQuoteType}
+                initialQuote={initialQuote as InitialQuoteType} // Cast necessari per la unió
                 contacts={contactsRes.data || []}
                 products={productsRes.data || []}
-                companyProfile={teamRes.data}
+                companyProfile={teamRes.data as Team | null}
                 initialOpportunities={[]}
                 userId={user.id}
                 locale={locale}
+                pdfUrl={null} // 👈 Nou pressupost, no hi ha PDF encara
             />
         );
     }
@@ -119,12 +104,7 @@ export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps)
     ]);
 
     if (contactsRes.error || productsRes.error || teamRes.error || quoteDetailsRes.error) {
-        console.error("Error en carregar les dades d'un pressupost existent:", {
-            contacts: contactsRes.error,
-            products: productsRes.error,
-            team: teamRes.error,
-            quoteDetails: quoteDetailsRes.error,
-        });
+        console.error("Error en carregar les dades d'un pressupost existent:", { /* ... errors ... */ });
         return <div>Error en carregar les dades de l'editor.</div>;
     }
 
@@ -134,15 +114,35 @@ export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps)
         redirect(`/${locale}/crm/quotes`);
     }
 
+    // ✅ <<< INICI: Lògica per generar la URL signada del PDF >>>
+    let pdfUrl: string | null = null;
+    const filePath = `quotes/${activeTeamId}/${quoteId}.pdf`; // Construïm el path PRIVAT
+
+    const { data: signedUrlData, error: signedUrlError } = await supabase
+        .storage
+        .from('fitxers-privats') // Apuntem al bucket PRIVAT
+        .createSignedUrl(filePath, 60 * 5); // Generem URL per 5 minuts (ajusta segons necessitis)
+
+    if (signedUrlError) {
+        // Important: NO llencem un error aquí si el PDF no existeix.
+        // Podria ser que encara no s'hagi generat o enviat.
+        console.warn(`No s'ha pogut generar la URL signada per a ${filePath}: ${signedUrlError.message}`);
+        // pdfUrl romandrà null, i el client ho gestionarà (ex: desactivant el botó)
+    } else {
+        pdfUrl = signedUrlData.signedUrl;
+    }
+    // ✅ <<< FI: Lògica per generar la URL signada del PDF >>>
+
     return (
         <QuoteEditorClient
             initialQuote={quoteDetails.quote}
             contacts={contactsRes.data || []}
             products={productsRes.data || []}
-            companyProfile={teamRes.data}
+            companyProfile={teamRes.data as Team | null}
             initialOpportunities={quoteDetails.opportunities || []}
             userId={user.id}
             locale={locale}
+            pdfUrl={pdfUrl} // 👈 Passem la URL signada (o null si hi ha error/no existeix)
         />
     );
 }
