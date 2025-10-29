@@ -3,7 +3,8 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { X, Reply, Info, UserPlus, Loader2 } from 'lucide-react'; 
+import { X, Reply, Info, UserPlus, Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 import { ContactDialog } from '../../../crm/contactes/_components/ContactDialog';
 import { SafeEmailRenderer } from './SafeEmailRenderer';
@@ -22,12 +23,7 @@ interface MobileDetailViewProps {
 }
 
 export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, onReply, onSaveContact }: MobileDetailViewProps) {
-    const t = (key: string) => ({
-        'closeButton': "Tanca", 'fromLabel': "De", 'replyButton': "Respon",
-        'senderDetailsLabel': "Detalls del remitent", 'nameLabel': "Nom", 'emailLabel': "Correu",
-        'saveContactButton': "Desa com a contacte"
-    }[key] || key);
-  
+  const t = useTranslations('InboxPage');
   return (
     <motion.div 
       key={ticket.id} 

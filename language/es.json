@@ -54,7 +54,8 @@
     "integrations": "Integraciones",
     "blacklist": "Lista Negra",
     "install": "Instalar Ribotflow",
-    "permissions": "Permisos de la Aplicación"
+    "permissions": "Permisos de la Aplicación",
+    "brandNameMobile": "Ribotflow"
   },
   "InboxPage": {
     "composeDialogTitle": "Escribir un Correo",
@@ -80,10 +81,13 @@
     "inboxUpdatedToast": "Bandeja actualizada",
     "unknownSender": "Desconocido",
     "emptyInbox": "Tu bandeja está vacía.",
+    "loading": "Cargando...",
+    "loadMore": "Cargar más",
     "inboxTitle": "Bandeja de Entrada",
     "receivedFilter": "Recibidos",
     "sentFilter": "Enviados",
     "replyButton": "Responder",
+    "initialsFallback": "??",
     "selectConversationTitle": "Selecciona una conversación",
     "selectConversationDescription": "Elige un email de la lista para verlo aquí.",
     "contactDetailsTitle": "Detalles del Contacto",
@@ -101,14 +105,35 @@
     "deleteButtonTooltip": "Eliminar Conversación",
     "composeButtonTooltip": "Redactar Nuevo Correo",
     "refreshButtonTooltip": "Refrescar Bandeja de Entrada",
-    "allFilter": "Tots",
-    "unreadFilter": "No llegits",
+    "allFilter": "Todos",
+    "unreadFilter": "No leídos",
     "hideContactPanel": "Ocultar el panel de contactos",
     "showContactPanel": "Mostrar el panel de contactos",
+    "closeButton": "Cerrar vista detallada",
     "fromLabel": "Label",
+    "allInboxes": "Todas las bandejas",
+    "myEmails": "Mis correos",
+    "unknownMailbox": "Bandeja desconocida",
+    "unnamedUser": "Usuario sin nombre",
+    "searchInboxPlaceholder": "Buscar en la bandeja...",
+    "confirmBlacklist": "¿Estás seguro de que quieres bloquear a {email}? Sus correos no se descargarán de nuevo.",
+    "viewFullProfile": "Ver ficha completa",
+    "valueLabel": "Valor: {value} €",
+    "statusLabel": "Estado:",
+    "blocking": "Bloqueando...",
+    "addToBlacklist": "Añadir remitente a la lista negra",
     "toast": {
       "contactSavedSuccess": "Contacto guardado correctamente"
-    }
+    },
+    "editor": {
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "strike": "Tachado",
+      "heading": "Título",
+      "bulletList": "Lista de viñetas",
+      "orderedList": "Lista numerada"
+    },
+    "emailContentTitle": "Contenido del correo"
   },
   "AICampaignWizard": {
     "title": "Asistente de Campañas de IA",
@@ -688,7 +713,8 @@
       "noOpenOpportunities": "Este cliente no tiene oportunidades abiertas.",
       "additionalNotesLabel": "Notas Adicionales",
       "deleteDialogTitle": "¿Estás seguro?",
-      "deleteDialogDescription": "Esta acción borrará permanentemente este presupuesto."
+      "deleteDialogDescription": "Esta acción borrará permanentemente este presupuesto.",
+      "downloadPDF": "Descargar PDF"
     },
     "toast": {
       "errorTitle": "Error",
@@ -1460,7 +1486,12 @@
     "feature6Title": "Asistente de IA y Analítica Avanzada",
     "feature6DataTitle": "IA & Reports",
     "feature6Text": "La IA puntúa leads, sugiere respuestas y detecta oportunidades ocultas. Los dashboards personalizables muestran métricas clave para que tomes decisiones con seguridad.",
-    "developedBy": "Desarrollado por"
+    "developedBy": "Desarrollado por",
+    "logoAlt": "Logo de Ribotflow",
+    "brandNameNav": "Ribotflow",
+    "accessButton": "Acceder",
+    "brandNameFooter": " Ribotflow. ",
+    "developerName": "DigitAI Studios"
   },
   "CountdownView": {
     "mainTitle": "Tu negocio, bajo control.",
@@ -1507,7 +1538,9 @@
   },
   "LandingNav": {
     "login": "Acceder",
-    "signup": "Regístrate Gratis"
+    "signup": "Regístrate Gratis",
+    "logoAlt": "Logo de Ribotflow",
+    "brandName": "Ribotflow"
   },
   "SignupPage": {
     "title": "Crea tu cuenta",
@@ -1603,7 +1636,9 @@
       "streetLabel": "Calle",
       "cityLabel": "Ciudad",
       "postcodeLabel": "Código Postal",
-      "regionLabel": "Provincia"
+      "regionLabel": "Provincia",
+      "errorFetchingSuggestions": "Error al obtener los sugerencias de Mapbox:",
+      "errorRetrievingAddress": "Error al recuperar la dirección de Mapbox:"
     },
     "step3": {
       "title": "Últimos detalles",

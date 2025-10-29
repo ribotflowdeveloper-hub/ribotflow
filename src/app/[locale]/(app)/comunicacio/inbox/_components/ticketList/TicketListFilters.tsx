@@ -5,6 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { LayoutGrid, Inbox, Mail, Send } from "lucide-react";
+import { useTranslations } from 'next-intl';
 // ✨ CANVI: Importem el tipus directament de db.ts
 import type { TicketFilter } from '@/types/db';
 
@@ -16,12 +17,13 @@ interface TicketListFiltersProps {
   unreadCount: number;
 }
 
-export const TicketListFilters: React.FC<TicketListFiltersProps> = ({ activeFilter, onSetFilter, totalCount, sentCount, unreadCount }) => {
+export const TicketListFilters: React.FC<TicketListFiltersProps> = ({ activeFilter, onSetFilter, totalCount, sentCount, unreadCount }) => {  
+  const t = useTranslations('InboxPage');
   const filters: { id: TicketFilter, label: string, icon: React.ElementType, count?: number | string }[] = [
-    { id: 'tots', label: 'Tots', icon: LayoutGrid, count: totalCount },
-    { id: 'rebuts', label: 'Rebuts', icon: Inbox, count: totalCount - sentCount },
-    { id: 'noLlegits', label: 'No llegits', icon: Mail, count: unreadCount },
-    { id: 'enviats', label: 'Enviats', icon: Send, count: sentCount },
+    { id: 'tots', label: t('allFilter'), icon: LayoutGrid, count: totalCount },
+    { id: 'rebuts', label: t('receivedFilter'), icon: Inbox, count: totalCount - sentCount },
+    { id: 'noLlegits', label: t('unreadFilter'), icon: Mail, count: unreadCount },
+    { id: 'enviats', label: t('sentFilter'), icon: Send, count: sentCount },
   ];
 
   return (

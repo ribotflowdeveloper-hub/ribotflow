@@ -80,7 +80,7 @@ export function AppClientLayout({ children }: { children: ReactNode, locale: str
 
                     />
 
-                    <span className="font-bold text-lg">Ribotflow</span>
+                    <span className="font-bold text-lg">{t('brandNameMobile')}</span>
                     <MobileMenu
                         onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                         onNotImplementedClick={handleNotImplementedClick}

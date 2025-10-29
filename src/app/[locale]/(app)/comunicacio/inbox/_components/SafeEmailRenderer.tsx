@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface SafeEmailRendererProps {
     htmlBody: string;
@@ -70,6 +71,7 @@ const compatibilityStyles = `
 `;
 
 export const SafeEmailRenderer: React.FC<SafeEmailRendererProps> = ({ htmlBody }) => {
+    const t = useTranslations('InboxPage');
     const iframeRef = useRef<HTMLIFrameElement>(null);
     // ✅ MILLORAT: Comencem amb '100%' per evitar salts visuals mentre es calcula l'alçada real
     const [iframeHeight, setIframeHeight] = useState<string | number>('100%');
@@ -141,7 +143,7 @@ export const SafeEmailRenderer: React.FC<SafeEmailRendererProps> = ({ htmlBody }
         <iframe
             ref={iframeRef}
             srcDoc={documentSource}
-            title="Contingut del correu"
+            title={t('emailContentTitle')}
             sandbox="allow-scripts"
             width="100%"
             height={iframeHeight}

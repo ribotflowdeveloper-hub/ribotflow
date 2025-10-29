@@ -54,7 +54,8 @@
     "integrations": "Integrations",
     "blacklist": "Blacklist",
     "install": "Install Ribotflow",
-    "permissions": "Application Permissions"
+    "permissions": "Application Permissions",
+    "brandNameMobile": "Ribotflow"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
@@ -80,10 +81,13 @@
     "inboxUpdatedToast": "Inbox updated",
     "unknownSender": "Unknown",
     "emptyInbox": "Your inbox is empty.",
+    "loading": "Loading...",
+    "loadMore": "Load more",
     "inboxTitle": "Inbox",
     "receivedFilter": "Received",
     "sentFilter": "Sent",
     "replyButton": "Reply",
+    "initialsFallback": "??",
     "selectConversationTitle": "Select a Conversation",
     "selectConversationDescription": "Choose an email from the list to view it here.",
     "contactDetailsTitle": "Contact Details",
@@ -101,14 +105,35 @@
     "deleteButtonTooltip": "Delete Conversation",
     "composeButtonTooltip": "Compose New Email",
     "refreshButtonTooltip": "Refresh Inbox",
-    "allFilter": "Tots",
-    "unreadFilter": "No llegits",
+    "allFilter": "All",
+    "unreadFilter": "Unread",
     "hideContactPanel": "Hide contact panel",
     "showContactPanel": "Show contact panel",
+    "closeButton": "Close detailed view",
     "fromLabel": "Label",
+    "allInboxes": "All inboxes",
+    "myEmails": "My emails",
+    "unknownMailbox": "Unknown inbox",
+    "unnamedUser": "Unnamed user",
+    "searchInboxPlaceholder": "Search inbox...",
+    "confirmBlacklist": "Are you sure you want to block {email}? Their emails will no longer be downloaded.",
+    "viewFullProfile": "View full profile",
+    "valueLabel": "Value: €{value}",
+    "statusLabel": "Status:",
+    "blocking": "Blocking...",
+    "addToBlacklist": "Add sender to blacklist",
     "toast": {
       "contactSavedSuccess": "Contact saved successfully"
-    }
+    },
+    "editor": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "strike": "Strikethrough",
+      "heading": "Heading",
+      "bulletList": "Bullet list",
+      "orderedList": "Numbered list"
+    },
+    "emailContentTitle": "Email content"
   },
   "AICampaignWizard": {
     "title": "AI Campaign Wizard",
@@ -636,7 +661,8 @@
       "noOpenOpportunities": "This client has no open opportunities.",
       "additionalNotesLabel": "Additional Notes",
       "deleteDialogTitle": "Are you sure?",
-      "deleteDialogDescription": "This action will permanently delete this quote."
+      "deleteDialogDescription": "This action will permanently delete this quote.",
+      "downloadPDF": "Download PDF"
     },
     "toast": {
       "errorTitle": "Error",
@@ -1467,7 +1493,12 @@
     "feature6Title": "AI Assistant & Advanced Analytics",
     "feature6DataTitle": "AI & Reports",
     "feature6Text": "The AI scores leads, suggests responses, and detects hidden opportunities. Customizable dashboards show key metrics so you can make decisions with confidence.",
-    "developedBy": "Developed by"
+    "developedBy": "Developed by",
+    "logoAlt": "Ribotflow Logo",
+    "brandNameNav": "Ribotflow",
+    "accessButton": "Login",
+    "brandNameFooter": " Ribotflow. ",
+    "developerName": "DigitAI Studios"
   },
   "CountdownView": {
     "mainTitle": "El teu negoci, sota control.",
@@ -1514,7 +1545,9 @@
   },
   "LandingNav": {
     "login": "Accedir",
-    "signup": "Registra't Gratis"
+    "signup": "Registra't Gratis",
+    "logoAlt": "Ribotflow Logo",
+    "brandName": "Ribotflow"
   },
   "SignupPage": {
     "title": "Create Your Account",
@@ -1610,7 +1643,9 @@
       "streetLabel": "Street",
       "cityLabel": "City",
       "postcodeLabel": "Postal Code",
-      "regionLabel": "Region"
+      "regionLabel": "Region",
+      "errorFetchingSuggestions": "Error fetching Mapbox suggestions:",
+      "errorRetrievingAddress": "Error retrieving Mapbox address:"
     },
     "step3": {
       "title": "Final details",

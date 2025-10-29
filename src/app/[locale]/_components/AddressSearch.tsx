@@ -40,7 +40,7 @@ export function AddressSearch({ onAddressSelect }: AddressSearchProps) {
       const data = await response.json();
       setSuggestions(data.suggestions || []);
     } catch (error) {
-      console.error('Error fetching Mapbox suggestions:', error);
+      console.error(t('errorFetchingSuggestions'), error);
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +77,7 @@ export function AddressSearch({ onAddressSelect }: AddressSearchProps) {
             longitude: feature.geometry.coordinates[0],
         });
     } catch (error) {
-        console.error('Error retrieving Mapbox address:', error);
+        console.error(t('errorRetrievingAddress'), error);
     } finally {
         setIsLoading(false);
     }

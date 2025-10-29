@@ -54,7 +54,8 @@
     "integrations": "Integracions",
     "blacklist": "Llista Negra",
     "install": "Instal·lar Ribotflow",
-    "permissions": "Permisos d'Aplicació"
+    "permissions": "Permisos d'Aplicació",
+    "brandNameMobile": "Ribotflow"
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -80,10 +81,13 @@
     "inboxUpdatedToast": "Safata actualitzada",
     "unknownSender": "Desconegut",
     "emptyInbox": "La teva safata està buida.",
+    "loading": "Carregant...",
+    "loadMore": "Carregar més",
     "inboxTitle": "Safata d'Entrada",
     "receivedFilter": "Rebuts",
     "sentFilter": "Enviats",
     "replyButton": "Respondre",
+    "initialsFallback": "??",
     "selectConversationTitle": "Selecciona una conversa",
     "selectConversationDescription": "Tria un email de la llista per veure'l aquí.",
     "contactDetailsTitle": "Detalls del Contacte",
@@ -107,9 +111,29 @@
     "showContactPanel": "Mostra el panell de contactes",
     "closeButton": "Tancar vista detallada",
     "fromLabel": "Label",
+    "allInboxes": "Totes les bústies",
+    "myEmails": "Els meus correus",
+    "unknownMailbox": "Bústia desconeguda",
+    "unnamedUser": "Usuari sense nom",
+    "searchInboxPlaceholder": "Cerca a la bústia...",
+    "confirmBlacklist": "Estàs segur que vols bloquejar {email}? Tots els seus correus no es descarregaran de nous.",
+    "viewFullProfile": "Veure fitxa completa",
+    "valueLabel": "Valor: {value} €",
+    "statusLabel": "Estat:",
+    "blocking": "Bloquejant...",
+    "addToBlacklist": "Afegeix remitent a la llista negra",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament"
-    }
+    },
+    "editor": {
+    "bold": "Negreta",
+    "italic": "Cursiva",
+    "strike": "Ratllat",
+    "heading": "Títol",
+    "bulletList": "Llista de pics",
+    "orderedList": "Llista numerada"
+    },
+    "emailContentTitle": "Contingut del correu"
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -722,7 +746,8 @@
       "noOpenOpportunities": "Aquest client no té oportunitats obertes.",
       "additionalNotesLabel": "Notes Addicionals",
       "deleteDialogTitle": "Estàs segur?",
-      "deleteDialogDescription": "Aquesta acció esborrarà permanentment aquest pressupost."
+      "deleteDialogDescription": "Aquesta acció esborrarà permanentment aquest pressupost.",
+      "downloadPDF": "Descarregar PDF"
     },
     "toast": {
       "errorTitle": "Error",
@@ -1464,7 +1489,12 @@
     "feature6Title": "Assistent d’IA i Analítica Avançada",
     "feature6DataTitle": "IA & Reports",
     "feature6Text": "L’IA puntua leads, suggereix respostes i detecta oportunitats amagades. Els dashboards personalitzables mostren mètriques clau perquè prenguis decisions amb seguretat.",
-    "developedBy": "Desenvolupat per"
+    "developedBy": "Desenvolupat per",
+    "logoAlt": "Logo de Ribotflow",
+    "brandNameNav": "Ribotflow",
+    "accessButton": "Accedir",
+    "brandNameFooter": " Ribotflow. ",
+    "developerName": "DigitAI Studios"
   },
   "CountdownView": {
     "mainTitle": "El teu negoci, sota control.",
@@ -1511,7 +1541,9 @@
   },
   "LandingNav": {
     "login": "Inicia sessió",
-    "signup": "Registra't Gratis"
+    "signup": "Registra't Gratis",
+    "logoAlt": "Logo de Ribotflow",
+    "brandName": "Ribotflow"
   },
   "SignupPage": {
     "title": "Crea el teu compte",
@@ -1607,7 +1639,9 @@
       "streetLabel": "Carrer",
       "cityLabel": "Població",
       "postcodeLabel": "Codi Postal",
-      "regionLabel": "Província"
+      "regionLabel": "Província",
+      "errorFetchingSuggestions": "Error en obtenir els suggeriments de Mapbox:",
+      "errorRetrievingAddress": "Error en recuperar l'adreça de Mapbox:"
     },
     "step3": {
       "title": "Últims detalls",
