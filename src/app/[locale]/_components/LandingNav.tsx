@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
-import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 
@@ -25,10 +25,10 @@ export function LandingNav() {
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
         <ThemeSwitcher />
-        <Button asChild variant="ghost">
+        <Button variant="ghost">
           <Link href="/login">{t('login')}</Link>
         </Button>
-        <Button asChild className="hidden sm:inline-flex bg-gradient-to-r from-green-400 to-cyan-400 text-black font-bold hover:scale-105 transition-transform">
+        <Button className="hidden sm:inline-flex bg-gradient-to-r from-green-400 to-cyan-400 text-black font-bold hover:scale-105 transition-transform">
           <Link href="/signup">{t('signup')}</Link>
         </Button>
       </div>

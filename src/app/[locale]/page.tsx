@@ -3,8 +3,8 @@
  * @summary Aquesta és la pàgina d'inici (Landing Page).
  * No fa cap redirecció. El middleware s'encarrega de tot.
  */
-import { LandingClient } from './_components/LandingClient';
 import type { Metadata } from 'next';
+import { MainLandingView } from './_components/MainLandingView';
 
 export const metadata: Metadata = {
   title: 'Ribotflow - El Futur de la Gestió Empresarial',
@@ -12,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function LandingPage() {
-  return <LandingClient />;
+  return <MainLandingView />;
 }
