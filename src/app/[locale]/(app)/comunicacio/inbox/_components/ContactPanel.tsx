@@ -7,6 +7,7 @@ import { User, Building, UserPlus, Mail, Phone, MapPin, ExternalLink, Euro, Ban,
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+import { useTranslations } from 'next-intl';
 import { ContactDialog } from '@/app/[locale]/(app)/crm/contactes/_components/ContactDialog';
 import { addToBlacklistAction } from '../actions';
 
@@ -22,6 +23,7 @@ interface ContactPanelProps {
 
 export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSave, onSaveContact, allTeamContacts }) => {
     const [isPending, startTransition] = useTransition();
+    const t = useTranslations('InboxPage');
 
     // Simplifiquem la lògica per trobar el contacte a mostrar.
     const contactToShow: Contact | null = useMemo(() => {
@@ -70,7 +72,7 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
 
     const handleBlacklist = () => {
         if (!ticket || !ticket.sender_email) return;
-        if (confirm(`Estàs segur que vols bloquejar ${ticket.sender_email}? Tots els seus correus no es descarregaran de nous.`)) {
+        if (confirm(t('confirmBlacklist', { email: ticket.sender_email }))) {
             startTransition(async () => {
                 const result = await addToBlacklistAction(ticket.sender_email!);
                 toast[result.success ? 'success' : 'error'](result.message);
@@ -82,15 +84,15 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
             {!ticket ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
                     <User className="w-16 h-16 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">Selecciona un tiquet per veure'n els detalls.</p>
+                    <p className="text-muted-foreground">{t('selectConversationDescription')}</p>
                 </div>
             ) : contactToShow ? (
                 <>
                     <div className="p-4 border-b flex justify-between items-center flex-shrink-0">
-                        <h2 className="text-xl font-bold">Detalls del Contacte</h2>
+                        <h2 className="text-xl font-bold">{t('contactDetailsTitle')}</h2>
                         <Button asChild variant="secondary" size="sm">
                             <Link href={`/crm/contactes/${contactToShow.id}`}>
-                                Veure fitxa completa <ExternalLink className="w-4 h-4 ml-2" />
+                                {t('viewFullProfile')} <ExternalLink className="w-4 h-4 ml-2" />
                             </Link>
                         </Button>
                     </div>
@@ -115,19 +117,19 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                             </div>
                             <div className="flex items-center gap-3">
                                 <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                <span>{contactToShow.telefon || "No especificat"}</span>
+                                <span>{contactToShow.telefon || t('notSpecified')}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                <span>{contactToShow.ubicacio || "No especificada"}</span>
+                                <span>{contactToShow.ubicacio || t('notSpecified')}</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <Euro className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                <span>Valor: {contactToShow.valor ?? 0} €</span>
+                                <span>{t('valueLabel')}: {contactToShow.valor ?? 0} €</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <UserPlus className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                <span>Estat: <span className="font-medium">{contactToShow.estat}</span></span>
+                                <span>{t('statusLabel')}: <span className="font-medium">{contactToShow.estat}</span></span>
                             </div>
                         </div>
                     </div>
@@ -142,7 +144,7 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                         trigger={
                             <Button disabled={isPendingSave}>
                                 <UserPlus className="w-4 h-4 mr-2" />
-                                Desa com a contacte
+                                {t('saveContactButton')}
                             </Button>
                         }
                         initialData={{
@@ -170,7 +172,7 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                         ) : (
                             <Ban className="w-4 h-4 mr-2" />
                         )}
-                        {isPending ? 'Bloquejant...' : 'Afegeix remitent a la llista negra'}
+                        {isPending ? t('blocking') : t('addToBlacklist')}
                     </Button>
                 </div>
             )}

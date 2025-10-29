@@ -87,6 +87,7 @@
     "receivedFilter": "Received",
     "sentFilter": "Sent",
     "replyButton": "Reply",
+    "initialsFallback": "??",
     "selectConversationTitle": "Select a Conversation",
     "selectConversationDescription": "Choose an email from the list to view it here.",
     "contactDetailsTitle": "Contact Details",
@@ -115,9 +116,24 @@
     "unknownMailbox": "Unknown inbox",
     "unnamedUser": "Unnamed user",
     "searchInboxPlaceholder": "Search inbox...",
+    "confirmBlacklist": "Are you sure you want to block {email}? Their emails will no longer be downloaded.",
+    "viewFullProfile": "View full profile",
+    "valueLabel": "Value: €{value}",
+    "statusLabel": "Status:",
+    "blocking": "Blocking...",
+    "addToBlacklist": "Add sender to blacklist",
     "toast": {
       "contactSavedSuccess": "Contact saved successfully"
-    }
+    },
+    "editor": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "strike": "Strikethrough",
+      "heading": "Heading",
+      "bulletList": "Bullet list",
+      "orderedList": "Numbered list"
+    },
+    "emailContentTitle": "Email content"
   },
   "AICampaignWizard": {
     "title": "AI Campaign Wizard",
@@ -645,7 +661,8 @@
       "noOpenOpportunities": "This client has no open opportunities.",
       "additionalNotesLabel": "Additional Notes",
       "deleteDialogTitle": "Are you sure?",
-      "deleteDialogDescription": "This action will permanently delete this quote."
+      "deleteDialogDescription": "This action will permanently delete this quote.",
+      "downloadPDF": "Download PDF"
     },
     "toast": {
       "errorTitle": "Error",

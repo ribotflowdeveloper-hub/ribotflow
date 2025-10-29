@@ -87,6 +87,7 @@
     "receivedFilter": "Recibidos",
     "sentFilter": "Enviados",
     "replyButton": "Responder",
+    "initialsFallback": "??",
     "selectConversationTitle": "Selecciona una conversación",
     "selectConversationDescription": "Elige un email de la lista para verlo aquí.",
     "contactDetailsTitle": "Detalles del Contacto",
@@ -115,9 +116,24 @@
     "unknownMailbox": "Bandeja desconocida",
     "unnamedUser": "Usuario sin nombre",
     "searchInboxPlaceholder": "Buscar en la bandeja...",
+    "confirmBlacklist": "¿Estás seguro de que quieres bloquear a {email}? Sus correos no se descargarán de nuevo.",
+    "viewFullProfile": "Ver ficha completa",
+    "valueLabel": "Valor: {value} €",
+    "statusLabel": "Estado:",
+    "blocking": "Bloqueando...",
+    "addToBlacklist": "Añadir remitente a la lista negra",
     "toast": {
       "contactSavedSuccess": "Contacto guardado correctamente"
-    }
+    },
+    "editor": {
+      "bold": "Negrita",
+      "italic": "Cursiva",
+      "strike": "Tachado",
+      "heading": "Título",
+      "bulletList": "Lista de viñetas",
+      "orderedList": "Lista numerada"
+    },
+    "emailContentTitle": "Contenido del correo"
   },
   "AICampaignWizard": {
     "title": "Asistente de Campañas de IA",
@@ -697,7 +713,8 @@
       "noOpenOpportunities": "Este cliente no tiene oportunidades abiertas.",
       "additionalNotesLabel": "Notas Adicionales",
       "deleteDialogTitle": "¿Estás seguro?",
-      "deleteDialogDescription": "Esta acción borrará permanentemente este presupuesto."
+      "deleteDialogDescription": "Esta acción borrará permanentemente este presupuesto.",
+      "downloadPDF": "Descargar PDF"
     },
     "toast": {
       "errorTitle": "Error",

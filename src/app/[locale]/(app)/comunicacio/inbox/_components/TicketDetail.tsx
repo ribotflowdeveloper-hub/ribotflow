@@ -2,6 +2,7 @@
 "use client";
 
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Reply, MoreVertical, Loader2, Info } from 'lucide-react';
@@ -27,12 +28,8 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   isContactPanelOpen,
   onToggleContactPanel,
 }) => {
-  const t = (key: string) => ({
-    noTicketSelected: "Selecciona un correu per llegir-lo",
-    from: "De",
-    to: "Per a",
-    reply: "Respon",
-  }[key] || key);
+  
+  const t = useTranslations('InboxPage');
 
   if (!ticket) {
     return (
@@ -43,11 +40,14 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
   }
 
   // ✨ CORRECCIÓ: Accedim a les dades de contacte planes directament des del tiquet.
-  const senderName = ticket.contact_nom || ticket.sender_name || 'Desconegut';
+  const senderName = ticket.contact_nom || ticket.sender_name || t('unknownSender');
   const senderEmail = ticket.contact_email || ticket.sender_email;
   const avatarUrl = ticket.profile_avatar_url;
 
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+  const getInitials = (name: string, fallback: string) => {
+    if (!name) return fallback;
+    return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+};
 
   return (
     <div className="h-full flex flex-col">
@@ -55,7 +55,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
         <div className="flex items-center gap-3 min-w-0">
           <Avatar>
             <AvatarImage src={avatarUrl ?? undefined} />
-            <AvatarFallback>{getInitials(senderName)}</AvatarFallback>
+            <AvatarFallback>{getInitials(senderName, t('initialsFallback'))}</AvatarFallback>
           </Avatar>
           <div className="truncate">
             <p className="font-semibold truncate">{senderName}</p>
@@ -68,7 +68,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({
           </Button>
           <Button onClick={() => onReply(ticket)}>
             <Reply className="mr-2 h-4 w-4" />
-            {t('reply')}
+            {t('replyButton')}
           </Button>
           <Button variant="ghost" size="icon">
             <MoreVertical className="w-5 h-5" />

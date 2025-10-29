@@ -87,6 +87,7 @@
     "receivedFilter": "Rebuts",
     "sentFilter": "Enviats",
     "replyButton": "Respondre",
+    "initialsFallback": "??",
     "selectConversationTitle": "Selecciona una conversa",
     "selectConversationDescription": "Tria un email de la llista per veure'l aquí.",
     "contactDetailsTitle": "Detalls del Contacte",
@@ -115,9 +116,24 @@
     "unknownMailbox": "Bústia desconeguda",
     "unnamedUser": "Usuari sense nom",
     "searchInboxPlaceholder": "Cerca a la bústia...",
+    "confirmBlacklist": "Estàs segur que vols bloquejar {email}? Tots els seus correus no es descarregaran de nous.",
+    "viewFullProfile": "Veure fitxa completa",
+    "valueLabel": "Valor: {value} €",
+    "statusLabel": "Estat:",
+    "blocking": "Bloquejant...",
+    "addToBlacklist": "Afegeix remitent a la llista negra",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament"
-    }
+    },
+    "editor": {
+    "bold": "Negreta",
+    "italic": "Cursiva",
+    "strike": "Ratllat",
+    "heading": "Títol",
+    "bulletList": "Llista de pics",
+    "orderedList": "Llista numerada"
+    },
+    "emailContentTitle": "Contingut del correu"
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -730,7 +746,8 @@
       "noOpenOpportunities": "Aquest client no té oportunitats obertes.",
       "additionalNotesLabel": "Notes Addicionals",
       "deleteDialogTitle": "Estàs segur?",
-      "deleteDialogDescription": "Aquesta acció esborrarà permanentment aquest pressupost."
+      "deleteDialogDescription": "Aquesta acció esborrarà permanentment aquest pressupost.",
+      "downloadPDF": "Descarregar PDF"
     },
     "toast": {
       "errorTitle": "Error",
