@@ -65,7 +65,7 @@ export async function deleteQuoteAction(quoteId: number): Promise<ActionResult> 
     try {
         await supabase.from('quote_items').delete().eq('quote_id', quoteId);
         await supabase.from('quotes').delete().eq('id', quoteId);
-        revalidatePath('/crm/quotes');
+        revalidatePath('/finances/quotes');
         return { success: true, message: "Pressupost eliminat." };
     } catch(error) {
         const message = error instanceof Error ? error.message : "Error en eliminar el pressupost.";
@@ -85,7 +85,7 @@ export async function createProductAction(newProduct: { name: string, price: num
         }).select().single();
 
         if (error) throw error;
-        revalidatePath(`/crm`, 'layout');
+        revalidatePath(`/finances/quotes`, 'layout');
         return { success: true, message: 'Nou producte desat.', data };
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Error en crear el producte.";
@@ -101,7 +101,7 @@ export async function sendQuoteAction(quoteId: number): Promise<ActionResult> {
     try {
         const { error } = await supabase.functions.invoke('send-quote-pdf', { body: { quoteId } });
         if (error) throw error;
-        revalidatePath(`/crm/quotes/${quoteId}`);
+        revalidatePath(`/finances/quotes/${quoteId}`);
         return { success: true, message: "S'ha iniciat l'enviament del pressupost." };
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Error en invocar l'Edge Function.";
@@ -124,7 +124,7 @@ export async function updateTeamProfileAction(teamData: Partial<Team>): Promise<
             
         if (error) throw error;
         
-        revalidatePath(`/crm/quotes/[id]`, 'page');
+        revalidatePath(`/finances/quotes/[id]`, 'page');
         return { success: true, message: 'Perfil de l\'equip actualitzat.', data };
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Error en actualitzar el perfil.";

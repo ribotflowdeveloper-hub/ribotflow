@@ -747,7 +747,8 @@
       "additionalNotesLabel": "Notes Addicionals",
       "deleteDialogTitle": "Estàs segur?",
       "deleteDialogDescription": "Aquesta acció esborrarà permanentment aquest pressupost.",
-      "downloadPDF": "Descarregar PDF"
+      "downloadPDF": "Descarregar PDF",
+      "pdfNotAvailableYet": "El PDF encara no està disponible."
     },
     "toast": {
       "errorTitle": "Error",

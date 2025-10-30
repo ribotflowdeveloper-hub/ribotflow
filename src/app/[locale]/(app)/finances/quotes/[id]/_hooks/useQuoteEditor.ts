@@ -157,7 +157,7 @@ export function useQuoteEditor({
             if (result.success && typeof result.data === "number") {
                 toast.success(result.message);
                 if (state.quote.id === "new") {
-                    router.replace(`/crm/quotes/${result.data}`);
+                    router.replace(`/finances/quotes/${result.data}`);
                 }
             } else {
                 toast.error(t("toast.errorTitle"), {
@@ -175,7 +175,7 @@ export function useQuoteEditor({
             const result = await deleteQuoteAction(state.quote.id);
             if (result.success) {
                 toast.success(result.message);
-                router.push("/crm/quotes");
+                router.push("/finances/quotes");
             } else {
                 toast.error(t("toast.errorTitle"), {
                     description: result.message,
