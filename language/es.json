@@ -725,7 +725,12 @@
       "previewNotFound": "Elemento de previsualización no encontrado.",
       "unauthenticated": "Usuario no autenticado.",
       "sendError": "Error en el envío",
-      "deletedSuccess": "¡Eliminado!"
+      "deletedSuccess": "¡Eliminado!",
+      "validation": {
+        "missingContact": "Debe seleccionarse un cliente.",
+        "minOneItem": "El presupuesto debe tener al menos un concepto.",
+        "invalidItem": "Uno o más conceptos tienen datos no válidos (descripción vacía o cantidad 0)."
+      }
     },
     "buttons": {
       "cancel": "Cancelar",

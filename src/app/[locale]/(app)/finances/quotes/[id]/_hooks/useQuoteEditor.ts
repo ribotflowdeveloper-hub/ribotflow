@@ -102,7 +102,14 @@ export function useQuoteEditor({
     const t = useTranslations("QuoteEditor");
 
     const initialState: EditorState = {
-        quote: initialQuote,
+        // ✅ MILLORA 1: Corregim l'estat inicial.
+        // Si és un pressupost nou, forcem 'items' a ser un array buit,
+        // evitant el "concepte per defecte" que es pugui haver injectat
+        // a la 'page.tsx' (que és on s'hauria d'evitar, però ho blindem aquí).
+        quote: {
+            ...initialQuote,
+            items: initialQuote.id === "new" ? [] : initialQuote.items,
+        },
         currentTeamData: companyProfile,
         contactOpportunities: initialOpportunities,
         isDeleteDialogOpen: false,
@@ -146,8 +153,33 @@ export function useQuoteEditor({
     }, []);
 
     const handleSave = useCallback(() => {
+        // ✅ MILLORA 2: Validació robusta al client abans d'enviar.
+        // (Nota: Afegeix aquestes claus al teu arxiu de traduccions 'ca.json')
+        if (!state.quote.contact_id) {
+            toast.error(t("toast.errorTitle"), {
+                description: t("toast.validation.missingContact"), // "Cal seleccionar un client."
+            });
+            return;
+        }
+        if (state.quote.items.length === 0) {
+            toast.error(t("toast.errorTitle"), {
+                description: t("toast.validation.minOneItem"), // "El pressupost ha de tenir almenys un concepte."
+            });
+            return;
+        }
+        const hasInvalidItem = state.quote.items.some(
+            (item) =>
+                !item.description?.trim() || // Descripció no pot ser buida
+                (item.quantity ?? 1) <= 0, // Quantitat ha de ser positiva
+        );
+        if (hasInvalidItem) {
+            toast.error(t("toast.errorTitle"), {
+                description: t("toast.validation.invalidItem"), // "Un o més conceptes tenen dades invàlides (descripció buida o quantitat 0)."
+            });
+            return;
+        }
+
         startSaveTransition(async () => {
-            // ✅ 2. L'objecte que passem ara és compatible amb el tipus 'QuotePayload' de l'acció.
             const result = await saveQuoteAction({
                 ...state.quote,
                 subtotal,
@@ -161,12 +193,11 @@ export function useQuoteEditor({
                 }
             } else {
                 toast.error(t("toast.errorTitle"), {
-                    description: result.message,
+                    description: result.message, // Aquest missatge ara serà específic
                 });
             }
         });
     }, [state.quote, subtotal, tax, total, router, t]);
-
     const handleDelete = useCallback(() => {
         // ✅ 3. GUARD: Aquesta comprovació assegura que només passem un 'number' a l'acció.
         if (typeof state.quote.id !== "number") return;
@@ -187,7 +218,7 @@ export function useQuoteEditor({
     const handleSend = useCallback(() => {
         if (typeof state.quote.id !== "number" || !state.quote.team_id) { // ✅ Assegura't de tenir team_id
             toast.error(t("toast.errorTitle"), {
-                description: t("toast.saveFirstOrMissingTeam"),
+                description: t("toast.saveFirst"),
             }); // Missatge més clar
             return;
         }
@@ -270,7 +301,13 @@ export function useQuoteEditor({
     }, [state.quote, supabase, t]); //
 
     useEffect(() => {
-        dispatch({ type: "SET_QUOTE", payload: initialQuote });
+        // ✅ RE-APLICACIÓ DE LA MILLORA 1:
+        // Assegurem que si el 'initialQuote' canvia (p.ex. navegació client),
+        // també es netegi si és 'new'.
+        const quoteToSet = initialQuote.id === "new"
+            ? { ...initialQuote, items: [] }
+            : initialQuote;
+        dispatch({ type: "SET_QUOTE", payload: quoteToSet });
     }, [initialQuote]);
 
     useEffect(() => {

@@ -759,7 +759,12 @@
       "previewNotFound": "Element de previsualització no trobat.",
       "unauthenticated": "Usuari no autenticat.",
       "sendError": "Error en l'enviament",
-      "deletedSuccess": "Esborrat!"
+      "deletedSuccess": "Esborrat!",
+      "validation": {
+        "missingContact": "Cal seleccionar un client.",
+        "minOneItem": "El pressupost ha de tenir almenys un concepte.",
+        "invalidItem": "Un o més conceptes tenen dades invàlides (descripció buida o quantitat 0)."
+      }
     },
     "buttons": {
       "cancel": "Cancel·lar",

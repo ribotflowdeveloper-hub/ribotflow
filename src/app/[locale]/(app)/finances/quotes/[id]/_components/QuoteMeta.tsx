@@ -37,7 +37,7 @@ export const QuoteMeta = ({
     onMetaChange,
     contacts
 }: QuoteMetaProps) => {
-
+    const [isContactPopoverOpen, setIsContactPopoverOpen] = React.useState(false);
     const selectedContact = contacts.find(c => c.id === (contact_id !== null ? Number(contact_id) : null));
     const t = useTranslations('QuoteEditor.meta');
 
@@ -56,8 +56,10 @@ export const QuoteMeta = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <Label>{t('clientLabel')}</Label>
-                    <Popover>
-                        <PopoverTrigger asChild>
+                    <Popover
+                        open={isContactPopoverOpen}
+                        onOpenChange={setIsContactPopoverOpen}
+                    >                        <PopoverTrigger asChild>
                             {/* ✅ CORRECCIÓ: Afegim 'text-foreground' (negre/fosc) al botó per visibilitat */}
                             <Button variant="outline" role="combobox" className="w-full justify-between search-input text-left font-normal mt-1 text-foreground">
                                 {selectedContact ? (
@@ -78,20 +80,28 @@ export const QuoteMeta = ({
                                 <CommandList>
                                     <CommandEmpty>{t('noClientFound')}</CommandEmpty>
                                     <CommandGroup>
-                                        {contacts.map(c => (
-                                            <CommandItem 
-                                                key={c.id} 
-                                                value={`${c.nom} ${c.empresa}`} 
-                                                // ⚠️ Convertim l'ID a string o 'new' abans de passar-lo,
-                                                // tot i que en el context del form es tracta com a Number | null.
-                                                // onMetaChange('contact_id', c.id) és correcte segons la definició de EditableQuote
-                                                // que utilitza Number (el hook ho gestiona)
-                                                onSelect={() => onMetaChange('contact_id', c.id)} 
+                                        {contacts.map((c) => (
+                                            <CommandItem
+                                                key={c.id}
+                                                value={`${c.nom} ${c.empresa}`}
+                                                // ✅ MILLORA 3: A l'onSelect, actualitzem el valor I tanquem el Popover.
+                                                onSelect={() => {
+                                                    onMetaChange("contact_id", c.id);
+                                                    setIsContactPopoverOpen(false); // Tanquem el popover
+                                                }}
                                             >
-                                                <Check className={cn("mr-2 h-4 w-4", contact_id !== null && Number(contact_id) === c.id ? "opacity-100" : "opacity-0")} />
-                                                {/* ✅ Ajustem el text per contrast a la ComandItem */}
-                                                <span className="text-foreground">{c.nom}</span> 
-                                                <span className="text-xs text-muted-foreground ml-2">{c.empresa}</span>
+                                                <Check
+                                                    className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        contact_id !== null && Number(contact_id) === c.id
+                                                            ? "opacity-100"
+                                                            : "opacity-0",
+                                                    )}
+                                                />
+                                                <span className="text-foreground">{c.nom}</span>
+                                                <span className="text-xs text-muted-foreground ml-2">
+                                                    {c.empresa}
+                                                </span>
                                             </CommandItem>
                                         ))}
                                     </CommandGroup>

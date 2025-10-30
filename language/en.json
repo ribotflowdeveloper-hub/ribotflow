@@ -673,7 +673,12 @@
       "previewNotFound": "Preview element not found.",
       "unauthenticated": "User not authenticated.",
       "sendError": "Sending error",
-      "deletedSuccess": "Deleted!"
+      "deletedSuccess": "Deleted!",
+      "validation": {
+        "missingContact": "A client must be selected.",
+        "minOneItem": "The quote must have at least one item.",
+        "invalidItem": "One or more items contain invalid data (empty description or quantity 0)."
+      }
     },
     "buttons": {
       "cancel": "Cancel",
