@@ -1619,7 +1619,7 @@
     "acceptTermsPrefix": "I have read and accept the",
     "acceptPrivacyPrefix": "I have read and understand the",
     "acceptMarketing": "I want to receive updates and communications.",
-    "goBackHome": "Back to Homel",
+    "goBackHome": "Back to Home",
     "errors": {
       "password_length": "Password should be at least 6 characters.",
       "email_invalid": "Please enter a valid email address.",
@@ -1644,7 +1644,7 @@
     "submitButton": "Log In",
     "toastErrorTitle": "Login Error",
     "toastErrorDescription": "The credentials are incorrect. Please try again.",
-    "goBackHome": "Back to Homel",
+    "goBackHome": "Back to Home",
     "forgotPassword": {
       "title": "Reset Password",
       "description": "Enter your email and we'll send you a link to reset your password.",

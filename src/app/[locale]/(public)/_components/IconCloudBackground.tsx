@@ -25,7 +25,7 @@ import {
   User,
 } from 'lucide-react';
 
-// --- Helper Hook: useWindowSize ---
+// --- Helper Hook: useWindowSize (Sense canvis) ---
 function useWindowSize() {
   const [windowSize, setWindowSize] = useState<{ width: number; height: number }>({
     width: 0,
@@ -68,8 +68,12 @@ const colorPalette = [
   '25 90% 55%',  // Taronja
 ];
 
+// 3. ✨ NOU: Definim quants icones volem per a mòbil i escriptori
+const MOBILE_ICON_COUNT = 8; // <-- Pots ajustar aquest número
+const DESKTOP_ICON_COUNT = allIcons.length; // 20
+
 /**
- * @summary Sub-component per a cada "Moneda" flotant
+ * @summary Sub-component per a cada "Moneda" flotant (Sense canvis)
  */
 function FloatingCoin({ Icon, colorHsl }: { 
   Icon: React.ElementType;
@@ -78,20 +82,16 @@ function FloatingCoin({ Icon, colorHsl }: {
   const { width, height } = useWindowSize();
 
   const randomValues = useMemo(() => {
-    // Si la finestra encara no té mida, no calculem res.
     if (width === 0 || height === 0) {
       return null;
     }
 
-    const size = Math.random() * (74 - 50) + 50; // Mida aleatòria (50px a 74px)
-
-    // ✅ MILLORA 3: Definim la "zona morta" central
+    const size = Math.random() * (74 - 50) + 50; 
     const deadZone = {
-      x: [width * 0.3, width * 0.7], // Evitem entre el 30% i 70% de l'amplada
-      y: [height * 0.3, height * 0.6], // Evitem entre el 30% i 60% de l'alçada
+      x: [width * 0.3, width * 0.7], 
+      y: [height * 0.3, height * 0.6],
     };
 
-    // Funció per generar una posició (x, y) FORA de la zona morta
     const getSafeRandomPosition = () => {
       let x, y;
       do {
@@ -105,24 +105,18 @@ function FloatingCoin({ Icon, colorHsl }: {
       return { x, y };
     };
 
-    // Generem posició inicial i final FORA de la zona morta
     const { x: xInitial, y: yInitial } = getSafeRandomPosition();
     const { x: xAnimate, y: yAnimate } = getSafeRandomPosition();
 
-    // Temps d'animació de "flotació" (lent)
-    const floatDuration = Math.random() * 20 + 25; // 25s a 45s (més lent)
-
-    // ✅ MILLORA 2: Temps d'animació de "rotació" (més lent)
-    const rotateDuration = Math.random() * 10 + 10; // 10s a 20s
-    const rotateDelay = Math.random() * 5;
+    const floatDuration = Math.random() * 20 + 25; 
+    const rotateDuration = Math.random() * 10 + 10;
 
     return { 
       size, xInitial, yInitial, xAnimate, yAnimate, 
-      floatDuration, rotateDuration, rotateDelay 
+      floatDuration, rotateDuration
     };
-  }, [width, height]); // Recalculem si la finestra canvia de mida
+  }, [width, height]); 
 
-  // No renderitzem res si encara no tenim els valors
   if (!randomValues) return null;
 
   const color = `hsl(${colorHsl})`;
@@ -130,13 +124,12 @@ function FloatingCoin({ Icon, colorHsl }: {
   return (
     <motion.div
       className="absolute flex items-center justify-center
-                 bg-background/60 backdrop-blur-sm"
+                bg-background/60 backdrop-blur-sm"
       
       style={{
         width: randomValues.size,
         height: randomValues.size,
         borderRadius: '50%',
-        // ✅ MILLORA: Ombra de color més subtil (0.25 opacitat)
         boxShadow: `0 0 20px 5px hsla(${colorHsl})`,
         border: `1px solid hsla(${colorHsl}, 0.4)`,
         backfaceVisibility: 'hidden',
@@ -152,48 +145,37 @@ function FloatingCoin({ Icon, colorHsl }: {
       animate={{
         x: randomValues.xAnimate,
         y: randomValues.yAnimate,
-        // ✅ MILLORA 1: Opacitat constant (més subtil)
         opacity: 0.3,
         rotateY: 360,
       }}
       
       transition={{
-        // Transició per a la FLOTACIÓ (x, y)
         x: { 
           duration: randomValues.floatDuration, 
-         
           repeat: Infinity, 
           repeatType: 'mirror', 
           ease: 'easeInOut' 
         },
         y: { 
           duration: randomValues.floatDuration, 
-     
           repeat: Infinity, 
           repeatType: 'mirror', 
           ease: 'easeInOut' 
         },
-        
-        // Transició per a la ROTACIÓ (rotateY)
         rotateY: { 
           duration: randomValues.rotateDuration, 
-          delay: randomValues.rotateDelay, 
           repeat: Infinity, 
           ease: 'linear'
         },
-        
-        // ✅ MILLORA 1: Transició per a 'opacity' (només fade-in)
-        // Aquesta animació NO es repeteix.
         opacity: {
-          duration: 3, // 3 segons per aparèixer
-   
+          duration: 3,
           ease: 'easeIn'
         }
       }}
     >
       <Icon 
         className="w-1/2 h-1/2" 
-        style={{ color: color, opacity: 0.9 }} // Icona una mica transparent
+        style={{ color: color, opacity: 0.9 }}
       />
     </motion.div>
   );
@@ -201,13 +183,45 @@ function FloatingCoin({ Icon, colorHsl }: {
 
 /**
  * @summary Fons de la secció Hero amb icones flotants aleatòries.
+ * @description ✅ AFEGIDA LÒGICA RESPONSIVA
+ * Ara comprova la mida de la finestra per renderitzar 
+ * menys icones en dispositius mòbils.
  */
 export function IconCloudBackground() {
+  
+  // ✅ ARQUITECTURA: Cridem el hook useWindowSize al component pare.
+  const { width } = useWindowSize();
+
+  // ✅ RENDIMENT:
+  // Utilitzem useMemo per decidir quantes icones renderitzar.
+  // Això s'actualitzarà només quan 'width' canviï (o creuï el breakpoint).
+  const iconsToRender = useMemo(() => {
+    // Si 'width' és 0 (estat inicial abans del 'mount' al client),
+    // no renderitzem res per evitar problemes d'hidratació (hydration mismatch).
+    if (width === 0) {
+      return [];
+    }
+
+    // Definim el punt de tall (breakpoint). 768px és 'md' a Tailwind.
+    const isMobile = width < 768;
+    
+    // Triem el nombre d'icones
+    const count = isMobile ? MOBILE_ICON_COUNT : DESKTOP_ICON_COUNT;
+
+    // Retornem un 'slice' de l'array original.
+    // Això ens dóna les primeres 8 icones si és mòbil, o totes 20 si és escriptori.
+    return allIcons.slice(0, count);
+
+  }, [width]); // Aquesta lògica es re-executa NOMÉS quan 'width' canvia.
+
   return (
     <div className="relative w-full h-full overflow-hidden">
       {/* Apliquem 'perspective' per a l'efecte 3D de la rotació */}
       <div style={{ perspective: '800px' }}>
-        {allIcons.map((Icon, i) => (
+        
+        {/* ✅ CANVI: Mapegem sobre 'iconsToRender' (dinàmic) 
+            en lloc de 'allIcons' (estàtic) */}
+        {iconsToRender.map((Icon, i) => (
           <FloatingCoin 
             key={i} 
             Icon={Icon} 
@@ -218,5 +232,3 @@ export function IconCloudBackground() {
     </div>
   );
 }
-    
-      
