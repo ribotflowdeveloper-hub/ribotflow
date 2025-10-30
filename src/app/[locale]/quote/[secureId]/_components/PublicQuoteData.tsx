@@ -1,36 +1,51 @@
+// Al teu fitxer de servidor (p.ex. /quote/[secureId]/page.tsx)
 import { createClient } from '@/lib/supabase/server'; 
 import type { QuoteDataFromServer } from "@/types/crm"; 
 
 /**
- * Funció de servidor per obtenir les dades d'un pressupost a partir del seu ID segur.
- * Aquesta funció encapsula la lògica de Supabase.
- * @param secureId L'ID únic del pressupost.
- * @returns Les dades del pressupost o null si no es troba.
- */
+ * Funció de servidor per obtenir les dades d'un pressupost (versió manual).
+ * @param secureId L'ID únic del pressupost.
+ * @returns Les dades del pressupost o null si no es troba.
+ */
 export async function getQuoteDataBySecureId(secureId: string): Promise<QuoteDataFromServer | null> {
-    
-    // Utilitzem el client de Supabase del servidor
-    const supabase = createClient();
+    
+    const supabase = createClient();
 
-    // Consulta per fer JOIN amb 'contacts', 'teams' i 'quote_items'
-    const { data: quoteData, error } = await supabase
-        .from("quotes")
-        .select(`
-            *, 
-            contacts (*), 
-            team:teams (*), 
-            quote_items (*)
-        `)
-        .eq("secure_id", secureId)
-        .single();
+    // PAS 1: Obtenim el pressupost (sense els items)
+    // CORRECCIÓ: La cadena 'select' ara està en una sola línia i és neta.
+    const selectString = "*, contacts (*), team:teams (*)";
 
-    if (error || !quoteData) {
-        // En un entorn de producció, podríeu registrar l'error aquí sense llençar-lo
-        // per a no revelar detalls sensibles al client o a la consola pública.
-        console.error("Error carregant dades del pressupost:", error?.message || "Dades no trobades");
-        return null;
-    }
-    
-    // Assegurem que el tipus de retorn coincideix amb la interfície esperada
-    return quoteData as unknown as QuoteDataFromServer;
+    const { data: quoteData, error: quoteError } = await supabase
+        .from("quotes")
+        .select(selectString) // <-- Això ara serà correctament interpretat
+        .eq("secure_id", secureId)
+        .single();
+
+    // Aquesta comprovació ara funcionarà
+    if (quoteError || !quoteData) {
+        console.error("Error carregant dades del pressupost (Pas 1):", quoteError?.message || "Dades no trobades");
+        return null;
+    }
+    
+    // Si arribem aquí, 'quoteData' ÉS un objecte.
+    // Els errors de TypeScript desapareixeran.
+
+    // PAS 2: Obtenim els items manualment
+    // Aquesta consulta farà servir el 'quoteData.id' (que ara existeix)
+    const { data: itemsData, error: itemsError } = await supabase
+        .from("quote_items")
+        .select("*")
+        .eq("quote_id", quoteData.id); // <-- Això ara funcionarà
+
+    if (itemsError) {
+        console.error("Pressupost trobat, però error en carregar items (Pas 2):", itemsError.message);
+    }
+
+    // PAS 3: Combinem els resultats manualment
+    const fullData = {
+        ...quoteData, // <-- Això ara funcionarà
+        quote_items: itemsData || [] // Afegim els items aquí
+    };
+
+    return fullData as unknown as QuoteDataFromServer;
 }

@@ -7,9 +7,7 @@ import { z } from 'zod';
 import { validateUserSession } from '@/lib/supabase/session';
 import { Tables, Json } from '@/types/supabase';
 import { JSONContent } from '@tiptap/react';
-import { cookies } from 'next/headers';
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
-import { Database } from '@/types/supabase';
+
 import type { ActionResult } from '@/types/shared';
 
 type FormState = {
@@ -321,63 +319,25 @@ type UploadSuccessData = {
     filePath: string;
 };
 
+// A 'src/app/actions/tasks/actions.ts'
+// (Assegura't que 'validateUserSession' estigui importat al principi del fitxer)
+// import { validateUserSession } from '@/lib/supabase/session';
+
 export async function uploadTaskImageAction(formData: FormData): Promise<ActionResult<UploadSuccessData>> {
-    const cookieStorePromise = cookies();
-
-    // --- Lògica de Validació de Sessió (Integrada) ---
-    console.log("[uploadTaskImageAction] Iniciant validació de sessió...");
-    const supabase = createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                async get(name: string) {
-                    const cookieStore = await cookieStorePromise;
-                    return cookieStore.get(name)?.value;
-                },
-                async set(name: string, value: string, options: CookieOptions) {
-                    const cookieStore = await cookieStorePromise;
-                    try { cookieStore.set({ name, value, ...options }); } catch (e) { console.error("Error setting cookie:", e); }
-                },
-                async remove(name: string, options: CookieOptions) {
-                    const cookieStore = await cookieStorePromise;
-                    try { cookieStore.set({ name, value: '', ...options }); } catch (e) { console.error("Error removing cookie:", e); }
-                },
-            },
-        }
-    );
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-        console.error("[uploadTaskImageAction] Error obtenint usuari:", userError);
-        return { success: false, message: "Sessió invàlida." };
+    
+    // ✅ PAS 1: Fer servir la mateixa validació que 'createTask'
+    const session = await validateUserSession();
+    if ("error" in session) {
+        console.error("[uploadTaskImageAction] Error validant sessió:", session.error.message);
+        return { success: false, message: session.error.message };
     }
-    console.log("[uploadTaskImageAction] Usuari autenticat:", user.id);
-
-    let activeTeamId = user.app_metadata?.active_team_id as string | null;
-    if (!activeTeamId) {
-        console.warn("[uploadTaskImageAction] Fallback a 'profiles' per activeTeamId.");
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('active_team_id')
-            .eq('id', user.id)
-            .single();
-        if (profileError) {
-             console.error("[uploadTaskImageAction] Error fallback perfil:", profileError);
-             return { success: false, message: "Error verificant equip actiu." };
-        }
-        activeTeamId = profile?.active_team_id ?? null;
-    }
-
-    if (!activeTeamId) {
-        console.error("[uploadTaskImageAction] No s'ha pogut determinar l'equip actiu:", user.id);
-        return { success: false, message: "Equip actiu no determinat." };
-    }
+    // Ara tenim el client 'supabase', 'activeTeamId' i 'user' correctes
+    const { supabase, activeTeamId, user } = session; 
+    
+    console.log("[uploadTaskImageAction] Sessió validada per:", user.id);
     console.log("[uploadTaskImageAction] Equip actiu:", activeTeamId);
-    // --- FI Lògica de Sessió ---
-
-    // --- Lògica de Fitxer ---
+    
+    // --- Lògica de Fitxer (Aquesta no canvia) ---
     console.log("[uploadTaskImageAction] Validant fitxer...");
     const file = formData.get('file') as File | null;
     if (!file) return { success: false, message: "No s'ha rebut cap fitxer." };
@@ -390,9 +350,10 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
     const filePath = `task-uploads/${activeTeamId}/${uniqueFileName}`;
     console.log("[uploadTaskImageAction] Path destí:", filePath);
 
-    // --- Lògica de Pujada i URL Signada ---
+    // --- Lògica de Pujada i URL Signada (Ara fem servir el client 'supabase' validat) ---
     try {
         console.log(`[uploadTaskImageAction] Iniciant pujada...`);
+        // Fem servir el client 'supabase' obtingut de 'validateUserSession'
         const { data: uploadData, error: uploadError } = await supabase.storage
             .from('fitxers-privats') // Bucket privat
             .upload(filePath, file);
@@ -408,7 +369,6 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
         if (signedUrlError) throw new Error(`Error generant URL: ${signedUrlError.message}`);
         console.log("[uploadTaskImageAction] URL signada OK.");
 
-        // Retorn d'èxit (message és opcional si ActionResult ho permet)
         return {
             success: true,
             data: {
@@ -422,8 +382,7 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
         console.error("[uploadTaskImageAction] Error:", message, error);
         return { success: false, message: message };
     }
-} // <-- Final de la funció uploadTaskImageAction
-
+}
 /**
  * Server Action per obtenir una URL signada i segura per a un fitxer privat.
  * Aquesta acció s'ha de cridar CADA COP que el client necessiti
@@ -431,48 +390,28 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
  * @param filePath El path complet del fitxer (p.ex., "task-uploads/team-123/file.jpg")
  * @returns Un objecte ActionResult amb la URL signada o un error.
  */
+// A 'src/app/actions/tasks/actions.ts'
+
 export async function getSignedUrlForFile(filePath: string): Promise<ActionResult<string>> {
-    // Utilitzem el mateix patró 'cookieStorePromise' que ja fas servir
-    const cookieStorePromise = cookies();
-
-    // 1. Crear client Supabase (copiat del teu 'uploadTaskImageAction')
-    const supabase = createServerClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                async get(name: string) {
-                    const cookieStore = await cookieStorePromise;
-                    return cookieStore.get(name)?.value;
-                },
-                async set(name: string, value: string, options: CookieOptions) {
-                    const cookieStore = await cookieStorePromise;
-                    try { cookieStore.set({ name, value, ...options }); } catch (e) { console.error("Error setting cookie:", e); }
-                },
-                async remove(name: string, options: CookieOptions) {
-                    const cookieStore = await cookieStorePromise;
-                    try { cookieStore.set({ name, value: '', ...options }); } catch (e) { console.error("Error removing cookie:", e); }
-                },
-            },
-        }
-    );
-
-    // 2. Validar usuari (necessari per a què RLS funcioni)
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    
+    // ✅ PAS 1: Fer servir la mateixa validació que 'createTask'
+    const session = await validateUserSession();
+    if ("error" in session) {
         console.warn("[getSignedUrlForFile] Usuari no autenticat.");
         return { success: false, message: "Sessió invàlida." };
     }
-    
+    // Ara tenim el client 'supabase' validat
+    const { supabase } = session;
+
     if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
         return { success: false, message: "No s'ha proporcionat cap 'filePath' o és invàlid." };
     }
 
     // 3. Generar la URL signada
-    // Donem 1 hora de validesa per si la pestanya queda oberta.
-    const expiresIn = 60 * 60; // 1 hora en segons
+    const expiresIn = 60 * 60; // 1 hora
     
     console.log(`[getSignedUrlForFile] Generant URL per a: ${filePath}`);
+    // Fem servir el client 'supabase' obtingut de 'validateUserSession'
     const { data, error } = await supabase.storage
         .from('fitxers-privats') // El teu bucket privat
         .createSignedUrl(filePath, expiresIn);
