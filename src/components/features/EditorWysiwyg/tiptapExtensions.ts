@@ -18,6 +18,11 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 
+// ✅ PAS 1: Importar les extensions de llista que falten
+import { BulletList } from '@tiptap/extension-bullet-list';
+import { OrderedList } from '@tiptap/extension-ordered-list';
+import { ListItem } from '@tiptap/extension-list-item';
+
 // Definició de l'extensió custom
 export const FontSizeTextStyle = TextStyle.extend({
   addAttributes() {
@@ -34,15 +39,19 @@ export const FontSizeTextStyle = TextStyle.extend({
 
 // Llista d'extensions exportada
 export const defaultExtensions = [
+  // ✅ PAS 2: Desactivem les llistes del StarterKit per evitar conflictes
   StarterKit.configure({
     heading: { levels: [1, 2, 3] },
+    bulletList: false,  // Desactivat
+    orderedList: false, // Desactivat
+    listItem: false,    // Desactivat
   }),
   Underline,
   Highlight,
   Subscript,
   Superscript,
   TextStyle,
-  FontSizeTextStyle, // La nostra extensió custom
+  FontSizeTextStyle, 
   Color,
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -53,8 +62,13 @@ export const defaultExtensions = [
   TableRow,
   TableHeader,
   TableCell,
-  TaskList,
+  TaskList, // La teva llista de tasques (que funciona)
   TaskItem.configure({
     nested: true,
   }),
+  
+  // ✅ PAS 3: Afegim les llistes manualment
+  ListItem,
+  BulletList,
+  OrderedList,
 ];

@@ -5,12 +5,11 @@ import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EnrichedTask } from './TaskDialogManager';
 import { Tables } from '@/types/supabase';
 import { useTaskForm } from './hooks/useTaskForm'; // Importem el Hook
-import { TaskFormActions } from './TaskFormActrions'; // ✅ CORREGIT: Eliminada la 'r' de 'Actrions'
+import { TaskFormActions } from './TaskFormActrions';
 import { TaskFormPrimary } from './TaskFormPrimary'; // Importem Columna Esquerra
 import { TaskFormSecondary } from './TaskFormSecondary'; // Importem Columna Dreta
 
 // --- Props ---
-// Les props del component no canvien
 interface TaskFormViewProps {
   task: EnrichedTask | null;
   onSetViewMode: () => void;
@@ -19,10 +18,9 @@ interface TaskFormViewProps {
   initialDepartments: Tables<'departments'>[];
   teamMembers: { id: string; full_name: string | null }[];
   initialDate?: Date;
-  // ✅ ELIMINAT: activeTeamId (no es feia servir)
 }
 
-// --- Component Principal del Formulari (ara molt més net) ---
+// --- Component Principal del Formulari ---
 export function TaskFormView({
   task,
   onSetViewMode,
@@ -31,9 +29,7 @@ export function TaskFormView({
   initialDepartments = [],
   teamMembers,
   initialDate,
-  // ✅ ELIMINAT: activeTeamId (no es feia servir)
 }: TaskFormViewProps) {
-  
   // 1. Tota la lògica i l'estat venen del hook
   const {
     isPending,
@@ -61,10 +57,13 @@ export function TaskFormView({
         {task && <input type="hidden" name="taskId" value={task.id} />}
 
         {/* 3. Implementem el nou layout (Esquerra / Dreta) */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 max-h-[65vh] overflow-y-auto pr-4 custom-scrollbar">
+        
+        {/* ✅ CANVI: Canviat de lg:grid-cols-5 a lg:grid-cols-3 */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-h-[65vh] overflow-y-auto pr-4 custom-scrollbar">
           
           {/* Columna Esquerra (Títol i Descripció) */}
-          <div className="lg:col-span-3">
+          {/* ✅ CANVI: Canviat de lg:col-span-3 a lg:col-span-2 */}
+          <div className="lg:col-span-2">
             <TaskFormPrimary
               initialTitle={initialValues.title}
               descriptionContent={state.descriptionContent}
@@ -76,7 +75,8 @@ export function TaskFormView({
           </div>
 
           {/* Columna Dreta (Metadades) */}
-          <div className="lg:col-span-2">
+          {/* ✅ CANVI: Canviat de lg:col-span-2 a lg:col-span-1 */}
+          <div className="lg:col-span-1">
             <TaskFormSecondary
               state={state}
               handlers={handlers}
