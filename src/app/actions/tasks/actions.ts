@@ -423,3 +423,65 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
         return { success: false, message: message };
     }
 } // <-- Final de la funció uploadTaskImageAction
+
+/**
+ * Server Action per obtenir una URL signada i segura per a un fitxer privat.
+ * Aquesta acció s'ha de cridar CADA COP que el client necessiti
+ * visualitzar la imatge (p.ex., des del component PrivateImage).
+ * @param filePath El path complet del fitxer (p.ex., "task-uploads/team-123/file.jpg")
+ * @returns Un objecte ActionResult amb la URL signada o un error.
+ */
+export async function getSignedUrlForFile(filePath: string): Promise<ActionResult<string>> {
+    // Utilitzem el mateix patró 'cookieStorePromise' que ja fas servir
+    const cookieStorePromise = cookies();
+
+    // 1. Crear client Supabase (copiat del teu 'uploadTaskImageAction')
+    const supabase = createServerClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                async get(name: string) {
+                    const cookieStore = await cookieStorePromise;
+                    return cookieStore.get(name)?.value;
+                },
+                async set(name: string, value: string, options: CookieOptions) {
+                    const cookieStore = await cookieStorePromise;
+                    try { cookieStore.set({ name, value, ...options }); } catch (e) { console.error("Error setting cookie:", e); }
+                },
+                async remove(name: string, options: CookieOptions) {
+                    const cookieStore = await cookieStorePromise;
+                    try { cookieStore.set({ name, value: '', ...options }); } catch (e) { console.error("Error removing cookie:", e); }
+                },
+            },
+        }
+    );
+
+    // 2. Validar usuari (necessari per a què RLS funcioni)
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+        console.warn("[getSignedUrlForFile] Usuari no autenticat.");
+        return { success: false, message: "Sessió invàlida." };
+    }
+    
+    if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
+        return { success: false, message: "No s'ha proporcionat cap 'filePath' o és invàlid." };
+    }
+
+    // 3. Generar la URL signada
+    // Donem 1 hora de validesa per si la pestanya queda oberta.
+    const expiresIn = 60 * 60; // 1 hora en segons
+    
+    console.log(`[getSignedUrlForFile] Generant URL per a: ${filePath}`);
+    const { data, error } = await supabase.storage
+        .from('fitxers-privats') // El teu bucket privat
+        .createSignedUrl(filePath, expiresIn);
+
+    if (error) {
+        console.error(`[getSignedUrlForFile] Error generant URL per a ${filePath}:`, error);
+        return { success: false, message: `No s'ha pogut obtenir la URL: ${error.message}` };
+    }
+
+    // 4. Retornar èxit
+    return { success: true, data: data.signedUrl };
+}

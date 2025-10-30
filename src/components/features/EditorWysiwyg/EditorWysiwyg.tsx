@@ -169,13 +169,32 @@ export default function EditorWysiwyg({
 
                     toast.dismiss(loadingToastId);
 
+                    // ❌ EL TEU CODI ACTUAL (INCORRECTE)
+                    // Està desant la URL temporal
+                    /*
                     if (result.success && result.data?.signedUrl) {
                         console.log("[Client] Èxit! Inserint imatge.");
                         editor.chain().focus().setImage({
-                            src: result.data.signedUrl,
+                            src: result.data.signedUrl, // <-- PROBLEMA: Això caduca
                             alt: file.name
                         }).run();
                         toast.success("Imatge inserida.");
+                    } else {
+                        // ...
+                    }
+                    */
+
+                    // ✅ LA SOLUCIÓ (CORRECTA)
+                    // Desa el 'filePath' permanent
+                    if (result.success && result.data?.filePath) {
+                        console.log("[Client] Èxit! Inserint 'filePath' permanent.");
+                        editor.chain().focus().setImage({
+                            // Ara el 'src' contindrà "task-uploads/team-123/file.jpg"
+                            src: result.data.filePath, // <-- AQUEST ÉS EL CANVI
+                            alt: file.name
+                        }).run();
+                        toast.success("Imatge inserida.");
+                        // Ignorem la 'signedUrl', ja no la necessitem aquí.
                     } else {
                         console.error("[Client] Error SA:", result.message);
                         toast.error("Error en pujar", { description: result.message || "Problema al servidor." });

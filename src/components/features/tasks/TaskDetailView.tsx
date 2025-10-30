@@ -14,14 +14,35 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Clock } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { deleteTask, updateSimpleTask, setTaskActiveStatus } from '@/app/actions/tasks/actions';
-import { toast } from 'sonner';
+import { deleteTask, updateSimpleTask, setTaskActiveStatus, getSignedUrlForFile } from '@/app/actions/tasks/actions'; import { toast } from 'sonner';
 import { priorityStyles, TaskPriority } from '@/config/styles/task';
 import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
 import { Tables, Json } from '@/types/supabase'; // <-- Importa Json
-
+import { Skeleton } from '@/components/ui/skeleton';
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
 
+function PrivateImage({ src, alt }: { src: string; alt: string }) {
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Només actuem si el 'src' és un filePath (no una URL http)
+        if (src && !src.startsWith('http')) {
+            const fetchUrl = async () => {
+                const result = await getSignedUrlForFile(src); // Crida a la Server Action
+                if (result.success && result.data) {
+                    setImageUrl(result.data);
+                }
+            };
+            fetchUrl();
+        }
+    }, [src]);
+
+    if (!imageUrl) {
+        return <Skeleton className="w-full h-32 rounded-md my-2" />;
+    }
+
+    return <img src={imageUrl} alt={alt} className="rounded-md" />;
+}
 function countCheckboxesFromHtml(html: string): { total: number; completed: number } {
     if (!html) return { total: 0, completed: 0 };
     try {
@@ -192,6 +213,22 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
     let taskItemIndex = -1;
     const options = {
         replace: (domNode: DOMNode) => {
+
+            // ✅ 1. LÒGICA PER A IMATGES
+            if (domNode instanceof Element && domNode.name === 'img') {
+                const src = domNode.attribs.src;
+                const alt = domNode.attribs.alt;
+
+                // Si el 'src' és un filePath privat (no una URL http)...
+                if (src && src.startsWith('task-uploads/')) {
+                    // ...el substituïm pel nostre component intel·ligent
+                    return <PrivateImage src={src} alt={alt || 'Imatge de la tasca'} />;
+                }
+                // Si és una URL pública (http://...), 'html-react-parser'
+                // la renderitzarà normalment (no cal 'else').
+            }
+
+            // ✅ 2. LA TEVA LÒGICA EXISTENT PER A 'taskItem'
             if (domNode instanceof Element && domNode.attribs && domNode.attribs['data-type'] === 'taskItem') {
                 taskItemIndex++;
                 const currentIndex = taskItemIndex;
@@ -230,10 +267,10 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.errorTitle'), { description: "No s'ha pogut actualitzar la tasca." });
         } else {
             toast.success("Estat de la tasca actualitzat.");
-            
+
             // 1. Notifiquem al pare que les dades han canviat
-            onTaskMutation(); 
-            
+            onTaskMutation();
+
             // 2. Cridem a 'onClose' directament per tancar el diàleg
             onClose();
         }
