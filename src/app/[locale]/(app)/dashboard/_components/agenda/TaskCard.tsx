@@ -16,10 +16,10 @@ import { EnrichedTask } from '@/components/features/tasks/TaskDialogManager';
 import { TaskPriority } from '@/config/styles/task';
 import { Badge } from "@/components/ui/badge";
 import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
-import { updateSimpleTask } from "@/app/actions/tasks/actions";
+import { updateSimpleTask, getSignedUrlForFile } from "@/app/actions/tasks/actions"; // ✅ AFEGEIX 'getSignedUrlForFile'
 import { toast } from "sonner";
 import { Tables, Json } from '@/types/supabase';
-
+import { Skeleton } from "@/components/ui/skeleton"; // ✅ AFEGEIX AQUEST
 // --- Helpers ---
 
 // Tipus explícit per a les entrades del log
@@ -99,7 +99,33 @@ const PriorityDot = ({ priority }: { priority: TaskPriority | null }) => {
     }[priority || 'Baixa'];
     return <div className={cn("w-3 h-3 rounded-full flex-shrink-0", colorClass)} />;
 }
+// ✅ AFEGEIX AQUEST COMPONENT SENCER
+function PrivateImage({ src, alt }: { src: string; alt: string }) {
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
 
+    useEffect(() => {
+        // Només actuem si el 'src' és un filePath (no una URL http)
+        if (src && src.includes('task-uploads/')) { // Usem 'includes' per ser flexibles
+
+            // Tallem el src per si té una barra al davant
+            const cleanSrc = src.startsWith('/') ? src.substring(1) : src;
+
+            const fetchUrl = async () => {
+                const result = await getSignedUrlForFile(cleanSrc); // Crida a la Server Action
+                if (result.success && result.data) {
+                    setImageUrl(result.data);
+                }
+            };
+            fetchUrl();
+        }
+    }, [src]);
+
+    if (!imageUrl) {
+        return <Skeleton className="w-full h-32 rounded-md my-2" />;
+    }
+
+    return <img src={imageUrl} alt={alt} className="rounded-md" />;
+}
 // --- Funció Helper per Comptar Checkboxes ---
 function countCheckboxesFromHtml(html: string): { total: number; completed: number } {
     if (!html) return { total: 0, completed: 0 };
@@ -185,8 +211,33 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
     }, [task.id, currentDescription, onTaskMutation]);
 
     let taskItemIndex = -1;
+    // ❌ EL TEU CODI ACTUAL
+    /*
     const options = {
         replace: (domNode: DOMNode) => {
+            if (domNode instanceof Element && domNode.attribs && domNode.attribs['data-type'] === 'taskItem') {
+                // ... lògica de 'taskItem' ...
+            }
+            return undefined;
+        }
+    };
+    */
+
+    // ✅ CODI CORREGIT (fusionant 'img' i 'taskItem')
+    const options = {
+        replace: (domNode: DOMNode) => {
+
+            // LÒGICA PER A IMATGES (copiada de TaskDetailView)
+            if (domNode instanceof Element && domNode.name === 'img') {
+                const src = domNode.attribs.src;
+                const alt = domNode.attribs.alt;
+
+                if (src && src.includes('task-uploads/')) {
+                    return <PrivateImage src={src} alt={alt || 'Imatge de la tasca'} />;
+                }
+            }
+
+            // LÒGICA EXISTENT PER A CHECKBOXES
             if (domNode instanceof Element && domNode.attribs && domNode.attribs['data-type'] === 'taskItem') {
                 taskItemIndex++;
                 const currentIndex = taskItemIndex;
@@ -207,7 +258,8 @@ export function TaskCard({ task, onViewTask, onToggleTask, onTaskMutation }: Tas
                     </div>
                 );
             }
-            return undefined;
+
+            // No cal `return undefined;`, 'html-react-parser' ho gestiona
         }
     };
 
