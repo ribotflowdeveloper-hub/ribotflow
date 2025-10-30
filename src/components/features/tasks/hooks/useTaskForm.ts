@@ -1,4 +1,4 @@
-// src/components/features/tasks/useTaskForm.ts
+// src/components/features/tasks/useTaskForm.ts (COMPLET I CORREGIT)
 'use client';
 
 import { useState, useTransition, FormEvent, useEffect, useCallback } from 'react';
@@ -13,7 +13,6 @@ interface UseTaskFormProps {
   task: EnrichedTask | null;
   onTaskMutationSuccess: () => void;
   initialDate?: Date;
-  // activeTeamId no cal si les server actions ja l'obtenen de la sessió
 }
 
 export function useTaskForm({
@@ -24,43 +23,61 @@ export function useTaskForm({
   const [isPending, startTransition] = useTransition();
   const isEditing = !!task;
 
-  // --- Estats Locals del Formulari ---
-  const getInitialDate = useCallback(() => initialDate || (task?.due_date ? new Date(task.due_date) : undefined), [initialDate, task?.due_date]);
+  // ✅ --- INICI DE LA MODIFICACIÓ ---
+  // Aquesta és ara la nostra única font de veritat per inicialitzar l'estat.
+  // S'executa NOMÉS UN COP quan el hook es munta,
+  // o quan les dependències del 'useEffect' canvien.
+  const getInitialDueDate = () => {
+    // 1. Si és mode 'creació' (no hi ha tasca) i rebem 'initialDate'
+    if (!task && initialDate) {
+      return initialDate;
+    }
+    // 2. Si és mode 'edició' (hi ha tasca)
+    if (task?.due_date) {
+      return new Date(task.due_date);
+    }
+    // 3. Altrament (mode creació sense data)
+    return undefined;
+  };
 
-  const [dueDate, setDueDate] = useState<Date | undefined>(getInitialDate());
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(task?.contact_id?.toString() ?? null);
-  const [assignedUserId, setAssignedUserId] = useState<string | null>(task?.user_asign_id ?? null);
-  
-  const [descriptionContent, setDescriptionContent] = useState<string>(task?.description ?? '');
-  const [descriptionJson, setDescriptionJson] = useState<JSONContent | null>(() => {
+  const getInitialDescriptionJson = () => {
     try {
       if (task?.description_json) {
         return typeof task.description_json === 'string'
           ? JSON.parse(task.description_json)
-          : task.description_json as JSONContent;
-      } return null;
-    } catch { return null; }
-  });
+          : (task.description_json as JSONContent);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // --- Estats Locals del Formulari ---
+  // Inicialitzem l'estat directament.
+  const [dueDate, setDueDate] = useState<Date | undefined>(getInitialDueDate());
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(task?.contact_id?.toString() ?? null);
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(task?.user_asign_id ?? null);
+  const [descriptionContent, setDescriptionContent] = useState<string>(task?.description ?? '');
+  const [descriptionJson, setDescriptionJson] = useState<JSONContent | null>(getInitialDescriptionJson());
 
   const [contactComboboxOpen, setContactComboboxOpen] = useState(false);
   const [teamMemberComboboxOpen, setTeamMemberComboboxOpen] = useState(false);
 
   // --- Efecte per sincronitzar si la tasca canvia (ex: obrir un altre diàleg) ---
   useEffect(() => {
-    setDueDate(getInitialDate());
+    // Quan 'task' o 'initialDate' canvien, reiniciem TOT l'estat del formulari.
+    console.log("[useTaskForm] useEffect re-sincronitzant valors", { task, initialDate });
+    setDueDate(getInitialDueDate());
     setSelectedContactId(task?.contact_id?.toString() ?? null);
     setAssignedUserId(task?.user_asign_id ?? null);
     setDescriptionContent(task?.description ?? '');
-    setDescriptionJson(() => {
-      try {
-        if (task?.description_json) {
-          return typeof task.description_json === 'string'
-            ? JSON.parse(task.description_json)
-            : task.description_json as JSONContent;
-        } return null;
-      } catch { return null; }
-    });
-  }, [task, getInitialDate]);
+    setDescriptionJson(getInitialDescriptionJson());
+
+    // Hem eliminat 'getInitialDate' de les dependències per trencar el bucle.
+    // La lògica ja és a 'getInitialDueDate()' a dins.
+  }, [task, initialDate]);
+  // ✅ --- FI DE LA MODIFICACIACIÓ ---
 
   // --- Gestor d'Enviament (Server Action) ---
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

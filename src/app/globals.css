@@ -473,3 +473,42 @@ ul[data-type="taskList"] li[data-checked="true"] > div > p {
   text-decoration: line-through;
   color: hsl(var(--muted-foreground));
 }
+/*
+ * =========================================
+ * SOLUCIÓ EDITOR TIPTAP (EditorWysiwyg) - v2 REFORÇADA
+ * =========================================
+ * Anul·la el fons blanc ('background-color') que Tiptap
+ * afegeix per defecte als nodes (paràgrafs, títols) quan
+ * reben focus, especialment quan es fa servir 'prose dark:prose-invert'.
+ */
+
+/* * Regla principal: Forcem la transparència per a qualsevol node
+ * que Tiptap marqui com a enfocat dins de 'prose'.
+ */
+.prose .is-focused,
+.prose .is-editor-focused {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* * Regla de reforç per al mode fosc (dark mode):
+ * Si 'html' té la classe 'dark' (de next-themes),
+ * apliquem la regla de forma encara més específica.
+ */
+html.dark .prose-invert .is-focused,
+html.dark .prose-invert .is-editor-focused {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* * Assegurem que el focus del navegador (outline)
+ * tampoc aparegui.
+ */
+.prose[contenteditable="true"]:focus,
+.prose > *:focus-visible {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}

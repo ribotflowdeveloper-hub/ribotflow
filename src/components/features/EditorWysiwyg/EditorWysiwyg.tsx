@@ -1,9 +1,11 @@
-// src/components/ui/EditorWysiwyg.tsx (COMPLET I CORREGIT)
 'use client';
 
-import { useCallback, useRef,  ChangeEvent, useTransition, useEffect } from 'react';
+import { useCallback, useRef, ChangeEvent, useTransition, useEffect } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useEditor, EditorContent, JSONContent } from '@tiptap/react';
+// Importem 'Editor' i 'JSONContent' per al tipat
+import { useEditor, EditorContent, JSONContent, type Editor } from '@tiptap/react';
+// Importem 'EditorProps' per al tipat de 'handlePaste'
+import { type EditorProps } from '@tiptap/pm/view';
 // Assegura't que aquestes rutes siguin correctes
 import { defaultExtensions } from './tiptapExtensions';
 import { EditorToolbar } from './EditorToolbar';
@@ -29,7 +31,7 @@ export default function EditorWysiwyg({
     onChange,
     className,
     minHeight = '150px', // Valor per defecte
-    maxHeight = 'none',  // Valor per defecte
+    maxHeight = 'none', // Valor per defecte
 }: EditorWysiwygProps) {
     const [isPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,11 +43,10 @@ export default function EditorWysiwyg({
         editorProps: {
             attributes: {
                 class: cn(
-                    'prose dark:prose-invert prose-sm sm:prose-base focus:outline-none max-w-none w-full',
-                    // Apliquem minHeight directament a l'estil inline per més control
+                    'prose dark:prose-invert prose-sm sm:prose-base fossssssss:outline-none max-w-none w-full',
                 ),
-                 style: `min-height: ${minHeight};`, // Estil inline per minHeight
-                 id: `editor-${id}`,
+                style: `min-height: ${minHeight};`, // Estil inline per minHeight
+                id: `editor-${id}`,
             },
         },
         onUpdate: ({ editor }) => {
@@ -54,6 +55,73 @@ export default function EditorWysiwyg({
             }
         },
     });
+
+    // --- LÒGICA PER INJECTAR EL 'handlePaste' DE FORMA SEGURA ---
+    useEffect(() => {
+        if (!editor) {
+            return;
+        }
+
+        /**
+         * Definim la lògica de 'handlePaste' aquí.
+         * Gràcies al 'closure', tenim accés directe a la variable 'editor'
+         * del hook 'useEditor' de forma totalment segura (type-safe).
+         */
+        const handlePasteCallback: EditorProps['handlePaste'] = (view, event, slice) => {
+            // No cal (view as any).editor, fem servir 'editor' directament.
+            if (!editor.isActive('taskList')) {
+                return false; // Comportament per defecte
+            }
+
+            const pastedText = event.clipboardData?.getData('text/plain');
+
+            if (!pastedText || !pastedText.includes('\n')) {
+                return false; // Comportament per defecte
+            }
+
+            // *** INICI DE LA LÒGICA PERSONALITZADA ***
+            event.preventDefault();
+
+            const lines = pastedText
+                .split('\n')
+                .filter((line) => line.trim().length > 0);
+
+            if (lines.length === 0) {
+                return true; // Hem gestionat l'esdeveniment
+            }
+
+            const { $from } = editor.state.selection;
+            const currentNode = $from.node($from.depth);
+            const isCurrentTaskEmpty = currentNode.textContent.trim().length === 0;
+
+            let chain = editor.chain().focus();
+
+            if (isCurrentTaskEmpty) {
+                const [firstLine, ...otherLines] = lines;
+                chain.insertContent(firstLine);
+                for (const line of otherLines) {
+                    chain = chain.splitListItem('taskItem').insertContent(line);
+                }
+            } else {
+                for (const line of lines) {
+                    chain = chain.splitListItem('taskItem').insertContent(line);
+                }
+            }
+
+            chain.run();
+            return true;
+        };
+
+        // Actualitzem les editorProps de l'editor ja inicialitzat
+        editor.setOptions({
+            editorProps: {
+                ...editor.options.editorProps, // Preservem les props existents (ex: attributes)
+                handlePaste: handlePasteCallback, // Afegim la nostra lògica
+            },
+        });
+    }, [editor]); // El array de dependències [editor] assegura que s'executi un sol cop
+
+    // --- FI DE LA LÒGICA DEL 'handlePaste' ---
 
     const setLink = useCallback(() => {
         if (!editor) return;
@@ -106,14 +174,14 @@ export default function EditorWysiwyg({
                         editor.chain().focus().setImage({
                             src: result.data.signedUrl,
                             alt: file.name
-                         }).run();
+                        }).run();
                         toast.success("Imatge inserida.");
                     } else {
                         console.error("[Client] Error SA:", result.message);
                         toast.error("Error en pujar", { description: result.message || "Problema al servidor." });
                     }
                 } catch (error) {
-                    if(loadingToastId) toast.dismiss(loadingToastId);
+                    if (loadingToastId) toast.dismiss(loadingToastId);
                     console.error('[Client] Error inesperat:', error);
                     toast.error("Error de connexió", { description: "No s'ha pogut contactar amb el servidor." });
                 } finally {
@@ -124,9 +192,15 @@ export default function EditorWysiwyg({
         [editor, startTransition, isPending]
     );
 
+    // Sincronització del 'defaultValue' si canvia des de fora
     useEffect(() => {
-        if (editor && defaultValue !== editor.getHTML()) {
-            editor.commands.setContent(defaultValue);
+        if (editor && !editor.isFocused) {
+            const isSame = editor.getHTML() === defaultValue;
+            if (!isSame) {
+                // 👇 LÍNIA CORREGIDA:
+                // Passem un objecte d'opcions en lloc d'un booleà.
+                editor.commands.setContent(defaultValue, { emitUpdate: false });
+            }
         }
     }, [defaultValue, editor]);
 
@@ -134,7 +208,7 @@ export default function EditorWysiwyg({
 
     return (
         <TooltipProvider delayDuration={100}>
-            <div className={cn('w-full rounded-md border...', className)}>
+            <div className={cn('w-full rounded-md border border-input bg-background shadow-sm flex flex-col', className)}>
                 <EditorToolbar
                     editor={editor}
                     isUploading={isPending}
@@ -146,7 +220,7 @@ export default function EditorWysiwyg({
                         className="overflow-y-auto p-4 border-t border-input"
                         style={{ maxHeight: maxHeight !== 'none' ? maxHeight : undefined }}
                     >
-                        <EditorContent editor={editor} className="min-h-full" style={{minHeight: minHeight}} />
+                        <EditorContent editor={editor} />
                     </div>
                     <input
                         type="file"

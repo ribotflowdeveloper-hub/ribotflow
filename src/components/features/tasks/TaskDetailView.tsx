@@ -21,7 +21,7 @@ import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
 import { Tables, Json } from '@/types/supabase'; // <-- Importa Json
 
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
-// ✅ PAS 1: Funció per comptar checkboxes des de l'HTML
+
 function countCheckboxesFromHtml(html: string): { total: number; completed: number } {
     if (!html) return { total: 0, completed: 0 };
     try {
@@ -171,26 +171,19 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             const newHtml = doc.body.innerHTML;
             setCurrentDescription(newHtml); // Actualització visual optimista
 
-            // ✅ PAS 2: Recalcula el progrés des del nou HTML
             const newProgress = countCheckboxesFromHtml(newHtml);
 
-            // Prepara les dades per enviar
             const updateData: Partial<Tables<'tasks'>> = {
                 description: newHtml,
-                // Assegura't que el tipus coincideix amb el que espera Supabase (Json)
                 checklist_progress: newProgress as unknown as Json // Cast a Json
             };
 
-            // Crida a l'acció per actualitzar ambdues coses
             const { error } = await updateSimpleTask(task.id, updateData);
 
             if (error) {
                 toast.error("No s'ha pogut actualitzar la llista de tasques.");
-                // Reverteix l'estat local si falla l'actualització
                 setCurrentDescription(task.description || '');
             } else {
-                // Notifica al component pare que hi ha hagut una mutació
-                // Això hauria de refrescar les dades a la TaskCard
                 onTaskMutation({ closeDialog: false });
             }
         }
@@ -224,6 +217,8 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
         }
     };
 
+    // ✅ --- INICI DE LA MODIFICACIÓ ---
+    // Aquesta és la funció per marcar com a completada / reobrir
     const handleToggle = async () => {
         const isCompleting = !task.is_completed;
         const updateData = {
@@ -235,9 +230,15 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.errorTitle'), { description: "No s'ha pogut actualitzar la tasca." });
         } else {
             toast.success("Estat de la tasca actualitzat.");
-            onTaskMutation({ closeDialog: false });
+            
+            // 1. Notifiquem al pare que les dades han canviat
+            onTaskMutation(); 
+            
+            // 2. Cridem a 'onClose' directament per tancar el diàleg
+            onClose();
         }
     };
+    // ✅ --- FI DE LA MODIFICACIÓ ---
 
     const handleDelete = async () => {
         const { error } = await deleteTask(task.id);
