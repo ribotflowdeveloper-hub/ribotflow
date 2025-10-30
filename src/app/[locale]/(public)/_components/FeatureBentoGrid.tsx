@@ -26,7 +26,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'dashboard',
     titleKey: 'dashboard.title',
     descKey: 'dashboard.desc',
-    imageSrc: '/features/dashbaord3.png',
+    imageSrc: '/dashboard3.png',
     icon: LayoutDashboard,
     className: classBentoFeatures, // Es fa servir per a l'alçada
   },
@@ -34,7 +34,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'crm',
     titleKey: 'crm.title',
     descKey: 'crm.desc',
-    imageSrc: '/features/crm2.png',
+    imageSrc: '/crm2.png',
     icon: Briefcase,
     className: classBentoFeatures,
   },
@@ -42,7 +42,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'calendari',
     titleKey: 'calendari.title',
     descKey: 'calendari.desc',
-    imageSrc: '/features/calendari2.png',
+    imageSrc: '/calendari2.png',
     icon: Calendar,
     className: classBentoFeatures,
   },
@@ -50,7 +50,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'pipeline',
     titleKey: 'pipeline.title',
     descKey: 'pipeline.desc',
-    imageSrc: '/features/pipeline1.png',
+    imageSrc: '/pipeline1.png',
     icon: BarChart,
     className: classBentoFeatures,
   },
@@ -58,7 +58,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'social',
     titleKey: 'social.title',
     descKey: 'social.desc',
-    imageSrc: '/features/rrss.png',
+    imageSrc: '/rrss.png',
     icon: Share2,
     className: classBentoFeatures,
   },
@@ -66,7 +66,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'invoicing',
     titleKey: 'invoicing.title',
     descKey: 'invoicing.desc',
-    imageSrc: '/features/fluxPresupostos.png',
+    imageSrc: '/fluxPresupostos.png',
     icon: Repeat,
     className: classBentoFeatures,
   },
@@ -74,7 +74,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'network',
     titleKey: 'network.title',
     descKey: 'network.desc',
-    imageSrc: '/features/network2.jpg',
+    imageSrc: '/network2.jpg',
     icon: Network,
     className: classBentoFeatures,
   },
@@ -82,7 +82,7 @@ const bentoFeatures: BentoFeature[] = [
     id: 'inboxDespesa',
     titleKey: 'inboxDespesa.title',
     descKey: 'inboxDespesa.desc',
-    imageSrc: '/features/inboxDespesa.png',
+    imageSrc: '/inboxDespesa.png',
     icon: Inbox,
     className: classBentoFeatures,
   },
@@ -129,12 +129,13 @@ export function FeatureBentoGrid() {
   return (
     <>
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-2 gap-8 [perspective:1200px]"
-        variants={gridVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.1 }}
-      >
+  className="grid grid-cols-1 lg:grid-cols-2 gap-8 px-4 sm:px-8 md:px-12 lg:px-16 [perspective:1200px]"
+  variants={gridVariants}
+  initial="hidden"
+  whileInView="visible"
+  viewport={{ once: true, amount: 0.1 }}
+>
+
         {/* === Columna Esquerra === */}
         <motion.div
           className="flex flex-col gap-8 [transform-style:preserve-3d] lg:[transform:rotateY(10deg)_translateX(-5%)]"
