@@ -1,6 +1,5 @@
 import '../globals.css';
 import 'prismjs/themes/prism-tomorrow.css';
-import 'flowbite'; // 👈 AFEGEIX AQUESTA LÍNIA AQUÍ
 
 import { Inter } from 'next/font/google';
 import type { Metadata } from 'next';

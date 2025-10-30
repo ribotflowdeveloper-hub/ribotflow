@@ -126,12 +126,12 @@
       "contactSavedSuccess": "Contacte desat correctament"
     },
     "editor": {
-    "bold": "Negreta",
-    "italic": "Cursiva",
-    "strike": "Ratllat",
-    "heading": "Títol",
-    "bulletList": "Llista de pics",
-    "orderedList": "Llista numerada"
+      "bold": "Negreta",
+      "italic": "Cursiva",
+      "strike": "Ratllat",
+      "heading": "Títol",
+      "bulletList": "Llista de pics",
+      "orderedList": "Llista numerada"
     },
     "emailContentTitle": "Contingut del correu"
   },
@@ -1515,6 +1515,9 @@
     "title": "El treball de la teva vida, impulsat per la nostra passió.",
     "subtitle": "Solucions de software sòlides i fidedignes que milloren la forma en què treballes. Dissenyat per a empreses de totes les mides.",
     "ctaButton": "Comença Gratis Ara",
+    "bentoGrid": {
+      "title": "Tot el que necessites, en un sol lloc"
+    },
     "featuresPanel": {
       "title": "Aplicacions Destacades",
       "crm": {
@@ -1537,13 +1540,56 @@
         "title": "Projectes",
         "desc": "Organitza les teves tasques i fluxos."
       }
+    },
+    "showcase": {
+      "dashboard": {
+        "title": "Dashboard Unificat",
+        "desc": "Totes les teves mètriques clau en temps real."
+      },
+      "crm": {
+        "title": "CRM Intel·ligent",
+        "desc": "Gestiona clients i oportunitats sense esforç."
+      },
+      "calendari": {
+        "title": "Calendari Sincronitzat",
+        "desc": "Totes les teves cites, tasques i events."
+      },
+      "pipeline": {
+        "title": "Anàlisi de Pipeline",
+        "desc": "Entén el teu rendiment amb informes clars."
+      },
+      "social": {
+        "title": "Automatització de Xarxes",
+        "desc": "Planifica i publica a totes les teves xarxes socials des d'un sol lloc, estalviant temps i esforç."
+      },
+      "invoicing": {
+        "title": "Flux de Facturació",
+        "desc": "Converteix automàticament pressupostos acceptats en factures i envia-les als teus clients amb un sol clic."
+      },
+      "network": {
+        "title": "Xarxa Professional",
+        "desc": "Connecta amb altres professionals, descobreix col·laboradors i amplia la teva xarxa de contactes."
+      },
+      "inboxDespesa": {
+        "title": "Gestió de Despeses",
+        "desc": "Registra i processa els correus automàticament, sense haver d’entrar les despeses manualment."
+      }
     }
   },
   "LandingNav": {
     "login": "Inicia sessió",
     "signup": "Registra't Gratis",
     "logoAlt": "Logo de Ribotflow",
-    "brandName": "Ribotflow"
+    "brandName": "Ribotflow",
+    "themeSwitcher": {
+      "title": "Canvia el tema",
+      "description": "Canvia entre modes clar i fosc.",
+      "light": "Mode Clar",
+      "dark": "Mode Fosc"
+    },
+    "langSwitcher": {
+      "title": "Canvia l'idioma"
+    }
   },
   "SignupPage": {
     "title": "Crea el teu compte",
@@ -1569,6 +1615,7 @@
     "feature1": "Centralitza tots els teus clients i comunicacions.",
     "feature2": "Automatitza tasques i estalvia desenes d'hores cada mes.",
     "feature3": "Pren decisions més intel·ligents amb analítiques clares.",
+    "goBackHome": "Torna a la pàgina principal",
     "errors": {
       "password_length": "La contrasenya ha de tenir com a mínim 6 caràcters.",
       "email_invalid": "Si us plau, introdueix una adreça de correu electrònic vàlida.",
@@ -1593,6 +1640,7 @@
     "toastErrorTitle": "Error d'inici de sessió",
     "toastErrorDescription": "Les credencials són incorrectes. Si us plau, torna-ho a provar.",
     "forgotPasswordLink": "Has oblidat la contrasenya?",
+    "goBackHome": "Torna a la pàgina principal",
     "forgotPassword": {
       "title": "Restablir Contrasenya",
       "description": "Introdueix el teu correu electrònic i t'enviarem un enllaç per a restablir la teva contrasenya.",

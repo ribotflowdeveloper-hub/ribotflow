@@ -4,7 +4,7 @@
  * No fa cap redirecció. El middleware s'encarrega de tot.
  */
 import type { Metadata } from 'next';
-import { MainLandingView } from './_components/MainLandingView';
+import { MainLandingView } from './(public)/MainLandingView';
 
 export const metadata: Metadata = {
   title: 'Ribotflow - El Futur de la Gestió Empresarial',

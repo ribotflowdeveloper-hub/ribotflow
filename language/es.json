@@ -1511,7 +1511,10 @@
   "MainLandingView": {
     "title": "El trabajo de tu vida, impulsado por nuestra pasión.",
     "subtitle": "Soluciones de software sólidas y fiables que mejoran la forma en que trabajas. Diseñado para empresas de todos los tamaños.",
-    "ctaButton": "Empieza Gratis Ahora",
+    "ctaButton": "Comienza Gratis Ahora",
+    "bentoGrid": {
+      "title": "Todo lo que necesitas, en un solo lugar"
+    },
     "featuresPanel": {
       "title": "Aplicaciones Destacadas",
       "crm": {
@@ -1528,19 +1531,62 @@
       },
       "network": {
         "title": "Red Profesional",
-        "desc": "Conéctate con otros usuarios."
+        "desc": "Conecta con otros usuarios."
       },
       "projectStrocture": {
         "title": "Proyectos",
         "desc": "Organiza tus tareas y flujos."
       }
+    },
+    "showcase": {
+      "dashboard": {
+        "title": "Dashboard Unificado",
+        "desc": "Todas tus métricas clave en tiempo real."
+      },
+      "crm": {
+        "title": "CRM Inteligente",
+        "desc": "Gestiona clientes y oportunidades sin esfuerzo."
+      },
+      "calendari": {
+        "title": "Calendario Sincronizado",
+        "desc": "Todas tus citas, tareas y eventos."
+      },
+      "pipeline": {
+        "title": "Análisis de Pipeline",
+        "desc": "Entiende tu rendimiento con informes claros."
+      },
+      "social": {
+        "title": "Automatización de Redes",
+        "desc": "Planifica y publica en todas tus redes sociales desde un solo lugar, ahorrando tiempo y esfuerzo."
+      },
+      "invoicing": {
+        "title": "Flujo de Facturación",
+        "desc": "Convierte automáticamente presupuestos aceptados en facturas y envíalas a tus clientes con un solo clic."
+      },
+      "network": {
+        "title": "Red Profesional",
+        "desc": "Conecta con otros profesionales, descubre colaboradores y amplía tu red de contactos."
+      },
+      "inboxDespesa": {
+        "title": "Gestión de Gastos",
+        "desc": "Registra y procesa los correos automáticamente, sin tener que introducir los gastos manualmente."
+      }
     }
   },
   "LandingNav": {
-    "login": "Acceder",
+    "login": "Inicia sesión",
     "signup": "Regístrate Gratis",
     "logoAlt": "Logo de Ribotflow",
-    "brandName": "Ribotflow"
+    "brandName": "Ribotflow",
+    "themeSwitcher": {
+      "title": "Cambiar tema",
+      "description": "Cambia entre modos claro y oscuro.",
+      "light": "Modo Claro",
+      "dark": "Modo Oscuro"
+    },
+    "langSwitcher": {
+      "title": "Cambiar idioma"
+    }
   },
   "SignupPage": {
     "title": "Crea tu cuenta",
@@ -1566,6 +1612,7 @@
     "acceptTermsPrefix": "He leído y acepto los",
     "acceptPrivacyPrefix": "He leído y entiendo la",
     "acceptMarketing": "Quiero recibir comunicaciones y novedades.",
+    "goBackHome": "Volver a la página principal",
     "errors": {
       "password_length": "La contraseña debe tener al menos 6 caracteres.",
       "email_invalid": "Por favor, introduce una dirección de correo electrónico válida.",
@@ -1590,6 +1637,7 @@
     "submitButton": "Inicia Sesión",
     "toastErrorTitle": "Error de inicio de sesión",
     "toastErrorDescription": "Las credenciales son incorrectas. Por favor, inténtalo de nuevo.",
+    "goBackHome": "Volver a la página principal",
     "forgotPassword": {
       "title": "Restablecer Contraseña",
       "description": "Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.",

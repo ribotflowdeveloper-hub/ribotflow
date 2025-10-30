@@ -2,52 +2,84 @@
 
 import * as React from "react";
 import { useTheme } from "next-themes";
-import { motion } from "framer-motion";
-import { Sun, Moon, Laptop } from "lucide-react";
-import { cn } from "@/lib/utils/utils";
-
-const themeOptions = [
-  { theme: "light", label: "Clar", Icon: Sun },
-  { theme: "dark", label: "Fosc", Icon: Moon },
-  { theme: "system", label: "Sistema", Icon: Laptop },
-];
+import { motion, AnimatePresence } from "framer-motion";
+import { Sun, Moon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useTranslations } from "next-intl";
 
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme();
-  const [activeTheme, setActiveTheme] = React.useState(theme);
+  const [mounted, setMounted] = React.useState(false);
+  const t = useTranslations('LandingNav.themeSwitcher');
 
+  // PER QUÈ: Ens assegurem que el component estigui muntat al client
+  // abans de llegir el 'theme', per evitar hydration mismatch.
   React.useEffect(() => {
-    setActiveTheme(theme);
-  }, [theme]);
+    setMounted(true);
+  }, []);
 
-  const activeIndex = themeOptions.findIndex(opt => opt.theme === activeTheme);
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
+  // Determinem el tema actual (ignorem "system" per a aquest toggle simple)
+  const isDarkMode = theme === "dark";
+
+  // Retornem un 'skeleton' mentre no estigui muntat
+  if (!mounted) {
+    return <div className="w-9 h-9" />; // Espai reservat
+  }
 
   return (
-    <div className="relative flex items-center p-1 bg-muted dark:bg-muted/50 rounded-lg">
-      {themeOptions.map(({ theme: optionTheme, label, Icon }) => (
-        <button
-          key={optionTheme}
-          onClick={() => setTheme(optionTheme)}
-          className={cn(
-            "relative flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md z-10 transition-colors",
-            activeTheme !== optionTheme && "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Icon className="w-4 h-4" />
-          {label}
-        </button>
-      ))}
-      {/* Indicador lliscant */}
-      <motion.div
-        layoutId="theme-switcher-active"
-        className="absolute inset-0 h-full p-1 z-0"
-        initial={false} // Evitem l'animació inicial a la càrrega
-        // ✅ CORRECCIÓ: El càlcul de 'animate' ha de ser igual que 'initial', sense dividir.
-        animate={{ x: activeIndex * 100 + '%' }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        <div className="w-1/3 h-full bg-background rounded-md shadow-sm" />
-      </motion.div>
-    </div>
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label={isDarkMode ? t('light') : t('dark')}
+            className="relative w-9 h-9" // Assegurem la mida
+          >
+            <AnimatePresence initial={false} mode="wait">
+              {isDarkMode ? (
+                // Si és FOSC, mostrem la icona del SOL
+                <motion.div
+                  key="sun"
+                  initial={{ opacity: 0, scale: 0.8, rotate: -90 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, rotate: 90 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute"
+                >
+                  <Sun className="w-5 h-5" />
+                </motion.div>
+              ) : (
+                // Si és CLAR, mostrem la icona de la LLUNA
+                <motion.div
+                  key="moon"
+                  initial={{ opacity: 0, scale: 0.8, rotate: 90 }}
+                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, rotate: -90 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute"
+                >
+                  <Moon className="w-5 h-5" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          {isDarkMode ? t('light') : t('dark')}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

@@ -1516,9 +1516,12 @@
     "feature3Text": "Descobreix i col·labora amb altres professionals propers al mapa comunitari."
   },
   "MainLandingView": {
-    "title": "The work of your life, driven by our passion.",
-    "subtitle": "Solid and reliable software solutions that improve the way you work. Designed for businesses of all sizes.",
+    "title": "The work of your life, powered by our passion.",
+    "subtitle": "Reliable and robust software solutions that improve the way you work. Designed for businesses of all sizes.",
     "ctaButton": "Start Free Now",
+    "bentoGrid": {
+      "title": "Everything you need, in one place"
+    },
     "featuresPanel": {
       "title": "Featured Applications",
       "crm": {
@@ -1526,8 +1529,8 @@
         "desc": "Comprehensive client tracking."
       },
       "finances": {
-        "title": "Finances",
-        "desc": "Invoice and expense management."
+        "title": "Finance",
+        "desc": "Manage invoices and expenses."
       },
       "comunicacio": {
         "title": "Communication",
@@ -1541,13 +1544,56 @@
         "title": "Projects",
         "desc": "Organize your tasks and workflows."
       }
+    },
+    "showcase": {
+      "dashboard": {
+        "title": "Unified Dashboard",
+        "desc": "All your key metrics in real time."
+      },
+      "crm": {
+        "title": "Smart CRM",
+        "desc": "Manage clients and opportunities effortlessly."
+      },
+      "calendari": {
+        "title": "Synced Calendar",
+        "desc": "All your appointments, tasks, and events."
+      },
+      "pipeline": {
+        "title": "Pipeline Analysis",
+        "desc": "Understand your performance with clear reports."
+      },
+      "social": {
+        "title": "Social Automation",
+        "desc": "Plan and post to all your social networks from one place, saving time and effort."
+      },
+      "invoicing": {
+        "title": "Invoicing Flow",
+        "desc": "Automatically convert accepted quotes into invoices and send them to your clients with one click."
+      },
+      "network": {
+        "title": "Professional Network",
+        "desc": "Connect with other professionals, discover collaborators, and expand your contact network."
+      },
+      "inboxDespesa": {
+        "title": "Expense Management",
+        "desc": "Automatically register and process emails, without manually entering expenses."
+      }
     }
   },
   "LandingNav": {
-    "login": "Accedir",
-    "signup": "Registra't Gratis",
+    "login": "Log In",
+    "signup": "Sign Up Free",
     "logoAlt": "Ribotflow Logo",
-    "brandName": "Ribotflow"
+    "brandName": "Ribotflow",
+    "themeSwitcher": {
+      "title": "Switch Theme",
+      "description": "Toggle between light and dark modes.",
+      "light": "Light Mode",
+      "dark": "Dark Mode"
+    },
+    "langSwitcher": {
+      "title": "Change Language"
+    }
   },
   "SignupPage": {
     "title": "Create Your Account",
@@ -1573,6 +1619,7 @@
     "acceptTermsPrefix": "I have read and accept the",
     "acceptPrivacyPrefix": "I have read and understand the",
     "acceptMarketing": "I want to receive updates and communications.",
+    "goBackHome": "Back to Homel",
     "errors": {
       "password_length": "Password should be at least 6 characters.",
       "email_invalid": "Please enter a valid email address.",
@@ -1597,6 +1644,7 @@
     "submitButton": "Log In",
     "toastErrorTitle": "Login Error",
     "toastErrorDescription": "The credentials are incorrect. Please try again.",
+    "goBackHome": "Back to Homel",
     "forgotPassword": {
       "title": "Reset Password",
       "description": "Enter your email and we'll send you a link to reset your password.",

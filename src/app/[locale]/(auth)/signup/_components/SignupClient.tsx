@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 // Importem el NOSTRE nou component modal
-import { LegalModalTrigger } from '@/components/ui/LegalModalTrigger' 
+import { LegalModalTrigger } from '@/components/ui/LegalModalTrigger'
 import dynamic from 'next/dynamic'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link' // Encara el fem servir per anar a /login
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Mail, Lock, Loader2, Check, AlertTriangle } from 'lucide-react'
+import { Mail, Lock, Loader2, Check, AlertTriangle, ArrowLeft } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox' // Importa el Checkbox de shadcn/ui
 
 // Lògica
@@ -20,7 +20,7 @@ import { useSignupForm } from '../_hooks/useSignupForm'
 
 const ParticleBackground = dynamic(
   () =>
-    import('@/app/[locale]/_components/ParticleBackground').then(
+    import('@/app/[locale]/(public)/_components/ParticleBackground').then(
       (mod) => mod.ParticleBackground,
     ),
   { ssr: false },
@@ -89,6 +89,29 @@ export function SignupClient({
       <BrandingSection />
 
       <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background relative z-10">
+        <Link
+          href="/"
+          // Posició mòbil: dalt a l'esquerra
+          // Posició escriptori: dalt a la dreta (i esborra l'esquerra)
+          className="absolute top-6 left-6 lg:top-8 lg:right-8 lg:left-auto"
+        >
+          <Button
+            variant="ghost" // "ghost" és més net per a això que "outline"
+            // Mida mòbil: 'icon' (quadrat)
+            // Mida escriptori: automàtic amb padding
+            size="icon"
+            className="lg:w-auto lg:h-10 lg:px-4 lg:py-2"
+            aria-label={t('goBackHome')}
+          >
+            {/* Icona: en escriptori té marge a la dreta */}
+            <ArrowLeft className="w-5 h-5 lg:mr-2" />
+
+            {/* Text: ocult en mòbil, visible en escriptori */}
+            <span className="hidden lg:inline">
+              {t('goBackHome')}
+            </span>
+          </Button>
+        </Link>
         <div className="w-full max-w-md space-y-8">
           <div className="text-center lg:text-left">
             <h2 className="text-3xl font-bold tracking-tight">{t('title')}</h2>
@@ -200,7 +223,7 @@ export function SignupClient({
                     triggerText={commonLegalT('termsConditionsTitle')}
                   >
                     {/* ✅ 3. Passem el contingut rebut per props */}
-                    {termsContent} 
+                    {termsContent}
                   </LegalModalTrigger>
                 </Label>
               </div>

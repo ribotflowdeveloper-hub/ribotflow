@@ -2,57 +2,75 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useLocale } from "next-intl";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils/utils";
+import { useLocale, useTranslations } from "next-intl";
+import { Languages } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const locales = [
-  { code: "ca", label: "CA" },
-  { code: "es", label: "ES" },
-  { code: "en", label: "EN" },
+  { code: "ca", label: "Català" },
+  { code: "es", label: "Español" },
+  { code: "en", label: "English" },
 ];
 
 export function LanguageSwitcher() {
   const router = useRouter();
   const pathname = usePathname();
   const currentLocale = useLocale();
+  const t = useTranslations('LandingNav.langSwitcher');
 
   const onSelectChange = (nextLocale: string) => {
-    // Treiem el locale actual del pathname per construir la nova ruta
+    // Evitem la navegació si ja estem al 'locale' seleccionat
+    if (nextLocale === currentLocale) return;
+
+    // Lògica per extreure el 'pathname' sense el 'locale'
     const newPath = pathname.startsWith(`/${currentLocale}`)
       ? pathname.substring(`/${currentLocale}`.length) || '/'
       : pathname;
+    
+    // Fem 'replace' per no afegir-ho a l'historial del navegador
     router.replace(`/${nextLocale}${newPath}`);
   };
 
-  const activeIndex = locales.findIndex(l => l.code === currentLocale);
-
   return (
-    <div className="relative flex items-center p-1 bg-muted dark:bg-muted/50 rounded-lg">
-      {locales.map(({ code, label }) => (
-        <button
-          key={code}
-          onClick={() => onSelectChange(code)}
-          className={cn(
-            "relative flex-1 px-4 py-2 text-sm font-medium rounded-md z-10 transition-colors",
-            currentLocale !== code && "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {label}
-        </button>
-      ))}
-      {/* Indicador lliscant */}
-      <motion.div
-        layoutId="language-switcher-active"
-        className="absolute inset-0 h-full p-1 z-0"
-        initial={false} // Evitem l'animació inicial a la càrrega
-        // ✅ CORRECCIÓ: El càlcul de 'animate' ha de ser igual que 'initial', sense dividir.
-        // Ha de moure's 0%, 100%, 200%, etc., de la seva pròpia amplada (que és 1/3 del pare).
-        animate={{ x: activeIndex * 100 + '%' }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        <div className="w-1/3 h-full bg-background rounded-md shadow-sm" />
-      </motion.div>
-    </div>
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label={t('title')}>
+                <Languages className="w-5 h-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {locales.map(({ code, label }) => (
+                <DropdownMenuItem
+                  key={code}
+                  onClick={() => onSelectChange(code)}
+                  // Destaquem visualment l'idioma actiu
+                  className={currentLocale === code ? "font-bold" : ""}
+                >
+                  {label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{t('title')}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

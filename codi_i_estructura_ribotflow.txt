@@ -501,9 +501,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │           └── usePublicQuote.ts
 │       └── _components
 │           ├── AddressSearch.tsx
-│           ├── CountdownView.tsx
 │           ├── FeaturesPanel.tsx
-│           ├── LandingClient.tsx
 │           ├── LandingNav.tsx
 │           ├── MainLandingView.tsx
 │           └── ParticleBackground.tsx
@@ -528,6 +526,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │       ├── TaskFormPrimary.tsx
 │   │       ├── TaskFormSecondary.tsx
 │   │       └── TaskFormView.tsx
+│   ├── LanguageSwitcher.tsx
 │   ├── PWARegistration.tsx
 │   ├── shared
 │   │   ├── AccessDenied.tsx
@@ -543,6 +542,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │   ├── StatusBadge.tsx
 │   │   └── SupplierCombobox.tsx
 │   ├── theme-provider.tsx
+│   ├── ThemeSwitcher.tsx
 │   └── ui
 │       ├── accordion.tsx
 │       ├── alert-dialog.tsx
@@ -2353,6 +2353,45 @@ ul[data-type="taskList"] li input[type="checkbox"]:checked::before {
 ul[data-type="taskList"] li[data-checked="true"] > div > p {
   text-decoration: line-through;
   color: hsl(var(--muted-foreground));
+}
+/*
+ * =========================================
+ * SOLUCIÓ EDITOR TIPTAP (EditorWysiwyg) - v2 REFORÇADA
+ * =========================================
+ * Anul·la el fons blanc ('background-color') que Tiptap
+ * afegeix per defecte als nodes (paràgrafs, títols) quan
+ * reben focus, especialment quan es fa servir 'prose dark:prose-invert'.
+ */
+
+/* * Regla principal: Forcem la transparència per a qualsevol node
+ * que Tiptap marqui com a enfocat dins de 'prose'.
+ */
+.prose .is-focused,
+.prose .is-editor-focused {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* * Regla de reforç per al mode fosc (dark mode):
+ * Si 'html' té la classe 'dark' (de next-themes),
+ * apliquem la regla de forma encara més específica.
+ */
+html.dark .prose-invert .is-focused,
+html.dark .prose-invert .is-editor-focused {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* * Assegurem que el focus del navegador (outline)
+ * tampoc aparegui.
+ */
+.prose[contenteditable="true"]:focus,
+.prose > *:focus-visible {
+    background-color: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 
 // =================== FILE: src/app/layout.tsx ===================
@@ -35035,8 +35074,8 @@ export function useOnboardingForm(initialFullName: string) {
  * @summary Aquesta és la pàgina d'inici (Landing Page).
  * No fa cap redirecció. El middleware s'encarrega de tot.
  */
-import { LandingClient } from './_components/LandingClient';
 import type { Metadata } from 'next';
+import { MainLandingView } from './_components/MainLandingView';
 
 export const metadata: Metadata = {
   title: 'Ribotflow - El Futur de la Gestió Empresarial',
@@ -35044,7 +35083,7 @@ export const metadata: Metadata = {
 };
 
 export default function LandingPage() {
-  return <LandingClient />;
+  return <MainLandingView />;
 }
 
 // =================== FILE: src/app/[locale]/quote/[secureId]/actions.ts ===================
@@ -35648,180 +35687,6 @@ export function AddressSearch({ onAddressSelect }: AddressSearchProps) {
   );
 }
 
-// =================== FILE: src/app/[locale]/_components/CountdownView.tsx ===================
-
-"use client";
-
-import { useEffect, useState, useRef } from 'react';
-import { useTranslations } from 'next-intl';
-import Image from 'next/image';
-import Link from 'next/link';
-import dynamic from 'next/dynamic';
-
-// Importem els nous components de la UI
-import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
-import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
-import { Button } from '@/components/ui/button';
-
-// Carreguem el fons de partícules de manera dinàmica per a un millor rendiment.
-const ParticleBackground = dynamic(
-  () => import('./ParticleBackground').then(mod => mod.ParticleBackground),
-  { ssr: false }
-);
-
-// Sub-components interns per a una millor organització del codi.
-const CountdownBlock = ({ value, label }: { value: string; label: string }) => (
-  <div className="min-w-[80px] md:min-w-[120px] text-center">
-    <span className="text-[clamp(3rem,8vw,5rem)] font-bold leading-none block">{value}</span>
-    <span className="text-xs md:text-sm font-light text-gray-400 tracking-widest uppercase">{label}</span>
-  </div>
-);
-const FeatureBlock = ({ title, color, dataTitle, children }: { title: string; color: string; dataTitle: string; children: React.ReactNode }) => (
-  <div className="feature-block py-16 mb-32 opacity-20 transition-opacity duration-500" data-title={dataTitle}>
-    <h3 className={`text-3xl font-medium mb-4 ${color}`}>{title}</h3>
-    {/* ✅ CORRECCIÓ: Canviem 'text-gray-300' per 'text-muted-foreground' */}
-    <p className="text-xl leading-relaxed text-muted-foreground max-w-prose">
-      {children}
-    </p>
-  </div>
-);
-
-/**
- * @summary El component principal i interactiu de la Landing Page.
- */
-export function CountdownView() {
-  const t = useTranslations('LandingPage');
-  const [timeLeft, setTimeLeft] = useState({ days: '00', hours: '00', minutes: '00', seconds: '00' });
-  const [isClient, setIsClient] = useState(false);
-  const featureContentRef = useRef<HTMLDivElement>(null);
-  const stickyTitleRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => { setIsClient(true); }, []);
-
-  // Lògica del compte enrere (sense canvis).
-  useEffect(() => {
-    if (!isClient) return;
-    const countDownDate = new Date("Oct 1, 2025 00:00:00").getTime();
-    const interval = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = countDownDate - now;
-      if (distance < 0) {
-        clearInterval(interval);
-        setTimeLeft({ days: '00', hours: '00', minutes: '00', seconds: '00' });
-        return;
-      }
-      setTimeLeft({
-        days: String(Math.floor(distance / (1000 * 60 * 60 * 24))).padStart(2, '0'),
-        hours: String(Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))).padStart(2, '0'),
-        minutes: String(Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60))).padStart(2, '0'),
-        seconds: String(Math.floor((distance % (1000 * 60)) / 1000)).padStart(2, '0'),
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isClient]);
-
-  // ✅ CORRECCIÓ: Efecte per a l'animació de l'scroll.
-  useEffect(() => {
-    if (!isClient || !featureContentRef.current || !stickyTitleRef.current) return;
-
-    const featureBlocks = Array.from(featureContentRef.current.querySelectorAll<HTMLDivElement>('.feature-block'));
-    const stickyTitle = stickyTitleRef.current;
-
-    const updateActiveFeature = (target: Element) => {
-      const title = target.getAttribute('data-title');
-      if (title) stickyTitle.innerHTML = title;
-      featureBlocks.forEach(b => b.classList.remove('opacity-100'));
-      target.classList.add('opacity-100');
-    };
-
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          updateActiveFeature(entry.target);
-        }
-      });
-    }, { rootMargin: '-50% 0px -50% 0px', threshold: 0 });
-
-    featureBlocks.forEach(block => observer.observe(block));
-
-    // Activem el primer bloc manualment a la càrrega inicial per solucionar l'error.
-    if (featureBlocks.length > 0) {
-      updateActiveFeature(featureBlocks[0]);
-    }
-
-    return () => featureBlocks.forEach(block => observer.unobserve(block));
-  }, [isClient]);
-
-  return (
-    <div className="relative z-10 bg-background text-foreground">
-      {/* El fons de partícules es renderitza només al client i per sota de tot. */}
-      {isClient && <ParticleBackground />}
-
-      <div className="relative z-10">
-        {/* ✅ NOU: Barra de navegació superior amb nou disseny */}
-
-        <nav className="fixed top-0 left-0 right-0 z-50 p-4 flex justify-between items-center bg-background/50 backdrop-blur-md border-b border-white/10">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/android-chrome-192x192.png" alt={t('logoAlt')} width={32} height={32} />
-            <span className="font-bold text-lg hidden sm:block">{t('brandNameNav')}</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <LanguageSwitcher />
-            <ThemeSwitcher />
-            <Button asChild className="bg-gradient-to-r from-green-400 to-cyan-400 text-black font-bold hover:opacity-90 transition-opacity">
-              <Link href="/login">{t('accessButton')}</Link>
-            </Button>
-          </div>
-        </nav>
-
-        <header className="flex flex-col justify-center items-center h-screen text-center p-4">
-          <h1 className="text-[clamp(3.5rem,10vw,7rem)] font-black tracking-tighter leading-none mb-6 bg-gradient-to-r from-green-400 via-cyan-400 to-pink-500 bg-clip-text text-transparent animate-gradient-shift">
-            {t('mainTitle')}
-          </h1>
-          <p className="text-[clamp(1.1rem,2.5vw,1.5rem)] font-light text-muted-foreground max-w-3xl leading-relaxed mb-14">
-            {t('subtitle')}
-          </p>
-          <div className="flex gap-4 md:gap-8">
-            <CountdownBlock value={timeLeft.days} label={t('days')} />
-            <CountdownBlock value={timeLeft.hours} label={t('hours')} />
-            <CountdownBlock value={timeLeft.minutes} label={t('minutes')} />
-            <CountdownBlock value={timeLeft.seconds} label={t('seconds')} />
-          </div>
-        </header>
-
-        {/* Títol d'introducció a les funcionalitats */}
-        <h2 className="text-[clamp(2rem,4vw,3rem)] text-center my-32 font-extrabold bg-gradient-to-r from-green-400 via-cyan-400 to-pink-500 bg-clip-text text-transparent animate-gradient-slow">
-          {t('featuresIntro')}
-        </h2>
-
-        {/* Secció de les funcionalitats amb efecte d'scroll */}
-        <section className="grid grid-cols-1 md:grid-cols-[1fr_1.5fr] gap-8 max-w-6xl mx-auto px-8">
-          <div className="sticky top-0 h-screen hidden md:flex items-center">
-            <h2 ref={stickyTitleRef} className="text-[clamp(2rem,5vw,3.5rem)] font-bold leading-tight transition-opacity duration-500"></h2>
-          </div>
-          <div ref={featureContentRef}>
-            <FeatureBlock title={t('feature1Title')} color="text-green-400" dataTitle={t('feature1DataTitle')}>{t('feature1Text')}</FeatureBlock>
-            <FeatureBlock title={t('feature2Title')} color="text-cyan-400" dataTitle={t('feature2DataTitle')}>{t('feature2Text')}</FeatureBlock>
-            <FeatureBlock title={t('feature3Title')} color="text-pink-400" dataTitle={t('feature3DataTitle')}>{t('feature3Text')}</FeatureBlock>
-            <FeatureBlock title={t('feature4Title')} color="text-green-400" dataTitle={t('feature4DataTitle')}>{t('feature4Text')}</FeatureBlock>
-            <FeatureBlock title={t('feature5Title')} color="text-cyan-400" dataTitle={t('feature5DataTitle')}>{t('feature5Text')}</FeatureBlock>
-            <FeatureBlock title={t('feature6Title')} color="text-pink-400" dataTitle={t('feature6DataTitle')}>{t('feature6Text')}</FeatureBlock>
-          </div>
-        </section>
-
-        {/* Peu de pàgina */}
-        <footer className="text-center py-16 text-gray-500">
-          {/* ✅ NOU: Afegim el selector de tema al peu de pàgina */}
-          <div className="mb-8 flex justify-center">
-            <ThemeSwitcher />
-          </div>
-          <p>&copy; {new Date().getFullYear()}{t('brandNameFooter')}{t('developedBy')} <Link href="..." className="...">{t('developerName')}</Link>.</p>
-        </footer>
-      </div>
-    </div>
-  );
-}
-
 // =================== FILE: src/app/[locale]/_components/FeaturesPanel.tsx ===================
 
 "use client";
@@ -35894,38 +35759,6 @@ export function FeaturesPanel() {
   );
 }
 
-// =================== FILE: src/app/[locale]/_components/LandingClient.tsx ===================
-
-"use client";
-
-import { useEffect, useState } from 'react';
-
-// Importem les dues vistes que podem mostrar
-import { CountdownView } from './CountdownView'; // Aquest serà el teu component de compte enrere
-import { MainLandingView } from './MainLandingView'; // Aquest és el nou component professional
-
-// Definim la data de llançament
-const LAUNCH_DATE = new Date("Jan 1, 2024 00:00:00");
-
-export function LandingClient() {
-  const [isLaunchTime, setIsLaunchTime] = useState(false);
-  
-  // Aquest efecte comprova la data només al client
-  useEffect(() => {
-    if (new Date() > LAUNCH_DATE) {
-      setIsLaunchTime(true);
-    }
-  }, []);
-
-  // Renderitzem una vista o l'altra segons si ha arribat la data de llançament
-  if (isLaunchTime) {
-    return <MainLandingView />;
-  } else {
-    // Has de moure el teu codi antic del compte enrere a un nou component 'CountdownView.tsx'
-    return <CountdownView />;
-  }
-}
-
 // =================== FILE: src/app/[locale]/_components/LandingNav.tsx ===================
 
 "use client";
@@ -35933,8 +35766,8 @@ export function LandingClient() {
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { LanguageSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/LanguageSwitcher';
-import { ThemeSwitcher } from '@/app/[locale]/(app)/settings/customization/_components/ThemeSwitcher';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
+import { ThemeSwitcher } from '@/components/ThemeSwitcher';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 
@@ -35955,10 +35788,10 @@ export function LandingNav() {
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
         <ThemeSwitcher />
-        <Button asChild variant="ghost">
+        <Button variant="ghost">
           <Link href="/login">{t('login')}</Link>
         </Button>
-        <Button asChild className="hidden sm:inline-flex bg-gradient-to-r from-green-400 to-cyan-400 text-black font-bold hover:scale-105 transition-transform">
+        <Button className="hidden sm:inline-flex bg-gradient-to-r from-green-400 to-cyan-400 text-black font-bold hover:scale-105 transition-transform">
           <Link href="/signup">{t('signup')}</Link>
         </Button>
       </div>
@@ -36839,12 +36672,14 @@ export function EditorToolbar({ editor, isUploading, addImage, setLink }: Editor
 
 // =================== FILE: src/components/features/EditorWysiwyg/EditorWysiwyg.tsx ===================
 
-// src/components/ui/EditorWysiwyg.tsx (COMPLET I CORREGIT)
 'use client';
 
-import { useCallback, useRef,  ChangeEvent, useTransition, useEffect } from 'react';
+import { useCallback, useRef, ChangeEvent, useTransition, useEffect } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useEditor, EditorContent, JSONContent } from '@tiptap/react';
+// Importem 'Editor' i 'JSONContent' per al tipat
+import { useEditor, EditorContent, JSONContent, type Editor } from '@tiptap/react';
+// Importem 'EditorProps' per al tipat de 'handlePaste'
+import { type EditorProps } from '@tiptap/pm/view';
 // Assegura't que aquestes rutes siguin correctes
 import { defaultExtensions } from './tiptapExtensions';
 import { EditorToolbar } from './EditorToolbar';
@@ -36870,7 +36705,7 @@ export default function EditorWysiwyg({
     onChange,
     className,
     minHeight = '150px', // Valor per defecte
-    maxHeight = 'none',  // Valor per defecte
+    maxHeight = 'none', // Valor per defecte
 }: EditorWysiwygProps) {
     const [isPending, startTransition] = useTransition();
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -36882,11 +36717,10 @@ export default function EditorWysiwyg({
         editorProps: {
             attributes: {
                 class: cn(
-                    'prose dark:prose-invert prose-sm sm:prose-base focus:outline-none max-w-none w-full',
-                    // Apliquem minHeight directament a l'estil inline per més control
+                    'prose dark:prose-invert prose-sm sm:prose-base fossssssss:outline-none max-w-none w-full',
                 ),
-                 style: `min-height: ${minHeight};`, // Estil inline per minHeight
-                 id: `editor-${id}`,
+                style: `min-height: ${minHeight};`, // Estil inline per minHeight
+                id: `editor-${id}`,
             },
         },
         onUpdate: ({ editor }) => {
@@ -36895,6 +36729,73 @@ export default function EditorWysiwyg({
             }
         },
     });
+
+    // --- LÒGICA PER INJECTAR EL 'handlePaste' DE FORMA SEGURA ---
+    useEffect(() => {
+        if (!editor) {
+            return;
+        }
+
+        /**
+         * Definim la lògica de 'handlePaste' aquí.
+         * Gràcies al 'closure', tenim accés directe a la variable 'editor'
+         * del hook 'useEditor' de forma totalment segura (type-safe).
+         */
+        const handlePasteCallback: EditorProps['handlePaste'] = (view, event, slice) => {
+            // No cal (view as any).editor, fem servir 'editor' directament.
+            if (!editor.isActive('taskList')) {
+                return false; // Comportament per defecte
+            }
+
+            const pastedText = event.clipboardData?.getData('text/plain');
+
+            if (!pastedText || !pastedText.includes('\n')) {
+                return false; // Comportament per defecte
+            }
+
+            // *** INICI DE LA LÒGICA PERSONALITZADA ***
+            event.preventDefault();
+
+            const lines = pastedText
+                .split('\n')
+                .filter((line) => line.trim().length > 0);
+
+            if (lines.length === 0) {
+                return true; // Hem gestionat l'esdeveniment
+            }
+
+            const { $from } = editor.state.selection;
+            const currentNode = $from.node($from.depth);
+            const isCurrentTaskEmpty = currentNode.textContent.trim().length === 0;
+
+            let chain = editor.chain().focus();
+
+            if (isCurrentTaskEmpty) {
+                const [firstLine, ...otherLines] = lines;
+                chain.insertContent(firstLine);
+                for (const line of otherLines) {
+                    chain = chain.splitListItem('taskItem').insertContent(line);
+                }
+            } else {
+                for (const line of lines) {
+                    chain = chain.splitListItem('taskItem').insertContent(line);
+                }
+            }
+
+            chain.run();
+            return true;
+        };
+
+        // Actualitzem les editorProps de l'editor ja inicialitzat
+        editor.setOptions({
+            editorProps: {
+                ...editor.options.editorProps, // Preservem les props existents (ex: attributes)
+                handlePaste: handlePasteCallback, // Afegim la nostra lògica
+            },
+        });
+    }, [editor]); // El array de dependències [editor] assegura que s'executi un sol cop
+
+    // --- FI DE LA LÒGICA DEL 'handlePaste' ---
 
     const setLink = useCallback(() => {
         if (!editor) return;
@@ -36947,14 +36848,14 @@ export default function EditorWysiwyg({
                         editor.chain().focus().setImage({
                             src: result.data.signedUrl,
                             alt: file.name
-                         }).run();
+                        }).run();
                         toast.success("Imatge inserida.");
                     } else {
                         console.error("[Client] Error SA:", result.message);
                         toast.error("Error en pujar", { description: result.message || "Problema al servidor." });
                     }
                 } catch (error) {
-                    if(loadingToastId) toast.dismiss(loadingToastId);
+                    if (loadingToastId) toast.dismiss(loadingToastId);
                     console.error('[Client] Error inesperat:', error);
                     toast.error("Error de connexió", { description: "No s'ha pogut contactar amb el servidor." });
                 } finally {
@@ -36965,9 +36866,15 @@ export default function EditorWysiwyg({
         [editor, startTransition, isPending]
     );
 
+    // Sincronització del 'defaultValue' si canvia des de fora
     useEffect(() => {
-        if (editor && defaultValue !== editor.getHTML()) {
-            editor.commands.setContent(defaultValue);
+        if (editor && !editor.isFocused) {
+            const isSame = editor.getHTML() === defaultValue;
+            if (!isSame) {
+                // 👇 LÍNIA CORREGIDA:
+                // Passem un objecte d'opcions en lloc d'un booleà.
+                editor.commands.setContent(defaultValue, { emitUpdate: false });
+            }
         }
     }, [defaultValue, editor]);
 
@@ -36975,7 +36882,7 @@ export default function EditorWysiwyg({
 
     return (
         <TooltipProvider delayDuration={100}>
-            <div className={cn('w-full rounded-md border...', className)}>
+            <div className={cn('w-full rounded-md border border-input bg-background shadow-sm flex flex-col', className)}>
                 <EditorToolbar
                     editor={editor}
                     isUploading={isPending}
@@ -36987,7 +36894,7 @@ export default function EditorWysiwyg({
                         className="overflow-y-auto p-4 border-t border-input"
                         style={{ maxHeight: maxHeight !== 'none' ? maxHeight : undefined }}
                     >
-                        <EditorContent editor={editor} className="min-h-full" style={{minHeight: minHeight}} />
+                        <EditorContent editor={editor} />
                     </div>
                     <input
                         type="file"
@@ -37257,7 +37164,7 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
 
 // =================== FILE: src/components/features/tasks/hooks/useTaskForm.ts ===================
 
-// src/components/features/tasks/useTaskForm.ts
+// src/components/features/tasks/useTaskForm.ts (COMPLET I CORREGIT)
 'use client';
 
 import { useState, useTransition, FormEvent, useEffect, useCallback } from 'react';
@@ -37272,7 +37179,6 @@ interface UseTaskFormProps {
   task: EnrichedTask | null;
   onTaskMutationSuccess: () => void;
   initialDate?: Date;
-  // activeTeamId no cal si les server actions ja l'obtenen de la sessió
 }
 
 export function useTaskForm({
@@ -37283,43 +37189,61 @@ export function useTaskForm({
   const [isPending, startTransition] = useTransition();
   const isEditing = !!task;
 
-  // --- Estats Locals del Formulari ---
-  const getInitialDate = useCallback(() => initialDate || (task?.due_date ? new Date(task.due_date) : undefined), [initialDate, task?.due_date]);
+  // ✅ --- INICI DE LA MODIFICACIÓ ---
+  // Aquesta és ara la nostra única font de veritat per inicialitzar l'estat.
+  // S'executa NOMÉS UN COP quan el hook es munta,
+  // o quan les dependències del 'useEffect' canvien.
+  const getInitialDueDate = () => {
+    // 1. Si és mode 'creació' (no hi ha tasca) i rebem 'initialDate'
+    if (!task && initialDate) {
+      return initialDate;
+    }
+    // 2. Si és mode 'edició' (hi ha tasca)
+    if (task?.due_date) {
+      return new Date(task.due_date);
+    }
+    // 3. Altrament (mode creació sense data)
+    return undefined;
+  };
 
-  const [dueDate, setDueDate] = useState<Date | undefined>(getInitialDate());
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(task?.contact_id?.toString() ?? null);
-  const [assignedUserId, setAssignedUserId] = useState<string | null>(task?.user_asign_id ?? null);
-  
-  const [descriptionContent, setDescriptionContent] = useState<string>(task?.description ?? '');
-  const [descriptionJson, setDescriptionJson] = useState<JSONContent | null>(() => {
+  const getInitialDescriptionJson = () => {
     try {
       if (task?.description_json) {
         return typeof task.description_json === 'string'
           ? JSON.parse(task.description_json)
-          : task.description_json as JSONContent;
-      } return null;
-    } catch { return null; }
-  });
+          : (task.description_json as JSONContent);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // --- Estats Locals del Formulari ---
+  // Inicialitzem l'estat directament.
+  const [dueDate, setDueDate] = useState<Date | undefined>(getInitialDueDate());
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(task?.contact_id?.toString() ?? null);
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(task?.user_asign_id ?? null);
+  const [descriptionContent, setDescriptionContent] = useState<string>(task?.description ?? '');
+  const [descriptionJson, setDescriptionJson] = useState<JSONContent | null>(getInitialDescriptionJson());
 
   const [contactComboboxOpen, setContactComboboxOpen] = useState(false);
   const [teamMemberComboboxOpen, setTeamMemberComboboxOpen] = useState(false);
 
   // --- Efecte per sincronitzar si la tasca canvia (ex: obrir un altre diàleg) ---
   useEffect(() => {
-    setDueDate(getInitialDate());
+    // Quan 'task' o 'initialDate' canvien, reiniciem TOT l'estat del formulari.
+    console.log("[useTaskForm] useEffect re-sincronitzant valors", { task, initialDate });
+    setDueDate(getInitialDueDate());
     setSelectedContactId(task?.contact_id?.toString() ?? null);
     setAssignedUserId(task?.user_asign_id ?? null);
     setDescriptionContent(task?.description ?? '');
-    setDescriptionJson(() => {
-      try {
-        if (task?.description_json) {
-          return typeof task.description_json === 'string'
-            ? JSON.parse(task.description_json)
-            : task.description_json as JSONContent;
-        } return null;
-      } catch { return null; }
-    });
-  }, [task, getInitialDate]);
+    setDescriptionJson(getInitialDescriptionJson());
+
+    // Hem eliminat 'getInitialDate' de les dependències per trencar el bucle.
+    // La lògica ja és a 'getInitialDueDate()' a dins.
+  }, [task, initialDate]);
+  // ✅ --- FI DE LA MODIFICACIACIÓ ---
 
   // --- Gestor d'Enviament (Server Action) ---
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -37419,7 +37343,7 @@ import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
 import { Tables, Json } from '@/types/supabase'; // <-- Importa Json
 
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
-// ✅ PAS 1: Funció per comptar checkboxes des de l'HTML
+
 function countCheckboxesFromHtml(html: string): { total: number; completed: number } {
     if (!html) return { total: 0, completed: 0 };
     try {
@@ -37569,26 +37493,19 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             const newHtml = doc.body.innerHTML;
             setCurrentDescription(newHtml); // Actualització visual optimista
 
-            // ✅ PAS 2: Recalcula el progrés des del nou HTML
             const newProgress = countCheckboxesFromHtml(newHtml);
 
-            // Prepara les dades per enviar
             const updateData: Partial<Tables<'tasks'>> = {
                 description: newHtml,
-                // Assegura't que el tipus coincideix amb el que espera Supabase (Json)
                 checklist_progress: newProgress as unknown as Json // Cast a Json
             };
 
-            // Crida a l'acció per actualitzar ambdues coses
             const { error } = await updateSimpleTask(task.id, updateData);
 
             if (error) {
                 toast.error("No s'ha pogut actualitzar la llista de tasques.");
-                // Reverteix l'estat local si falla l'actualització
                 setCurrentDescription(task.description || '');
             } else {
-                // Notifica al component pare que hi ha hagut una mutació
-                // Això hauria de refrescar les dades a la TaskCard
                 onTaskMutation({ closeDialog: false });
             }
         }
@@ -37622,6 +37539,8 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
         }
     };
 
+    // ✅ --- INICI DE LA MODIFICACIÓ ---
+    // Aquesta és la funció per marcar com a completada / reobrir
     const handleToggle = async () => {
         const isCompleting = !task.is_completed;
         const updateData = {
@@ -37633,9 +37552,15 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.errorTitle'), { description: "No s'ha pogut actualitzar la tasca." });
         } else {
             toast.success("Estat de la tasca actualitzat.");
-            onTaskMutation({ closeDialog: false });
+            
+            // 1. Notifiquem al pare que les dades han canviat
+            onTaskMutation(); 
+            
+            // 2. Cridem a 'onClose' directament per tancar el diàleg
+            onClose();
         }
     };
+    // ✅ --- FI DE LA MODIFICACIÓ ---
 
     const handleDelete = async () => {
         const { error } = await deleteTask(task.id);
@@ -37746,7 +37671,8 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
 // src/components/features/tasks/TaskDialogManager.tsx (COMPLET I CORREGIT)
 'use client';
 
-import { useState, useEffect } from 'react';
+// ✅ PAS 1: Importem 'useMemo'
+import { useState, useEffect, useMemo } from 'react';
 import { TaskDetailView } from './TaskDetailView';
 import { TaskFormView } from './TaskFormView';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -37769,9 +37695,9 @@ export type EnrichedTask = Tables<'tasks'> & {
     full_name: string | null;
     avatar_url: string | null;
   } | null;
+  departments: { id: number; name: string } | null;
   description_json?: JSONContent | string | null;
   checklist_progress?: { total: number; completed: number } | null;
-  departments: { id: number; name: string } | null;
   time_tracking_log: TimeTrackingLogEntry[] | null | Json;
   is_active?: boolean;
 };
@@ -37785,7 +37711,7 @@ interface TaskDialogManagerProps {
     initialDepartments: Tables<'departments'>[];
     teamMembers: { id: string; full_name: string | null }[];
     onTaskMutation: (options?: { closeDialog?: boolean }) => void;
-    activeTeamId: string; // El manager la rep, però ja no la passa al formulari
+    activeTeamId: string; 
     initialDate?: Date;
 }
 
@@ -37797,19 +37723,49 @@ export function TaskDialogManager({
     initialDepartments,
     teamMembers,
     onTaskMutation,
-    initialDate,
+    initialDate, // Aquesta és la prop que ve del pare
 }: TaskDialogManagerProps) {
     const [viewMode, setViewMode] = useState<'detail' | 'form'>(task ? 'detail' : 'form');
 
+    // ✅ DEBUGGING (LOG 1)
+    console.log('[TaskDialogManager] Props rebudes:', { 
+        task: task, 
+        open: open, 
+        initialDate_prop: initialDate 
+    });
+
     useEffect(() => {
         if (open) {
-            setViewMode(task ? 'detail' : 'form');
+            const newMode = task ? 'detail' : 'form';
+            setViewMode(newMode);
+            // ✅ DEBUGGING (LOG 2)
+            console.log(`[TaskDialogManager] useEffect ha canviat el mode a: ${newMode}`);
         }
     }, [open, task]);
 
     const handleClose = () => {
         onOpenChange(false);
     };
+
+    // ✅ PAS 2: Embolcallem la lògica amb 'useMemo'
+    // Això crea la data UN SOL COP i la desa, evitant el bucle de renders.
+    // Només es recalcularà si 'initialDate' o 'task' canvien.
+    const formInitialDate = useMemo(() => {
+      // ✅ DEBUGGING (LOG 3) - Ara dins del 'useMemo'
+      console.log("[TaskDialogManager] useMemo: Calculant 'formInitialDate'...");
+      
+      // 1. Si el pare ens dona una 'initialDate' (p.ex., clicant un dia del calendari)
+      if (initialDate) {
+        return initialDate;
+      }
+      // 2. Si no hi ha 'task' (mode 'create') I no hi ha 'initialDate'
+      if (!task) {
+        return new Date(); // Creem la data d'avui
+      }
+      // 3. Altrament (mode edició)
+      return undefined;
+
+    }, [initialDate, task]); // <-- Les dependències
 
     if (!open) return null;
 
@@ -37824,8 +37780,8 @@ export function TaskDialogManager({
                         contacts={contacts ?? []} 
                         initialDepartments={initialDepartments}
                         teamMembers={teamMembers ?? []}
-                        // ✅ LÍNIA ELIMINADA: activeTeamId={activeTeamId}
-                        initialDate={initialDate}
+                        // ✅ PAS 3: Passem la data estable (memoitzada)
+                        initialDate={formInitialDate}
                     />
                 ) : task ? (
                     <TaskDetailView
@@ -38202,6 +38158,67 @@ export function TaskFormView({
         />
       </form>
     </>
+  );
+}
+
+// =================== FILE: src/components/LanguageSwitcher.tsx ===================
+
+"use client";
+
+import * as React from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils/utils";
+
+const locales = [
+  { code: "ca", label: "CA" },
+  { code: "es", label: "ES" },
+  { code: "en", label: "EN" },
+];
+
+export function LanguageSwitcher() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const currentLocale = useLocale();
+
+  const onSelectChange = (nextLocale: string) => {
+    // Treiem el locale actual del pathname per construir la nova ruta
+    const newPath = pathname.startsWith(`/${currentLocale}`)
+      ? pathname.substring(`/${currentLocale}`.length) || '/'
+      : pathname;
+    router.replace(`/${nextLocale}${newPath}`);
+  };
+
+  const activeIndex = locales.findIndex(l => l.code === currentLocale);
+
+  return (
+    <div className="relative flex items-center p-1 bg-muted dark:bg-muted/50 rounded-lg">
+      {locales.map(({ code, label }) => (
+        <button
+          key={code}
+          onClick={() => onSelectChange(code)}
+          className={cn(
+            "relative flex-1 px-4 py-2 text-sm font-medium rounded-md z-10 transition-colors",
+            currentLocale !== code && "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {label}
+        </button>
+      ))}
+      {/* Indicador lliscant */}
+      <motion.div
+        layoutId="language-switcher-active"
+        className="absolute inset-0 h-full p-1 z-0"
+        initial={false} // Evitem l'animació inicial a la càrrega
+        // ✅ CORRECCIÓ: El càlcul de 'animate' ha de ser igual que 'initial', sense dividir.
+        // Ha de moure's 0%, 100%, 200%, etc., de la seva pròpia amplada (que és 1/3 del pare).
+        animate={{ x: activeIndex * 100 + '%' }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
+        <div className="w-1/3 h-full bg-background rounded-md shadow-sm" />
+      </motion.div>
+    </div>
   );
 }
 
@@ -39410,6 +39427,62 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
 }
 
+
+// =================== FILE: src/components/ThemeSwitcher.tsx ===================
+
+"use client";
+
+import * as React from "react";
+import { useTheme } from "next-themes";
+import { motion } from "framer-motion";
+import { Sun, Moon, Laptop } from "lucide-react";
+import { cn } from "@/lib/utils/utils";
+
+const themeOptions = [
+  { theme: "light", label: "Clar", Icon: Sun },
+  { theme: "dark", label: "Fosc", Icon: Moon },
+  { theme: "system", label: "Sistema", Icon: Laptop },
+];
+
+export function ThemeSwitcher() {
+  const { theme, setTheme } = useTheme();
+  const [activeTheme, setActiveTheme] = React.useState(theme);
+
+  React.useEffect(() => {
+    setActiveTheme(theme);
+  }, [theme]);
+
+  const activeIndex = themeOptions.findIndex(opt => opt.theme === activeTheme);
+
+  return (
+    <div className="relative flex items-center p-1 bg-muted dark:bg-muted/50 rounded-lg">
+      {themeOptions.map(({ theme: optionTheme, label, Icon }) => (
+        <button
+          key={optionTheme}
+          onClick={() => setTheme(optionTheme)}
+          className={cn(
+            "relative flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md z-10 transition-colors",
+            activeTheme !== optionTheme && "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Icon className="w-4 h-4" />
+          {label}
+        </button>
+      ))}
+      {/* Indicador lliscant */}
+      <motion.div
+        layoutId="theme-switcher-active"
+        className="absolute inset-0 h-full p-1 z-0"
+        initial={false} // Evitem l'animació inicial a la càrrega
+        // ✅ CORRECCIÓ: El càlcul de 'animate' ha de ser igual que 'initial', sense dividir.
+        animate={{ x: activeIndex * 100 + '%' }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      >
+        <div className="w-1/3 h-full bg-background rounded-md shadow-sm" />
+      </motion.div>
+    </div>
+  );
+}
 
 // =================== FILE: src/components/ui/accordion.tsx ===================
 
