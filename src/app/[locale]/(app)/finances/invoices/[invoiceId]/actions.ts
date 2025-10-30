@@ -1,5 +1,7 @@
-// src/app/[locale]/(app)/finances/invoices/invoiceDetailActions.ts
+// src/app/[locale]/(app)/finances/invoices/Actions.ts
 "use server";
+
+import crypto from 'crypto'; // ✅ CORRECCIÓ 1: Importem el mòdul 'crypto' de Node.js
 
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,8 +16,9 @@ import {
     type InvoiceAttachmentRow // ✅ Importem explícitament InvoiceAttachmentRow
 } from '@/types/finances/invoices';
 import { type SupabaseClient } from "@supabase/supabase-js";
-
-// ... (fetchInvoiceDetail, upsertInvoice, syncInvoiceItems, updateInvoiceTotals, saveInvoiceAction, deleteInvoiceAction sense canvis) ...
+import { Resend } from 'resend'; // npm install resend
+import { generateInvoicePdfBuffer } from '@/lib/pdf/generateInvoicePDF'; // ✅ IMPORTEM LA FUNCIÓ EXTERNA
+// ... (fetchInvoiceDetail, upsertInvoice, syncInvoiceItems, updateInvoiceTotals, saveInvoiceAction sense canvis) ...
 export async function fetchInvoiceDetail(invoiceId: number): Promise<InvoiceDetail | null> {
     // ... codi existent ...
      const session = await validateUserSession();
@@ -211,7 +214,7 @@ async function updateInvoiceTotals(
            total_amount: totalAmount,
            shipping_cost: shippingCost,
            // general discount (discount_amount) is already saved in upsertInvoice
-        })
+       })
        .eq('id', invoiceId); // id is bigint
 
    if (error) {
@@ -267,43 +270,63 @@ export async function saveInvoiceAction(
 }
 
 export async function deleteInvoiceAction(invoiceId: number): Promise<ActionResult> {
-    const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message };
-    const { supabase, activeTeamId } = session;
-    const supabaseAdmin = createAdminClient();
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
 
-    const { data: attachments, error: attachError } = await supabase
-        .from('invoice_attachments')
-        .select('id, file_path') // id is uuid (string)
-        .eq('invoice_id', invoiceId); // invoice_id is bigint
+  // ✅ PAS 1: Comprovar l'estat ABANS de fer res
+  const { data: invoiceStatus, error: statusError } = await supabase
+    .from('invoices')
+    .select('status')
+    .eq('id', invoiceId)
+    .eq('team_id', activeTeamId)
+    .single();
 
-    if (attachError) console.error("Error obtenint adjunts per esborrar:", attachError.message);
+  if (statusError) {
+    return { success: false, message: "Factura no trobada o accés denegat." };
+  }
 
-    if (attachments && attachments.length > 0) {
-         const filePaths = attachments.map(a => a.file_path).filter((p): p is string => p !== null);
-         const attachmentIds = attachments.map(a=> a.id); // uuid strings
+  if (invoiceStatus.status !== 'Draft') {
+    return { success: false, message: "No es pot esborrar una factura que ja ha estat emesa. Només esborranys." };
+  }
 
-         if (filePaths.length > 0) {
-             const { error: storageError } = await supabaseAdmin.storage.from('factures-adjunts').remove(filePaths);
-             if (storageError) console.warn("Error esborrant adjunts de Storage:", storageError.message);
-         }
-         const { error: dbAttachError } = await supabase.from('invoice_attachments').delete().in('id', attachmentIds); // id is uuid string
-          if (dbAttachError) console.error("Error esborrant adjunts de BD:", dbAttachError.message);
-    }
+  // ✅ PAS 2: La factura ÉS 'Draft'. Procedim amb l'esborrat (Storage primer)
+  const supabaseAdmin = createAdminClient();
 
-    const { error: deleteError } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', invoiceId) // id is bigint
-      .eq('team_id', activeTeamId);
+  const { data: attachments, error: attachError } = await supabase
+      .from('invoice_attachments')
+      .select('id, file_path')
+      .eq('invoice_id', invoiceId);
 
-    if (deleteError) {
-        console.error("Error deleting invoice:", deleteError);
-        return { success: false, message: `Error esborrant factura: ${deleteError.message}` };
+  if (attachError) console.error("Error obtenint adjunts per esborrar:", attachError.message);
+
+  if (attachments && attachments.length > 0) {
+      const filePaths = attachments.map(a => a.file_path).filter((p): p is string => p !== null);
+      
+      if (filePaths.length > 0) {
+          const { error: storageError } = await supabaseAdmin.storage.from('factures-adjunts').remove(filePaths);
+          if (storageError) console.warn("Error esborrant adjunts de Storage:", storageError.message);
       }
+      // Nota: Els 'invoice_attachments' s'esborraran automàticament per 'ON DELETE CASCADE'
+      // Si no tens CASCADE, hauries d'esborrar-los explícitament aquí.
+  }
 
-    revalidatePath('/finances/invoices');
-    return { success: true, message: "Factura esborrada." };
+  // ✅ PAS 3: Esborrar la factura.
+  // Aquesta crida funcionarà perquè hem comprovat 'status' i les RLS ho permetran.
+  const { error: deleteError } = await supabase
+    .from('invoices')
+    .delete()
+    .eq('id', invoiceId)
+    .eq('team_id', activeTeamId);
+
+  if (deleteError) {
+      console.error("Error deleting invoice:", deleteError);
+      // Això podria fallar si la RLS és diferent de la nostra comprovació
+      return { success: false, message: `Error esborrant factura: ${deleteError.message}` };
+  }
+
+  revalidatePath('/finances/invoices');
+  return { success: true, message: "Factura esborrada." };
 }
 
 
@@ -420,7 +443,7 @@ export async function deleteInvoiceAttachmentAction(
          return { success: false, message: "Adjunt no trobat." };
      }
      if (attachment.team_id !== activeTeamId) {
-          return { success: false, message: "Accés denegat." };
+         return { success: false, message: "Accés denegat." };
      }
 
      const finalFilePath = filePath || attachment.file_path;
@@ -448,4 +471,186 @@ export async function deleteInvoiceAttachmentAction(
     }
 
     return { success: true, message: "Adjunt eliminat correctament." };
+}
+
+//-------------------VERIFACTU ----------------
+/**
+ * FINALITZA UNA FACTURA:
+ * Canvia l'estat a 'Sent', genera la signatura VeriFactu (mock)
+ * i l'encadena amb l'anterior.
+ * AQUESTA ÉS L'ACCIÓ QUE CRIDARÀ A L'API EXTERNA EN EL FUTUR.
+ */
+export async function finalizeInvoiceAction(
+  invoiceId: number,
+): Promise<ActionResult<{ signature: string }>> {
+  
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
+
+  // 1. Obtenir les dades completes de la factura
+  const { data: invoiceData, error: invoiceError } = await supabase
+    .from('invoices')
+    .select(
+      `
+      *,
+      invoice_items (*)
+    `
+    )
+    .eq('id', invoiceId)
+    .eq('team_id', activeTeamId)
+    .single(); 
+
+  if (invoiceError) {
+    console.error('Error obtenint factura per finalitzar:', invoiceError);
+    return { success: false, message: 'Factura no trobada.' };
+  }
+
+  if (invoiceData.status !== 'Draft') {
+    return { success: false, message: 'Aquesta factura ja ha estat emesa.' };
+  }
+
+  // 2. Obtenir l'última signatura de l'equip (per encadenar)
+  
+  // ✅✅✅ CORRECCIÓ PRINCIPAL AQUÍ ✅✅✅
+  // La sintaxi correcta per "IS NOT NULL" és .not('columna', 'is', null)
+  const { data: lastSignatureData, error: lastSignatureError } = await supabase
+    .from('invoices')
+    .select('verifactu_signature')
+    .eq('team_id', activeTeamId)
+    .not('sent_at', 'is', null) // <-- AQUEST ÉS EL CANVI
+    .order('sent_at', { ascending: false })
+    .limit(1)
+    .maybeSingle(); // .maybeSingle() gestiona correctament el cas de "0 files"
+
+  // Si hi ha un error, ara serà un error real de BBDD, no de sintaxi.
+  if (lastSignatureError) { 
+    console.error("Error consultant l'historial de signatures:", lastSignatureError);
+    return { success: false, message: "No s'ha pogut obtenir l'historial de signatures." }
+  }
+  
+  const previousSignature = lastSignatureData?.verifactu_signature || null;
+
+  // --- AQUESTA ÉS LA PART "MOCK" QUE SE SUBSTITUIRÀ ---
+  
+  // 3. Generar la signatura (Mock)
+  const dataToSign = JSON.stringify({
+    team_id: invoiceData.team_id,
+    contact_id: invoiceData.contact_id,
+    invoice_number: invoiceData.invoice_number,
+    issue_date: invoiceData.issue_date,
+    total_amount: invoiceData.total_amount,
+    items: (invoiceData.invoice_items || []).map((item: InvoiceItem) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+    })),
+    previous_signature: previousSignature,
+  });
+
+  const currentSignature = crypto
+    .createHash('sha256')
+    .update(dataToSign)
+    .digest('hex');
+
+  const mockVerifactuUuid = crypto.randomUUID();
+  const mockQrData = `https://www.agenciatributaria.es/qr_mock/${mockVerifactuUuid}`;
+  
+  // ---------------------------------------------------
+  
+  // 4. Actualitzar la factura a la BBDD
+  const { error: updateError } = await supabase
+    .from('invoices')
+    .update({
+      status: 'Sent', 
+      sent_at: new Date().toISOString(),
+      verifactu_uuid: mockVerifactuUuid,
+      verifactu_signature: currentSignature,
+      verifactu_previous_signature: previousSignature,
+      verifactu_qr_data: mockQrData,
+    })
+    .eq('id', invoiceId)
+    .eq('team_id', activeTeamId)
+    .eq('status', 'Draft'); 
+
+  if (updateError) {
+    console.error('Error al finalitzar factura:', updateError);
+    return { success: false, message: `No s'ha pogut emetre la factura: ${updateError.message}` };
+  }
+
+  revalidatePath('/finances/invoices');
+  revalidatePath(`/finances/invoices/${invoiceId}`);
+
+  return { success: true, message: "Factura emesa i registrada (MOCK).", data: { signature: currentSignature } };
+}
+
+export async function sendInvoiceByEmailAction(
+  invoiceId: number,
+  recipientEmail: string
+): Promise<ActionResult> {
+
+  const session = await validateUserSession();
+  if ("error" in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
+
+  // 1. Obtenir les dades de la factura
+  const invoiceData = await fetchInvoiceDetail(invoiceId);
+
+  if (!invoiceData) {
+    return { success: false, message: "Factura no trobada." };
+  }
+  
+  // 2. Validació CRÍTICA
+  if (invoiceData.status === 'Draft') {
+    return { success: false, message: "No es pot enviar un esborrany. Has d'emetre la factura primer." };
+  }
+
+  // 3. Generar el PDF (crida a la funció externa)
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await generateInvoicePdfBuffer(invoiceData); // ✅ MOLT MÉS NET
+  } catch (error) {
+    console.error("Error generant el PDF al servidor:", error);
+    // Transmetem l'error que hem llançat des de la nostra funció
+    return { success: false, message: (error as Error).message || "No s'ha pogut generar el PDF." };
+  }
+
+  // 4. Enviar l'email amb 'Resend'
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const fileName = `factura-${invoiceData.invoice_number || invoiceData.id}.pdf`;
+
+  try {
+    await resend.emails.send({
+      from: 'facturacio@ribotflow.com', // El teu email configurat a Resend
+      to: recipientEmail,
+      subject: `Nova Factura: ${invoiceData.invoice_number}`,
+      html: `<p>Adjunt trobaràs la factura ${invoiceData.invoice_number}.</p>`,
+      attachments: [
+        {
+          filename: fileName,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+      ],
+    });
+  } catch (error) {
+    console.error("Error enviant email amb Resend:", error);
+    return { success: false, message: "Error en el servei d'enviament d'email." };
+  }
+
+  // 5. (Opcional) Registrar el lliurament
+  if (process.env.NODE_ENV !== 'development') { 
+      try {
+        await supabase.from('invoice_deliveries').insert({
+            invoice_id: invoiceId,
+            team_id: activeTeamId,
+            method: 'email',
+            recipient: recipientEmail,
+        });
+      } catch (dbError) {
+        console.warn("No s'ha pogut registrar el lliurament de la factura:", dbError);
+      }
+  }
+
+  return { success: true, message: `Factura enviada a ${recipientEmail}.` };
 }

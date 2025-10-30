@@ -1,20 +1,20 @@
 "use client";
 
-import { useState, useEffect, useTransition, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 import {
     type InvoiceDetail,
     type InvoiceFormData,
     type InvoiceFormDataForAction,
     type InvoiceItem,
-    type InvoiceStatus
-} from '@/types/finances/invoices';
+    type InvoiceStatus,
+} from "@/types/finances/invoices";
+import { finalizeInvoiceAction, saveInvoiceAction } from "../actions"; // ✅ Assegura't que la ruta és correcta
 
-import { saveInvoiceAction } from '../actions';
-import { formatDate } from '@/lib/utils/formatters'; // Import formatDate
+import { formatDate } from "@/lib/utils/formatters"; // Import formatDate
 
 interface UseInvoiceDetailProps {
     initialData: InvoiceDetail | null;
@@ -30,13 +30,13 @@ const defaultInitialData: InvoiceFormData = {
     invoice_number: null,
     issue_date: formatDate(new Date()), // YYYY-MM-DD
     due_date: null,
-    status: 'Draft',
+    status: "Draft",
     notes: null,
     terms: null, // Afegit
     payment_details: null, // Afegit
     client_reference: null, // Afegit
-    currency: 'EUR', // Afegit
-    language: 'ca', // Afegit
+    currency: "EUR", // Afegit
+    language: "ca", // Afegit
     project_id: null, // Afegit
     budget_id: null,
     quote_id: null,
@@ -63,14 +63,21 @@ const defaultInitialData: InvoiceFormData = {
     company_logo_url: null, // Afegit
 };
 
-
 export function useInvoiceDetail({
     initialData,
     isNew,
 }: UseInvoiceDetailProps) {
-    const t = useTranslations('InvoiceDetailPage');
+    const t = useTranslations("InvoiceDetailPage");
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const [isFinalizing, startFinalizing] = useTransition(); // ✅ Nou estat per a la finalització
+
+    // ✅ NOU ESTAT: Determina si el formulari ha d'estar bloquejat
+    const [isLocked, setIsLocked] = useState(false);
+    useEffect(() => {
+        // Està bloquejat si NO és nou I l'estat NO és 'Draft'
+        setIsLocked(!isNew && initialData?.status !== "Draft");
+    }, [initialData, isNew]);
 
     const [formData, setFormData] = useState<InvoiceFormData>(() => {
         if (initialData) {
@@ -79,15 +86,19 @@ export function useInvoiceDetail({
                 id: initialData.id,
                 contact_id: initialData.contact_id ?? null,
                 invoice_number: initialData.invoice_number ?? null,
-                issue_date: initialData.issue_date ? formatDate(new Date(initialData.issue_date)) : '', // YYYY-MM-DD
-                due_date: initialData.due_date ? formatDate(new Date(initialData.due_date)) : null, // YYYY-MM-DD
+                issue_date: initialData.issue_date
+                    ? formatDate(new Date(initialData.issue_date))
+                    : "", // YYYY-MM-DD
+                due_date: initialData.due_date
+                    ? formatDate(new Date(initialData.due_date))
+                    : null, // YYYY-MM-DD
                 status: initialData.status as InvoiceStatus, // status a la BD és 'text', però el tractem com a enum aquí
                 notes: initialData.notes ?? null,
                 terms: initialData.terms ?? null, // Nou
                 payment_details: initialData.payment_details ?? null, // Nou
                 client_reference: initialData.client_reference ?? null, // Nou
-                currency: initialData.currency ?? 'EUR', // Nou
-                language: initialData.language ?? 'ca', // Nou
+                currency: initialData.currency ?? "EUR", // Nou
+                language: initialData.language ?? "ca", // Nou
                 project_id: initialData.project_id ?? null, // Nou
                 budget_id: initialData.budget_id ?? null,
                 quote_id: initialData.quote_id ?? null,
@@ -103,7 +114,7 @@ export function useInvoiceDetail({
                 company_address: initialData.company_address ?? null,
                 company_email: initialData.company_email ?? null,
                 company_logo_url: initialData.company_logo_url ?? null, // Nou
-                invoice_items: initialData.invoice_items?.map(item => ({
+                invoice_items: initialData.invoice_items?.map((item) => ({
                     ...item,
                     id: String(item.id), // L'ID de item és UUID (string)
                     // Assegurem tipus numèrics per als nous camps d'item si són nulls
@@ -128,12 +139,12 @@ export function useInvoiceDetail({
         items: InvoiceItem[],
         generalDiscountAmount: number = 0,
         generalTaxRate: number = 0,
-        shippingCost: number = 0
+        shippingCost: number = 0,
     ) => {
         let subtotalBeforeLineDiscounts = 0;
         let totalLineDiscountAmount = 0;
 
-        items.forEach(item => {
+        items.forEach((item) => {
             const quantity = Number(item.quantity) || 0;
             const unitPrice = Number(item.unit_price) || 0;
             const lineTotal = quantity * unitPrice;
@@ -143,17 +154,24 @@ export function useInvoiceDetail({
             let lineDiscount = 0;
             if (item.discount_amount && item.discount_amount > 0) {
                 lineDiscount = Number(item.discount_amount);
-            } else if (item.discount_percentage && item.discount_percentage > 0) {
-                lineDiscount = lineTotal * (Number(item.discount_percentage) / 100);
+            } else if (
+                item.discount_percentage && item.discount_percentage > 0
+            ) {
+                lineDiscount = lineTotal *
+                    (Number(item.discount_percentage) / 100);
             }
             totalLineDiscountAmount += lineDiscount;
         });
 
-        const subtotalAfterLineDiscounts = subtotalBeforeLineDiscounts - totalLineDiscountAmount;
+        const subtotalAfterLineDiscounts = subtotalBeforeLineDiscounts -
+            totalLineDiscountAmount;
         // Aplica descompte general DESPRÉS dels descomptes de línia
-        const effectiveSubtotal = subtotalAfterLineDiscounts - generalDiscountAmount;
+        const effectiveSubtotal = subtotalAfterLineDiscounts -
+            generalDiscountAmount;
 
-        const taxAmount = effectiveSubtotal > 0 ? effectiveSubtotal * (generalTaxRate / 100) : 0;
+        const taxAmount = effectiveSubtotal > 0
+            ? effectiveSubtotal * (generalTaxRate / 100)
+            : 0;
         // Suma l'enviament DESPRÉS d'impostos
         const totalAmount = effectiveSubtotal + taxAmount + shippingCost;
 
@@ -174,11 +192,15 @@ export function useInvoiceDetail({
             formData.invoice_items || [],
             currentGeneralDiscount,
             currentGeneralTaxRate,
-            currentShippingCost
+            currentShippingCost,
         );
 
-        if (subtotal !== formData.subtotal || taxAmount !== formData.tax_amount || totalAmount !== formData.total_amount) {
-            setFormData(prev => ({
+        if (
+            subtotal !== formData.subtotal ||
+            taxAmount !== formData.tax_amount ||
+            totalAmount !== formData.total_amount
+        ) {
+            setFormData((prev) => ({
                 ...prev,
                 subtotal, // Actualitza subtotal (abans de descomptes)
                 tax_amount: taxAmount,
@@ -187,32 +209,44 @@ export function useInvoiceDetail({
             }));
         }
         // Incloem shipping_cost a les dependències
-    }, [formData.invoice_items, formData.discount_amount, formData.tax_rate, formData.shipping_cost, formData.subtotal, formData.tax_amount, formData.total_amount, calculateTotals]);
-
+    }, [
+        formData.invoice_items,
+        formData.discount_amount,
+        formData.tax_rate,
+        formData.shipping_cost,
+        formData.subtotal,
+        formData.tax_amount,
+        formData.total_amount,
+        calculateTotals,
+    ]);
 
     // --- Handlers (handleFieldChange no canvia) ---
     const handleFieldChange = useCallback(<K extends keyof InvoiceFormData>(
         field: K,
-        value: InvoiceFormData[K]
+        value: InvoiceFormData[K],
     ) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
+        setFormData((prev) => ({ ...prev, [field]: value }));
     }, []);
-
 
     // --- Handler per a Línies (Gestiona nous camps) ---
     const handleItemChange = useCallback(<K extends keyof InvoiceItem>(
         index: number,
         field: K,
-        value: InvoiceItem[K]
+        value: InvoiceItem[K],
     ) => {
-        setFormData(prev => {
-            const currentItems = Array.isArray(prev.invoice_items) ? [...prev.invoice_items] : [];
+        setFormData((prev) => {
+            const currentItems = Array.isArray(prev.invoice_items)
+                ? [...prev.invoice_items]
+                : [];
             if (!currentItems[index]) return prev;
 
             const updatedItem = { ...currentItems[index], [field]: value };
 
             // Recalcular total i possiblement descompte si canvien camps rellevants
-            if (field === 'quantity' || field === 'unit_price' || field === 'discount_percentage' || field === 'discount_amount') {
+            if (
+                field === "quantity" || field === "unit_price" ||
+                field === "discount_percentage" || field === "discount_amount"
+            ) {
                 const quantity = Number(updatedItem.quantity) || 0;
                 const unitPrice = Number(updatedItem.unit_price) || 0;
                 const lineTotal = quantity * unitPrice;
@@ -222,9 +256,15 @@ export function useInvoiceDetail({
                 // Comprovem si NO és null ABANS de comparar amb 0
                 const numericValue = Number(value); // Convertim a número per comparar
 
-                if (field === 'discount_percentage' && value !== null && numericValue > 0) {
+                if (
+                    field === "discount_percentage" && value !== null &&
+                    numericValue > 0
+                ) {
                     updatedItem.discount_amount = null;
-                } else if (field === 'discount_amount' && value !== null && numericValue > 0) {
+                } else if (
+                    field === "discount_amount" && value !== null &&
+                    numericValue > 0
+                ) {
                     updatedItem.discount_percentage = null;
                 }
             }
@@ -234,35 +274,34 @@ export function useInvoiceDetail({
         });
     }, []);
 
-
     // --- Afegir Item (Inclou nous camps per defecte) ---
     const handleAddItem = useCallback(() => {
         const newItem: InvoiceItem = {
             id: `temp-${Date.now()}-${Math.random()}`,
-            invoice_id: typeof formData.id === 'number' ? formData.id : 0,
-            description: '',
+            invoice_id: typeof formData.id === "number" ? formData.id : 0,
+            description: "",
             quantity: 1,
             unit_price: 0,
             total: 0,
             created_at: new Date().toISOString(),
             tax_rate: null, // Taxa per línia (si la implementes)
-            user_id: '',
-            team_id: '',
+            user_id: "",
+            team_id: "",
             product_id: null,
             // Nous camps
             discount_percentage: null, // O 0
             discount_amount: null, // O 0
             reference_sku: null,
         };
-        setFormData(prev => ({
+        setFormData((prev) => ({
             ...prev,
-            invoice_items: [...(prev.invoice_items || []), newItem]
+            invoice_items: [...(prev.invoice_items || []), newItem],
         }));
     }, [formData.id]);
 
     // --- Esborrar Item (sense canvis) ---
     const handleRemoveItem = useCallback((index: number) => {
-        setFormData(prev => {
+        setFormData((prev) => {
             const newItems = [...(prev.invoice_items || [])];
             if (index >= 0 && index < newItems.length) {
                 newItems.splice(index, 1);
@@ -272,83 +311,137 @@ export function useInvoiceDetail({
         });
     }, []);
 
-
     // --- Submit Handler (Inclou nous camps a enviar) ---
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         // Validation...
-
+        // ✅ Comprovació de seguretat al client
+        if (isLocked) {
+            toast.error(t("toast.cannotEditSentInvoice")); // Afegeix aquesta traducció
+            return;
+        }
         const {
             invoice_items,
             ...invoiceData // La resta queda aquí
         } = formData;
 
-        const itemsForAction = (invoice_items || []).map(item => {
+        const itemsForAction = (invoice_items || []).map((item) => {
             // Excloem camps interns o no editables de l'item
             const { ...restOfItem } = item;
             return {
                 ...restOfItem,
-                id: typeof item.id === 'string' && item.id.startsWith('temp-') ? undefined : item.id,
+                id: typeof item.id === "string" && item.id.startsWith("temp-")
+                    ? undefined
+                    : item.id,
                 quantity: Number(item.quantity) || 0,
                 unit_price: Number(item.unit_price) || 0,
                 tax_rate: item.tax_rate ? Number(item.tax_rate) : null,
                 product_id: item.product_id ? Number(item.product_id) : null,
                 // Assegurem tipus per als nous camps
-                discount_percentage: item.discount_percentage ? Number(item.discount_percentage) : null,
-                discount_amount: item.discount_amount ? Number(item.discount_amount) : null,
+                discount_percentage: item.discount_percentage
+                    ? Number(item.discount_percentage)
+                    : null,
+                discount_amount: item.discount_amount
+                    ? Number(item.discount_amount)
+                    : null,
                 reference_sku: item.reference_sku || null,
                 // El 'total' de la línia es recalcularà al servidor amb els descomptes/impostos correctes
-            }
+            };
         });
 
         // Construïm l'objecte final per a l'acció
         // Construïm l'objecte final per a l'acció
-        const dataForAction: InvoiceFormDataForAction & { invoice_items?: InvoiceItem[] } = {
+        const dataForAction: InvoiceFormDataForAction & {
+            invoice_items?: InvoiceItem[];
+        } = {
             // Usem directament invoiceData (després d'excloure items/id)
             // Fem un cast per assegurar que compleix amb InvoiceFormDataForAction
             ...(invoiceData as InvoiceFormDataForAction),
             // Assegurem tipus per als camps clau que s'envien
-            contact_id: invoiceData.contact_id ? Number(invoiceData.contact_id) : null,
-            budget_id: invoiceData.budget_id ? Number(invoiceData.budget_id) : null,
-            quote_id: invoiceData.quote_id ? Number(invoiceData.quote_id) : null,
+            contact_id: invoiceData.contact_id
+                ? Number(invoiceData.contact_id)
+                : null,
+            budget_id: invoiceData.budget_id
+                ? Number(invoiceData.budget_id)
+                : null,
+            quote_id: invoiceData.quote_id
+                ? Number(invoiceData.quote_id)
+                : null,
             // ✅✅✅ CORRECCIÓ project_id ✅✅✅
             project_id: invoiceData.project_id || null, // Ja és string | null, només assegurem null si és buit
             discount_amount: Number(invoiceData.discount_amount) || 0,
             tax_rate: Number(invoiceData.tax_rate) ?? 0,
             shipping_cost: Number(invoiceData.shipping_cost) || 0,
             tax: invoiceData.tax ? Number(invoiceData.tax) : null,
-            discount: invoiceData.discount ? Number(invoiceData.discount) : null,
-            currency: invoiceData.currency || 'EUR',
-            language: invoiceData.language || 'ca',
+            discount: invoiceData.discount
+                ? Number(invoiceData.discount)
+                : null,
+            currency: invoiceData.currency || "EUR",
+            language: invoiceData.language || "ca",
             // Afegim els items
             invoice_items: itemsForAction as InvoiceItem[],
         };
 
         startTransition(async () => {
-            const currentInvoiceId = typeof formData.id === 'number' ? formData.id : null;
-            const result = await saveInvoiceAction(dataForAction, currentInvoiceId);
+            const currentInvoiceId = typeof formData.id === "number"
+                ? formData.id
+                : null;
+            const result = await saveInvoiceAction(
+                dataForAction,
+                currentInvoiceId,
+            );
 
             if (result.success && result.data?.id) {
-                toast.success(result.message || t('toast.saveSuccess'));
+                toast.success(result.message || t("toast.saveSuccess"));
                 if (isNew || !currentInvoiceId) {
                     router.replace(`/finances/invoices/${result.data.id}`);
                 } else {
                     router.refresh(); // Refresca dades si era edició
                 }
             } else {
-                toast.error(result.message || t('toast.saveError'));
+                toast.error(result.message || t("toast.saveError"));
             }
         });
-    }, [formData, isNew, router, t, startTransition]);
+    }, [formData, isNew, router, t, startTransition, isLocked]); // ✅ Afegeix isLocked
+    // ✅ NOVA ACCIÓ: Handler per Finalitzar/Emetre la factura
+    const handleFinalize = useCallback(async () => {
+        const currentInvoiceId = typeof formData.id === "number"
+            ? formData.id
+            : null;
+
+        if (isNew || !currentInvoiceId) {
+            toast.error(t("toast.mustSaveDraftFirst")); // Afegeix aquesta traducció
+            return;
+        }
+
+        if (isLocked) {
+            toast.error(t("toast.alreadySent")); // Afegeix aquesta traducció
+            return;
+        }
+
+        startFinalizing(async () => {
+            const result = await finalizeInvoiceAction(currentInvoiceId);
+
+            if (result.success) {
+                toast.success(result.message || t("toast.finalizeSuccess")); // Afegeix traducció
+                router.refresh(); // Refresca les dades per bloquejar el formulari
+            } else {
+                toast.error(result.message || t("toast.finalizeError")); // Afegeix traducció
+            }
+        });
+    }, [formData.id, isNew, isLocked, router, t, startFinalizing]);
 
     return {
         formData,
         isPending,
+        isFinalizing, // ✅ Retorna el nou estat
+        isLocked, // ✅ Retorna l'estat de bloqueig
         handleFieldChange,
         handleItemChange,
         handleAddItem,
         handleRemoveItem,
         handleSubmit,
+        handleFinalize, // ✅ Retorna el nou handler
         t,
     };
 }

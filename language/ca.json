@@ -122,6 +122,7 @@
     "statusLabel": "Estat:",
     "blocking": "Bloquejant...",
     "addToBlacklist": "Afegeix remitent a la llista negra",
+    "noTicketSelected": "Cap correu seleccionat",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament"
     },
@@ -1154,7 +1155,10 @@
       "options": "Opcions",
       "preview": "Previsualitzar PDF",
       "goBack": "Tornar",
-      "close": "Tancar"
+      "close": "Tancar",
+      "saveDraft": "Desar Esborrany",
+      "issueInvoice": "Emetre Factura",
+      "issuing": "Emetent..."
     },
     "card": {
       "customerDetails": "Dades del Client",
@@ -1203,12 +1207,19 @@
       "sent": "Enviada",
       "paid": "Pagada",
       "overdue": "Vençuda",
-      "cancelled": "Cancel·lada"
+      "cancelled": "Cancel·lada",
+      "Sent": "Enviada VERIFACTU",
+      "Paid": "Pagada"
     },
     "toast": {
       "saveSuccess": "Factura desada correctament.",
       "saveError": "Error en desar la factura.",
-      "validationError": "Si us plau, revisa els camps marcats."
+      "validationError": "Si us plau, revisa els camps marcats.",
+      "cannotEditSentInvoice": "No es pot modificar una factura que ja ha estat emesa.",
+      "mustSaveDraftFirst": "Primer has de desar la factura com a esborrany.",
+      "alreadySent": "Aquesta factura ja ha estat emesa.",
+      "finalizeSuccess": "Factura emesa i registrada correctament.",
+      "finalizeError": "Error en emetre la factura."
     },
     "preview": {
       "title": "Previsualització de la Factura",

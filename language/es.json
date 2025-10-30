@@ -1153,7 +1153,10 @@
       "options": "Opciones",
       "preview": "Previsualizar PDF",
       "goBack": "Volver",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "saveDraft": "Guardar borrador",
+      "issueInvoice": "Emitir factura",
+      "issuing": "Emitiendo..."
     },
     "card": {
       "customerDetails": "Datos del Cliente",
@@ -1202,12 +1205,19 @@
       "sent": "Enviada",
       "paid": "Pagada",
       "overdue": "Vencida",
-      "cancelled": "Cancelada"
+      "cancelled": "Cancelada",
+      "Sent": "Enviada VERIFACTU",
+      "Paid": "Pagada"
     },
     "toast": {
       "saveSuccess": "Factura guardada correctamente.",
       "saveError": "Error al guardar la factura.",
-      "validationError": "Por favor, revisa los campos marcados."
+      "validationError": "Por favor, revisa los campos marcados.",
+      "cannotEditSentInvoice": "No se puede modificar una factura que ya ha sido emitida.",
+      "mustSaveDraftFirst": "Primero debes guardar la factura como borrador.",
+      "alreadySent": "Esta factura ya ha sido emitida.",
+      "finalizeSuccess": "Factura emitida y registrada correctamente.",
+      "finalizeError": "Error al emitir la factura."
     },
     "preview": {
       "title": "Previsualización de la Factura",

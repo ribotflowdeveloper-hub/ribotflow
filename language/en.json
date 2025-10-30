@@ -1157,7 +1157,10 @@
       "options": "Options",
       "preview": "Preview PDF",
       "goBack": "Go Back",
-      "close": "Close"
+      "close": "Close",
+      "saveDraft": "Save draft",
+      "issueInvoice": "Issue invoice",
+      "issuing": "Issuing..."
     },
     "card": {
       "customerDetails": "Customer Details",
@@ -1206,12 +1209,19 @@
       "sent": "Sent",
       "paid": "Paid",
       "overdue": "Overdue",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "Sent": "Sent VERIFACTU",
+      "Paid": "Paid"
     },
     "toast": {
       "saveSuccess": "Invoice saved successfully.",
-      "saveError": "Error saving invoice.",
-      "validationError": "Please check the highlighted fields."
+      "saveError": "Error saving the invoice.",
+      "validationError": "Please review the highlighted fields.",
+      "cannotEditSentInvoice": "You cannot modify an invoice that has already been issued.",
+      "mustSaveDraftFirst": "You must save the invoice as a draft first.",
+      "alreadySent": "This invoice has already been issued.",
+      "finalizeSuccess": "Invoice issued and recorded successfully.",
+      "finalizeError": "Error issuing the invoice."
     },
     "preview": {
       "title": "Invoice Preview",

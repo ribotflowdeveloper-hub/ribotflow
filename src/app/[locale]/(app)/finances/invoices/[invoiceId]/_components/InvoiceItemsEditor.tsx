@@ -59,7 +59,8 @@ export function InvoiceItemsEditor({
                 </TableHeader>
                 <TableBody>
                     {items.map((item, index) => (
-                        <TableRow key={item.id}> {/* Usa l'ID (temporal o real) com a key */}
+                        // ✅ CORRECCIÓ: Els comentaris s'han tret d'aquí
+                        <TableRow key={item.id}> 
                             {/* Opcional: Cel·la per a selector de Producte */}
                             {/* <TableCell>
                                 <ProductCombobox
@@ -73,7 +74,8 @@ export function InvoiceItemsEditor({
                                     products={products}
                                     disabled={isSaving}
                                 />
-                            </TableCell> */}
+                            </TableCell> 
+                            */}
                             <TableCell>
                                 <Input
                                     value={item.description || ''}

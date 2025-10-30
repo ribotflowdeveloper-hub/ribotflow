@@ -2,18 +2,18 @@
 
 import React, { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic'; // ✅ 1. Importem 'dynamic'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, Plus, Settings2, Eye, ArrowLeft } from 'lucide-react';
+import { Loader2, Save, Plus, Settings2, Eye, ArrowLeft, Lock, CheckCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { type InvoiceDetail, type InvoiceStatus } from '@/types/finances';
 import { useInvoiceDetail } from '../_hooks/useInvoiceDetail';
 import { InvoiceItemsEditor } from './InvoiceItemsEditor';
 import { formatCurrency } from '@/lib/utils/formatters';
-// import { CustomerCombobox } from '@/components/shared/CustomerCombobox';
-// import { DatePicker } from '@/components/ui/datepicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { INVOICE_STATUS_MAP } from '@/config/invoices';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,9 +21,24 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
   DialogFooter, DialogClose
 } from "@/components/ui/dialog";
-// ✅ Importem ScrollArea
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { InvoicePreview } from './InvoicePreview';
+
+// ✅ 2. Importem el botó de PDF de forma dinàmica
+// Això assegura que NOMÉS es carregui al client i mai al servidor.
+const InvoiceDownloadButton = dynamic(
+  () => import('./InvoiceDownloadButton').then((mod) => mod.InvoiceDownloadButton),
+  { 
+    ssr: false, // <-- La clau és aquí
+    loading: () => (
+      // Mostrem un 'placeholder' mentre es carrega el component
+      <Button variant="outline" disabled>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        Carregant PDF...
+      </Button>
+    )
+  }
+);
 
 
 interface InvoiceDetailClientProps {
@@ -48,16 +63,21 @@ export function InvoiceDetailClient({
 
   const {
     formData,
-    isPending,
-    handleFieldChange, // ✅ Assegurem que està aquí
+    isPending, 
+    isFinalizing,
+    isLocked, 
+    handleFieldChange,
     handleItemChange,
     handleAddItem,
     handleRemoveItem,
-    handleSubmit,
+    handleSubmit, 
+    handleFinalize,
     t,
   } = useInvoiceDetail({ initialData, isNew });
 
-  const isSaving = isPending;
+  const isSaving = isPending || isFinalizing;
+  const formIsDisabled = isSaving || isLocked;
+
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const handleBack = () => {
@@ -94,21 +114,19 @@ export function InvoiceDetailClient({
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="icon" disabled={isSaving}>
+                <Button variant="outline" size="icon" disabled={formIsDisabled}>
                   <Settings2 className="h-4 w-4" />
                   <span className="sr-only">{t('button.options')}</span>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-60 p-4 space-y-4">
-                {/* Opcions Moneda i Idioma */}
                 <div className="space-y-2">
                   <Label htmlFor="currency">{t('field.currency')}</Label>
                   <Input
                     id="currency"
                     value={formData.currency || 'EUR'}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('currency', e.target.value.toUpperCase())}
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                     maxLength={3}
                   />
                 </div>
@@ -117,9 +135,8 @@ export function InvoiceDetailClient({
                   <Input
                     id="language"
                     value={formData.language || 'ca'}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('language', e.target.value)}
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                     maxLength={5}
                   />
                 </div>
@@ -137,9 +154,8 @@ export function InvoiceDetailClient({
                 <DialogHeader>
                   <DialogTitle>{t('preview.title')}</DialogTitle>
                 </DialogHeader>
-                {/* ✅ ScrollArea ja està importat */}
                 <ScrollArea className="flex-grow py-4 pr-6 -mr-6">
-                  <InvoicePreview formData={formData} /* companyProfile={companyData} */ />
+                  <InvoicePreview formData={formData} />
                 </ScrollArea>
                 <DialogFooter className="mt-4">
                   <DialogClose asChild>
@@ -149,24 +165,52 @@ export function InvoiceDetailClient({
               </DialogContent>
             </Dialog>
 
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-              {isSaving ? t('button.saving') : t('button.save')}
-            </Button>
+            {/* ✅ 3. La renderització del botó no canvia */}
+            {/* Només es mostra si NO és 'Draft' */}
+            {formData.status !== 'Draft' && initialData && (
+                <InvoiceDownloadButton invoice={initialData} />
+            )}
+
+
+            {/* 1. Botó "Guardar Esborrany" (type="submit") */}
+            {!isLocked && (
+              <Button type="submit" disabled={isSaving}>
+                {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                {isPending ? t('button.saving') : t('button.saveDraft')}
+              </Button>
+            )}
+
+            {/* 2. Botó "Emetre Factura" (type="button") */}
+            {!isNew && !isLocked && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleFinalize}
+                disabled={isSaving}
+              >
+                {isFinalizing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+              </Button>
+            )}
+
+            {/* 3. Indicador de "Bloquejat" */}
+            {isLocked && (
+              <Badge variant="outline" className="text-muted-foreground border-green-500 text-green-500">
+                <Lock className="w-4 h-4 mr-2" />
+                {t('status.Sent')}
+              </Badge>
+            )}
+
           </div>
         </div>
 
         {/* --- Contingut Principal (Grid) --- */}
+        {/* Tots els camps 'disabled' ara fan servir 'formIsDisabled' */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 px-4 md:px-0">
-          {/* Columna Principal */}
-          {/* --- Columna Principal (Client i Línies) --- */}
-          {/* ✅ AQUEST DIV CONTÉ ARA Client, Meta (si edites) i Línies */}
           <div className="md:col-span-2 space-y-6">
-            {/* --- Targeta Client --- */}
             <Card>
               <CardHeader><CardTitle>{t('card.customerDetails')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {/* ... camps del client ... */}
                 <div className="space-y-2">
                   <Label htmlFor="contact_id">{t('field.customer')}</Label>
                   <Input
@@ -174,7 +218,7 @@ export function InvoiceDetailClient({
                     value={formData.contact_id?.toString() ?? ''}
                     onChange={(e) => handleFieldChange('contact_id', e.target.value ? parseInt(e.target.value) : null)}
                     placeholder="ID Client (Temporal - Usa Combobox)"
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -185,29 +229,32 @@ export function InvoiceDetailClient({
                       value={formData.client_reference || ''}
                       onChange={(e) => handleFieldChange('client_reference', e.target.value)}
                       placeholder={t('placeholder.clientReference')}
-                      disabled={isSaving}
+                      disabled={formIsDisabled} 
                     />
                   </div>
                 </div>
-                {/* ✅✅✅ Targeta Metadades MOVIDA AQUÍ ✅✅✅ */}
-                {/* Meta Data (ID, etc.) si no és nova */}
                 {!isNew && initialData && (
                   <Card>
                     <CardHeader><CardTitle>{t('card.metadata')}</CardTitle></CardHeader>
                     <CardContent className="space-y-2 text-sm text-muted-foreground">
                       <p><strong>ID:</strong> {initialData.id}</p>
-                      {/* Pots afegir created_at, updated_at... */}
+                      {initialData.verifactu_uuid && (
+                        <>
+                          <p><strong>VeriFactu ID:</strong> <span className='text-xs'>{initialData.verifactu_uuid}</span></p>
+                          <p><strong>Signatura:</strong> <span className='text-xs'>{initialData.verifactu_signature?.substring(0, 20)}...</span></p>
+                          <p><strong>Ant:</strong> <span className='text-xs'>{initialData.verifactu_previous_signature?.substring(0, 20) || 'N/A'}...</span></p>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 )}
               </CardContent>
             </Card>
 
-
             <Card>
               <CardHeader className='flex-row justify-between items-center'>
                 <CardTitle>{t('card.invoiceItems')}</CardTitle>
-                <Button type="button" size="sm" variant="outline" onClick={handleAddItem} disabled={isSaving}>
+                <Button type="button" size="sm" variant="outline" onClick={handleAddItem} disabled={formIsDisabled}> 
                   <Plus className="w-4 h-4 mr-2" /> {t('button.addItem')}
                 </Button>
               </CardHeader>
@@ -216,12 +263,13 @@ export function InvoiceDetailClient({
                   items={formData.invoice_items || []}
                   onItemChange={handleItemChange}
                   onRemoveItem={handleRemoveItem}
-                  isSaving={isSaving}
+                  isSaving={formIsDisabled} 
                   currency={formData.currency || 'EUR'}
                   locale={formData.language || 'ca'}
                 />
               </CardContent>
             </Card>
+
             <Card>
               <CardHeader><CardTitle>{t('card.paymentTerms')}</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -230,11 +278,10 @@ export function InvoiceDetailClient({
                   <Textarea
                     id="terms"
                     value={formData.terms || ''}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('terms', e.target.value)}
                     placeholder={t('placeholder.terms')}
                     rows={3}
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <div className="space-y-2">
@@ -242,17 +289,16 @@ export function InvoiceDetailClient({
                   <Textarea
                     id="payment_details"
                     value={formData.payment_details || ''}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('payment_details', e.target.value)}
                     placeholder={t('placeholder.paymentDetails')}
                     rows={3}
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
               </CardContent>
             </Card>
           </div>
-          {/* Columna Lateral */}
+
           <div className="md:col-span-1 space-y-6">
             <Card>
               <CardHeader><CardTitle>{t('card.invoiceMeta')}</CardTitle></CardHeader>
@@ -267,9 +313,8 @@ export function InvoiceDetailClient({
                     type="date"
                     id="issue_date"
                     value={formData.issue_date || ''}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('issue_date', e.target.value)}
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <div className="space-y-2">
@@ -278,14 +323,17 @@ export function InvoiceDetailClient({
                     type="date"
                     id="due_date"
                     value={formData.due_date || ''}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('due_date', e.target.value)}
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="status">{t('field.status')}</Label>
-                  <Select value={formData.status} onValueChange={(v) => handleFieldChange('status', v as InvoiceStatus)} disabled={isSaving}>
+                  <Select
+                    value={formData.status}
+                    onValueChange={(v) => handleFieldChange('status', v as InvoiceStatus)}
+                    disabled={formIsDisabled || !isNew} 
+                  >
                     <SelectTrigger id="status">
                       <SelectValue placeholder={t('placeholder.selectStatus')} />
                     </SelectTrigger>
@@ -306,9 +354,8 @@ export function InvoiceDetailClient({
                 <Textarea
                   id="notes"
                   value={formData.notes || ''}
-                  // ✅ Assegurem que handleFieldChange existeix
                   onChange={(e) => handleFieldChange('notes', e.target.value)}
-                  disabled={isSaving}
+                  disabled={formIsDisabled} 
                   rows={4}
                   placeholder={t('placeholder.notes')}
                 />
@@ -323,12 +370,11 @@ export function InvoiceDetailClient({
                     id="discount_amount"
                     type="number"
                     value={formData.discount_amount ?? 0}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('discount_amount', parseFloat(e.target.value) || 0)}
                     className="w-24 text-right"
                     step="0.01"
                     min="0"
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <div className="flex justify-between items-center">
@@ -337,12 +383,11 @@ export function InvoiceDetailClient({
                     id="tax_rate"
                     type="number"
                     value={formData.tax_rate ?? 0}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('tax_rate', parseFloat(e.target.value) || 0)}
                     className="w-20 text-right"
                     step="any"
                     min="0"
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <div className="flex justify-between items-center">
@@ -351,12 +396,11 @@ export function InvoiceDetailClient({
                     id="shipping_cost"
                     type="number"
                     value={formData.shipping_cost ?? 0}
-                    // ✅ Assegurem que handleFieldChange existeix
                     onChange={(e) => handleFieldChange('shipping_cost', parseFloat(e.target.value) || 0)}
                     className="w-24 text-right"
                     step="0.01"
                     min="0"
-                    disabled={isSaving}
+                    disabled={formIsDisabled} 
                   />
                 </div>
                 <hr className="my-3" />
