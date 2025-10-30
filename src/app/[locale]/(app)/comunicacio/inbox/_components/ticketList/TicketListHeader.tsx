@@ -1,4 +1,3 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/TicketListHeader.tsx
 "use client";
 
 import React, { useMemo } from 'react';
@@ -8,90 +7,95 @@ import { PenSquare, RefreshCw, ChevronDown, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTranslations } from 'next-intl';
 import type { User } from '@supabase/supabase-js';
-// ✨ CANVI: Importem els tipus directament de db.ts
 import type { TeamMemberWithProfile, InboxPermission } from '@/types/db';
 
 interface TicketListHeaderProps {
-  user: User;
-  teamMembers: TeamMemberWithProfile[];
-  permissions: InboxPermission[];
-  inboxFilter: string;
-  onSetInboxFilter: (userId: string) => void;
-  onComposeNew: () => void;
-  onRefresh: () => void;
-  isPendingRefresh: boolean;
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
+  user: User;
+  teamMembers: TeamMemberWithProfile[];
+  permissions: InboxPermission[];
+  inboxFilter: string;
+  onSetInboxFilter: (userId: string) => void;
+  onComposeNew: () => void;
+  onRefresh: () => void;
+  isPendingRefresh: boolean;
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
 }
 
 export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
-  user,
-  teamMembers,
-  permissions,
-  inboxFilter,
-  onSetInboxFilter,
-  onComposeNew,
-  onRefresh,
-  isPendingRefresh,
-  searchTerm,
-  onSearchChange
+  user,
+  teamMembers,
+  permissions,
+  inboxFilter,
+  onSetInboxFilter,
+  onComposeNew,
+  onRefresh,
+  isPendingRefresh,
+  searchTerm,
+  onSearchChange
 }) => {
-  const t = useTranslations('InboxPage');
-  const permittedMembers = useMemo(() => {
-    const permittedIds = new Set(permissions.map(p => p.target_user_id));
-    // ✨ CORRECCIÓ: Ara el tipus 'TeamMemberWithProfile' és pla. Accedim a 'user_id'.
-    return teamMembers.filter(m => m.user_id && m.user_id !== user.id && permittedIds.has(m.user_id));
-  }, [permissions, teamMembers, user.id]);
+  const t = useTranslations('InboxPage');
+  const permittedMembers = useMemo(() => {
+    const permittedIds = new Set(permissions.map(p => p.target_user_id));
+    return teamMembers.filter(m => m.user_id && m.user_id !== user.id && permittedIds.has(m.user_id));
+  }, [permissions, teamMembers, user.id]);
 
-  const selectedInboxName = useMemo(() => {
-    if (inboxFilter === 'all') return t('allInboxes');
-    if (inboxFilter === user.id) return t('myEmails');
-    // ✨ CORRECCIÓ: Accedim a les propietats del tipus pla 'TeamMemberWithProfile'.
-    const member = teamMembers.find(m => m.user_id === inboxFilter);
-    return member?.full_name || t('unknownMailbox');
-  }, [inboxFilter, teamMembers, user.id, t]); // Afegit 't' a les dependències del useMemo
+  const selectedInboxName = useMemo(() => {
+    if (inboxFilter === 'all') return t('allInboxes');
+    if (inboxFilter === user.id) return t('myEmails');
+    const member = teamMembers.find(m => m.user_id === inboxFilter);
+    return member?.full_name || t('unknownMailbox');
+  }, [inboxFilter, teamMembers, user.id, t]);
 
-  return (
-    <>
-      <div className="p-4 border-b border-border flex justify-between items-center flex-shrink-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="text-lg font-bold p-2 -ml-2">
-              {selectedInboxName}
-              <ChevronDown className="w-5 h-5 ml-2 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => onSetInboxFilter('all')}>{t('allInboxes')}</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetInboxFilter(user.id)}>{t('myEmails')}</DropdownMenuItem>
-            {permittedMembers.length > 0 && <DropdownMenuSeparator />}
-            {permittedMembers.map(member => (
-              // ✨ CORRECCIÓ: Afegim comprovació i accés correcte a les propietats.
-              member.user_id && (
-                <DropdownMenuItem key={member.user_id} onClick={() => onSetInboxFilter(member.user_id!)}>
-                  {member.full_name || t('unnamedUser')}
-                </DropdownMenuItem>
-              )
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={onComposeNew} title={t('composeButtonTooltip')}><PenSquare className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isPendingRefresh} title={t('refreshButtonTooltip')}><RefreshCw className={`w-4 h-4 ${isPendingRefresh ? 'animate-spin' : ''}`} /></Button>
-        </div>
-      </div>
-      
-      <div className="p-2 border-b border-border">
-        <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-            placeholder={t('searchInboxPlaceholder')}
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => onSearchChange(e.target.value)}
-          />
-        </div>
-      </div>
-    </>
-  );
+  return (
+    // ✅ CORRECCIÓ DE LAYOUT:
+    // L'arrel és un 'div' amb 'flex-shrink-0' (NO un Fragment <>)
+    <div className="flex-shrink-0">
+      <div className="p-4 border-b border-border flex justify-between items-center">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="text-lg font-bold p-2 -ml-2">
+              {/* ✅ CORRECCIÓ DE CRASH:
+                  Un 'span' embolcalla els dos fills del botó */}
+              <span className="flex items-center">
+                {selectedInboxName}
+                <ChevronDown className="w-5 h-5 ml-2 text-muted-foreground" />
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => onSetInboxFilter('all')}>{t('allInboxes')}</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSetInboxFilter(user.id)}>{t('myEmails')}</DropdownMenuItem>
+            
+            {permittedMembers.length > 0 && <DropdownMenuSeparator />}
+            
+            {permittedMembers
+              .filter(member => !!member.user_id)
+              .map(member => (
+                <DropdownMenuItem key={member.user_id} onClick={() => onSetInboxFilter(member.user_id!)}>
+                  {member.full_name || t('unnamedUser')}
+                </DropdownMenuItem>
+              ))
+            }
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={onComposeNew} title={t('composeButtonTooltip')}><PenSquare className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isPendingRefresh} title={t('refreshButtonTooltip')}><RefreshCw className={`w-4 h-4 ${isPendingRefresh ? 'animate-spin' : ''}`} /></Button>
+        </div>
+      </div>
+      
+      <div className="p-2 border-b border-border">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder={t('searchInboxPlaceholder')}
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
 };
