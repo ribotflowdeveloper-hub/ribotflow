@@ -186,15 +186,14 @@ export default function EditorWysiwyg({
 
                     // ✅ LA SOLUCIÓ (CORRECTA)
                     // Desa el 'filePath' permanent
-                    if (result.success && result.data?.filePath) {
-                        console.log("[Client] Èxit! Inserint 'filePath' permanent.");
+                    // ✅ LÒGICA CORREGIDA (fem servir la 'signedUrl' per a la preview)
+                    if (result.success && result.data?.signedUrl) {
+                        console.log("[Client] Èxit! Inserint 'signedUrl' per a la PREVIEW.");
                         editor.chain().focus().setImage({
-                            // Ara el 'src' contindrà "task-uploads/team-123/file.jpg"
-                            src: result.data.filePath, // <-- AQUEST ÉS EL CANVI
+                            src: result.data.signedUrl, // <-- Això es pot previsualitzar
                             alt: file.name
                         }).run();
                         toast.success("Imatge inserida.");
-                        // Ignorem la 'signedUrl', ja no la necessitem aquí.
                     } else {
                         console.error("[Client] Error SA:", result.message);
                         toast.error("Error en pujar", { description: result.message || "Problema al servidor." });
