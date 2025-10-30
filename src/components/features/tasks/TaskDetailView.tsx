@@ -63,8 +63,11 @@ function countCheckboxesFromHtml(html: string): { total: number; completed: numb
     }
 }
 // --- HOOK PER AL CRONÒMETRE EN TEMPS REAL ---
-const useDialogTaskTimer = (task: EnrichedTask, localLog: LogEntry[] | null) => {
-    const [liveTime, setLiveTime] = useState("00:00:00");
+const useDialogTaskTimer = (
+  isTaskActive: boolean, // ✅ [MODIFICAT] Abans: task: EnrichedTask
+  localLog: LogEntry[] | null
+) => {
+    const [liveTime, setLiveTime] = useState("00:00:00");
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null;
@@ -87,7 +90,7 @@ const useDialogTaskTimer = (task: EnrichedTask, localLog: LogEntry[] | null) => 
             }
 
             // Si la tasca encara està activa, afegim el temps des de l'últim 'actiu' fins ara
-            if (task.is_active && startTime !== null) {
+            if (isTaskActive && startTime !== null) {
                 totalMs += (new Date().getTime() - startTime);
             }
             return totalMs;
@@ -104,14 +107,14 @@ const useDialogTaskTimer = (task: EnrichedTask, localLog: LogEntry[] | null) => 
 
         updateTimer(); // Càlcul inicial
 
-        if (task.is_active) {
+        if (isTaskActive) {
             intervalId = setInterval(updateTimer, 1000);
         }
 
         return () => {
             if (intervalId) clearInterval(intervalId);
         };
-    }, [task.is_active, localLog]);
+    }, [isTaskActive, localLog]);
 
     return liveTime;
 };
@@ -145,7 +148,7 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
     const [localLog, setLocalLog] = useState(task.time_tracking_log as LogEntry[] | null);
     const [currentDescription, setCurrentDescription] = useState(task.description || '');
 
-    const liveTimeDisplay = useDialogTaskTimer(task, localLog); // <-- Ús del nou hook
+    const liveTimeDisplay = useDialogTaskTimer(isActive, localLog); // <-- Ús del nou hook
 
     useEffect(() => {
         setIsActive(task.is_active || false);
