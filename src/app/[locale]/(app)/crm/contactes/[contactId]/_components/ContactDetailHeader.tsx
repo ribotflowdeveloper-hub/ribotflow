@@ -3,8 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Save, Trash2, X, Loader2 } from 'lucide-react';
-import { type Database } from '@/types/supabase';
-// ✅ Importem els components d'AlertDialog
+import { type ContactDetail } from '../actions'; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,18 +15,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-// Assumeixo que DeleteConfirmationDialog JA NO és necessari si fem servir AlertDialog directament aquí.
-// import { DeleteConfirmationDialog } from './DeleteConfirmationDialog'; 
-
-type Contact = Database['public']['Tables']['contacts']['Row'];
+// ✅ 1. Importem Input i useTranslations
+import { Input } from '@/components/ui/input';
+import { useTranslations } from 'next-intl';
 
 interface ContactDetailHeaderProps {
-    contact: Contact;
+    contact: ContactDetail;
     isEditing: boolean;
     isPending: boolean;
     onEdit: () => void;
     onCancel: () => void;
-    onDelete: () => void; // Aquesta és la funció que s'executarà en confirmar
+    onDelete: () => void;
 }
 
 export function ContactDetailHeader({
@@ -36,11 +34,12 @@ export function ContactDetailHeader({
     isPending,
     onEdit,
     onCancel,
-    onDelete, // Rep la funció onDelete
+    onDelete,
 }: ContactDetailHeaderProps) {
     const router = useRouter();
     const searchParams = useSearchParams(); 
     const fromUrl = searchParams.get('from');
+    const t = useTranslations('ContactDetailPage');
 
     const handleBackOrCancel = () => {
         if (isEditing) {
@@ -54,8 +53,9 @@ export function ContactDetailHeader({
 
     return (
         <div className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full">
                 <Button
+                    type="button" // ✅ SOLUCIÓ 1
                     variant="outline"
                     size="icon"
                     onClick={handleBackOrCancel}
@@ -64,31 +64,60 @@ export function ContactDetailHeader({
                 >
                     {isEditing ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
                 </Button>
-                <div>
-                    <h1 className="text-2xl font-bold">{contact.nom}</h1>
-                    <p className="text-sm text-muted-foreground">{contact.empresa || contact.email}</p>
+                
+                <div className="flex-1">
+                    {isEditing ? (
+                        <div>
+                            <Input
+                                name="nom" // Assegurem que el 'nom' sempre s'enviï
+                                defaultValue={contact.nom || ''}
+                                required
+                                className="text-2xl font-bold h-auto p-0 border-0 shadow-none focus-visible:ring-0"
+                                placeholder={t('details.labels.name')}
+                            />
+                            <p className="text-sm text-muted-foreground">
+                                {contact.suppliers?.nom || contact.email}
+                            </p>
+                        </div>
+                    ) : (
+                        <div>
+                            <h1 className="text-2xl font-bold">{contact.nom}</h1>
+                            <p className="text-sm text-muted-foreground">
+                                {contact.suppliers?.nom || contact.email}
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
             <div className="flex items-center gap-2">
                 {isEditing ? (
                     <>
-                        <Button type="submit" disabled={isPending}>
+                        <Button type="submit" disabled={isPending}> {/* Aquest SÍ és 'submit' */}
                             {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                             Desar
                         </Button>
                     </>
                 ) : (
                     <>
-                        <Button variant="outline" onClick={onEdit} disabled={isPending}>
+                        <Button 
+                            type="button" // ✅ SOLUCIÓ 2
+                            variant="outline" 
+                            onClick={onEdit} 
+                            disabled={isPending}
+                        >
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                         </Button>
                         
-                        {/* ✅ SOLUCIÓ: Utilitzem AlertDialog directament */}
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="icon" disabled={isPending}>
+                                <Button 
+                                    type="button" // ✅ SOLUCIÓ 3
+                                    variant="destructive" 
+                                    size="icon" 
+                                    disabled={isPending}
+                                >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </AlertDialogTrigger>
@@ -102,10 +131,9 @@ export function ContactDetailHeader({
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                     <AlertDialogCancel disabled={isPending}>Cancel·lar</AlertDialogCancel>
-                                    {/* ✅ Passem la funció 'onDelete' a l'AlertDialogAction */}
                                     <AlertDialogAction 
                                         className="bg-destructive hover:bg-destructive/90"
-                                        onClick={onDelete} // Aquí es crida la funció passada com a prop
+                                        onClick={onDelete}
                                         disabled={isPending}
                                     >
                                         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Esborrar"}
