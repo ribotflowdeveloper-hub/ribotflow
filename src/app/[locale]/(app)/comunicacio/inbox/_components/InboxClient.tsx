@@ -16,6 +16,8 @@ import { TicketDetail } from './TicketDetail';
 import { ContactPanel } from './ContactPanel';
 import { ComposeDialog } from './ComposeDialog';
 import { MobileDetailView } from './MobileDetailView';
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
+
 
 // ✅ Props simplificades. Ja no necessitem `initialSelectedTicket` ni `initialSelectedTicketBody`.
 interface InboxClientProps {
@@ -27,6 +29,8 @@ interface InboxClientProps {
   teamMembers: TeamMemberWithProfile[];
   permissions: InboxPermission[];
   allTeamContacts: Contact[];
+  limitStatus: UsageCheckResult; // ✅ 3. Afegim la nova prop
+
 }
 
 export function InboxClient(props: InboxClientProps) {
@@ -39,11 +43,15 @@ export function InboxClient(props: InboxClientProps) {
     counts, enrichedTickets,
     setTicketToDelete, setActiveFilter, setComposeState, setSearchTerm,
     setIsContactPanelOpen, setInboxFilter, handleSelectTicket, handleDeleteTicket,
-    handleLoadMore, handleSaveContact, handleComposeNew, handleReply, handleRefresh,
-  } = useInbox({ 
-      ...props, 
-      initialUnreadCount: props.initialReceivedCount, 
-      t 
+    handleLoadMore, handleSaveContact, handleComposeNew, handleReply, handleRefresh, isSelectionMode,
+    selectedTicketIds,
+    onToggleSelectionMode,
+    onToggleSelection,
+    onDeleteSelected
+  } = useInbox({
+    ...props,
+    initialUnreadCount: props.initialReceivedCount,
+    t
   });
 
   return (
@@ -76,7 +84,7 @@ export function InboxClient(props: InboxClientProps) {
         {(!isDesktop && selectedTicket) ? null : (
           <div className="min-h-0">
             <TicketList
-              user={props.user}
+             user={props.user}
               teamMembers={props.teamMembers}
               permissions={props.permissions}
               tickets={enrichedTickets}
@@ -88,7 +96,6 @@ export function InboxClient(props: InboxClientProps) {
               sentCount={counts.sent}
               totalCount={counts.received}
               onSetFilter={setActiveFilter}
-              onDeleteTicket={setTicketToDelete}
               onSelectTicket={handleSelectTicket}
               onComposeNew={handleComposeNew}
               onRefresh={handleRefresh}
@@ -97,6 +104,14 @@ export function InboxClient(props: InboxClientProps) {
               isPendingRefresh={isPending}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
+              // ❌ 'onDeleteTicket' s'elimina
+              
+              // ✅ 2. Passem les noves props a TicketList
+              isSelectionMode={isSelectionMode}
+              selectedTicketIds={selectedTicketIds}
+              onToggleSelection={onToggleSelection}
+              onToggleSelectionMode={onToggleSelectionMode}
+              onDeleteSelected={onDeleteSelected}
             />
           </div>
         )}
@@ -113,7 +128,7 @@ export function InboxClient(props: InboxClientProps) {
             />
           </div>
         )}
-        
+
         {isDesktop && isContactPanelOpen && (
           <div className="overflow-hidden min-h-0">
             <ContactPanel
@@ -121,6 +136,7 @@ export function InboxClient(props: InboxClientProps) {
               onSaveContact={handleSaveContact}
               isPendingSave={isPending}
               allTeamContacts={props.allTeamContacts}
+              limitStatus={props.limitStatus} // ✅ 3. Passem l'estat del límit
             />
           </div>
         )}

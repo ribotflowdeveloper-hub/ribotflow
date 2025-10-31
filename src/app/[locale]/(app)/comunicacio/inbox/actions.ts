@@ -368,3 +368,33 @@ export async function fetchTicketsForSupplierContacts(supplierId: string): Promi
   // Fem un 'cast' per assegurar que les dades retornades compleixen amb la nostra interface.
   return (tickets as TicketForSupplier[]) || [];
 }
+
+
+// ✅ NOVA ACCIÓ: Afegeix aquesta funció al final del fitxer
+/**
+ * Elimina múltiples tiquets alhora.
+ */
+export async function deleteMultipleTicketsAction(ticketIds: number[]): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase } = session;
+
+  if (!ticketIds || ticketIds.length === 0) {
+    return { success: false, message: "No s'han proporcionat tiquets per eliminar." };
+  }
+
+  const { error } = await supabase
+    .from("tickets")
+    .delete()
+    .in("id", ticketIds); // Utilitzem .in() per a un array d'IDs
+
+  if (error) {
+    console.error("Error en l'esborrat múltiple:", error);
+    return { success: false, message: "No s'han pogut eliminar els tiquets." };
+  }
+
+  revalidatePath("/comunicacio/inbox"); // Refresquem la pàgina de l'inbox
+  return { success: true, message: "Tiquets eliminats." };
+}

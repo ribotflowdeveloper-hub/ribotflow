@@ -7,7 +7,7 @@ import { validateUserSession } from "@/lib/supabase/session";
 // ✅ 1. Importem el servei i els tipus necessaris des del servei
 import { getInboxInitialData } from '@/lib/services/comunicacio/inbox.service';
 import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db'; // Mantenim tipus per claredat al component client
-
+import { getUsageLimitStatus } from "@/lib/subscription/subscription";
 // Re-exportem tipus per a InboxClient
 export type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission };
 
@@ -22,8 +22,12 @@ export async function InboxData() {
     }
     const { supabase, user, activeTeamId } = session;
 
+    // ✅ 2. Executem la comprovació de límit i la càrrega de dades EN PARAL·LEL
+    const [limitCheck, { data, error }] = await Promise.all([
+        getUsageLimitStatus('maxContacts'), // <-- Més net i reutilitzable
+        getInboxInitialData(supabase, user.id, activeTeamId)
+    ]);
     // ✅ 2. Cridem al servei per obtenir totes les dades inicials
-    const { data, error } = await getInboxInitialData(supabase, user.id, activeTeamId);
 
     // ✅ 3. Gestionem l'error del servei
     if (error || !data) {
@@ -34,8 +38,10 @@ export async function InboxData() {
                 user={user} initialTickets={[]} initialTemplates={[]}
                 initialReceivedCount={0} initialSentCount={0}
                 teamMembers={[]} permissions={[]} allTeamContacts={[]}
-                // Passa un estat d'error opcional al client si vols
-                // errorLoading={error ? 'Error en carregar les dades inicials.' : undefined}
+                limitStatus={limitCheck} // Passa l'estat del límit fins i tot si falla la llista
+
+            // Passa un estat d'error opcional al client si vols
+            // errorLoading={error ? 'Error en carregar les dades inicials.' : undefined}
             />
         );
     }
@@ -46,6 +52,8 @@ export async function InboxData() {
             user={user} initialTickets={data.tickets} initialTemplates={data.templates}
             initialReceivedCount={data.receivedCount} initialSentCount={data.sentCount}
             teamMembers={data.teamMembers} permissions={data.permissions} allTeamContacts={data.allTeamContacts}
+            limitStatus={limitCheck} // Passa l'estat del límit fins i tot si falla la llista
+
         />
     );
 }

@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PenSquare, RefreshCw, ChevronDown, Search } from 'lucide-react';
+import { PenSquare, RefreshCw, ChevronDown, Search, ListChecks, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTranslations } from 'next-intl';
 import type { User } from '@supabase/supabase-js';
@@ -20,6 +20,12 @@ interface TicketListHeaderProps {
   isPendingRefresh: boolean;
   searchTerm: string;
   onSearchChange: (value: string) => void;
+
+  // ✅ 2. Noves props per a la selecció múltiple
+  isSelectionMode: boolean;
+  selectedCount: number;
+  onToggleSelectionMode: () => void;
+  onDeleteSelected: () => void;
 }
 
 export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
@@ -32,9 +38,15 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
   onRefresh,
   isPendingRefresh,
   searchTerm,
-  onSearchChange
+  onSearchChange,
+  // ✅ 3. Rebem les noves props
+  isSelectionMode,
+  selectedCount,
+  onToggleSelectionMode,
+  onDeleteSelected
 }) => {
   const t = useTranslations('InboxPage');
+
   const permittedMembers = useMemo(() => {
     const permittedIds = new Set(permissions.map(p => p.target_user_id));
     return teamMembers.filter(m => m.user_id && m.user_id !== user.id && permittedIds.has(m.user_id));
@@ -66,9 +78,9 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={() => onSetInboxFilter('all')}>{t('allInboxes')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSetInboxFilter(user.id)}>{t('myEmails')}</DropdownMenuItem>
-            
+
             {permittedMembers.length > 0 && <DropdownMenuSeparator />}
-            
+
             {permittedMembers
               .filter(member => !!member.user_id)
               .map(member => (
@@ -79,12 +91,43 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
             }
           </DropdownMenuContent>
         </DropdownMenu>
+        {/* ✅ 4. Controls de la capçalera actualitzats */}
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={onComposeNew} title={t('composeButtonTooltip')}><PenSquare className="w-4 h-4" /></Button>
-          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isPendingRefresh} title={t('refreshButtonTooltip')}><RefreshCw className={`w-4 h-4 ${isPendingRefresh ? 'animate-spin' : ''}`} /></Button>
+          {/* Botó de "Redactar" - es deshabilita en mode selecció */}
+          <Button variant="ghost" size="icon" onClick={onComposeNew} title={t('composeButtonTooltip')} disabled={isSelectionMode}>
+            <PenSquare className="w-4 h-4" />
+          </Button>
+
+          {/* Botó de "Refrescar" - es deshabilita en mode selecció */}
+          <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isPendingRefresh || isSelectionMode} title={t('refreshButtonTooltip')}>
+            <RefreshCw className={`w-4 h-4 ${isPendingRefresh ? 'animate-spin' : ''}`} />
+          </Button>
+
+          {/* Botó per activar/desactivar mode selecció */}
+          <Button variant={isSelectionMode ? "secondary" : "ghost"} size="icon" onClick={onToggleSelectionMode} title={t('selectMultiple')}>
+            <ListChecks className="w-4 h-4" />
+          </Button>
+
+          {/* Botó per esborrar seleccionats - NOMÉS visible en mode selecció */}
+          {isSelectionMode && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDeleteSelected}
+              disabled={selectedCount === 0}
+              title={t('deleteSelected')}
+            >
+              <Trash2 className="w-4 h-4 text-destructive" />
+              {selectedCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {selectedCount}
+                </span>
+              )}
+            </Button>
+          )}
         </div>
       </div>
-      
+
       <div className="p-2 border-b border-border">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

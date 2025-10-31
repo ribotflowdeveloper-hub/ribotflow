@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { ContactDialog } from '@/app/[locale]/(app)/crm/contactes/_components/ContactDialog';
 import { addToBlacklistAction } from '../actions';
-
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
 // ✨ CANVI: Importem els tipus directament des de la nostra única font de la veritat.
 import type { Contact, EnrichedTicket } from '@/types/db';
 
@@ -19,12 +19,16 @@ interface ContactPanelProps {
     isPendingSave: boolean;
     onSaveContact: (newlyCreatedContact: Contact, originalTicket: EnrichedTicket) => void;
     allTeamContacts: Contact[];
+    limitStatus: UsageCheckResult; // ✅ 3. Afegim la nova prop
+    
 }
 
-export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSave, onSaveContact, allTeamContacts }) => {
+export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSave, onSaveContact, allTeamContacts, limitStatus }) => {
     const [isPending, startTransition] = useTransition();
     const t = useTranslations('InboxPage');
-
+   // ✅ 6. Calculem si s'ha assolit el límit
+    const isLimitReached = !limitStatus.allowed;
+    console.log("ContactPanel: limitStatus =", limitStatus, "isLimitReached =", isLimitReached);
     // Simplifiquem la lògica per trobar el contacte a mostrar.
     const contactToShow: Contact | null = useMemo(() => {
         if (!ticket) return null;
@@ -142,7 +146,7 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                     <p className="text-sm text-muted-foreground mb-4">{ticket.sender_email}</p>
                     <ContactDialog
                         trigger={
-                            <Button disabled={isPendingSave}>
+                            <Button disabled={isPendingSave || isLimitReached}>
                                 <UserPlus className="w-4 h-4 mr-2" />
                                 {t('saveContactButton')}
                             </Button>
