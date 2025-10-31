@@ -5,7 +5,12 @@ import { getTranslations } from 'next-intl/server'
 
 import { validateUserSession } from '@/lib/supabase/session'
 import { type CompanyProfile } from '@/types/settings/team'
-import { type Contact } from '@/types/crm/contacts'
+// ❌ Eliminem la importació incorrecta
+// import { type Contact } from '@/types/crm/contacts' 
+import { type Database } from '@/types/supabase' // ✅ 1. Importem el tipus base de Supabase
+
+// ✅ 2. Definim el tipus 'Contact' correcte basat en la BD
+type Contact = Database['public']['Tables']['contacts']['Row']
 
 interface InvoiceDetailDataProps {
   invoiceId: string
@@ -23,23 +28,36 @@ export async function InvoiceDetailData({
   }
   const { supabase, activeTeamId } = session
 
+  // ✅ 3. Carreguem la llista de TOTS els contactes (per al selector)
+  //    Aquesta consulta es fa sempre, tant per 'new' com per 'edit'.
+  const { data: contacts, error: contactsError } = await supabase
+    .from('contacts')
+    .select('*') // Podries seleccionar només 'id, nom, email, telefon'
+    .eq('team_id', activeTeamId)
+    .order('nom', { ascending: true })
+
+  if (contactsError) {
+    console.error('Error carregant contactes:', contactsError.message)
+    // No fem notFound(), podem continuar amb una llista buida
+  }
+
   // --- Lògica per a una nova factura ---
   if (isNew) {
-    // ✅ **CORRECCIÓ (1/2)**: Taula 'teams' i filtre per 'id'
+    // Carreguem només les dades de l'empresa
     const { data: company } = await supabase
-      .from('teams') // 👈 TAULA CORRECTA
+      .from('teams')
       .select(
         `
         id, 
-        company_name: name,         
-        company_tax_id: tax_id,   
-        company_address: address,  
-        company_email: email,      
-        company_phone: phone,      
+        company_name: name,
+        company_tax_id: tax_id,
+        company_address: address,
+        company_email: email,
+        company_phone: phone,
         logo_url
       `,
       )
-      .eq('id', activeTeamId) // 👈 FILTRE CORRECTE
+      .eq('id', activeTeamId)
       .single<CompanyProfile>()
 
     return (
@@ -47,6 +65,7 @@ export async function InvoiceDetailData({
         initialData={null}
         company={company || null}
         contact={null}
+        contacts={contacts || []} // ✅ 4. Passem la llista de contactes
         isNew={true}
         title={t('createTitle')}
         description={t('createDescription')}
@@ -73,21 +92,20 @@ export async function InvoiceDetailData({
   }
 
   // 2. Carregar el perfil de l'empresa (Emissor)
-  // ✅ **CORRECCIÓ (2/2)**: Taula 'teams' i filtre per 'id'
   const { data: company, error: companyError } = await supabase
-    .from('teams') // 👈 TAULA CORRECTA
+    .from('teams')
     .select(
       `
       id,
-      company_name: name,         
-      company_tax_id: tax_id,   
-      company_address: address,  
-      company_email: email,      
-      company_phone: phone,      
+      company_name: name,
+      company_tax_id: tax_id,
+      company_address: address,
+      company_email: email,
+      company_phone: phone,
       logo_url
     `,
     )
-    .eq('id', activeTeamId) // 👈 FILTRE CORRECTE
+    .eq('id', activeTeamId)
     .single<CompanyProfile>()
 
   if (companyError || !company) {
@@ -102,11 +120,11 @@ export async function InvoiceDetailData({
   let contact: Contact | null = null
   if (invoiceData.contact_id) {
     const { data: contactData } = await supabase
-      .from('contacts') // Aquesta taula ja la teníem bé
+      .from('contacts')
       .select('*')
       .eq('id', invoiceData.contact_id)
       .eq('team_id', activeTeamId)
-      .single<Contact>()
+      .single<Contact>() // ✅ 5. Aquest tipus 'Contact' ara és el correcte (id: number)
     contact = contactData
   }
 
@@ -120,7 +138,8 @@ export async function InvoiceDetailData({
     <InvoiceDetailClient
       initialData={invoiceData}
       company={company}
-      contact={contact}
+      contact={contact} // ✅ 6. Aquest 'contact' ara té id: number
+      contacts={contacts || []} // ✅ 7. Passem la llista de contactes
       isNew={isNew}
       title={title}
       description={description}

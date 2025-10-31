@@ -5,20 +5,26 @@ import { Button } from '@/components/ui/button'
 import { Download, Loader2 } from 'lucide-react'
 import { InvoicePDF } from './InvoicePDF'
 import { type InvoiceDetail } from '@/types/finances/invoices'
-import { type CompanyProfile } from '@/types/settings/team' // 👈 NOU
-import { type Contact } from '@/types/crm/contacts' // 👈 NOU
+import { type CompanyProfile } from '@/types/settings/team' 
+// ❌ Eliminem la importació incorrecta que defineix 'id' com a 'string'
+// import { type Contact } from '@/types/crm/contacts' 
+import { type Database } from '@/types/supabase' // ✅ 1. Importem el tipus base de Supabase
+
+// ✅ 2. Definim el tipus 'Contact' correcte basat en la BD (on 'id' és 'number')
+type Contact = Database['public']['Tables']['contacts']['Row']
 
 interface InvoiceDownloadButtonProps {
   invoice: InvoiceDetail
-  company: CompanyProfile // 👈 NOU: Dades de l'empresa emissora
-  contact: Contact | null // 👈 NOU: Dades del client receptor
+  company: CompanyProfile 
+  // ✅ 3. L'interface ara espera el tipus 'Contact' correcte (amb id: number)
+  contact: Contact | null 
   className?: string
 }
 
 export function InvoiceDownloadButton({
   invoice,
-  company, // 👈 NOU
-  contact, // 👈 NOU
+  company, 
+  contact, 
   className,
 }: InvoiceDownloadButtonProps) {
   const fileName = `factura-${invoice.invoice_number || invoice.id}.pdf`
@@ -27,6 +33,8 @@ export function InvoiceDownloadButton({
     <PDFDownloadLink
       // Passem les noves props al component InvoicePDF
       document={
+        // ℹ️ ATENCIÓ: Ara l'error es mourà aquí.
+        // Hauràs de fer aquest mateix canvi de tipus a 'InvoicePDF.tsx'
         <InvoicePDF invoice={invoice} company={company} contact={contact} />
       }
       fileName={fileName}

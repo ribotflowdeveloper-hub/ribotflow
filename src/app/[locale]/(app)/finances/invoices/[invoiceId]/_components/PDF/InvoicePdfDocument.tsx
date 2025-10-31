@@ -11,8 +11,10 @@ import {
 } from '@react-pdf/renderer'
 import { type InvoiceDetail } from '@/types/finances/invoices'
 import { type CompanyProfile } from '@/types/settings/team' // 👈 NOU
-import { type Contact } from '@/types/crm/contacts' // 👈 NOU
-// NOTA: Si fas servir fonts custom, registra-les aquí.
+import { type Database } from '@/types/supabase' // ✅ 1. Importem el tipus base de Supabase// NOTA: Si fas servir fonts custom, 
+type Contact = Database['public']['Tables']['contacts']['Row']
+
+//registra-les aquí.
 // Font.register({
 //   family: 'Helvetica',
 //   fonts: [
@@ -238,8 +240,8 @@ export function InvoicePdfDocument({
   // Dades del Receptor (Client)
   // (Fem servir 'contact' en lloc de 'invoice.contacts' per assegurar que tenim les dades)
   const clientName = invoice.client_name || contact?.nom
-  const clientAddress = invoice.client_address || contact?.main_address
-  const clientTaxId = invoice.client_tax_id || contact?.nif
+  const clientAddress = invoice.client_address || contact?.address
+  //const clientTaxId = invoice.client_tax_id || contact?.nif
   const clientEmail = invoice.client_email || contact?.email
 
   return (
@@ -280,12 +282,12 @@ export function InvoicePdfDocument({
           <View style={styles.customerBilling}>
             <Text style={styles.sectionTitle}>Facturar A:</Text>
             <Text>{clientName || 'Client no especificat'}</Text>
-            <Text style={styles.companyAddress}>
+            {/* <Text style={styles.companyAddress}>
               {clientAddress || 'Adreça client'}
             </Text>
             <Text style={styles.companyAddress}>
               {clientTaxId || 'NIF Client'}
-            </Text>
+            </Text> */}
             <Text style={styles.companyAddress}>
               {clientEmail || 'Email client'}
             </Text>

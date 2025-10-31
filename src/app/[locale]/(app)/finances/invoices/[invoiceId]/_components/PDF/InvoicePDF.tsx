@@ -4,8 +4,13 @@ import { useState, useEffect } from 'react'
 import qrcode from 'qrcode'
 import { type InvoiceDetail } from '@/types/finances/invoices'
 import { InvoicePdfDocument } from './InvoicePdfDocument'
-import { type CompanyProfile } from '@/types/settings/team' // 👈 NOU
-import { type Contact } from '@/types/crm/contacts' // 👈 NOU
+import { type CompanyProfile } from '@/types/settings/team' 
+// ❌ Eliminem la importació incorrecta
+// import { type Contact } from '@/types/crm/contacts' 
+import { type Database } from '@/types/supabase' // ✅ 1. Importem el tipus base de Supabase
+
+// ✅ 2. Definim el tipus 'Contact' correcte basat en la BD
+type Contact = Database['public']['Tables']['contacts']['Row']
 
 /**
  * Hook per generar el QR (només s'usa al client)
@@ -41,8 +46,9 @@ function useVerifactuQR(qrData: string | null): string | null {
 
 interface InvoicePDFProps {
   invoice: InvoiceDetail
-  company: CompanyProfile // 👈 NOU
-  contact: Contact | null // 👈 NOU
+  company: CompanyProfile 
+  // ✅ 3. L'interface ara espera el tipus 'Contact' correcte (amb id: number)
+  contact: Contact | null 
 }
 
 /**
@@ -59,6 +65,7 @@ export function InvoicePDF({ invoice, company, contact }: InvoicePDFProps) {
     <InvoicePdfDocument
       invoice={invoice}
       company={company}
+      // ℹ️ L'error ara es mourà aquí.
       contact={contact}
       qrCodeDataUrl={qrCodeDataUrl}
     />
