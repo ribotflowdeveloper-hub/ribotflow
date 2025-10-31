@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session";
-import { hasPermission, PERMISSIONS } from "@/lib/permissions";
+import { hasPermission, PERMISSIONS } from "@/lib/permissions/permissions";
 
 /**
  * Afegeix una nova regla a la blacklist per a l'equip actiu.

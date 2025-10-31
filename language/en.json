@@ -353,6 +353,7 @@
     "toastSuccessDescription": "The contact has been saved successfully.",
     "noCompany": "No company",
     "notSpecified": "Not specified",
+    "savingButton": "Saving...",
     "filters": {
       "sortBy": "Sort by",
       "newest": "Newest",
@@ -1296,7 +1297,7 @@
       "pageTitle": "Billing & Plans",
       "pageDescription": "Manage your subscription and choose the plan that best suits you.",
       "plans": {
-        "free": {
+        "plan_free": {
           "name": "Free",
           "description": "Perfect for getting started and exploring basic features.",
           "features": [
@@ -1306,8 +1307,8 @@
             "Email support"
           ]
         },
-        "plus": {
-          "name": "Plus",
+        "plan_pro": {
+          "name": "Pro",
           "description": "Ideal for professionals and small teams looking to grow.",
           "features": [
             "Unlimited contacts",
@@ -1318,11 +1319,11 @@
             "Priority email support"
           ]
         },
-        "premium": {
+        "plan_premium": {
           "name": "Premium",
           "description": "The complete solution for businesses that need maximum performance.",
           "features": [
-            "Everything in the Plus plan",
+            "Everything in the Pro plan",
             "Unlimited pipelines",
             "Advanced automations & AI",
             "Detailed reports and analytics",
@@ -2199,5 +2200,41 @@
         }
       }
     }
+  },
+  "Billing": {
+    "title": "Billing and Plans",
+    "description": "Manage your subscription, view billing history, and update payment details.",
+    "current_plan": "Current Plan",
+    "manage_subscription": "Manage Subscription",
+    "upgrade_plan": "Upgrade Plan",
+    "cancel_subscription": "Cancel Subscription",
+    "plan_details": "Plan Details",
+    "price": "Price",
+    "period": "Period",
+    "monthly": "Monthly",
+    "yearly": "Yearly",
+    "billing_history": "Billing History",
+    "date": "Date",
+    "amount": "Amount",
+    "status": "Status",
+    "invoice": "Invoice",
+    "download_invoice": "Download Invoice",
+    "payment_method": "Payment Method",
+    "add_payment_method": "Add Payment Method",
+    "card_ending_in": "Card ending in",
+    "expires": "Expires",
+    "upgrade_notice_title": "Upgrade to Unlock",
+    "upgrade_notice_desc": "You are currently on the {planName} plan. To access this feature, please upgrade your plan.",
+    "manage_in_stripe": "Manage in Stripe",
+    "plan_free": "Free",
+    "plan_pro": "Pro",
+    "plan_enterprise": "Enterprise",
+    "invoices_loading_error": "Error loading invoices.",
+    "subscription_loading_error": "Error loading subscription.",
+    "no_subscription": "No active subscription found.",
+    "no_invoices": "No invoices found.",
+    "limitReachedTitle": "Plan Limit Reached",
+    "limitReachedDefault": "You’ve reached the maximum number of contacts allowed in your current plan. Upgrade to add more.",
+    "upgradePlan": "Upgrade Plan"
   }
 }

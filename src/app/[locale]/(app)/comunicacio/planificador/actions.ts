@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import type { SocialPost } from "@/types/comunicacio/SocialPost";
 import { getTranslations } from "next-intl/server";
-import { validateSessionAndPermission, PERMISSIONS } from "@/lib/permissions";
+import { validateSessionAndPermission, PERMISSIONS } from "@/lib/permissions/permissions";
 import { type ActionResult } from "@/types/shared/index";
 
 

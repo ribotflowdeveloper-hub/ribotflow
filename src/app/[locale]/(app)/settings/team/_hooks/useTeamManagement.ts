@@ -8,7 +8,7 @@ import {
     inviteUserAction, removeMemberAction,
     revokeInvitationAction, toggleInboxPermissionAction, updateMemberRoleAction
 } from '../actions';
-import type { Role } from '@/lib/permissions.config';
+import type { Role } from '@/lib/permissions/permissions.config';
 
 export function useTeamManagement() {
     const [isPending, startTransition] = useTransition();

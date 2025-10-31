@@ -1,4 +1,4 @@
-// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx (Versió Refactoritzada)
+// @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx
 "use client";
 
 import React, { useState, useMemo, useTransition } from 'react';
@@ -9,14 +9,16 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download } from 'lucide-react';
+// ✅ 1. Importem Tooltip i una icona de bloqueig
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-// ✅ 1. Importem el nou tipus des del seu origen i la definició de la BD.
 import { Database } from '@/types/supabase';
 import { type ContactWithOpportunities } from './ContactsData';
-// ✅ 2. El mapa d'estats s'importa de /config, la qual cosa és correcta.
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
+// ✅ 2. Importem el tipus del nostre resultat de límit
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
 
 import { useContactFilters } from '../_hooks/useContactFilters';
 
@@ -24,38 +26,41 @@ import { ContactDialog } from './ContactDialog';
 import ContactCard from './ContactCard';
 import ContactTable from './ContactTable';
 import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
-import { exportToExcel,importFromExcel } from '@/app/[locale]/(app)/excel/actions';
+import { exportToExcel, importFromExcel } from '@/app/[locale]/(app)/excel/actions';
 
-// Definim el tipus base per a un contacte nou, que no tindrà la relació 'opportunities'
 type Contact = Database['public']['Tables']['contacts']['Row'];
 
 interface ContactsClientProps {
-    // ✅ 3. Actualitzem la prop per a utilitzar el nou tipus enriquit.
     initialContacts: ContactWithOpportunities[];
     totalPages: number;
     currentPage: number;
     initialViewMode: 'cards' | 'list';
+    limitStatus: UsageCheckResult; // ✅ 3. Afegim la nova prop
 }
 
 export function ContactsClient({
     initialContacts,
     totalPages,
     currentPage,
-    initialViewMode
+    initialViewMode,
+    limitStatus // ✅ 4. Rebem la prop
 }: ContactsClientProps) {
     const t = useTranslations('ContactsClient');
     const t2 = useTranslations('excel');
+    // ✅ 5. Afegim traduccions de Billing per als missatges de límit
+    const t_billing = useTranslations('Billing');
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [isExporting, startTransition] = useTransition(); 
+    const [isExporting, startTransition] = useTransition();
 
     const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
 
-    // ✅ 4. L'estat ara és del tipus correcte.
     const [contacts, setContacts] = useState<ContactWithOpportunities[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
 
-    // Aquesta lògica continua funcionant sense canvis, ja que les propietats són les mateixes.
+    // ✅ 6. Calculem si s'ha assolit el límit
+    const isLimitReached = !limitStatus.allowed;
+
     const filteredContacts = useMemo(() => contacts.filter(c =>
         (c.nom?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (c.empresa?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -63,7 +68,6 @@ export function ContactsClient({
     ), [contacts, searchTerm]);
 
     const handleContactClick = (contact: ContactWithOpportunities) => {
-        // 'contact.id' és un number, que és vàlid per a les URLs.
         router.push(`/crm/contactes/${contact.id}`);
     };
 
@@ -73,6 +77,7 @@ export function ContactsClient({
         { value: 'download', label: t2('contacts.download'), icon: Download },
     ];
 
+    // ... (lògica de handleExportAndDownload i handleImport) ...
     async function handleExportAndDownload(shouldDownload: boolean) {
         toast.info(t2('contacts.startingexport'));
         try {
@@ -105,6 +110,14 @@ export function ContactsClient({
     }
 
     function handleImport() {
+        // ✅ 7. Afegim la comprovació de límit ABANS de pujar l'Excel
+        if (isLimitReached) {
+            toast.error(t_billing('limitReachedTitle'), {
+                description: limitStatus.error || t_billing('limitReachedDefault')
+            });
+            return;
+        }
+
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.xlsx, .xls';
@@ -112,8 +125,7 @@ export function ContactsClient({
         input.onchange = async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (!file) {
-
-            toast.error(t2('nofileselected'));
+                toast.error(t2('nofileselected'));
                 return;
             }
 
@@ -124,10 +136,15 @@ export function ContactsClient({
 
             startTransition(async () => {
                 try {
+                    // La Server Action 'importFromExcel' també hauria de tenir
+                    // la validació de límits per a cada fila que importa.
                     const result = await importFromExcel('contacts', formData);
 
                     if (result.success) {
                         toast.success(result.message);
+                        // Aquí hauríem de refrescar les dades per veure els nous contactes
+                        // i possiblement el nou estat del límit.
+                        router.refresh();
                     } else {
                         toast.error(t2('errorloadingdata'), { description: result.message });
                     }
@@ -149,7 +166,7 @@ export function ContactsClient({
                 startTransition(() => handleExportAndDownload(false));
                 break;
             case 'load':
-                handleImport();
+                handleImport(); // Aquesta funció ara té la comprovació de límit
                 break;
             default:
                 break;
@@ -162,7 +179,7 @@ export function ContactsClient({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <h1 className="text-3xl font-bold">{t('title')}</h1>
                 <div className="flex w-full sm:w-auto items-center gap-2">
-                    {/* Cercador */}
+                    {/* ... (Cercador i Filtres) ... */}
                     <div className="relative flex-grow">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
@@ -201,23 +218,76 @@ export function ContactsClient({
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
-                        disabled={isExporting}
+                        disabled={isExporting} // Deshabilitat si ja s'està exportant
                     />
 
-                    <ContactDialog
-                        trigger={
-                            <Button className="flex-shrink-0">
-                                <Plus className="w-4 h-4 md:mr-2" />
-                                <span className="hidden md:inline">{t('newContactButton')}</span>
-                            </Button>
-                        }
-                        // ✅ 5. Quan guardem un contacte nou, el convertim al tipus enriquit
-                        // per a què coincideixi amb la resta de l'estat.
-                        onContactSaved={(newContact) => setContacts(prev => [
-                            { ...(newContact as Contact), opportunities: [] }, 
-                            ...prev
-                        ])}
-                    />
+                    {/* ✅ 8. Botó de "Nou Contacte" amb Tooltip de límit */}
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                {/* Afegim un 'span' per al correcte funcionament del Tooltip quan el botó està deshabilitat */}
+                                <span tabIndex={isLimitReached ? 0 : -1}>
+                                    <ContactDialog
+                                        trigger={
+                                            <Button className="flex-shrink-0" disabled={isLimitReached}>
+                                                {isLimitReached ? (
+                                                    <Lock className="w-4 h-4 md:mr-2" />
+                                                ) : (
+                                                    <Plus className="w-4 h-4 md:mr-2" />
+                                                )}
+                                                <span className="hidden md:inline">{t('newContactButton')}</span>
+                                            </Button>
+                                        }
+                                        onContactSaved={(newContact) => {
+                                            setContacts(prev => [
+                                                { ...(newContact as Contact), opportunities: [] },
+                                                ...prev
+                                            ]);
+                                            // Refresquem per si hem assolit el límit
+                                            router.refresh();
+                                        }}
+                                        // Passem l'estat del límit al diàleg
+                                        isLimitReached={isLimitReached}
+                                        limitError={limitStatus.error}
+                                    />
+                                </span>
+                            </TooltipTrigger>
+
+                            {/* ============================================================
+                                ✅ INICI DE LA MILLORA DE DISSENY DEL TOOLTIP
+                                ============================================================
+                                */}
+                            {isLimitReached && (
+                                <TooltipContent className="max-w-xs p-3 shadow-lg rounded-lg border-2 border-yellow-400 bg-yellow-50">
+                                    <div className="flex flex-col gap-3">
+
+                                        {/* Títol */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="p-1.5  rounded-full">
+                                                <Lock className="w-4 h-4 text-yellow-900" />
+                                            </span>
+                                            <h3 className="font-semibold text-muted-foreground text-lg">
+                                                {t_billing('limitReachedTitle')}
+                                            </h3>
+                                        </div>
+
+                                        {/* Descripció (El motiu) */}
+                                        <p className="text-lg text-muted-foreground leading-snug">
+                                            {limitStatus.error || t_billing('limitReachedDefault')}
+                                        </p>
+
+                                        {/* Acció */}
+                                        <Button asChild size="lg" className="mt-1 w-full">
+                                            <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                                        </Button>
+                                    </div>
+                                </TooltipContent>
+                            )}
+                           
+
+                        </Tooltip>
+                    </TooltipProvider>
+
                 </div>
             </div>
 
@@ -237,6 +307,7 @@ export function ContactsClient({
                     </motion.div>
                 </AnimatePresence>
             </div>
+
             {/* PAGINACIÓ */}
             {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 md:gap-4 mt-8 flex-shrink-0">

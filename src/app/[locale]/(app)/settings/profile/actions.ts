@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from 'zod';
 import { validateUserSession } from "@/lib/supabase/session";
-import { hasPermission, PERMISSIONS } from "@/lib/permissions";
+import { hasPermission, PERMISSIONS } from "@/lib/permissions/permissions";
 
 /**
  * Actualitza les dades PERSONALS de l'usuari.

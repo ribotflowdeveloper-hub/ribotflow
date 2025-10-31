@@ -1139,6 +1139,34 @@ $$;
 ALTER FUNCTION "public"."increment_invoice_sequence"("p_user_id" "uuid", "p_series" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."is_contact_on_public_quote"("contact_id_to_check" bigint) RETURNS boolean
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM quotes WHERE contact_id = contact_id_to_check AND secure_id IS NOT NULL
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_contact_on_public_quote"("contact_id_to_check" bigint) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) RETURNS boolean
+    LANGUAGE "sql" SECURITY DEFINER
+    AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.quotes
+    WHERE id = quote_id_to_check
+    AND secure_id IS NOT NULL
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") RETURNS boolean
     LANGUAGE "sql" SECURITY DEFINER
     AS $$
@@ -1153,6 +1181,19 @@ $$;
 
 
 ALTER FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."is_team_on_public_quote"("team_id_to_check" "uuid") RETURNS boolean
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM quotes WHERE team_id = team_id_to_check AND secure_id IS NOT NULL
+  );
+$$;
+
+
+ALTER FUNCTION "public"."is_team_on_public_quote"("team_id_to_check" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) RETURNS "void"
@@ -2259,6 +2300,19 @@ CREATE TABLE IF NOT EXISTS "public"."invoice_attachments" (
 ALTER TABLE "public"."invoice_attachments" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."invoice_deliveries" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "invoice_id" bigint NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "method" "text" NOT NULL,
+    "recipient" "text",
+    "delivered_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."invoice_deliveries" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."invoice_items" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "invoice_id" bigint NOT NULL,
@@ -2989,6 +3043,11 @@ ALTER TABLE ONLY "public"."invoice_attachments"
 
 
 
+ALTER TABLE ONLY "public"."invoice_deliveries"
+    ADD CONSTRAINT "invoice_deliveries_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."invoice_items"
     ADD CONSTRAINT "invoice_items_pkey" PRIMARY KEY ("id");
 
@@ -3392,6 +3451,16 @@ ALTER TABLE ONLY "public"."invoice_attachments"
 
 
 
+ALTER TABLE ONLY "public"."invoice_deliveries"
+    ADD CONSTRAINT "invoice_deliveries_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_deliveries"
+    ADD CONSTRAINT "invoice_deliveries_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id");
+
+
+
 ALTER TABLE ONLY "public"."invoice_items"
     ADD CONSTRAINT "invoice_items_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
 
@@ -3670,6 +3739,28 @@ CREATE POLICY "Allow access based on active team" ON "public"."products" USING (
 
 
 
+CREATE POLICY "Allow anon read for public quote contacts" ON "public"."contacts" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."quotes" "q"
+  WHERE (("q"."contact_id" = "contacts"."id") AND ("q"."secure_id" IS NOT NULL)))));
+
+
+
+CREATE POLICY "Allow anon read for public quote items" ON "public"."quote_items" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."quotes" "q"
+  WHERE (("q"."id" = "quote_items"."quote_id") AND ("q"."secure_id" IS NOT NULL)))));
+
+
+
+CREATE POLICY "Allow anon read for public quote teams" ON "public"."teams" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."quotes" "q"
+  WHERE (("q"."team_id" = "teams"."id") AND ("q"."secure_id" IS NOT NULL)))));
+
+
+
+CREATE POLICY "Allow anon read for public quotes" ON "public"."quotes" FOR SELECT USING (("secure_id" IS NOT NULL));
+
+
+
 CREATE POLICY "Allow authenticated users to DELETE tasks of their teams" ON "public"."tasks" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."team_members"
   WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
@@ -3717,10 +3808,6 @@ CREATE POLICY "Allow public read access to quote items" ON "public"."quote_items
 
 
 CREATE POLICY "Allow public read on profiles" ON "public"."profiles" FOR SELECT TO "anon" USING (true);
-
-
-
-CREATE POLICY "Allow public read on quote_items" ON "public"."quote_items" FOR SELECT TO "anon" USING (true);
 
 
 
@@ -3812,6 +3899,20 @@ CREATE POLICY "Els usuaris gestionen les tasques del seu equip actiu" ON "public
 
 
 
+CREATE POLICY "Els usuaris nomes poden esborrar factures en esborrany" ON "public"."invoices" FOR DELETE TO "authenticated" USING ((("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))) AND ("status" = 'Draft'::"text")));
+
+
+
+CREATE POLICY "Els usuaris nomes poden modificar factures en esborrany" ON "public"."invoices" FOR UPDATE TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"())))) WITH CHECK ((("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))) AND ("status" = 'Draft'::"text")));
+
+
+
 CREATE POLICY "Els usuaris només poden veure els seus propis tiquets." ON "public"."tickets" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
@@ -3831,6 +3932,12 @@ CREATE POLICY "Els usuaris poden crear els seus propis equips" ON "public"."team
 
 
 CREATE POLICY "Els usuaris poden crear els seus propis tiquets" ON "public"."tickets" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Els usuaris poden crear factures al seu equip" ON "public"."invoices" FOR INSERT TO "authenticated" WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
 
 
 
@@ -3865,6 +3972,12 @@ CREATE POLICY "Els usuaris poden veure els contactes del seu equip actiu" ON "pu
 CREATE POLICY "Els usuaris poden veure els seus tiquets i els permesos" ON "public"."tickets" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "user_id") OR (EXISTS ( SELECT 1
    FROM "public"."inbox_permissions"
   WHERE (("inbox_permissions"."grantee_user_id" = "auth"."uid"()) AND ("inbox_permissions"."target_user_id" = "tickets"."user_id"))))));
+
+
+
+CREATE POLICY "Els usuaris poden veure les factures del seu equip" ON "public"."invoices" FOR SELECT TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
 
 
 
@@ -3961,10 +4074,6 @@ CREATE POLICY "Users can manage quote items for their active team." ON "public".
 
 
 CREATE POLICY "Users can manage quotes for their active team." ON "public"."quotes" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage quotes of their active team." ON "public"."quotes" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
 
 
 
@@ -4118,6 +4227,9 @@ CREATE POLICY "insert_own_layouts" ON "public"."project_layouts" FOR INSERT WITH
 
 
 ALTER TABLE "public"."invoice_attachments" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoice_deliveries" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."invoice_items" ENABLE ROW LEVEL SECURITY;
@@ -4429,9 +4541,27 @@ GRANT ALL ON FUNCTION "public"."increment_invoice_sequence"("p_user_id" "uuid", 
 
 
 
+GRANT ALL ON FUNCTION "public"."is_contact_on_public_quote"("contact_id_to_check" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."is_contact_on_public_quote"("contact_id_to_check" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_contact_on_public_quote"("contact_id_to_check" bigint) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) TO "anon";
+GRANT ALL ON FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."is_team_on_public_quote"("team_id_to_check" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."is_team_on_public_quote"("team_id_to_check" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."is_team_on_public_quote"("team_id_to_check" "uuid") TO "service_role";
 
 
 
@@ -4678,6 +4808,12 @@ GRANT ALL ON TABLE "public"."invitations" TO "service_role";
 GRANT ALL ON TABLE "public"."invoice_attachments" TO "anon";
 GRANT ALL ON TABLE "public"."invoice_attachments" TO "authenticated";
 GRANT ALL ON TABLE "public"."invoice_attachments" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_deliveries" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_deliveries" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_deliveries" TO "service_role";
 
 
 

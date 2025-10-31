@@ -17,7 +17,7 @@ import { ThemeSwitcher } from '../../customization/_components/ThemeSwitcher';
 
 // Imports de Lògica
 import type { Profile, Team } from '@/types/settings';
-import { hasPermission, PERMISSIONS, Role } from '@/lib/permissions.config';
+import { hasPermission, PERMISSIONS, Role } from '@/lib/permissions/permissions.config';
 import { useProfileForm } from '../_hooks/useProfileForm'; // ⭐️ Importem el nou Hook
 
 interface ProfileFormProps {

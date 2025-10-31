@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"; // Importe
 import { EmptyState } from '@/components/shared/EmptyState';
 import { addRuleAction, deleteRuleAction } from '../action';
 import type { BlacklistRule } from '@/types/settings';
-import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions.config';
+import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions/permissions.config';
 
 interface BlacklistClientProps {
   initialRules: BlacklistRule[];

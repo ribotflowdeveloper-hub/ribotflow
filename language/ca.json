@@ -134,7 +134,10 @@
       "bulletList": "Llista de pics",
       "orderedList": "Llista numerada"
     },
-    "emailContentTitle": "Contingut del correu"
+    "emailContentTitle": "Contingut del correu",
+    "selectMultiple": "Selecciona múltiples contactes",
+    "deleteSelected": "Eliminar seleccionats",
+    "deleteMultipleConfirm": "Estàs segur que vols eliminar els correus seleccionats? Aquesta acció no es pot desfer."
   },
   "AICampaignWizard": {
     "title": "Assistent de Campanyes d'IA",
@@ -354,6 +357,7 @@
     "toastSuccessDescription": "El contacte s'ha desat correctament.",
     "noCompany": "Sense empresa",
     "notSpecified": "No especificat",
+    "savingButton": "Desant...",
     "filters": {
       "sortBy": "Ordenar per",
       "newest": "Més nous",
@@ -1294,7 +1298,7 @@
       "pageTitle": "Facturació i Plans",
       "pageDescription": "Gestiona la teva subscripció i tria el pla que millor s'adapti a tu.",
       "plans": {
-        "free": {
+        "plan_free": {
           "name": "Free",
           "description": "Perfecte per començar i explorar les funcionalitats bàsiques.",
           "features": [
@@ -1304,8 +1308,8 @@
             "Suport per email"
           ]
         },
-        "plus": {
-          "name": "Plus",
+        "plan_pro": {
+          "name": "Pro",
           "description": "Ideal per a professionals i equips petits que volen créixer.",
           "features": [
             "Contactes il·limitats",
@@ -1316,11 +1320,11 @@
             "Suport prioritari per email"
           ]
         },
-        "premium": {
+        "plan_premium": {
           "name": "Premium",
           "description": "La solució completa per a empreses que necessiten el màxim rendiment.",
           "features": [
-            "Tot el del pla Plus",
+            "Tot el del pla Pro",
             "Pipelines il·limitats",
             "Automatitzacions avançades i IA",
             "Informes i anàlisis detallades",
@@ -2229,5 +2233,41 @@
         }
       }
     }
+  },
+  "Billing": {
+    "title": "Facturació i Plans",
+    "description": "Gestiona la teva subscripció, consulta l’historial de facturació i actualitza les dades de pagament.",
+    "current_plan": "Pla Actual",
+    "manage_subscription": "Gestiona la Subscripció",
+    "upgrade_plan": "Actualitza el Pla",
+    "cancel_subscription": "Cancel·la la Subscripció",
+    "plan_details": "Detalls del Pla",
+    "price": "Preu",
+    "period": "Període",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "billing_history": "Historial de Facturació",
+    "date": "Data",
+    "amount": "Import",
+    "status": "Estat",
+    "invoice": "Factura",
+    "download_invoice": "Descarrega la Factura",
+    "payment_method": "Mètode de Pagament",
+    "add_payment_method": "Afegeix un Mètode de Pagament",
+    "card_ending_in": "Targeta que acaba en",
+    "expires": "Caduca",
+    "upgrade_notice_title": "Actualitza per Desbloquejar",
+    "upgrade_notice_desc": "Actualment estàs al pla {planName}. Per accedir a aquesta funcionalitat, actualitza el teu pla.",
+    "manage_in_stripe": "Gestiona a Stripe",
+    "plan_free": "Gratuït",
+    "plan_pro": "Pro",
+    "plan_enterprise": "Enterprise",
+    "invoices_loading_error": "Error en carregar les factures.",
+    "subscription_loading_error": "Error en carregar la subscripció.",
+    "no_subscription": "No s’ha trobat cap subscripció activa.",
+    "no_invoices": "No s’han trobat factures.",
+    "limitReachedTitle": "Límit del teu pla assolit",
+    "limitReachedDefault": "Has arribat al límit de contactes permès en el teu pla actual. Actualitza’l per afegir-ne més.",
+    "upgradePlan": "Actualitza el Pla"
   }
 }

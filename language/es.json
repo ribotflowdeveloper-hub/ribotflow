@@ -348,6 +348,7 @@
     "toastSuccessDescription": "El contacto se ha guardado correctamente.",
     "noCompany": "Sin empresa",
     "notSpecified": "No especificado",
+    "savingButton": "Guardando...",
     "filters": {
       "sortBy": "Ordenar por",
       "newest": "Más nuevos",
@@ -1289,7 +1290,7 @@
       "pageTitle": "Facturación y Planes",
       "pageDescription": "Gestiona tu suscripción y elige el plan que mejor se adapte a ti.",
       "plans": {
-        "free": {
+        "plan_free": {
           "name": "Free",
           "description": "Perfecto para empezar y explorar las funcionalidades básicas.",
           "features": [
@@ -1299,8 +1300,8 @@
             "Soporte por email"
           ]
         },
-        "plus": {
-          "name": "Plus",
+        "plan_pro": {
+          "name": "Pro",
           "description": "Ideal para profesionales y equipos pequeños que quieren crecer.",
           "features": [
             "Contactos ilimitados",
@@ -1311,11 +1312,11 @@
             "Soporte prioritario por email"
           ]
         },
-        "premium": {
+        "plan_premium": {
           "name": "Premium",
           "description": "La solución completa para empresas que necesitan el máximo rendimiento.",
           "features": [
-            "Todo lo del plan Plus",
+            "Todo lo del plan Pro",
             "Pipelines ilimitados",
             "Automatizaciones avanzadas e IA",
             "Informes y análisis detallados",
@@ -2192,5 +2193,41 @@
         }
       }
     }
+  },
+  "Billing": {
+    "title": "Facturación y Planes",
+    "description": "Gestiona tu suscripción, consulta el historial de facturación y actualiza los detalles de pago.",
+    "current_plan": "Plan Actual",
+    "manage_subscription": "Gestionar Suscripción",
+    "upgrade_plan": "Actualizar Plan",
+    "cancel_subscription": "Cancelar Suscripción",
+    "plan_details": "Detalles del Plan",
+    "price": "Precio",
+    "period": "Periodo",
+    "monthly": "Mensual",
+    "yearly": "Anual",
+    "billing_history": "Historial de Facturación",
+    "date": "Fecha",
+    "amount": "Importe",
+    "status": "Estado",
+    "invoice": "Factura",
+    "download_invoice": "Descargar Factura",
+    "payment_method": "Método de Pago",
+    "add_payment_method": "Añadir Método de Pago",
+    "card_ending_in": "Tarjeta que termina en",
+    "expires": "Caduca",
+    "upgrade_notice_title": "Actualiza para Desbloquear",
+    "upgrade_notice_desc": "Actualmente estás en el plan {planName}. Para acceder a esta funcionalidad, por favor, actualiza tu plan.",
+    "manage_in_stripe": "Gestionar en Stripe",
+    "plan_free": "Gratis",
+    "plan_pro": "Pro",
+    "plan_enterprise": "Enterprise",
+    "invoices_loading_error": "Error al cargar las facturas.",
+    "subscription_loading_error": "Error al cargar la suscripción.",
+    "no_subscription": "No se ha encontrado ninguna suscripción activa.",
+    "no_invoices": "No se han encontrado facturas.",
+    "limitReachedTitle": "Límite de tu plan alcanzado",
+    "limitReachedDefault": "Has alcanzado el límite de contactos permitido en tu plan actual. Actualiza para añadir más.",
+    "upgradePlan": "Actualizar Plan"
   }
 }

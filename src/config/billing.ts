@@ -6,7 +6,7 @@ import type { PlanConfig } from '@/types/settings';
  */
 export const plansStructure: PlanConfig[] = [
   {
-    id: 'free',
+    id: 'plan_free',
     name: 'Free', // Aquesta serà la clau 'free' per a les traduccions
     iconName: 'Gift',
     priceMonthly: 0,
@@ -14,8 +14,8 @@ export const plansStructure: PlanConfig[] = [
     colors: { border: "border-muted", text: "text-muted-foreground", bg: "bg-muted", hoverBg: "hover:bg-muted/80" }
   },
   {
-    id: process.env.PLAN_PLUS_ID || 'plus',
-    name: 'Plus', // Aquesta serà la clau 'plus' per a les traduccions
+    id: process.env.PLAN_PRO_ID || 'plan_pro',
+    name: 'Pro', // Aquesta serà la clau 'pro' per a les traduccions
     iconName: 'Star',
     priceMonthly: 29,
     priceYearly: 290,
@@ -23,7 +23,7 @@ export const plansStructure: PlanConfig[] = [
     colors: { border: "border-primary", text: "text-primary", bg: "bg-primary", hoverBg: "hover:bg-primary/90" }
   },
   {
-    id: process.env.PLAN_PREMIUM_ID || 'premium',
+    id: process.env.PLAN_PREMIUM_ID || 'plan_premium',
     name: 'Premium', // Aquesta serà la clau 'premium' per a les traduccions
     iconName: 'Gem',
     priceMonthly: 79,

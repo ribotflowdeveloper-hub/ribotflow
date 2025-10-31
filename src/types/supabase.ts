@@ -755,6 +755,48 @@ export type Database = {
           },
         ]
       }
+      invoice_deliveries: {
+        Row: {
+          delivered_at: string
+          id: string
+          invoice_id: number
+          method: string
+          recipient: string | null
+          team_id: string
+        }
+        Insert: {
+          delivered_at?: string
+          id?: string
+          invoice_id: number
+          method: string
+          recipient?: string | null
+          team_id: string
+        }
+        Update: {
+          delivered_at?: string
+          id?: string
+          invoice_id?: number
+          method?: string
+          recipient?: string | null
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_deliveries_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_deliveries_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string | null
@@ -2643,12 +2685,25 @@ export type Database = {
         Args: { email_to_check: string }
         Returns: string
       }
+      get_user_team_context: {
+        Args: { p_team_id: string; p_user_id: string }
+        Returns: Json
+      }
       gettransactionid: { Args: never; Returns: unknown }
       increment_invoice_sequence: {
         Args: { p_series: string; p_user_id: string }
         Returns: number
       }
+      is_contact_on_public_quote: {
+        Args: { contact_id_to_check: number }
+        Returns: boolean
+      }
+      is_quote_public: { Args: { quote_id_to_check: number }; Returns: boolean }
       is_team_member: { Args: { team_id_to_check: string }; Returns: boolean }
+      is_team_on_public_quote: {
+        Args: { team_id_to_check: string }
+        Returns: boolean
+      }
       log_task_activity: {
         Args: { new_status_input: boolean; task_id_input: number }
         Returns: undefined
@@ -2849,17 +2904,32 @@ export type Database = {
           team_id_param: string
         }
         Returns: {
-          client_name: string
           contact_empresa: string
           contact_id: number
           contact_nom: string
+          created_at: string
+          discount: number
           expiry_date: string
           id: number
           issue_date: string
+          notes: string
+          opportunity_id: number
           quote_number: string
+          rejection_reason: string
+          secure_id: string
+          send_at: string
+          sent_at: string
+          sequence_number: number
+          show_quantity: boolean
           status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax: number
+          tax_percent: number
+          team_id: string
+          theme_color: string
           total: number
           total_count: number
+          user_id: string
         }[]
       }
       st_3dclosestpoint: {
@@ -3151,11 +3221,11 @@ export type Database = {
         Returns: unknown
       }
       st_generatepoints:
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
         | {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
-        | { Args: { area: unknown; npoints: number }; Returns: unknown }
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
@@ -3423,11 +3493,11 @@ export type Database = {
           }
       st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
       st_union:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
         | {
             Args: { geom1: unknown; geom2: unknown; gridsize: number }
             Returns: unknown
           }
-        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
       st_voronoilines: {
         Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
         Returns: unknown

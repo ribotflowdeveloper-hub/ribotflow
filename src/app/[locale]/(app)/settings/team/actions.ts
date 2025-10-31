@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Resend } from 'resend';
 import { validateUserSession } from "@/lib/supabase/session"; // ✅ Utilitzem el teu helper!
-import { PERMISSIONS, validateSessionAndPermission, Role } from '@/lib/permissions';
+import { PERMISSIONS, validateSessionAndPermission, Role } from '@/lib/permissions/permissions';
 
 /**
  * Crea un nou equip i les seves dependències de manera transaccional

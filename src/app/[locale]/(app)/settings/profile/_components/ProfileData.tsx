@@ -4,7 +4,7 @@ import { validatePageSession } from '@/lib/supabase/session';
 import { getActiveTeam } from '@/lib/supabase/teams';
 import { ProfileForm } from "./ProfileForm";
 import type { Profile, Team } from "@/types/settings";
-import { Role } from '@/lib/permissions.config';
+import { Role } from '@/lib/permissions/permissions.config';
 
 export async function ProfileData() {
   const { supabase, user } = await validatePageSession();

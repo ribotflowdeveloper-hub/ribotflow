@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { getTranslations } from 'next-intl/server';
 import { validatePageSession } from '@/lib/supabase/session';
-import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions.config';
+import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions/permissions.config';
 import { BlacklistData } from './_components/BlacklistData';
 import { BlacklistSkeleton } from './_components/BlacklistSkeleton';
 import { AccessDenied } from '@/components/shared/AccessDenied';

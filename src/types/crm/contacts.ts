@@ -23,6 +23,7 @@ export type Contact = {
   estat?: ContactStatusCode;
   valor?: number | null;
   user_id?: string;
+  main_address?: string | null;
   job_title?: string | null;
   industry?: string | null;
   lead_source?: string | null;

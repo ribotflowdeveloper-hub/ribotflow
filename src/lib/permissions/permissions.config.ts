@@ -15,6 +15,8 @@ export const PERMISSIONS = {
     MANAGE_BLACKLIST: 'manage_blacklist',
     VIEW_TEAM_STATS: 'view_team_stats',
     MANAGE_INTEGRATIONS: 'manage_integrations',
+    MANAGE_CONTACTS: 'manage_contacts',
+    VIEW_CONTACTS: 'view_contacts',
 } as const;
 
 export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
@@ -31,6 +33,8 @@ export const ROLES: Record<Role, Permission[]> = {
         PERMISSIONS.MANAGE_BLACKLIST,
         PERMISSIONS.VIEW_TEAM_STATS,
         PERMISSIONS.MANAGE_INTEGRATIONS,
+        PERMISSIONS.MANAGE_CONTACTS, // ✅ Afegit
+        PERMISSIONS.VIEW_CONTACTS,
     ],
     admin: [
         PERMISSIONS.MANAGE_TEAM_MEMBERS,
@@ -42,9 +46,13 @@ export const ROLES: Record<Role, Permission[]> = {
         PERMISSIONS.MANAGE_BLACKLIST,
         PERMISSIONS.VIEW_TEAM_STATS,
         PERMISSIONS.MANAGE_INTEGRATIONS,
+        PERMISSIONS.MANAGE_CONTACTS, // ✅ Afegit
+        PERMISSIONS.VIEW_CONTACTS,
     ],
     member: [
         PERMISSIONS.VIEW_BLACKLIST,
+        PERMISSIONS.MANAGE_CONTACTS, // ✅ Afegit (Assumim que els membres poden gestionar contactes)
+        PERMISSIONS.VIEW_CONTACTS,
     ],
 };
 

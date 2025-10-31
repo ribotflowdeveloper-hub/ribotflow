@@ -2,7 +2,7 @@ import { getTranslations } from 'next-intl/server';
 import { BlacklistClient } from './BlacklistClient';
 import { validatePageSession } from '@/lib/supabase/session';
 import type { BlacklistRule } from '@/types/settings';
-import type { Role } from '@/lib/permissions.config';
+import type { Role } from '@/lib/permissions/permissions.config';
 
 interface BlacklistDataProps {
   currentUserRole: Role | null;

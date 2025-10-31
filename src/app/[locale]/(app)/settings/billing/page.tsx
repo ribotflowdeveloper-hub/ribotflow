@@ -5,10 +5,10 @@ import { BillingData } from './_components/BillingData';
 import { BillingSkeleton } from './_components/BillingSkeleton';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { hasPermission, PERMISSIONS } from '@/lib/permissions';
+import { hasPermission, PERMISSIONS } from '@/lib/permissions/permissions';
 import { AccessDenied } from '@/components/shared/AccessDenied';
 // ✅ 1. Importem el tipus 'Role' des del fitxer de configuració de permisos.
-import { type Role } from '@/lib/permissions.config';
+import { type Role } from '@/lib/permissions/permissions.config';
 
 export const dynamic = 'force-dynamic';
 
