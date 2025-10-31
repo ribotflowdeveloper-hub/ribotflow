@@ -1,4 +1,3 @@
-// /src/components/features/contactes/ContactSelector.tsx (Refactoritzat)
 "use client";
 
 import { FC, useState } from 'react';
@@ -8,30 +7,40 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from "@/lib/utils/utils";
-// ✅ 1. Importem el tipus directament des de la definició de la base de dades.
-import { type Database } from '@/types/supabase';
+import { type Database } from '@/types/supabase'; // ✅ Importar Database
 
-// ✅ 2. Definim el tipus Contact només amb les propietats que aquest component necessita.
-type Contact = Pick<Database['public']['Tables']['contacts']['Row'], 'id' | 'nom'>;
+// ✅ Utilitzar el tipus 'Row' complet o un 'Pick' del 'Row'
+//    Per ser més robustos, podem esperar el 'Row' complet
+type Contact = Database['public']['Tables']['contacts']['Row'];
 
 interface Props {
-    contacts: Contact[];
-    // ✅ 3. L'ID seleccionat ara pot ser un número o null.
+    contacts: Contact[]; // ✅ Ara espera el tipus de la BD
     selectedId: number | null;
     onSelect: (contactId: number | null) => void;
+    disabled?: boolean;
 }
 
-export const ContactSelector: FC<Props> = ({ contacts, selectedId, onSelect }) => {
+export const ContactSelector: FC<Props> = ({ 
+    contacts, 
+    selectedId, 
+    onSelect, 
+    disabled = false 
+}) => {
     const t = useTranslations('OpportunityDialog');
     const [open, setOpen] = useState(false);
 
-    // La lògica de trobar el contacte seleccionat funciona igual.
     const selectedContact = contacts.find(c => c.id === selectedId);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between">
+                <Button 
+                    variant="outline" 
+                    role="combobox" 
+                    className="w-full justify-between"
+                    disabled={disabled}
+                >
+                    {/* ✅ Utilitzem 'nom' (el camp real) */}
                     {selectedContact ? selectedContact.nom : t('selectContactPlaceholder')}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -42,7 +51,6 @@ export const ContactSelector: FC<Props> = ({ contacts, selectedId, onSelect }) =
                     <CommandList>
                         <CommandEmpty>{t('noContactFound')}</CommandEmpty>
                         <CommandGroup>
-                            {/* Afegim una opció per desseleccionar */}
                             <CommandItem onSelect={() => {
                                 onSelect(null);
                                 setOpen(false);
@@ -50,12 +58,16 @@ export const ContactSelector: FC<Props> = ({ contacts, selectedId, onSelect }) =
                                 <Check className={cn("mr-2 h-4 w-4", selectedId === null ? "opacity-100" : "opacity-0")} />
                                 {t('noContact')}
                             </CommandItem>
+                            {/* ✅ Això funcionarà quan 'contacts' no estigui buit */}
                             {contacts.map(contact => (
-                                <CommandItem key={contact.id} value={contact.nom || ''} onSelect={() => {
-                                    // ✅ 4. Passem l'ID numèric.
-                                    onSelect(contact.id);
-                                    setOpen(false);
-                                }}>
+                                <CommandItem 
+                                    key={contact.id} 
+                                    value={contact.nom || ''} // El valor de cerca és 'nom'
+                                    onSelect={() => {
+                                        onSelect(contact.id);
+                                        setOpen(false);
+                                    }}
+                                >
                                     <Check className={cn("mr-2 h-4 w-4", selectedId === contact.id ? "opacity-100" : "opacity-0")} />
                                     {contact.nom}
                                 </CommandItem>
