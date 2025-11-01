@@ -6,6 +6,8 @@ import { validateUserSession } from "@/lib/supabase/session";
 import type { Database } from "@/types/supabase";
 // ✨ CANVI: Importem tots els tipus necessaris des de la nostra font de la veritat.
 import type { DbTableInsert, EnrichedTicket, TicketFilter } from '@/types/db';
+import { getActiveTeam } from "@/lib/supabase/teams";
+
 
 interface ActionResult {
   success: boolean;
@@ -397,4 +399,116 @@ export async function deleteMultipleTicketsAction(ticketIds: number[]): Promise<
 
   revalidatePath("/comunicacio/inbox"); // Refresquem la pàgina de l'inbox
   return { success: true, message: "Tiquets eliminats." };
+}
+
+
+/**
+ * ✅ LÒGICA ACTUALITZADA
+ * Prepara les dades per a un nou missatge iniciat des de la pàgina de Network.
+ * Busca o crea un contacte per a l'equip destinatari i pre-omple el missatge.
+ */
+export async function prepareNetworkContactAction(recipientTeamId: string, projectId: string) {
+    const session = await validateUserSession();
+    if ('error' in session) {
+        return { success: false, message: "Accés denegat." };
+    }
+    const { supabase, activeTeamId } = session;
+
+    const activeTeam = await getActiveTeam(supabase, activeTeamId);
+    if (!activeTeam) {
+        return { success: false, message: "No s'ha trobat l'equip actiu." };
+    }
+
+    try {
+        // 1. Obtenir dades del projecte
+        const { data: projectData, error: projectError } = await supabase
+            .from('job_postings')
+            .select('title')
+            .eq('id', projectId)
+            .single();
+
+        if (projectError || !projectData) {
+            console.error("Error prepareNetworkContact [Project]:", projectError);
+            throw new Error("No s'ha pogut trobar el projecte.");
+        }
+        const { title: projectTitle } = projectData;
+
+        // 2. Obtenir dades de l'equip destinatari (recipientTeam)
+        const { data: recipientTeamData, error: teamError } = await supabase
+            .from('teams')
+            .select('name, email, owner_id')
+            .eq('id', recipientTeamId)
+            .single();
+
+        if (teamError || !recipientTeamData) {
+            console.error("Error prepareNetworkContact [Team]:", teamError);
+            throw new Error("No s'ha pogut trobar l'equip destinatari.");
+        }
+
+        let recipientEmail = recipientTeamData.email;
+        let recipientName = recipientTeamData.name || 'Contacte de Network';
+
+        // 3. ✅ Lògica de Fallback: Si l'equip no té email, busquem el del propietari
+        if (!recipientEmail) {
+            const { data: ownerProfile, error: ownerError } = await supabase
+                .from('profiles')
+                .select('email, full_name')
+                .eq('id', recipientTeamData.owner_id)
+                .single();
+            
+            if (ownerError || !ownerProfile || !ownerProfile.email) {
+                console.error("Error prepareNetworkContact [Owner Profile]:", ownerError);
+                // Aquest és l'error final si no trobem res
+                throw new Error("L'equip destinatari no té un email de contacte configurat, ni ell ni el seu propietari.");
+            }
+            recipientEmail = ownerProfile.email;
+            // Donem prioritat al nom de l'equip, però si no, fem servir el del propietari
+            recipientName = recipientTeamData.name || ownerProfile.full_name || 'Contacte de Network';
+        }
+
+        // 4. Buscar si ja existeix un contacte per a aquest equip al nostre CRM
+        let contactId: number;
+        const { data: existingContact } = await supabase
+            .from('contacts')
+            .select('id')
+            .eq('team_id', activeTeam.id) // Que pertanyi al nostre equip
+            .eq('email', recipientEmail)  // I tingui el mateix email
+            .maybeSingle();
+
+        if (existingContact) {
+            contactId = existingContact.id;
+        } else {
+            // 5. Si no existeix, el creem
+            const { data: newContact, error: createError } = await supabase
+                .from('contacts')
+                .insert({
+                    team_id: activeTeam.id,
+                    nom: recipientName,
+                    email: recipientEmail,
+                })
+                .select('id')
+                .single();
+
+            if (createError || !newContact) {
+                console.error("Error prepareNetworkContact [Contact Create]:", createError);
+                throw new Error("No s'ha pogut crear el nou contacte.");
+            }
+            contactId = newContact.id;
+            revalidatePath(`/${activeTeam.id}/crm/contacts`);
+        }
+
+        // 6. Preparar les dades inicials per al ComposeDialog
+        const initialData = {
+            contactId: String(contactId),
+            subject: `Consulta sobre el projecte: ${projectTitle}`,
+            body: `<p>Hola ${recipientName},</p><p><br></p><p>Estic interessat/da en el vostre projecte "<strong>${projectTitle}</strong>" que he vist a la xarxa de Ribotflow.</p><p><br></p><p>Salutacions,</p>`,
+        };
+
+        return { success: true, data: initialData };
+
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Error desconegut preparant el missatge.";
+        console.error("Error a prepareNetworkContactAction:", message);
+        return { success: false, message };
+    }
 }

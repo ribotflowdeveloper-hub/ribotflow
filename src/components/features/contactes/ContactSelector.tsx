@@ -7,14 +7,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from "@/lib/utils/utils";
-import { type Database } from '@/types/supabase'; // ✅ Importar Database
 
-// ✅ Utilitzar el tipus 'Row' complet o un 'Pick' del 'Row'
-//    Per ser més robustos, podem esperar el 'Row' complet
-type Contact = Database['public']['Tables']['contacts']['Row'];
-
+type MinimalContact = {
+  id: number;
+  nom: string | null; 
+};
 interface Props {
-    contacts: Contact[]; // ✅ Ara espera el tipus de la BD
+    contacts: MinimalContact[]; // ✅ Ara espera el tipus de la BD
     selectedId: number | null;
     onSelect: (contactId: number | null) => void;
     disabled?: boolean;

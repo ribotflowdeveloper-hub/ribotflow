@@ -24,7 +24,7 @@ const departmentNameSchema = z.string()
 export async function createDepartment(teamId: string | undefined, name: string): Promise<ActionResult> {
     if (!teamId) { return { error: "Falta l'identificador de l'equip." }; }
     const validation = departmentNameSchema.safeParse(name);
-    if (!validation.success) { return { error: validation.error.errors[0]?.message ?? "Nom de departament invàlid." }; }
+    if (!validation.success) { return { error: validation.error.issues[0]?.message ?? "Nom de departament invàlid." }; }
     const validatedName = validation.data;
 
     console.log(`--- [Server Action] Intentant crear departament: "${validatedName}" per a l'equip ${teamId} ---`);

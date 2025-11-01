@@ -1,4 +1,7 @@
-'use client' // 👈 AQUESTA ÉS L'ÚNICA LÍNIA QUE CAL AFEGIR
+// /app/[locale]/(app)/finances/invoices/[invoiceId]/_components/PDF/InvoicePdfDocument.tsx
+
+// ❌ NO HA DE SER 'use client'. Els components de react-pdf no són components DOM.
+// "use client"; 
 
 import {
   Document,
@@ -7,23 +10,13 @@ import {
   View,
   StyleSheet,
   Image,
-
 } from '@react-pdf/renderer'
 import { type InvoiceDetail } from '@/types/finances/invoices'
 import { type CompanyProfile } from '@/types/settings/team' // 👈 NOU
-import { type Database } from '@/types/supabase' // ✅ 1. Importem el tipus base de Supabase// NOTA: Si fas servir fonts custom, 
+import { type Database } from '@/types/supabase' 
 type Contact = Database['public']['Tables']['contacts']['Row']
 
-//registra-les aquí.
-// Font.register({
-//   family: 'Helvetica',
-//   fonts: [
-//     { src: '/fonts/Helvetica.ttf' },
-//     { src: '/fonts/Helvetica-Bold.ttf', fontWeight: 'bold' },
-//   ],
-// })
-
-// Els estils són exactament els mateixos que tenies
+// ... (Els estils 'styles' i les funcions 'formatCurrency', 'formatDate' queden exactament igual)
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
@@ -184,7 +177,6 @@ const styles = StyleSheet.create({
   },
 })
 
-// Helpers de format (ara només existeixen aquí)
 const formatCurrency = (value: number | string | null, currency: string) => {
   const num = Number(value || 0)
   return `${num.toFixed(2)} ${currency}`
@@ -197,57 +189,52 @@ const formatDate = (dateString: string | null) => {
   return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`
 }
 
-interface InvoicePdfDocumentProps {
-  invoice: InvoiceDetail
-  qrCodeDataUrl: string | null // Rebem el QR com a prop
-}
 
+// ❌ 1. ELIMINADA la primera definició duplicada de InvoicePdfDocumentProps
+// interface InvoicePdfDocumentProps {
+//   invoice: InvoiceDetail
+//   qrCodeDataUrl: string | null 
+// }
+
+// ✅ 2. AQUESTA ÉS LA DEFINICIÓ CORRECTA de les props
 interface InvoicePdfDocumentProps {
   invoice: InvoiceDetail
-  company: CompanyProfile // 👈 NOU
-  contact: Contact | null // 👈 NOU
+  company: CompanyProfile
+  contact: Contact | null // Pot ser null si no hi ha contacte assignat
   qrCodeDataUrl: string | null
 }
 
 /**
  * AQUEST ÉS EL COMPONENT "PUR" REUTILITZABLE.
- * Ara utilitza les dades "en viu" (company, contact) com a fallback
- * si les dades "bloquejades" (invoice.company_name) no existeixen.
  */
 export function InvoicePdfDocument({
   invoice,
-  company, // 👈 NOU
-  contact, // 👈 NOU
+  company,
+  contact,
   qrCodeDataUrl,
 }: InvoicePdfDocumentProps) {
-  // Calculem els totals (això no canvia)
+  // ... (lògica de càlcul de totals) ...
   const subtotal = Number(invoice.subtotal || 0)
   const discount = Number(invoice.discount_amount || 0)
   const shipping = Number(invoice.shipping_cost || 0)
   const tax = Number(invoice.tax_amount || 0)
   const baseImposable = subtotal - discount
 
-  // --- 💡 LÒGICA DE FALLBACK 💡 ---
-  // Prioritzem les dades "bloquejades" a la factura (si és 'Sent')
-  // Si són null (és 'Draft'), fem servir les dades "en viu" que hem passat.
-
-  // Dades de l'Emissor (Companyia)
+  // --- 💡 LÒGICA DE FALLBACK (Correcta) ---
   const companyName = invoice.company_name || company.company_name
   const companyAddress = invoice.company_address || company.company_address
   const companyTaxId = invoice.company_tax_id || company.company_tax_id
   const companyEmail = invoice.company_email || company.company_email
-
-  // Dades del Receptor (Client)
-  // (Fem servir 'contact' en lloc de 'invoice.contacts' per assegurar que tenim les dades)
+  
   const clientName = invoice.client_name || contact?.nom
   const clientAddress = invoice.client_address || contact?.address
-  //const clientTaxId = invoice.client_tax_id || contact?.nif
+  //const clientTaxId = invoice.client_tax_id || contact?.nif // Segueix comentat
   const clientEmail = invoice.client_email || contact?.email
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* --- 1. CAPÇALERA (Corregida) --- */}
+        {/* --- 1. CAPÇALERA --- */}
         <View style={styles.header}>
           <View style={styles.companyDetails}>
             <Text style={styles.companyName}>
@@ -277,7 +264,7 @@ export function InvoicePdfDocument({
           </View>
         </View>
 
-        {/* --- 2. INFO CLIENT (Corregida) --- */}
+        {/* --- 2. INFO CLIENT --- */}
         <View style={styles.customerInfo}>
           <View style={styles.customerBilling}>
             <Text style={styles.sectionTitle}>Facturar A:</Text>
@@ -294,10 +281,9 @@ export function InvoicePdfDocument({
           </View>
         </View>
 
-        {/* --- 3. TAULA D'ÍTEMS (No canvia) --- */}
+        {/* --- 3. TAULA D'ÍTEMS --- */}
         <View style={styles.table}>
-          {/* ... (Contingut de la taula igual) ... */}
-           <View style={styles.tableHeader}>
+          <View style={styles.tableHeader}>
             <Text style={[styles.tableColHeader, styles.colDesc]}>
               Descripció
             </Text>
@@ -330,10 +316,9 @@ export function InvoicePdfDocument({
           ))}
         </View>
 
-        {/* --- 4. TOTALS (No canvia) --- */}
+        {/* --- 4. TOTALS --- */}
         <View style={styles.totalsContainer}>
-           {/* ... (Contingut dels totals igual) ... */}
-           <View style={styles.totalsBox}>
+          <View style={styles.totalsBox}>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>Subtotal</Text>
               <Text style={styles.totalsValue}>
@@ -382,10 +367,9 @@ export function InvoicePdfDocument({
           </View>
         </View>
 
-        {/* --- 5. PEU DE PÀGINA (No canvia) --- */}
+        {/* --- 5. PEU DE PÀGINA --- */}
         <View style={styles.footer}>
-           {/* ... (Contingut del peu de pàgina igual) ... */}
-           <View style={styles.notes}>
+          <View style={styles.notes}>
             {invoice.payment_details && (
               <>
                 <Text style={styles.sectionTitle}>Detalls de Pagament:</Text>

@@ -1,18 +1,21 @@
-// src/app/[locale]/(app)/network/_components/NetworkClient.tsx
-
 "use client";
 
 import React, { useState, useMemo, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
-import ProfileList from './ProfileList';
-import type { PublicProfileListItem, PublicProfileDetail } from '../types';
+import ProfileList from './profiles/ProfileList';
+import ProjectList from './projects/ProjecteList';
+// ✅ 1. Importem els nous tipus
+import type { PublicProfileListItem, PublicProfileDetail, JobPostingListItem, PublicJobPostingDetail } from '../types';
 import { useTranslations } from 'next-intl';
-import { List, Map as MapIcon } from 'lucide-react';
+import { List, Map as MapIcon, Building2, Briefcase, PlusCircle, Search, Users } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
-import { getTeamDetailsAction } from '../actions';
+// ✅ 2. Importem la nova acció
+import { getTeamDetailsAction, getJobPostingDetailsAction } from '../actions';
 import { toast } from 'sonner';
+import CreateProjectDialog from './CreateProjectDialog'; 
+import { useNavigationStore } from '@/stores/navigationStore';
 
 const MapLoadingSkeleton = () => {
     const t = useTranslations('NetworkPage');
@@ -21,37 +24,63 @@ const MapLoadingSkeleton = () => {
 
 const DynamicMapContainer = dynamic(() => import('./MapContainer'), { loading: () => <MapLoadingSkeleton />, ssr: false });
 
-// Alçada de la barra superior mòbil (AJUSTA A L'ALÇADA REAL)
 const MOBILE_HEADER_HEIGHT_PX = 64;
 
-export function NetworkClient({ profiles, errorMessage }: {
+type DisplayMode = 'all' | 'profiles' | 'projects';
+
+export function NetworkClient({
+    profiles,
+    jobPostings,
+    errorMessage
+}: {
     profiles: PublicProfileListItem[];
+    jobPostings: JobPostingListItem[];
     errorMessage?: string;
 }) {
+    // Estats de perfil
     const [selectedProfile, setSelectedProfile] = useState<PublicProfileListItem | null>(null);
     const [detailedProfile, setDetailedProfile] = useState<PublicProfileDetail | null>(null);
     const [isDetailsLoading, startDetailsTransition] = useTransition();
+    
+    // ✅ 3. Afegim estats per als detalls del projecte
+    const [selectedProject, setSelectedProject] = useState<JobPostingListItem | null>(null);
+    const [detailedProject, setDetailedProject] = useState<PublicJobPostingDetail | null>(null);
+    const [isProjectDetailsLoading, startProjectDetailsTransition] = useTransition();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+    const [displayMode, setDisplayMode] = useState<DisplayMode>('all');
+    
     const t = useTranslations('NetworkPage');
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+    const { activeTeam } = useNavigationStore();
 
     const filteredProfiles = useMemo(() => {
-        // ... (igual que abans) ...
         if (!searchTerm) return profiles;
         return profiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [profiles, searchTerm]);
 
+    const filteredJobPostings = useMemo(() => {
+        if (!searchTerm) return jobPostings;
+        return jobPostings.filter(j =>
+            j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            j.teams?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [jobPostings, searchTerm]);
+
+    // Gestor de selecció de Perfil (sense canvis)
     const handleSelectProfile = (profile: PublicProfileListItem | null) => {
-         // ... (igual que abans) ...
+        setSelectedProject(null);
+        setDetailedProject(null);
         setSelectedProfile(profile);
         setDetailedProfile(null);
-
         if (profile) {
             startDetailsTransition(async () => {
                 const result = await getTeamDetailsAction(profile.id);
                 if (result.success) {
                     setDetailedProfile(result.data as PublicProfileDetail);
-                    setViewMode('map'); // Canvia a mapa en seleccionar i carregar
+                    setViewMode('map');
+                    setDisplayMode('profiles'); 
                 } else {
                     toast.error("Error en carregar els detalls", { description: result.message });
                     setSelectedProfile(null);
@@ -60,21 +89,48 @@ export function NetworkClient({ profiles, errorMessage }: {
         }
     };
 
-    const handleMapDeselect = () => {
-        // ... (igual que abans) ...
+    // ✅ 4. Actualitzem el gestor de selecció de Projecte
+    const handleSelectProject = (project: JobPostingListItem | null) => {
         setSelectedProfile(null);
         setDetailedProfile(null);
+        setSelectedProject(project);
+        setDetailedProject(null); // Reseteja el detall
+        if (project) {
+            setViewMode('map');
+            setDisplayMode('projects');
+            // Iniciem la transició per carregar els detalls del projecte
+            startProjectDetailsTransition(async () => {
+                const result = await getJobPostingDetailsAction(project.id);
+                if (result.success) {
+                    setDetailedProject(result.data as PublicJobPostingDetail);
+                } else {
+                    toast.error("Error en carregar detalls del projecte", { description: result.message });
+                    setSelectedProject(null); // Deseleccionem si falla
+                }
+            });
+        }
+    };
+
+    const handleMapDeselect = () => {
+        setSelectedProfile(null);
+        setDetailedProfile(null);
+        setSelectedProject(null);
+        setDetailedProject(null); // Reseteja el detall
     }
 
+    const handleChangeDisplayMode = (mode: DisplayMode) => {
+        setSearchTerm('');
+        handleMapDeselect();
+        setDisplayMode(mode);
+    }
 
     if (errorMessage) {
         return <div className="p-8 text-destructive text-center">{errorMessage}</div>;
     }
 
     return (
-        <div className="h-screen w-full flex flex-col bg-background overflow-hidden">
-
-            {/* Barra superior Mòbil */}
+        <div className="h-full w-full flex flex-col bg-background overflow-hidden">
+            {/* ... Capçalera mòbil (sense canvis) ... */}
             <div
                 className="p-2 border-b bg-background/95 backdrop-blur-sm lg:hidden flex-shrink-0"
                 style={{ height: `${MOBILE_HEADER_HEIGHT_PX}px` }}
@@ -89,74 +145,179 @@ export function NetworkClient({ profiles, errorMessage }: {
                 </div>
             </div>
 
-            {/* Àrea de Contingut Principal */}
-            {/* ✅ fem servir 'relative' aquí perquè els fills 'absolute' s'hi posicionin */}
-            <div className="flex-1 relative overflow-hidden lg:grid lg:grid-cols-3 lg:gap-8 lg:p-4">
-
+            <div className="flex-1 relative overflow-hidden min-h-0 p-4 sm:p-6 md:p-8 lg:p-4 lg:grid lg:grid-cols-3 lg:gap-8">
                 {/* --- LAYOUT DESKTOP (lg:) --- */}
-                 {/* Llista Desktop */}
                 <div className="hidden lg:flex lg:flex-col glass-effect rounded-lg overflow-hidden">
-                    <ProfileList
+                    {/* ... Filtres de llista i cerca (sense canvis) ... */}
+                    <div className="p-4 border-b border-border flex-shrink-0">
+                        <div className="flex w-full bg-muted p-1 rounded-md mb-4">
+                            <Button variant={displayMode === 'all' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('all')}>
+                                <Users className="mr-2 h-5 w-5" /> Tots
+                            </Button>
+                            <Button variant={displayMode === 'profiles' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('profiles')}>
+                                <Building2 className="mr-2 h-5 w-5" /> Professionals
+                            </Button>
+                            <Button variant={displayMode === 'projects' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('projects')}>
+                                <Briefcase className="mr-2 h-5 w-5" /> Projectes
+                            </Button>
+                        </div>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">
+                                {displayMode === 'projects' ? "Projectes Oberts" : t('networkTitle')}
+                            </h2>
+                            {displayMode === 'projects' && activeTeam && (
+                                <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Publicar
+                                </Button>
+                            )}
+                        </div>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder={displayMode === 'projects' ? "Cercar projectes..." : t('searchPlaceholder')}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* ... Lògica de llista (sense canvis) ... */}
+                    {displayMode === 'projects' ? (
+                        <ProjectList
+                            projects={filteredJobPostings}
+                            onSelectProject={handleSelectProject}
+                            selectedProjectId={selectedProject?.id}
+                            className="flex-1"
+                        />
+                    ) : (
+                        <ProfileList
+                            profiles={filteredProfiles}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            onSelectProfile={handleSelectProfile}
+                            selectedProfileId={selectedProfile?.id}
+                            className="flex-1"
+                        />
+                    )}
+                </div>
+
+                {/* --- MAPA DESKTOP --- */}
+                {/* ✅ 5. Passem les noves props del projecte al mapa */}
+                <div className="hidden lg:block lg:col-span-2 rounded-lg overflow-hidden">
+                    <DynamicMapContainer
                         profiles={filteredProfiles}
-                        searchTerm={searchTerm}
-                        onSearchChange={setSearchTerm}
+                        jobPostings={filteredJobPostings}
+                        displayMode={displayMode}
+                        selectedProfile={selectedProfile}
+                        detailedProfile={detailedProfile}
+                        isLoading={isDetailsLoading}
+                        selectedProject={selectedProject}
+                        detailedProject={detailedProject} // <-- NOU
+                        isProjectLoading={isProjectDetailsLoading} // <-- NOU
                         onSelectProfile={handleSelectProfile}
-                        selectedProfileId={selectedProfile?.id}
-                        className="flex flex-col h-full"
-                    />
-                </div>
-                 {/* Mapa Desktop */}
-                 <div className="hidden lg:block lg:col-span-2 rounded-lg overflow-hidden">
-                    <DynamicMapContainer
-                        profiles={filteredProfiles}
-                        selectedProfile={selectedProfile}
-                        onSelectProfile={handleMapDeselect}
-                        detailedProfile={detailedProfile}
-                        isLoading={isDetailsLoading}
+                        onSelectProject={handleSelectProject}
                     />
                 </div>
 
-                 {/* --- LAYOUT MÒBIL (default) --- */}
-                 {/* Mapa Mòbil (Sempre al fons) */}
-                 {/* ✅ Posicionat absolutament dins del pare 'relative' */}
-                <div className="absolute inset-0 lg:hidden">
+                {/* --- LAYOUT MÒBIL (default) --- */}
+                {/* ✅ 6. Passem les noves props del projecte al mapa (mòbil) */}
+                <div className="absolute inset-0 h-full w-full lg:hidden">
                     <DynamicMapContainer
                         profiles={filteredProfiles}
+                        jobPostings={filteredJobPostings}
+                        displayMode={displayMode}
                         selectedProfile={selectedProfile}
-                        onSelectProfile={handleMapDeselect}
                         detailedProfile={detailedProfile}
                         isLoading={isDetailsLoading}
+                        selectedProject={selectedProject}
+                        detailedProject={detailedProject} // <-- NOU
+                        isProjectLoading={isProjectDetailsLoading} // <-- NOU
+                        onSelectProfile={handleSelectProfile}
+                        onSelectProject={handleSelectProject}
                     />
                 </div>
 
-                 {/* Llista Mòbil (Panell animat) */}
-                 <AnimatePresence>
+                {/* ... Llista Mòbil (Panell animat) (sense canvis) ... */}
+                <AnimatePresence>
                     {viewMode === 'list' && (
                         <motion.div
-                            key="profile-list-mobile"
+                            key="panel-mobile"
                             className={cn(
-                                // ✅ Posicionat absolutament per omplir l'àrea de contingut
-                                "absolute inset-0 z-10 bg-background shadow-lg", // shadow-lg en lloc de shadow[...]
-                                "lg:hidden" // Només visible en pantalles petites
+                                "absolute inset-0 z-10 bg-background shadow-lg",
+                                "lg:hidden",
+                                "flex flex-col"
                             )}
-                            // ✅ Animació amb transform translateY
-                            initial={{ y: "100%" }} // Comença fora (desplaçat cap avall)
-                            animate={{ y: 0 }} // Puja (y=0)
-                            exit={{ y: "100%" }} // Baixa en sortir
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
                             transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
                         >
-                            {/* ProfileList ha d'omplir aquest contenidor */}
-                            <ProfileList
-                                profiles={filteredProfiles}
-                                searchTerm={searchTerm}
-                                onSearchChange={setSearchTerm}
-                                onSelectProfile={handleSelectProfile}
-                                selectedProfileId={selectedProfile?.id}
-                                className="flex flex-col h-full" // Assegura alçada interna
-                            />
+                            <div className="p-4 border-b border-border flex-shrink-0">
+                                <div className="flex w-full bg-muted p-1 rounded-md mb-4">
+                                    <Button variant={displayMode === 'all' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('all')}>
+                                        <Users className="mr-2 h-5 w-5" /> Tots
+                                    </Button>
+                                    <Button variant={displayMode === 'profiles' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('profiles')}>
+                                        <Building2 className="mr-2 h-5 w-5" /> Professionals
+                                    </Button>
+                                    <Button variant={displayMode === 'projects' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('projects')}>
+                                        <Briefcase className="mr-2 h-5 w-5" /> Projectes
+                                    </Button>
+                                </div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl font-bold">
+                                        {displayMode === 'projects' ? "Projectes Oberts" : t('networkTitle')}
+                                    </h2>
+                                    {displayMode === 'projects' && activeTeam && (
+                                        <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Publicar
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        placeholder={displayMode === 'projects' ? "Cercar projectes..." : t('searchPlaceholder')}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {displayMode === 'projects' ? (
+                                <ProjectList
+                                    projects={filteredJobPostings}
+                                    onSelectProject={handleSelectProject}
+                                    selectedProjectId={selectedProject?.id}
+                                    className="flex-1"
+                                />
+                            ) : (
+                                <ProfileList
+                                    profiles={filteredProfiles}
+                                    searchTerm={searchTerm}
+                                    onSearchChange={setSearchTerm}
+                                    onSelectProfile={handleSelectProfile}
+                                    selectedProfileId={selectedProfile?.id}
+                                    className="flex-1"
+                                />
+                            )}
                         </motion.div>
                     )}
-                 </AnimatePresence>
+                </AnimatePresence>
+                
+                {activeTeam && (
+                    <CreateProjectDialog
+                        open={isCreateDialogOpen}
+                        onOpenChange={setIsCreateDialogOpen}
+                        teamId={activeTeam.id}
+                    />
+                )}
             </div>
         </div>
     );

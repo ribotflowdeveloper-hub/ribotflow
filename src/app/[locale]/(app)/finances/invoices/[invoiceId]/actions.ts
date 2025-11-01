@@ -17,12 +17,13 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from 'resend'; // npm install resend
 import { generateInvoicePdfBuffer } from '@/lib/pdf/generateInvoicePDF'; // ✅ IMPORTEM LA FUNCIÓ EXTERNA
 import { registerInvoiceWithHacienda } from '@/lib/verifactu/service'
-
+import { type Database } from '@/types/supabase'
 // 1. Canviem 'TeamProfile' per 'CompanyProfile' i importem 'Contact'
 import { type CompanyProfile } from '@/types/settings/team' 
-import { type Contact } from '@/types/crm/contacts'
+
 import { fetchInvoiceDetail } from "./_hooks/fetchInvoiceDetail";
 
+type Contact = Database['public']['Tables']['contacts']['Row'] | null
 
 
 
@@ -566,8 +567,8 @@ export async function finalizeInvoiceAction(
     // Dades del client (del contacte)
     // ✅ **CORRECCIÓ:** Mapegem els camps correctes de 'esquema.sql'
     client_name: contactData.nom,
-    client_address: contactData.main_address, // 👈 CORREGIT (de 'main_address')
-    client_tax_id: contactData.nif, // 👈 CORREGIT (de 'tax_id')
+    client_address: contactData.address, // 👈 CORREGIT (de 'main_address')
+    //client_tax_id: contactData., // 👈 CORREGIT (de 'tax_id')
     client_email: contactData.email,
   }
 
@@ -634,7 +635,7 @@ export async function finalizeInvoiceAction(
 
 /**
  * ENVIA UNA FACTURA PER EMAIL
- * (Aquesta funció no necessita canvis)
+ * (Aquesta funció SÍ necessitava canvis)
  */
 export async function sendInvoiceByEmailAction(
   invoiceId: number,
@@ -647,7 +648,8 @@ export async function sendInvoiceByEmailAction(
   const { supabase, activeTeamId } = session
 
   // 1. Obtenir les dades de la factura
-  const invoiceData = await fetchInvoiceDetail(invoiceId)
+  // (Fem servir 'any' i després 'as' per compatibilitat amb el teu codi)
+  const invoiceData = (await fetchInvoiceDetail(invoiceId)) as InvoiceDetail
 
   if (!invoiceData) {
     return { success: false, message: 'Factura no trobada.' }
@@ -661,7 +663,7 @@ export async function sendInvoiceByEmailAction(
     }
   }
 
-  // 2. Validació CRÍTICA
+  // 2. Validació CRÍTICA (aquesta part és correcta)
   if (invoiceData.status === 'Draft') {
     return {
       success: false,
@@ -669,10 +671,47 @@ export async function sendInvoiceByEmailAction(
     }
   }
 
-  // 3. Generar el PDF
+  // ✅ 3. NOU: Obtenir les dades addicionals per al PDF
+  
+  // 3a. Obtenir el perfil de l'empresa (Emissor)
+  const { data: companyProfile, error: companyError } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('id', activeTeamId)
+    .single()
+
+  if (companyError || !companyProfile) {
+      console.error("Error obtenint perfil d'empresa:", companyError)
+      return { success: false, message: "No s'ha pogut trobar el perfil de la teva empresa." }
+  }
+
+  // 3b. Obtenir el contacte (Receptor)
+  let contact: Contact = null
+  if (invoiceData.contact_id) {
+      const { data: contactData, error: contactError } = await supabase
+          .from('contacts')
+          .select('*')
+          .eq('id', invoiceData.contact_id)
+          .single()
+      
+      if (contactError) {
+          console.warn('No s\'ha pogut trobar el contacte associat, el PDF anirà amb dades limitades (fallback).', contactError.message)
+      } else {
+          contact = contactData
+      }
+  } else {
+    console.warn('Factura sense contact_id. El PDF anirà amb dades limitades (fallback).')
+  }
+
+  // 4. Generar el PDF
   let pdfBuffer: Buffer
   try {
-    pdfBuffer = await generateInvoicePdfBuffer(invoiceData as InvoiceDetail)
+    // ✅ CRÍTIC: Passem els 3 arguments
+    pdfBuffer = await generateInvoicePdfBuffer(
+      invoiceData,
+      companyProfile as CompanyProfile, // Fem un cast al tipus correcte
+      contact
+    )
   } catch (error) {
     console.error('Error generant el PDF al servidor:', error)
     return {
@@ -681,7 +720,7 @@ export async function sendInvoiceByEmailAction(
     }
   }
 
-  // 4. Enviar l'email amb 'Resend'
+  // 5. Enviar l'email amb 'Resend' (sense canvis)
   const resend = new Resend(process.env.RESEND_API_KEY)
   const fileName = `factura-${invoiceData.invoice_number || invoiceData.id}.pdf`
 
@@ -707,7 +746,7 @@ export async function sendInvoiceByEmailAction(
     }
   }
 
-  // 5. (Opcional) Registrar el lliurament
+  // 6. (Opcional) Registrar el lliurament (sense canvis)
   if (process.env.NODE_ENV !== 'development') {
     try {
       await supabase.from('invoice_deliveries').insert({
