@@ -123,7 +123,14 @@
     "blocking": "Blocking...",
     "addToBlacklist": "Add sender to blacklist",
     "toast": {
-      "contactSavedSuccess": "Contact saved successfully"
+      "contactSavedSuccess": "Contact saved successfully",
+      "preparingMessage": "Preparing message...",
+      "messageReady": "Message ready!",
+      "errorPreparingMessage": "Error preparing message",
+      "deleteConfirmTitle": "Are you sure?",
+      "deleteConfirmDescription": "This action cannot be undone.",
+      "cancelButton": "Cancel",
+      "confirmDeleteButton": "Yes, delete it"
     },
     "editor": {
       "bold": "Bold",
@@ -1411,6 +1418,10 @@
       },
       "googleTitle": "Google",
       "googleDescription": "Connect your Gmail for email management.",
+      "googleCalendar": {
+        "title": "Google Calendar",
+        "description": "Sync your tasks and events with your calendar."
+      },
       "microsoftTitle": "Microsoft",
       "microsoftDescription": "Connect your Outlook for email management.",
       "linkedinTitle": "LinkedIn",

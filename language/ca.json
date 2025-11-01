@@ -124,7 +124,14 @@
     "addToBlacklist": "Afegeix remitent a la llista negra",
     "noTicketSelected": "Cap correu seleccionat",
     "toast": {
-      "contactSavedSuccess": "Contacte desat correctament"
+      "contactSavedSuccess": "Contacte desat correctament",
+      "preparingMessage": "Preparant missatge...",  
+      "messageReady": "Missatge a punt!",
+      "errorPreparingMessage": "Error preparant el missatge",
+      "deleteConfirmTitle": "Estàs segur?",
+      "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
+      "cancelButton": "Cancel·lar",
+      "confirmDeleteButton": "Sí, elimina'l"
     },
     "editor": {
       "bold": "Negreta",

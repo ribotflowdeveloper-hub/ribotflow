@@ -35,7 +35,7 @@ interface InboxClientProps {
 }
 
 export function InboxClient(props: InboxClientProps) {
-  const t = useTranslations('InboxPage');
+  const t = useTranslations('InboxPage.toast');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const searchParams = useSearchParams();
   // ✅ 1. Canviem el nom per a més claredat i per utilitzar-lo
@@ -82,7 +82,7 @@ export function InboxClient(props: InboxClientProps) {
             initialData: result.data ?? null
           });
         } else {
-          toast.error(t('errorPreparingMessage', { default: "Error preparant el missatge" }), { 
+          toast.error(t('errorPreparingMessage', { default: "Error preparant el missatge" }), {
             id: toastId, 
             description: result.message 
           });

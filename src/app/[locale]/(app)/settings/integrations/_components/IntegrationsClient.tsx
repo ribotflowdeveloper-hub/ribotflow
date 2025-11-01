@@ -6,7 +6,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { CheckCircle, Loader2, XCircle, Mail, Calendar } from 'lucide-react'; // ✅ NOU: Importem 'Calendar'
+import { CheckCircle, Loader2, XCircle, Mail } from 'lucide-react'; // ✅ NOU: Importem 'Calendar'
 import {
     // ✅ NOU: Importem les accions actualitzades
     connectGoogleGmailAction, disconnectGoogleGmailAction,
@@ -110,7 +110,7 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
 
     const integrationList = [
         // ✅ NOU: Llista d'integracions actualitzada
-        { name: 'google_gmail', title: t('googleTitle'), description: t('googleDescription'), icon: "https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" },
+        { name: 'google_gmail', title: t('googleTitle'), description: t('googleDescription'), icon: "https://w7.pngwing.com/pngs/758/665/png-transparent-new-logo-gmail-google-new-logos-icon.png" },
         // Hauràs d'afegir 'googleCalendar.title' i 'googleCalendar.description' als teus fitxers de traducció (p.ex. en.json)
         { name: 'google_calendar', title: t('googleCalendar.title'), description: t('googleCalendar.description'), icon: "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" },
         { name: 'microsoft', title: t('microsoftTitle'), description: t('microsoftDescription'), icon: "https://img.icons8.com/?size=100&id=117562&format=png&color=000000" },
