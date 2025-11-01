@@ -3,7 +3,7 @@
 import { useCallback, useRef, ChangeEvent, useTransition, useEffect } from 'react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 // Importem 'Editor' i 'JSONContent' per al tipat
-import { useEditor, EditorContent, JSONContent, type Editor } from '@tiptap/react';
+import { useEditor, EditorContent, JSONContent} from '@tiptap/react';
 // Importem 'EditorProps' per al tipat de 'handlePaste'
 import { type EditorProps } from '@tiptap/pm/view';
 // Assegura't que aquestes rutes siguin correctes
@@ -67,7 +67,7 @@ export default function EditorWysiwyg({
          * Gràcies al 'closure', tenim accés directe a la variable 'editor'
          * del hook 'useEditor' de forma totalment segura (type-safe).
          */
-        const handlePasteCallback: EditorProps['handlePaste'] = (view, event, slice) => {
+        const handlePasteCallback: EditorProps['handlePaste'] = (view, event) => {
             // No cal (view as any).editor, fem servir 'editor' directament.
             if (!editor.isActive('taskList')) {
                 return false; // Comportament per defecte

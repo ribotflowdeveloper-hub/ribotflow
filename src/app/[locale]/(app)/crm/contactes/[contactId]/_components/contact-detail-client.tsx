@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { ca, es, enUS } from 'date-fns/locale';
-import { type Database } from '@/types/supabase';
 import { type ContactDetail } from '../actions';
 import { useContactDetail } from '../_hooks/useContactDetail';
 import { ContactDetailHeader } from './ContactDetailHeader';
