@@ -1,21 +1,18 @@
-// /app/[locale]/network/_components/MapContainer.tsx
-
 "use client";
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useRef, useEffect } from 'react';
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
-// ✅ 1. Importem els nous tipus i icones
 import type { PublicProfileListItem, PublicProfileDetail, JobPostingListItem } from '../types';
 import { Building2, Globe, Briefcase, Loader2, Mail, Phone, MapPin } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
-// ✅ 2. Definim les noves props que rebem de NetworkClient
+// ✅ 1. Actualitzem les props: rebem 'displayMode'
 interface MapContainerProps {
     profiles: PublicProfileListItem[];
     jobPostings: JobPostingListItem[];
-    searchMode: 'profiles' | 'projects';
+    displayMode: 'all' | 'profiles' | 'projects'; // <-- CANVI AQUÍ
     
     selectedProfile: PublicProfileListItem | null;
     detailedProfile: PublicProfileDetail | null;
@@ -24,7 +21,6 @@ interface MapContainerProps {
     
     selectedProject: JobPostingListItem | null;
     onSelectProject: (project: JobPostingListItem | null) => void;
-    // (Pendent) Podríem afegir detailedProject i isProjectLoading
 }
 
 const formatWebsiteUrl = (url: string | null | undefined): string => {
@@ -38,7 +34,7 @@ const formatWebsiteUrl = (url: string | null | undefined): string => {
 export default function MapContainer({ 
     profiles, 
     jobPostings, 
-    searchMode,
+    displayMode, // ✅ 2. Fem servir 'displayMode'
     selectedProfile, 
     detailedProfile, 
     isLoading,
@@ -57,14 +53,14 @@ export default function MapContainer({
         }
     }, [selectedProfile]);
 
-    // ✅ 3. Nou efecte per volar al projecte seleccionat
+    // Efecte per volar al projecte seleccionat
     useEffect(() => {
         if (selectedProject && selectedProject.latitude != null && selectedProject.longitude != null && mapRef.current) {
             mapRef.current.flyTo({ center: [selectedProject.longitude, selectedProject.latitude], zoom: 14, duration: 1500 });
         }
     }, [selectedProject]);
 
-    // ✅ 4. Gestor per deseleccionar tot en arrossegar el mapa
+    // Gestor per deseleccionar tot en arrossegar el mapa
     const handleDragStart = () => {
         onSelectProfile(null);
         onSelectProject(null);
@@ -85,15 +81,15 @@ export default function MapContainer({
         >
             <NavigationControl position="top-right" />
             
-            {/* ✅ 5. Renderitzem Marcadors de PROFESSIONALS (Empreses) */}
-            {searchMode === 'profiles' && profiles.filter(p => p.latitude != null && p.longitude != null).map((profile) => (
+            {/* ✅ 3. Actualitzem la lògica: Mostrem si displayMode és 'all' O 'profiles' */}
+            {(displayMode === 'all' || displayMode === 'profiles') && profiles.filter(p => p.latitude != null && p.longitude != null).map((profile) => (
                 <Marker 
                     key={`profile-${profile.id}`} 
                     longitude={profile.longitude!} 
                     latitude={profile.latitude!} 
                     onClick={(e) => { 
                         e.originalEvent.stopPropagation(); 
-                        onSelectProfile(profile); // Cridem al handler de perfils
+                        onSelectProfile(profile);
                     }}
                 >
                     <div className="transform transition-transform duration-200 hover:scale-125">
@@ -105,19 +101,18 @@ export default function MapContainer({
                 </Marker>
             ))}
 
-            {/* ✅ 6. Renderitzem Marcadors de PROJECTES (Ofertes) */}
-            {searchMode === 'projects' && jobPostings.filter(p => p.latitude != null && p.longitude != null).map((project) => (
+            {/* ✅ 4. Actualitzem la lògica: Mostrem si displayMode és 'all' O 'projects' */}
+            {(displayMode === 'all' || displayMode === 'projects') && jobPostings.filter(p => p.latitude != null && p.longitude != null).map((project) => (
                 <Marker 
                     key={`job-${project.id}`} 
                     longitude={project.longitude!} 
                     latitude={project.latitude!} 
                     onClick={(e) => { 
                         e.originalEvent.stopPropagation(); 
-                        onSelectProject(project); // Cridem al handler de projectes
+                        onSelectProject(project);
                     }}
                 >
                     <div className="transform transition-transform duration-200 hover:scale-125">
-                        {/* Marcador diferent: Taronja i amb icona de maletí */}
                         <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-orange-500 flex items-center justify-center">
                             <Briefcase className="w-4 h-4 text-orange-300" />
                         </div>
@@ -125,12 +120,12 @@ export default function MapContainer({
                 </Marker>
             ))}
             
-            {/* ✅ 7. Popup per a PROFESSIONALS (codi existent) */}
+            {/* Popup per a PROFESSIONALS (sense canvis) */}
             {selectedProfile && selectedProfile.latitude != null && selectedProfile.longitude != null && (
                 <Popup 
                     longitude={selectedProfile.longitude} 
                     latitude={selectedProfile.latitude} 
-                    onClose={() => onSelectProfile(null)} // Deseleccionem en tancar
+                    onClose={() => onSelectProfile(null)}
                     closeOnClick={false} 
                     anchor="bottom" 
                     className="popup-dark"
@@ -182,20 +177,16 @@ export default function MapContainer({
                 </Popup>
             )}
 
-            {/* ✅ 8. NOU Popup per a PROJECTES */}
+            {/* Popup per a PROJECTES (sense canvis) */}
             {selectedProject && selectedProject.latitude != null && selectedProject.longitude != null && (
                 <Popup 
                     longitude={selectedProject.longitude} 
                     latitude={selectedProject.latitude} 
-                    onClose={() => onSelectProject(null)} // Deseleccionem en tancar
+                    onClose={() => onSelectProject(null)}
                     closeOnClick={false} 
                     anchor="bottom" 
                     className="popup-dark"
                 >
-                    {/* (Pendent) Aquí hi aniria un 'isLoadingProject' */}
-                    {/* {isProjectLoading && <div className="p-4 flex justify-center"><Loader2 className="animate-spin text-white" /></div>} */}
-
-                    {/* Mostrem les dades bàsiques que ja tenim */}
                     <div className="max-w-xs p-1 text-white space-y-2">
                         <div className="flex items-center gap-3">
                             {selectedProject.teams?.logo_url 
@@ -209,13 +200,10 @@ export default function MapContainer({
                         </div>
 
                         {selectedProject.address_text && (
-                             <p className="text-sm text-gray-300 flex items-center gap-2">
-                                <MapPin className="w-3 h-3" /> {selectedProject.address_text}
-                            </p>
+                                <p className="text-sm text-gray-300 flex items-center gap-2">
+                                    <MapPin className="w-3 h-3" /> {selectedProject.address_text}
+                                </p>
                         )}
-
-                        {/* (Pendent) Aquí mostrariem més detalls (descripció, skills) 
-                            si els carreguéssim amb una 'getJobPostingDetailsAction' */}
 
                         <div className="pt-2 border-t border-gray-700">
                             <a 

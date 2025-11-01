@@ -1,6 +1,6 @@
 // src/app/[locale]/(app)/network/_components/ProfileList.tsx
 
-import type { PublicProfileListItem } from '../types';
+import type { PublicProfileListItem } from '../../types';
 import ProfileCard from './ProfileCard';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/utils'; // <-- Importa cn
