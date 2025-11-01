@@ -1,23 +1,31 @@
+// /app/[locale]/(app)/finances/invoices/[id]/_components/InvoiceMainContent.tsx (MODIFICAT)
 "use client";
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input'; // ✅ Afegit
+import { Input } from '@/components/ui/input';
 import {
-  Plus,
+  // Plus, // Ja no s'usa
   ListChecks,
-  Calculator, // ✅ Afegit
+  Calculator,
+  BookPlus, // ✅ Importem la icona pel nou botó
 } from 'lucide-react';
+
+// ✅ Importem el component reutilitzable
+import { ProductSelector } from '@/components/shared/ProductSelector';
+
+// ✅ Importem els tipus necessaris
 import { type InvoiceItem } from '@/types/finances';
+import { type Database } from '@/types/supabase';
+type Product = Database['public']['Tables']['products']['Row'];
+
 import { InvoiceItemsEditor } from '../InvoiceItemsEditor';
 import { ModuleCard } from '@/components/shared/ModuleCard';
-import { formatCurrency } from '@/lib/utils/formatters'; // ✅ Afegit
+import { formatCurrency } from '@/lib/utils/formatters';
 
 // Importem el hook per agafar-ne els tipus
 import { useInvoiceDetail } from '../../_hooks/useInvoiceDetail';
-
-// Extraiem els tipus de retorn del hook
 type UseInvoiceDetailReturn = ReturnType<typeof useInvoiceDetail>;
 
 interface InvoiceMainContentProps {
@@ -25,7 +33,11 @@ interface InvoiceMainContentProps {
   handleFieldChange: UseInvoiceDetailReturn['handleFieldChange'];
   formIsDisabled: boolean;
   t: UseInvoiceDetailReturn['t'];
-  handleAddItem: () => void;
+  products: Product[]; // ✅ Hem d'afegir els productes
+
+  // Handlers d'items
+  handleAddItem: () => void; // Aquest és per 'onManualAdd'
+  handleAddProductFromLibrary: (product: Product) => void; // ✅ Nou handler
   handleItemChange: <K extends keyof InvoiceItem>(index: number, field: K, value: InvoiceItem[K]) => void;
   handleRemoveItem: (index: number) => void;
 }
@@ -35,32 +47,49 @@ export function InvoiceMainContent({
   handleFieldChange,
   formIsDisabled,
   t,
+  products, // ✅ Rebem els productes
   handleAddItem,
+  handleAddProductFromLibrary, // ✅ Rebem el nou handler
   handleItemChange,
   handleRemoveItem,
 }: InvoiceMainContentProps) {
+
+  // ✅ Definim les traduccions per al selector.
+  // Assegura't que tens un objecte "productSelector" al teu JSON de "InvoiceDetailPage"
+  // Ex: "InvoiceDetailPage.productSelector.addButton"
+  const t_selector = (key: string) => t(`productSelector.${key}`);
+
   return (
-    // ✅ Canvi de layout: 1 col per defecte, 4-col layout en 'lg'
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8 px-4 md:px-0">
 
-      {/* 1. LÍNIES DE FACTURA (Columna Esquerra 75%) */}
+      {/* 1. LÍNIES DE FACTURA */}
       <ModuleCard
         title={t('card.invoiceItems')}
         icon={ListChecks}
         variant="invoices"
         isCollapsible={false}
-        className="lg:col-span-3" // ✅ Ocupa 3/4
+        className="lg:col-span-3"
         actions={
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={handleAddItem}
-            disabled={formIsDisabled}
-            className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"
-          >
-            <Plus className="w-4 h-4 mr-2" /> {t('button.addItem')}
-          </Button>
+          // ✅ Substituïm el botó antic pel 'ProductSelector'
+          <ProductSelector
+            products={products}
+            onProductSelect={handleAddProductFromLibrary}
+            onManualAdd={handleAddItem}
+            t={t_selector}
+            // Personalitzem el trigger per al header del ModuleCard
+            triggerButton={
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={formIsDisabled}
+                className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"
+              >
+                {/* ✅ Usem la icona 'BookPlus' i un text adequat */}
+                <BookPlus className="w-4 h-4 mr-2" /> {t('button.addFromLibrary')}
+              </Button>
+            }
+          />
         }
       >
         <InvoiceItemsEditor
@@ -73,15 +102,16 @@ export function InvoiceMainContent({
         />
       </ModuleCard>
 
-      {/* 2. TOTALS (Mogut aquí des de MetaGrid) (Columna Dreta 25%) */}
+      {/* 2. TOTALS (Sense canvis) */}
       <ModuleCard
         title={t('card.totals')}
         icon={Calculator}
         variant="invoices"
         isCollapsible={false}
-        className="lg:col-span-1" // ✅ Ocupa 1/4
+        className="lg:col-span-1"
       >
         <div className="space-y-3">
+          {/* ... (Contingut de la targeta de totals idèntic) ... */}
           <div className="flex justify-between items-center">
             <Label htmlFor="discount_amount">{t('label.discount')}</Label>
             <Input

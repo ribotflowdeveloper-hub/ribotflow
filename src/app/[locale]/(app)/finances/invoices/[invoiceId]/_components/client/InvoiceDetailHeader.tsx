@@ -83,7 +83,7 @@ export function InvoiceDetailHeader({
   isFinalizing,
 }: InvoiceDetailHeaderProps) {
   return (
-    <div className="flex justify-between items-center gap-4 sticky top-[--header-height] bg-background py-3 z-10 border-b mb-6 px-4 md:px-0 -mx-4 md:-mx-0 sm:-mx-6 ">
+    <div className="flex justify-between items-center gap-4 sticky top-[--header-height] bg-background  z-10 border-b px-4 md:px-0 -mx-4 md:-mx-0 sm:-mx-6 ">
       {/* Part Esquerra */}
       <div className="flex items-center gap-3">
         <Button
