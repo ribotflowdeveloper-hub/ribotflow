@@ -1048,12 +1048,16 @@ export type Database = {
         Row: {
           address_text: string | null
           budget: number | null
+          city: string | null
+          country: string | null
           created_at: string
           description: string | null
           expires_at: string | null
           id: string
           latitude: number | null
           longitude: number | null
+          postcode: string | null
+          region: string | null
           required_skills: string[] | null
           status: Database["public"]["Enums"]["job_status"]
           team_id: string
@@ -1062,12 +1066,16 @@ export type Database = {
         Insert: {
           address_text?: string | null
           budget?: number | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           expires_at?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          postcode?: string | null
+          region?: string | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["job_status"]
           team_id: string
@@ -1076,12 +1084,16 @@ export type Database = {
         Update: {
           address_text?: string | null
           budget?: number | null
+          city?: string | null
+          country?: string | null
           created_at?: string
           description?: string | null
           expires_at?: string | null
           id?: string
           latitude?: number | null
           longitude?: number | null
+          postcode?: string | null
+          region?: string | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["job_status"]
           team_id?: string
@@ -1818,6 +1830,7 @@ export type Database = {
           due_date: string | null
           duration: number | null
           finish_date: string | null
+          google_calendar_id: string | null
           id: number
           is_active: boolean | null
           is_completed: boolean
@@ -1839,6 +1852,7 @@ export type Database = {
           due_date?: string | null
           duration?: number | null
           finish_date?: string | null
+          google_calendar_id?: string | null
           id?: number
           is_active?: boolean | null
           is_completed?: boolean
@@ -1860,6 +1874,7 @@ export type Database = {
           due_date?: string | null
           duration?: number | null
           finish_date?: string | null
+          google_calendar_id?: string | null
           id?: number
           is_active?: boolean | null
           is_completed?: boolean
@@ -3274,11 +3289,11 @@ export type Database = {
         Returns: unknown
       }
       st_generatepoints:
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
         | {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
-        | { Args: { area: unknown; npoints: number }; Returns: unknown }
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
@@ -3546,11 +3561,11 @@ export type Database = {
           }
       st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
       st_union:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
         | {
             Args: { geom1: unknown; geom2: unknown; gridsize: number }
             Returns: unknown
           }
-        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
       st_voronoilines: {
         Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
         Returns: unknown

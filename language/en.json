@@ -904,8 +904,12 @@
       "deleteConfirmDescription": "This action cannot be undone. The task will be permanently deleted.",
       "deleteConfirmAction": "Yes, delete",
       "toast": {
-        "deleteSuccessTitle": "Task Deleted",
-        "deleteErrorTitle": "Error deleting task"
+        "deleteSuccessTitle": "Task deleted",
+        "deleteErrorTitle": "Error deleting task",
+        "sendGoogle": "Google Calendar",
+        "syncingGoogle": "Syncing with Google...",
+        "syncError": "Error syncing with Google Calendar",
+        "updateGoogle": "Update Google Calendar"
       }
     },
     "addTaskDialog": {

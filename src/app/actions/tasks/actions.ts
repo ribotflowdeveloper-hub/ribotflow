@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { validateUserSession } from '@/lib/supabase/session';
 import { Tables, Json } from '@/types/supabase';
 import { JSONContent } from '@tiptap/react';
-
+import { getValidGoogleCalendarToken } from "@/lib/google/google-api"; // ✅ NOU: Importem el gestor de tokens
 import type { ActionResult } from '@/types/shared';
 
 type FormState = {
@@ -423,4 +423,160 @@ export async function getSignedUrlForFile(filePath: string): Promise<ActionResul
 
     // 4. Retornar èxit
     return { success: true, data: data.signedUrl };
+}
+
+
+type SyncResult = {
+  synced: boolean;
+  googleCalendarId: string | null;
+  message: string;
+};
+
+/**
+ * Sincronitza UNA tasca (crea o actualitza) amb Google Calendar.
+ */
+async function syncTaskWithGoogle(
+  task: Tables<"tasks">,
+  accessToken: string,
+): Promise<SyncResult> {
+
+  // 1. Definir l'inici i el final de l'esdeveniment
+  // Suposem que 'due_date' és l'hora de FINALITZACIÓ
+  const endDate = new Date(task.due_date as string);
+  
+  // Mirem si tenim durada. Si no, per defecte és 1 hora.
+  const durationInMinutes = typeof task.duration === 'number' ? task.duration : 60;
+  
+  // Calculem l'inici restant-li la durada al final
+  const startDate = new Date(endDate.getTime() - durationInMinutes * 60 * 1000);
+
+  // 2. Construir el cos de l'esdeveniment
+  const eventBody = {
+    summary: task.title,
+    description: task.description || "Tasca de Ribotflow",
+    start: {
+      dateTime: startDate.toISOString(),
+      timeZone: "UTC", // O la timezone de l'usuari
+    },
+    end: {
+      dateTime: endDate.toISOString(),
+      timeZone: "UTC",
+    },
+    // Podem afegir un enllaç de tornada a l'app (opcional)
+    // source: {
+    //   title: "Obrir a Ribotflow",
+    //   url: `https://ribotflow.com/tasks/${task.id}`
+    // }
+  };
+
+  let url: string;
+  let method: string;
+
+  // 3. Decidir si CREEM (POST) o ACTUALITZEM (PATCH)
+  if (task.google_calendar_id) {
+    // Ja existeix, fem un UPDATE (PATCH)
+    console.log(`Actualitzant tasca ${task.id} a Google Calendar...`);
+    url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${task.google_calendar_id}`;
+    method = "PATCH";
+  } else {
+    // És nova, fem un CREATE (POST)
+    console.log(`Creant tasca ${task.id} a Google Calendar...`);
+    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+    method = "POST";
+  }
+
+  // 4. Cridar a l'API de Google
+  const response = await fetch(url, {
+    method: method,
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(eventBody),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json();
+    console.error(`Error de Google API [${method}] per a la tasca ${task.id}:`, errorBody);
+    
+    // Cas especial: Si intentem actualitzar un event que no existeix (404)
+    if (response.status === 404 && task.google_calendar_id) {
+      console.log("L'esdeveniment no existia a Google. Forçant nova creació...");
+      // Netegem l'ID vell i intentem crear-lo de nou (només 1 cop)
+      const newTask = { ...task, google_calendar_id: null };
+      return syncTaskWithGoogle(newTask, accessToken);
+    }
+    
+    return {
+      synced: false,
+      googleCalendarId: task.google_calendar_id, // Retornem l'ID antic
+      message: errorBody.error.message || "Error desconegut de Google API",
+    };
+  }
+
+  // 5. Èxit! Obtenim l'ID de Google i el retornem
+  const googleEvent = await response.json();
+  return {
+    synced: true,
+    googleCalendarId: googleEvent.id, // Aquest és el nou ID
+    message: "Sincronitzat correctament.",
+  };
+}
+
+
+/**
+ * Acció pública per ser cridada des del botó del client.
+ * Sincronitza una tasca específica amb Google Calendar.
+ */
+export async function syncTaskToGoogleAction(
+  taskId: number,
+): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ("error" in session) {
+    return { success: false, message: "No autenticat" };
+  }
+  const { user, supabase } = session;
+
+  try {
+    // 1. Obtenim la tasca completa
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", taskId)
+      .single();
+
+    if (taskError) throw new Error(`No s'ha trobat la tasca amb ID ${taskId}`);
+
+    // 2. Obtenim un token vàlid (la nostra funció màgica)
+    // Passem l'ID de l'usuari que està fent l'acció
+    const accessToken = await getValidGoogleCalendarToken(user.id);
+
+    // 3. Cridem a la lògica de sincronització
+    const syncResult = await syncTaskWithGoogle(task, accessToken);
+
+    if (!syncResult.synced) {
+      throw new Error(syncResult.message);
+    }
+
+    // 4. Si ha anat bé, actualitzem la nostra BD amb el nou google_calendar_id
+    if (syncResult.googleCalendarId !== task.google_calendar_id) {
+      const { error: updateError } = await supabase
+        .from("tasks")
+        .update({ google_calendar_id: syncResult.googleCalendarId })
+        .eq("id", task.id);
+      
+      if (updateError) {
+        // No és un error fatal, però l'hem de registrar
+        console.error(`Error en desar el google_calendar_id per a la tasca ${task.id}:`, updateError);
+      }
+    }
+
+    revalidatePath("/[locale]/(app)/crm/calendari", "layout");
+    return { success: true, message: "Tasca sincronitzada amb Google Calendar!" };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut";
+    console.error("[syncTaskToGoogleAction] Error:", message, error);
+    return { success: false, message: message };
+  }
 }

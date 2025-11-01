@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react'; // ✅ NOU: Importem useTransition
 import { EnrichedTask } from './TaskDialogManager';
 import { DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
@@ -12,13 +12,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Clock } from "lucide-react";
+// ✅ NOU: Importem 'Loader2' i 'Send' (per a Google)
+import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Clock, Send, Loader2, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { deleteTask, updateSimpleTask, setTaskActiveStatus, getSignedUrlForFile } from '@/app/actions/tasks/actions'; import { toast } from 'sonner';
+// ✅ NOU: Importem la nova acció
+import { deleteTask, updateSimpleTask, setTaskActiveStatus, getSignedUrlForFile, syncTaskToGoogleAction } from '@/app/actions/tasks/actions';
+import { toast } from 'sonner';
 import { priorityStyles, TaskPriority } from '@/config/styles/task';
 import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
-import { Tables, Json } from '@/types/supabase'; // <-- Importa Json
+import { Tables, Json } from '@/types/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Caladea } from 'next/font/google';
+
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
 
 function PrivateImage({ src, alt }: { src: string; alt: string }) {
@@ -64,10 +69,10 @@ function countCheckboxesFromHtml(html: string): { total: number; completed: numb
 }
 // --- HOOK PER AL CRONÒMETRE EN TEMPS REAL ---
 const useDialogTaskTimer = (
-  isTaskActive: boolean, // ✅ [MODIFICAT] Abans: task: EnrichedTask
-  localLog: LogEntry[] | null
+    isTaskActive: boolean, // ✅ [MODIFICAT] Abans: task: EnrichedTask
+    localLog: LogEntry[] | null
 ) => {
-    const [liveTime, setLiveTime] = useState("00:00:00");
+    const [liveTime, setLiveTime] = useState("00:00:00");
 
     useEffect(() => {
         let intervalId: NodeJS.Timeout | null = null;
@@ -144,12 +149,15 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
     const t = useTranslations('DashboardClient.taskActions');
     const t2 = useTranslations('DashboardClient.taskDetails');
 
+    // ✅ NOU: 'useTransition' per a la sincronització
+    const [isSyncing, startSyncTransition] = useTransition();
+
     const [isActive, setIsActive] = useState(task.is_active || false);
     const [localLog, setLocalLog] = useState(task.time_tracking_log as LogEntry[] | null);
     const [currentDescription, setCurrentDescription] = useState(task.description || '');
 
-    const liveTimeDisplay = useDialogTaskTimer(isActive, localLog); // <-- Ús del nou hook
-
+    const liveTimeDisplay = useDialogTaskTimer(isActive, localLog);
+    const isSynced = !!task.google_calendar_id;
     useEffect(() => {
         setIsActive(task.is_active || false);
         setLocalLog(task.time_tracking_log as LogEntry[] | null);
@@ -199,7 +207,7 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
 
             const updateData: Partial<Tables<'tasks'>> = {
                 description: newHtml,
-                checklist_progress: newProgress as unknown as Json // Cast a Json
+                checklist_progress: newProgress as unknown as Json
             };
 
             const { error } = await updateSimpleTask(task.id, updateData);
@@ -216,22 +224,13 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
     let taskItemIndex = -1;
     const options = {
         replace: (domNode: DOMNode) => {
-
-            // ✅ 1. LÒGICA PER A IMATGES
             if (domNode instanceof Element && domNode.name === 'img') {
                 const src = domNode.attribs.src;
                 const alt = domNode.attribs.alt;
-
-                // Si el 'src' és un filePath privat (no una URL http)...
                 if (src && src.startsWith('task-uploads/')) {
-                    // ...el substituïm pel nostre component intel·ligent
                     return <PrivateImage src={src} alt={alt || 'Imatge de la tasca'} />;
                 }
-                // Si és una URL pública (http://...), 'html-react-parser'
-                // la renderitzarà normalment (no cal 'else').
             }
-
-            // ✅ 2. LA TEVA LÒGICA EXISTENT PER A 'taskItem'
             if (domNode instanceof Element && domNode.attribs && domNode.attribs['data-type'] === 'taskItem') {
                 taskItemIndex++;
                 const currentIndex = taskItemIndex;
@@ -257,8 +256,6 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
         }
     };
 
-    // ✅ --- INICI DE LA MODIFICACIÓ ---
-    // Aquesta és la funció per marcar com a completada / reobrir
     const handleToggle = async () => {
         const isCompleting = !task.is_completed;
         const updateData = {
@@ -270,15 +267,10 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             toast.error(t('toast.errorTitle'), { description: "No s'ha pogut actualitzar la tasca." });
         } else {
             toast.success("Estat de la tasca actualitzat.");
-
-            // 1. Notifiquem al pare que les dades han canviat
             onTaskMutation();
-
-            // 2. Cridem a 'onClose' directament per tancar el diàleg
             onClose();
         }
     };
-    // ✅ --- FI DE LA MODIFICACIÓ ---
 
     const handleDelete = async () => {
         const { error } = await deleteTask(task.id);
@@ -290,6 +282,29 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
             onTaskMutation();
             onClose();
         }
+    };
+
+    // ✅ NOU: Funció per gestionar la sincronització
+    const handleSyncToGoogle = () => {
+        // Hauràs d'afegir aquests textos al teu fitxer de traducció
+        const toastId = toast.loading(t('toast.syncingGoogle'));
+
+        startSyncTransition(async () => {
+            const result = await syncTaskToGoogleAction(task.id);
+
+            toast.dismiss(toastId); // Tanca el 'loading'
+
+            if (result.success) {
+                toast.success(result.message || t('toast.syncSuccessGoogle'));
+                // Actualitzem les dades del diàleg sense tancar-lo
+                // Això farà que 'isSynced' es posi a 'true' i el botó canviï
+                onTaskMutation({ closeDialog: false });
+            } else {
+                toast.error(t('toast.syncErrorGoogle'), {
+                    description: result.message || "Error desconegut.",
+                });
+            }
+        });
     };
 
     return (
@@ -341,11 +356,37 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
                 </div>
             </div>
 
+
+
             <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2 border-t pt-4">
-                <div>
+                <div className='flex items-center gap-2'>
                     <Button variant="ghost" onClick={onSetEditMode}>
                         <Pencil className="w-4 h-4 mr-2" /> Editar
                     </Button>
+                    {/* ✅✅✅ AQUEST ÉS EL BLOC MODIFICAT ✅✅✅ */}
+                    <Button
+                        variant={isSynced ? "ghost" : "outline"} // Canvi de variant
+                        className="w-full"
+                        onClick={handleSyncToGoogle}
+                        disabled={isSyncing}
+                    >
+                        {isSyncing ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            // Icona condicional
+                            isSynced ? (
+                                <RefreshCw className="w-4 h-4 mr-2" /> // Icona d'actualitzar
+                            ) : (
+                                <Calendar className="w-4 h-4 mr-2" /> // Icona d'enviar
+                            )
+                        )}
+                        {/* Text condicional (que ja tenies) */}
+                        {isSynced
+                            ? t('toast.updateGoogle') // "Actualitzar a Google Calendar"
+                            : t('toast.sendGoogle') // "Enviar a Google Calendar"
+                        }
+                    </Button>
+                    {/* ✅✅✅ FI DEL BLOC MODIFICAT ✅✅✅ */}
                 </div>
                 <div className='flex items-center gap-2'>
                     <AlertDialog>

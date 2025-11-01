@@ -899,8 +899,12 @@
       "deleteConfirmDescription": "Esta acción no se puede deshacer. La tarea se eliminará permanentemente.",
       "deleteConfirmAction": "Sí, eliminar",
       "toast": {
-        "deleteSuccessTitle": "Tarea Eliminada",
-        "deleteErrorTitle": "Error al eliminar la tarea"
+        "deleteSuccessTitle": "Tarea eliminada",
+        "deleteErrorTitle": "Error al eliminar la tarea",
+        "sendGoogle": "Google Calendar",
+        "syncingGoogle": "Sincronizando con Google...",
+        "syncError": "Error al sincronizar con Google Calendar",
+        "updateGoogle": "Actualizar Google Calendar"
       }
     },
     "addTaskDialog": {

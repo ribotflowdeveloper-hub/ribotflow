@@ -936,7 +936,11 @@
       "deleteConfirmAction": "Sí, eliminar",
       "toast": {
         "deleteSuccessTitle": "Tasca Eliminada",
-        "deleteErrorTitle": "Error en eliminar la tasca"
+        "deleteErrorTitle": "Error en eliminar la tasca",
+        "sendGoogle": "Google Calendar",
+        "syncingGoogle": "Sincronitzant amb Google...",
+        "syncError": "Error en sincronitzar amb Google Calendar",
+        "updateGoogle": "Actualitzar a Google Calendar"
       }
     },
     "addTaskDialog": {
