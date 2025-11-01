@@ -1,6 +1,6 @@
 // src/app/[locale]/(app)/network/_components/ProjectList.tsx
 
-import type { JobPostingListItem } from '../types';
+import type { JobPostingListItem } from '../../types';
 // ✅ CORRECCIÓ: Importem 'ProjectCard', no 'ProfileCard'
 import ProjectCard from './ProjectCard'; 
 import { useTranslations } from 'next-intl';

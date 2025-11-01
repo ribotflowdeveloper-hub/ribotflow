@@ -3,7 +3,7 @@
 "use client";
 
 import { Briefcase } from 'lucide-react';
-import type { JobPostingListItem } from '../types'; // El nostre nou tipus
+import type { JobPostingListItem } from '../../types'; // El nostre nou tipus
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/utils';

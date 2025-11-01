@@ -1,7 +1,7 @@
 // src/stores/navigationStore.ts
 
 import { create } from 'zustand';
-// Importem el tipus que defineix com és un equip
+// ✅ 1. Importem el nou tipus que acabem de crear
 import type { ActiveTeam } from '@/types/app/navigation'; 
 
 interface NavigationState {
@@ -10,10 +10,9 @@ interface NavigationState {
   isChatbotOpen: boolean;
   toggleChatbot: () => void;
   
-  // ✅ --- AQUESTES SÓN LES LÍNIES QUE FALTAVEN ---
+  // ✅ 2. AFEGIM LES PROPIETATS QUE FALTAVEN
   activeTeam: ActiveTeam | null;
   setActiveTeam: (team: ActiveTeam | null) => void;
-  // ✅ -------------------------------------------
 }
 
 export const useNavigationStore = create<NavigationState>((set) => ({
@@ -22,8 +21,7 @@ export const useNavigationStore = create<NavigationState>((set) => ({
   isChatbotOpen: false,
   toggleChatbot: () => set((state) => ({ isChatbotOpen: !state.isChatbotOpen })),
 
-  // ✅ --- AFEGIM ELS VALORS INICIALS ---
+  // ✅ 3. AFEGIM ELS VALORS PER DEFECTE
   activeTeam: null, // Comença sent null
   setActiveTeam: (team) => set({ activeTeam: team }),
-  // ✅ ---------------------------------
 }));
