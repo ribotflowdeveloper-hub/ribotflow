@@ -1,3 +1,4 @@
+// src/app/[locale]/(app)/settings/integrations/_components/IntegrationsClient.tsx
 "use client";
 
 import React, { useState, useTransition, useEffect } from 'react';
@@ -5,38 +6,40 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { CheckCircle, Loader2, XCircle, Mail } from 'lucide-react';
-import { 
-    connectGoogleAction, disconnectGoogleAction, 
+import { CheckCircle, Loader2, XCircle, Mail, Calendar } from 'lucide-react'; // ✅ NOU: Importem 'Calendar'
+import {
+    // ✅ NOU: Importem les accions actualitzades
+    connectGoogleGmailAction, disconnectGoogleGmailAction,
+    connectGoogleCalendarAction, disconnectGoogleCalendarAction,
     connectMicrosoftAction, disconnectMicrosoftAction,
     connectLinkedInAction, disconnectLinkedInAction,
     connectFacebookAction, disconnectFacebookAction,
-    disconnectCustomEmailAction // Importa la nova acció
+    disconnectCustomEmailAction
 } from '../actions';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
-// Importa el nou component de diàleg
 import { ImapSmtpDialog } from './ImapSmtpDialog';
 
-// Importem les teves imatges locals
 import instagram from '@/../public/instagram.jpeg';
 import facebook from '@/../public/facebook.jpeg';
 import linkedin from '@/../public/linkedin.png';
 
 interface IntegrationsClientProps {
     initialConnectionStatuses: {
-        google: boolean;
+        // ✅ NOU: Tipus actualitzat
+        google_gmail: boolean;
+        google_calendar: boolean;
         microsoft: boolean;
         linkedin: boolean;
         facebook: boolean;
         instagram: boolean;
-        custom_email: boolean; // Afegeix el nou estat
+        custom_email: boolean;
     };
 }
 
-// Definim el tipus per als proveïdors per a més seguretat
-type Provider = 'google' | 'microsoft' | 'linkedin' | 'facebook' | 'custom_email';
+// ✅ NOU: Tipus de Provider actualitzat
+type Provider = 'google_gmail' | 'google_calendar' | 'microsoft' | 'linkedin' | 'facebook' | 'custom_email';
 
 export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsClientProps) {
     const t = useTranslations('SettingsPage.integrations');
@@ -59,9 +62,9 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
         }
         if (success === 'true') {
             toast.success(t('toast.success'), { description: t('toast.connectedSuccess') });
-            router.refresh(); 
+            router.refresh();
         }
-        
+
         if (error || success) {
             router.replace(pathname, { scroll: false });
         }
@@ -69,7 +72,9 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
 
     const handleConnect = (provider: Provider) => {
         startTransition(() => {
-            if (provider === 'google') connectGoogleAction();
+            // ✅ NOU: Lògica de connexió actualitzada
+            if (provider === 'google_gmail') connectGoogleGmailAction();
+            if (provider === 'google_calendar') connectGoogleCalendarAction();
             if (provider === 'microsoft') connectMicrosoftAction();
             if (provider === 'linkedin') connectLinkedInAction();
             if (provider === 'facebook') connectFacebookAction();
@@ -79,14 +84,16 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
     const handleDisconnect = (provider: Provider) => {
         startTransition(async () => {
             const actionMap = {
-                google: disconnectGoogleAction,
+                // ✅ NOU: Mapa d'accions actualitzat
+                google_gmail: disconnectGoogleGmailAction,
+                google_calendar: disconnectGoogleCalendarAction,
                 microsoft: disconnectMicrosoftAction,
                 linkedin: disconnectLinkedInAction,
                 facebook: disconnectFacebookAction,
-                custom_email: disconnectCustomEmailAction, // Afegeix la nova acció
+                custom_email: disconnectCustomEmailAction,
             };
             const result = await actionMap[provider]();
-            
+
             if (result.success) {
                 toast.success(result.message);
                 if (provider === 'facebook') {
@@ -100,16 +107,18 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
             }
         });
     };
-    
+
     const integrationList = [
-        { name: 'google', title: t('googleTitle'), description: t('googleDescription'), icon: "https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" },
+        // ✅ NOU: Llista d'integracions actualitzada
+        { name: 'google_gmail', title: t('googleTitle'), description: t('googleDescription'), icon: "https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg" },
+        // Hauràs d'afegir 'googleCalendar.title' i 'googleCalendar.description' als teus fitxers de traducció (p.ex. en.json)
+        { name: 'google_calendar', title: t('googleCalendar.title'), description: t('googleCalendar.description'), icon: "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" },
         { name: 'microsoft', title: t('microsoftTitle'), description: t('microsoftDescription'), icon: "https://img.icons8.com/?size=100&id=117562&format=png&color=000000" },
         { name: 'linkedin', title: t('linkedinTitle'), description: t('linkedinDescription'), icon: linkedin },
     ] as const;
 
-    // Funció per actualitzar l'estat després de la connexió IMAP
     const handleCustomEmailSuccess = () => {
-        setConnections(prev => ({...prev, custom_email: true}));
+        setConnections(prev => ({ ...prev, custom_email: true }));
         router.refresh();
     }
 
@@ -117,7 +126,7 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="glass-card p-4 sm:p-6 md:p-8 space-y-4">
                 <h2 className="text-xl font-semibold mb-2">{t('title')}</h2>
-                {/* Integració Correu Personalitzat */}
+                {/* Integració Correu Personalitzat (sense canvis) */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-4">
                         <div className="flex-shrink-0 h-[34px] w-[34px] bg-primary/10 rounded-lg flex items-center justify-center">
@@ -148,6 +157,8 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
                         )}
                     </div>
                 </div>
+
+                {/* Llista d'integracions principals */}
                 {integrationList.map((item) => (
                     <div key={item.name} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
                         <div className="flex items-center gap-4">
@@ -158,6 +169,7 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
                             </div>
                         </div>
                         <div className="w-full sm:w-auto flex-shrink-0">
+                            {/* ✅ NOU: Lògica de connexió actualitzada */}
                             {connections[item.name] ? (
                                 <div className="flex items-center justify-between w-full sm:gap-4">
                                     <span className="flex items-center gap-2 text-green-500 text-sm"><CheckCircle className="w-5 h-5" /> {t('statusConnected')}</span>
@@ -179,6 +191,7 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
                     </div>
                 ))}
 
+                {/* Secció de Meta (Facebook/Instagram) (sense canvis) */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center gap-4">
                         <div className="flex -space-x-2 flex-shrink-0">
@@ -204,10 +217,8 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
                             <form action={() => handleConnect('facebook')} className="w-full">
                                 <Button type="submit" disabled={isPending} className="w-full">
                                     {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                    {t('connectButton')}
-                                </Button>
-                            </form>
-                        )}
+                                    {t('connectButton')}                       </Button>
+                            </form>)}
                     </div>
                 </div>
             </div>

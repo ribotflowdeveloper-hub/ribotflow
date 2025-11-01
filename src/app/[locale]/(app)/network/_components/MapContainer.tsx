@@ -207,7 +207,7 @@ export default function MapContainer({
 
                         <div className="pt-2 border-t border-gray-700">
                             <a 
-                                href={`/app/comunicacio/inbox?to=${selectedProject.team_id}`} // Enllaç provisional a l'inbox
+                                href={`/app/inbox?to=${selectedProject.team_id}`} // Enllaç provisional a l'inbox
                                 className="text-sm text-purple-400 hover:underline"
                             >
                                 Contactar

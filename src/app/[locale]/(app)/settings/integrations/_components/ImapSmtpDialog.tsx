@@ -33,7 +33,7 @@ export function ImapSmtpDialog({ children, onSuccess }: ImapSmtpDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = React.useState(false);
 
-  const form = useForm<ImapSmtpFormData>({
+  const form = useForm({
     resolver: zodResolver(ImapSmtpSchema),
     defaultValues: {
       email: '',
@@ -44,6 +44,7 @@ export function ImapSmtpDialog({ children, onSuccess }: ImapSmtpDialogProps) {
       smtpPort: 465,
     },
   });
+
 
   const { register, handleSubmit, formState: { errors } } = form;
 

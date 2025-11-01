@@ -1430,6 +1430,10 @@
       },
       "googleTitle": "Google",
       "googleDescription": "Connecta el teu Gmail per a la gestió de correus.",
+      "googleCalendar": {
+        "title": "Google Calendar",
+        "description": "Sincronitza les teves tasques i esdeveniments amb el teu calendari."
+      },
       "microsoftTitle": "Microsoft",
       "microsoftDescription": "Connecta el teu Outlook per a la gestió de correus.",
       "linkedinTitle": "LinkedIn",
