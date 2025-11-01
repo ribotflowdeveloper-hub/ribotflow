@@ -1,12 +1,7 @@
 // Aquesta Edge Function s'executa als servidors de Supabase i utilitza Deno.
-import { serve } from 'https-deno.land/std/http/server.ts';
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from '@supabase/supabase-js';
-
-// Definim les capçaleres CORS per permetre crides des del navegador.
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders } from "shared/cors.ts";
 
 /**
  * Aquesta funció és el PUNT D'INICI del flux d'autenticació amb Google (OAuth 2.0).
@@ -64,7 +59,8 @@ serve(async (req) => {
 
   } catch (error) {
     // Gestió d'errors.
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });

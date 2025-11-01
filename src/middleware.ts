@@ -1,5 +1,3 @@
-// src/middleware.ts (FIX FINAL DE BUCLE I PERSISTÈNCIA)
-
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
@@ -8,6 +6,13 @@ import { locales, defaultLocale } from './i18n';
 const LOCALE_COOKIE_NAME = 'NEXT_LOCALE';
 const isProduction = process.env.NODE_ENV === 'production';
 type AppLocale = typeof locales[number];
+
+// -----------------------------------------------------------------
+// 🔑 AQUESTA ÉS LA CORRECCIÓ CLAU QUE VAM TROBAR AL FÒRUM
+// Forcem el middleware a executar-se en l'entorn Node.js
+// per evitar el conflicte de runtimes (Node vs Deno/Edge).
+export const runtime = 'nodejs';
+// -----------------------------------------------------------------
 
 export async function middleware(request: NextRequest) {
 

@@ -60,7 +60,10 @@ serve(async (req) => {
 
   } catch (error) {
     // Gestió d'errors.
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = typeof error === "object" && error !== null && "message" in error
+      ? (error as { message: string }).message
+      : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { "Content-Type": "application/json" },
       status: 500,
     })

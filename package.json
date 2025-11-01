@@ -154,5 +154,8 @@
     "tailwindcss": "^3.4.4",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
+  },
+  "overrides": {
+    "semver": ">=5.7.2"
   }
 }

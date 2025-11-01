@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders } from "shared/cors.ts";
 
 serve(async (req) => {
   try {
@@ -66,7 +66,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ status: 'ok', processed: posts.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }});
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const errorMessage = typeof error === 'object' && error !== null && 'message' in error ? (error as { message: string }).message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
 

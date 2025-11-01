@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeaders } from "shared/cors.ts";
 
 /**
  * Aquesta Edge Function processa les dades del formulari d'onboarding d'un nou usuari.
@@ -75,7 +75,8 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error a la funció submit-onboarding:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = (error instanceof Error) ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     });
