@@ -15,13 +15,15 @@ import {
 import { finalizeInvoiceAction, saveInvoiceAction } from "../actions"; // ✅ Assegura't que la ruta és correcta
 
 import { formatDate } from "@/lib/utils/formatters"; // Import formatDate
+// ✅ Importem el tipus de Producte
+import { type Database } from "@/types/supabase";
+type Product = Database["public"]["Tables"]["products"]["Row"];
 
 interface UseInvoiceDetailProps {
     initialData: InvoiceDetail | null;
     isNew: boolean;
-    // clients?: { id: number; nom: string | null }[];
-    // products?: { id: number; name: string | null; price: number | null }[];
-    // projects?: { id: number; name: string | null }[];
+    userId: string; // ✅ Necessitem el User ID per als nous items
+    teamId: string; // ✅ Necessitem el Team ID per als nous items
 }
 
 // Valors per defecte actualitzats
@@ -66,6 +68,8 @@ const defaultInitialData: InvoiceFormData = {
 export function useInvoiceDetail({
     initialData,
     isNew,
+    userId, // ✅ Rebem el userId
+    teamId, // ✅ Rebem el teamId
 }: UseInvoiceDetailProps) {
     const t = useTranslations("InvoiceDetailPage");
     const router = useRouter();
@@ -285,8 +289,8 @@ export function useInvoiceDetail({
             total: 0,
             created_at: new Date().toISOString(),
             tax_rate: null, // Taxa per línia (si la implementes)
-            user_id: "",
-            team_id: "",
+            user_id: userId, // ✅ Assignem el user ID
+            team_id: teamId, // ✅ Assignem el team ID
             product_id: null,
             // Nous camps
             discount_percentage: null, // O 0
@@ -297,8 +301,7 @@ export function useInvoiceDetail({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
         }));
-    }, [formData.id]);
-
+    }, [formData.id, userId, teamId]); // ✅ Afegim dependències
     // --- Esborrar Item (sense canvis) ---
     const handleRemoveItem = useCallback((index: number) => {
         setFormData((prev) => {
@@ -310,7 +313,29 @@ export function useInvoiceDetail({
             return prev;
         });
     }, []);
-
+    // ✅ --- NOU HANDLER: Afegir des de la Llibreria (Cridat per ProductSelector -> onProductSelect) ---
+    const handleAddProductFromLibrary = useCallback((product: Product) => {
+        const newItem: InvoiceItem = {
+            id: `temp-${Date.now()}-${Math.random()}`,
+            invoice_id: typeof formData.id === "number" ? formData.id : 0,
+            description: product.name || product.description || "",
+            quantity: 1,
+            unit_price: product.price || 0,
+            total: product.price || 0,
+            created_at: new Date().toISOString(),
+            tax_rate: null,
+            user_id: userId, // ✅ Assignem el user ID
+            team_id: teamId, // ✅ Assignem el team ID
+            product_id: product.id, // ✅ Assignem el product ID
+            discount_percentage: null,
+            discount_amount: null,
+            reference_sku: null, // Podries afegir 'product.sku' si existeix
+        };
+        setFormData((prev) => ({
+            ...prev,
+            invoice_items: [...(prev.invoice_items || []), newItem],
+        }));
+    }, [formData.id, userId, teamId]); // ✅ Afegim dependències
     // --- Submit Handler (Inclou nous camps a enviar) ---
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -439,6 +464,7 @@ export function useInvoiceDetail({
         handleFieldChange,
         handleItemChange,
         handleAddItem,
+        handleAddProductFromLibrary, // ✅ Retornem el nou handler per 'onProductSelect'
         handleRemoveItem,
         handleSubmit,
         handleFinalize, // ✅ Retorna el nou handler

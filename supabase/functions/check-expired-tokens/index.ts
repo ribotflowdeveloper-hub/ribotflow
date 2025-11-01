@@ -71,7 +71,10 @@ serve(async (req) => {
                     expires_at: new Date(Date.now() + (newTokens.expires_in - 300) * 1000),
                 }).eq('id', token.id);
                 logs.push(`Token PERSONAL de ${token.provider} (usuari ${token.user_id}) renovat.`);
-            } catch (e) { logs.push(`ERROR renovant token personal ${token.id}: ${e.message}`); }
+            } catch (e) { 
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                logs.push(`ERROR renovant token personal ${token.id}: ${errorMsg}`); 
+            }
         }
 
         // Renovem credencials d'equip (ex: Facebook si tingués refresh_token)
@@ -84,7 +87,10 @@ serve(async (req) => {
                     expires_at: new Date(Date.now() + (newTokens.expires_in - 300) * 1000),
                 }).eq('id', token.id);
                 logs.push(`Token D'EQUIP de ${token.provider} (equip ${token.team_id}) renovat.`);
-            } catch (e) { logs.push(`ERROR renovant token d'equip ${token.id}: ${e.message}`); }
+            } catch (e) { 
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                logs.push(`ERROR renovant token d'equip ${token.id}: ${errorMsg}`); 
+            }
         }
 
         // --- LÒGICA 2: NETEJA DE TOKENS CADUCATS SENSE 'refresh_token' (LinkedIn, etc.) ---
@@ -123,6 +129,7 @@ serve(async (req) => {
 
     } catch (error) {
         console.error("Error fatal a la funció token-manager:", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({ error: errorMsg }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 });

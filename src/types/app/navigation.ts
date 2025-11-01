@@ -41,3 +41,16 @@ export interface NavItem {
 
 
 }
+
+
+/**
+ * @summary Dades essencials de l'equip actiu.
+ * Aquestes són les dades que desarem al 'navigationStore'
+ * i que consumirem a components com 'NetworkClient'.
+ */
+export type ActiveTeam = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  // Podríem afegir més camps si fossin necessaris globalment
+};

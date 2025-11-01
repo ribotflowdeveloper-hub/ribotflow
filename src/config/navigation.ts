@@ -94,13 +94,13 @@ export const navModules: NavItem[] = [
     path: '/network',
     isSingle: true
   },
-  {
+  /*{
     id: 'projectStrocture',
     labelKey: 'architecture',
     icon: Workflow,
     path: '/projectStrocture',
     isSingle: true
-  },
+  },*/
 ];
 
 export const bottomItems: NavItem[] = [

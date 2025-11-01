@@ -8,8 +8,12 @@ import { useTranslations } from 'next-intl';
 import { Plus, LayoutGrid, Rows, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-// ✅ 1. Importem els nous tipus des del component de dades.
-import { type Stage, type Contact, type OpportunityWithContact } from './_components/PipelineData';
+// ✅ 1. Importem el tipus 'Row' complet de la base de dades
+import { type Database } from '@/types/supabase';
+type FullContact = Database['public']['Tables']['contacts']['Row'];
+
+// ✅ 2. Importem els altres tipus, però JA NO importem el 'Contact' que creava conflicte
+import { type Stage, type OpportunityWithContact } from './_components/PipelineData';
 import { usePipeline } from './_hooks/usePipeline';
 import { OpportunityDialog } from './_components/OpportunityDialog';
 import { ColumnsView } from './_components/ColumnsView';
@@ -17,14 +21,14 @@ import { RowsView } from './_components/RowsView';
 
 interface PipelineClientProps {
     initialStages: Stage[];
-    initialContacts: Contact[];
+    // ✅ 3. 'initialContacts' ara utilitza el tipus complet
+    initialContacts: FullContact[]; 
     initialOpportunities: OpportunityWithContact[];
 }
 
 export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
     const t = useTranslations('PipelinePage');
     
-    // ✅ 2. L'estat ara gestiona el tipus enriquit 'OpportunityWithContact'.
     const [opportunities, setOpportunities] = useState(initialOpportunities);
 
     useEffect(() => {
@@ -53,6 +57,9 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
             <OpportunityDialog
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
+                // ✅ 4. Aquesta línia ara és vàlida.
+                // Passem 'FullContact[]' al component 'OpportunityDialog',
+                // que també espera 'FullContact[]' (com vam arreglar abans).
                 contacts={initialContacts}
                 stages={initialStages}
                 onSuccess={handleSuccess}

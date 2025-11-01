@@ -81,7 +81,7 @@ export function RecentQuotes({ quotes }: RecentQuotesProps) {
       </div>
 
       {quotes.length > 3 && (
-        <Link href="/crm/quotes" className="flex items-center justify-center gap-1 text-sm font-semibold text-primary hover:underline">
+        <Link href="/finances/quotes" className="flex items-center justify-center gap-1 text-sm font-semibold text-primary hover:underline">
           {t('viewAll')} <ArrowUpRight className="w-4 h-4" />
         </Link>
       )}

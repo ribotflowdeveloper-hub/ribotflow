@@ -1,23 +1,24 @@
-// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteItems.tsx (Refactoritzat i Complet)
+// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteItems.tsx (REFACTORITZAT)
 "use client";
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Trash2, BookPlus, Save, Loader2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useTranslations } from 'next-intl';
 import { type Database } from '@/types/supabase';
 import { useQuoteItems } from '../_hooks/useQuoteItems';
+
+// ✅ Importem el component reutilitzable
+import { ProductSelector } from '@/components/shared/ProductSelector';
 
 // --- Tipus Derivats de la Base de Dades ---
 type QuoteItem = Database['public']['Tables']['quote_items']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
 interface QuoteItemsProps {
-    items: Partial<QuoteItem>[]; // Els ítems poden no tenir 'id' si són nous.
+    items: Partial<QuoteItem>[];
     onItemsChange: (newItems: Partial<QuoteItem>[]) => void;
     products: Product[];
     userId: string;
@@ -26,12 +27,27 @@ interface QuoteItemsProps {
 export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
     const t = useTranslations('QuoteEditor.items');
 
+    // ✅ Creem una funció 't' específica per al selector.
+    // Això assumeix que les teves traduccions estan a "QuoteEditor.items.productSelector.*"
+    // Ex: "QuoteEditor.items.productSelector.addButton"
+    const t_selector = (key: string) => t(`productSelector.${key}`);
+
     const {
-        isSavingProduct, isCreating, setIsCreating,
-        newProduct, setNewProduct, isPopoverOpen, setIsPopoverOpen,
-        handleItemChange, handleAddProduct, handleRemoveItem,
-        handleSaveNewProduct, handleManualItem
-    } = useQuoteItems({ ...props, t });
+        // ⛔ Aquests estats/handlers ja no existeixen aquí
+        // isSavingProduct, isCreating, setIsCreating,
+        // newProduct, setNewProduct, isPopoverOpen, setIsPopoverOpen,
+        // handleSaveNewProduct,
+
+        // ✅ Aquests són els handlers que utilitzarem
+        handleItemChange,
+        handleAddProduct, // Callback per ProductSelector
+        handleRemoveItem,
+        handleManualItem    // Callback per ProductSelector
+    } = useQuoteItems({
+        items: props.items,
+        onItemsChange: props.onItemsChange,
+        userId: props.userId
+    });
 
     return (
         <div className="p-4">
@@ -59,52 +75,14 @@ export const QuoteItems: React.FC<QuoteItemsProps> = (props) => {
                 ))}
             </div>
 
-            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="mt-4"><BookPlus className="w-4 h-4 mr-2" />{t('addButton')}</Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0">
-                    {isCreating ? (
-                        <div className="p-4 space-y-2">
-                            <p className="font-medium text-sm">{t('newProductTitle')}</p>
-                            <Input placeholder={t('newProductNamePlaceholder')} value={newProduct.name} onChange={(e) => setNewProduct(p => ({ ...p, name: e.target.value }))} />
-                            <Input type="number" placeholder={t('newProductPricePlaceholder')} value={newProduct.price} onChange={(e) => setNewProduct(p => ({ ...p, price: e.target.value }))} />
-                            <div className="flex justify-end gap-2 pt-2">
-                                <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)}>{t('cancelButton')}</Button>
-                                <Button size="sm" onClick={handleSaveNewProduct} disabled={isSavingProduct}>
-                                    {isSavingProduct && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                                    {t('saveAndAddButton')}
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <Command>
-                            <CommandInput placeholder={t('searchPlaceholder')} />
-                            <CommandList>
-                                <CommandEmpty>{t('emptySearch')}</CommandEmpty>
-                                <CommandGroup>
-                                    <CommandItem onSelect={handleManualItem}>
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        <span>{t('addManualItem')}</span>
-                                    </CommandItem>
-                                    <CommandItem onSelect={() => setIsCreating(true)}>
-                                        <Save className="mr-2 h-4 w-4" />
-                                        <span>{t('createNewItem')}</span>
-                                    </CommandItem>
-                                    {props.products.map((product) => (
-                                        <CommandItem key={product.id} value={product.name} onSelect={() => handleAddProduct(product)}>
-                                            <div className="flex justify-between w-full">
-                                                <span>{product.name}</span>
-                                                <span className="text-muted-foreground">€{product.price}</span>
-                                            </div>
-                                        </CommandItem>
-                                    ))}
-                                </CommandGroup>
-                            </CommandList>
-                        </Command>
-                    )}
-                </PopoverContent>
-            </Popover>
+            {/* ✅ Aquí substituïm tot el Popover/Command/Form pel nou component */}
+            <ProductSelector
+                products={props.products}
+                onProductSelect={handleAddProduct}
+                onManualAdd={handleManualItem}
+                t={t_selector}
+            />
+            {/* ⛔ Tot el codi antic de <Popover>...</Popover> s'ha eliminat */}
         </div>
     );
 };

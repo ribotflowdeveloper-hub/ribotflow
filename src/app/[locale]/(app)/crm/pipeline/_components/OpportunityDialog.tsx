@@ -3,9 +3,14 @@ import React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ca, es, enUS } from "date-fns/locale";
 import { format } from "date-fns";
-// ✅ 1. Importem els tipus correctes des del component de dades.
-import { type Stage, type Contact, type OpportunityWithContact } from './PipelineData';
-import { PIPELINE_STAGES_MAP } from '@/config/pipeline'; // ✅ Importem la constant des de /config
+
+// ✅ 1. Importem el tipus 'Row' complet de la base de dades
+import { type Database } from '@/types/supabase';
+type Contact = Database['public']['Tables']['contacts']['Row'];
+
+// ✅ 2. Renomenem la importació local que creava conflicte
+import { type Stage, type OpportunityWithContact } from './PipelineData';
+import { PIPELINE_STAGES_MAP } from '@/config/pipeline'; 
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -23,10 +28,9 @@ import { ContactSelector } from '@/components/features/contactes/ContactSelector
 interface Props {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    contacts: Contact[];
+    contacts: Contact[]; // ✅ 3. Ara 'contacts' utilitza el tipus complet
     stages: Stage[];
     onSuccess: () => void;
-    // ✅ 2. La prop ara espera el tipus enriquit.
     opportunityToEdit: Partial<OpportunityWithContact> | null;
 }
 
@@ -50,7 +54,7 @@ export function OpportunityDialog({ open, onOpenChange, contacts, stages, onSucc
                 <form action={handleSubmit} className="grid gap-4 pt-4">
                     <Input name="name" placeholder={t('namePlaceholder')} defaultValue={opportunityToEdit?.name || ''} required />
                     
-                    {/* El ContactSelector necessita ser adaptat per gestionar 'number | null' */}
+                    {/* ✅ 4. Aquesta línia ara és vàlida perquè els tipus coincideixen */}
                     <ContactSelector contacts={contacts} selectedId={selectedContactId} onSelect={setSelectedContactId} />
                     
                     <Select name="stage_name" defaultValue={opportunityToEdit?.stage_name || stages[0]?.name}>

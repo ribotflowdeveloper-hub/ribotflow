@@ -36,10 +36,12 @@
     "types/**/*.ts", // ✅ CORRECCIÓ: Assegurem que llegeixi el nostre fitxer global.d.ts
     "tailwind.config.js",
     "src/components/ui/toggle.jsx"
-, "src/config/styles"  ],
+, "src/config/styles" ,
+"src/types/declarations.d.ts" ],
   "exclude": [
     "node_modules",
-    "supabase" // ✅ AFEGEIX AQUESTA LÍNIA
+    "supabase", // ✅ AFEGEIX AQUESTA LÍNIA
+    "supabase/functions" // <--- AFEGEIX AQUESTA LÍNIA
 
   ]
 }

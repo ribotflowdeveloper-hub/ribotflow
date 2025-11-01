@@ -1,15 +1,13 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.1';
+import { corsHeaders } from "shared/cors.ts";
 
 // ✅ CORRECCIÓ CLAU: Aquestes línies configuren la llibreria per a que funcioni
 // correctament dins de l'entorn limitat d'una Edge Function.
 env.allowLocalModels = false;
 env.useBrowserCache = false;
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+
 
 // Carreguem el model una sola vegada per a reutilitzar-lo en múltiples invocacions.
 const embeddingGenerator = await pipeline(

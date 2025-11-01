@@ -1,104 +1,97 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic'; // 👈 1. Importar dynamic
+import React from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Save, Settings2, Eye, ArrowLeft, Lock, CheckCircle } from 'lucide-react';
+import {
+  Loader2, Save, Settings2, Eye, ArrowLeft, Lock, CheckCircle,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { type InvoiceDetail } from '@/types/finances'; // Encara el necessitem per 'initialData'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
   DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-
-import { type InvoiceDetail } from '@/types/finances';
+import { InvoicePreview } from '../InvoicePreview'; // Ajusta la ruta si 'InvoicePreview' no està al mateix directori
 import { type CompanyProfile } from '@/types/settings/team';
-import { type Contact } from '@/types/crm/contacts';
-import { type UseInvoiceDetailReturn } from '../InvoiceDetailClient';
-import { InvoicePreview } from '../InvoicePreview';
+import { type Database } from '@/types/supabase';
 
-// 2. Treure la importació estàtica (la que donava problemes)
-// import { InvoiceDownloadButton } from './PDF/InvoiceDownloadButton';
+// ✅ Importem el hook per agafar-ne els tipus
+import { useInvoiceDetail } from '../../_hooks/useInvoiceDetail';
 
-// 3. Definir el component de forma dinàmica AMB SSR DESACTIVAT
+type Contact = Database['public']['Tables']['contacts']['Row'];
+
+// ✅ Extraiem els tipus de retorn del hook
+type UseInvoiceDetailReturn = ReturnType<typeof useInvoiceDetail>;
+
 const InvoiceDownloadButton = dynamic(
-  () => import('../PDF/InvoiceDownloadButton').then((mod) => mod.InvoiceDownloadButton),
+  () => import('../PDF/InvoiceDownloadButton').then(mod => mod.InvoiceDownloadButton), // Ajusta la ruta
   {
-    ssr: false, // Això és la clau: no s'executarà al servidor
+    ssr: false,
     loading: () => (
-      // Mostrem un loader mentre el component JS es carrega al client
-      <Button variant="outline" disabled className='bg-card'>
-        <Loader2 className="w-4 h-4 animate-spin" />
+      <Button type="button" variant="outline" disabled className='bg-card'>
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+        Carregant PDF...
       </Button>
     )
   }
 );
 
 interface InvoiceDetailHeaderProps {
+  handleBack: () => void;
   title: string;
   description: string;
-  form: UseInvoiceDetailReturn;
+  t: UseInvoiceDetailReturn['t']; // ✅ Tipus corregit
+  formIsDisabled: boolean;
+  formData: UseInvoiceDetailReturn['formData']; // ✅ Tipus corregit
+  handleFieldChange: UseInvoiceDetailReturn['handleFieldChange']; // ✅ Tipus corregit
+  isPreviewOpen: boolean;
+  setIsPreviewOpen: (isOpen: boolean) => void;
+  isSaving: boolean;
   initialData: InvoiceDetail | null;
   company: CompanyProfile | null;
   contact: Contact | null;
+  isLocked: boolean;
+  isPending: boolean;
   isNew: boolean;
+  handleFinalize: () => void;
+  isFinalizing: boolean;
 }
 
 export function InvoiceDetailHeader({
+  handleBack,
   title,
   description,
-  form,
+  t,
+  formIsDisabled,
+  formData,
+  handleFieldChange,
+  isPreviewOpen,
+  setIsPreviewOpen,
+  isSaving,
   initialData,
   company,
   contact,
+  isLocked,
+  isPending,
   isNew,
+  handleFinalize,
+  isFinalizing,
 }: InvoiceDetailHeaderProps) {
-
-  const {
-    formData,
-    isPending,
-    isFinalizing,
-    isLocked,
-    handleFieldChange,
-    handleFinalize,
-    t,
-  } = form;
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const fromUrl = searchParams.get('from');
-
-  const isSaving = isPending || isFinalizing;
-  const formIsDisabled = isSaving || isLocked;
-
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const handleBack = () => {
-    if (fromUrl) {
-      router.push(fromUrl);
-    } else {
-      router.push('/finances/invoices');
-    }
-  };
-
-  // El return és idèntic a l'anterior
   return (
-    <div className="flex justify-between items-center gap-4 sticky top-[--header-height] bg-background  z-10 border-b mb-6 px-4 md:px-0 -mx-4 md:-mx-0 sm:-mx-6 ">
+    <div className="flex justify-between items-center gap-4 sticky top-[--header-height] bg-background  z-10 border-b px-4 md:px-0 -mx-4 md:-mx-0 sm:-mx-6 ">
       {/* Part Esquerra */}
       <div className="flex items-center gap-3">
         <Button
-          className='bg-card'
           type="button"
           variant="outline"
           size="icon"
           onClick={handleBack}
-          aria-label={t('button.goBack')
-
-          }
+          aria-label={t('button.goBack')}
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -107,12 +100,11 @@ export function InvoiceDetailHeader({
           {description && <p className="text-sm text-muted-foreground hidden md:block">{description}</p>}
         </div>
       </div>
-
       {/* Part Dreta */}
       <div className="flex items-center gap-2">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" disabled={formIsDisabled} className='bg-card'>
+            <Button variant="outline" size="icon" disabled={formIsDisabled}>
               <Settings2 className="h-4 w-4" />
               <span className="sr-only">{t('button.options')}</span>
             </Button>
@@ -143,7 +135,7 @@ export function InvoiceDetailHeader({
 
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" disabled={isSaving} className='bg-card'>
+            <Button type="button" variant="outline" disabled={isSaving}>
               <Eye className="w-4 h-4 mr-2" />
               {t('button.preview')}
             </Button>
@@ -163,10 +155,7 @@ export function InvoiceDetailHeader({
           </DialogContent>
         </Dialog>
 
-        {/* 4. Aquesta secció ara utilitza el component carregat dinàmicament */}
-        {/* El renderitzat és idèntic, però 'InvoiceDownloadButton' ara és la     */}
-        {/* versió dinàmica que només s'executa al client.                   */}
-        {formData.status !== 'Draft' && initialData && company && (
+        {formData.status !== 'Draft' && initialData && company && contact && (
           <InvoiceDownloadButton
             invoice={initialData}
             company={company}
@@ -174,7 +163,7 @@ export function InvoiceDetailHeader({
           />)}
 
         {!isLocked && (
-          <Button type="submit" disabled={isSaving} className='bg-card'>
+          <Button type="submit" disabled={isSaving}>
             {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
             {isPending ? t('button.saving') : t('button.saveDraft')}
           </Button>
@@ -186,7 +175,6 @@ export function InvoiceDetailHeader({
             variant="default"
             onClick={handleFinalize}
             disabled={isSaving}
-            className='bg-card'
           >
             {isFinalizing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
             {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
@@ -194,7 +182,7 @@ export function InvoiceDetailHeader({
         )}
 
         {isLocked && (
-          <Badge variant="outline" className="text-muted-foreground border-green-500 text-green-600 bg-card" >
+          <Badge variant="outline" className="text-muted-foreground border-green-500 text-green-500">
             <Lock className="w-4 h-4 mr-2" />
             {t('status.Sent')}
           </Badge>

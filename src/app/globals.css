@@ -97,7 +97,9 @@
 .futuristic-shadow {
   @apply shadow-[0_4px_30px_rgba(0,0,0,0.1)];
 }
-
+.mapbox-search-menu {
+  z-index: 100 !important;
+}
 .card-hover {
   @apply transition-all duration-300 hover:scale-105 hover:shadow-[0_15px_30px_rgba(102,126,234,0.3)];
 }
