@@ -6,14 +6,17 @@ import React, { useState, useMemo, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileList from './ProfileList';
-import type { PublicProfileListItem, PublicProfileDetail } from '../types';
+// ✅ 1. CORRECCIÓ: Importem el component correcte
+import ProjectList from './ProjecteList';
+import type { PublicProfileListItem, PublicProfileDetail, JobPostingListItem } from '../types';
 import { useTranslations } from 'next-intl';
-import { List, Map as MapIcon } from 'lucide-react';
+import { List, Map as MapIcon, Building2, Briefcase, PlusCircle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
 import { getTeamDetailsAction } from '../actions';
 import { toast } from 'sonner';
-
+import CreateProjectDialog from './CreateProjectDialog'; // El nostre nou component
+import { useNavigationStore } from '@/stores/navigationStore';
 const MapLoadingSkeleton = () => {
     const t = useTranslations('NetworkPage');
     return <div className="w-full h-full bg-muted flex items-center justify-center"><p className="text-muted-foreground">{t('loadingMap')}</p></div>;
@@ -21,28 +24,58 @@ const MapLoadingSkeleton = () => {
 
 const DynamicMapContainer = dynamic(() => import('./MapContainer'), { loading: () => <MapLoadingSkeleton />, ssr: false });
 
-// Alçada de la barra superior mòbil (AJUSTA A L'ALÇADA REAL)
 const MOBILE_HEADER_HEIGHT_PX = 64;
 
-export function NetworkClient({ profiles, errorMessage }: {
+export function NetworkClient({
+    profiles,
+    jobPostings,
+    errorMessage
+}: {
     profiles: PublicProfileListItem[];
+    jobPostings: JobPostingListItem[];
     errorMessage?: string;
 }) {
+    // --- ESTATS ---
     const [selectedProfile, setSelectedProfile] = useState<PublicProfileListItem | null>(null);
     const [detailedProfile, setDetailedProfile] = useState<PublicProfileDetail | null>(null);
     const [isDetailsLoading, startDetailsTransition] = useTransition();
+
+    const [selectedProject, setSelectedProject] = useState<JobPostingListItem | null>(null);
+
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-    const t = useTranslations('NetworkPage');
 
+    const [searchMode, setSearchMode] = useState<'profiles' | 'projects'>('profiles');
+
+    const t = useTranslations('NetworkPage');
+    // ✅ NOU ESTAT PER AL DIALOG
+    // ✅ NOU ESTAT PER AL DIALOG
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+    // ✅ Obtenim l'equip actiu de l'usuari
+    const { activeTeam } = useNavigationStore();
+
+
+
+    // --- MEMOS PER FILTRAR LLISTES ---
     const filteredProfiles = useMemo(() => {
-        // ... (igual que abans) ...
         if (!searchTerm) return profiles;
         return profiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [profiles, searchTerm]);
 
+    const filteredJobPostings = useMemo(() => {
+        if (!searchTerm) return jobPostings;
+        return jobPostings.filter(j =>
+            j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            j.teams?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [jobPostings, searchTerm]);
+
+
+    // --- GESTORS D'ESDEVENIMENTS ---
+
     const handleSelectProfile = (profile: PublicProfileListItem | null) => {
-         // ... (igual que abans) ...
+        setSelectedProject(null);
         setSelectedProfile(profile);
         setDetailedProfile(null);
 
@@ -51,7 +84,7 @@ export function NetworkClient({ profiles, errorMessage }: {
                 const result = await getTeamDetailsAction(profile.id);
                 if (result.success) {
                     setDetailedProfile(result.data as PublicProfileDetail);
-                    setViewMode('map'); // Canvia a mapa en seleccionar i carregar
+                    setViewMode('map');
                 } else {
                     toast.error("Error en carregar els detalls", { description: result.message });
                     setSelectedProfile(null);
@@ -60,12 +93,30 @@ export function NetworkClient({ profiles, errorMessage }: {
         }
     };
 
-    const handleMapDeselect = () => {
-        // ... (igual que abans) ...
+    const handleSelectProject = (project: JobPostingListItem | null) => {
         setSelectedProfile(null);
         setDetailedProfile(null);
+        setSelectedProject(project);
+
+        if (project) {
+            // TODO: 'getJobPostingDetailsAction(project.id)'
+            setViewMode('map');
+        }
+    };
+
+    const handleMapDeselect = () => {
+        setSelectedProfile(null);
+        setDetailedProfile(null);
+        setSelectedProject(null);
     }
 
+    const handleChangeSearchMode = (mode: 'profiles' | 'projects') => {
+        setSearchTerm('');
+        handleMapDeselect();
+        setSearchMode(mode);
+    }
+
+    // --- RENDER ---
 
     if (errorMessage) {
         return <div className="p-8 text-destructive text-center">{errorMessage}</div>;
@@ -90,73 +141,176 @@ export function NetworkClient({ profiles, errorMessage }: {
             </div>
 
             {/* Àrea de Contingut Principal */}
-            {/* ✅ fem servir 'relative' aquí perquè els fills 'absolute' s'hi posicionin */}
             <div className="flex-1 relative overflow-hidden lg:grid lg:grid-cols-3 lg:gap-8 lg:p-4">
 
                 {/* --- LAYOUT DESKTOP (lg:) --- */}
-                 {/* Llista Desktop */}
+
+                {/* Llista Desktop */}
                 <div className="hidden lg:flex lg:flex-col glass-effect rounded-lg overflow-hidden">
-                    <ProfileList
-                        profiles={filteredProfiles}
-                        searchTerm={searchTerm}
-                        onSearchChange={setSearchTerm}
-                        onSelectProfile={handleSelectProfile}
-                        selectedProfileId={selectedProfile?.id}
-                        className="flex flex-col h-full"
-                    />
+
+                    <div className="p-4 border-b border-border flex-shrink-0">
+                        <div className="flex w-full bg-muted p-1 rounded-md mb-4">
+                            <Button variant={searchMode === 'profiles' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeSearchMode('profiles')}>
+                                <Building2 className="mr-2 h-5 w-5" /> Professionals
+                            </Button>
+                            <Button variant={searchMode === 'projects' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeSearchMode('projects')}>
+                                <Briefcase className="mr-2 h-5 w-5" /> Projectes
+                            </Button>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold">
+                                {searchMode === 'profiles' ? t('networkTitle') : "Projectes Oberts"}
+                            </h2>
+                            {/* Només mostrem el botó si estem en mode projectes I l'usuari té un equip actiu */}
+                            {searchMode === 'projects' && activeTeam && (
+                                <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Publicar
+                                </Button>
+                            )}
+                        </div>
+
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder={searchMode === 'profiles' ? t('searchPlaceholder') : "Cercar projectes..."}
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    {/* ✅ 2. CORRECCIÓ: Renderitzat condicional arreglat */}
+                    {searchMode === 'profiles' ? (
+                        <ProfileList
+                            profiles={filteredProfiles}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            onSelectProfile={handleSelectProfile}
+                            selectedProfileId={selectedProfile?.id}
+                            className="flex-1"
+                        />
+                    ) : (
+                        <ProjectList
+                            projects={filteredJobPostings}
+                            onSelectProject={handleSelectProject}
+                            selectedProjectId={selectedProject?.id}
+                            className="flex-1"
+                        />
+                    )}
                 </div>
-                 {/* Mapa Desktop */}
-                 <div className="hidden lg:block lg:col-span-2 rounded-lg overflow-hidden">
+
+                {/* Mapa Desktop */}
+                <div className="hidden lg:block lg:col-span-2 rounded-lg overflow-hidden">
                     <DynamicMapContainer
                         profiles={filteredProfiles}
+                        jobPostings={filteredJobPostings}
+                        searchMode={searchMode}
                         selectedProfile={selectedProfile}
-                        onSelectProfile={handleMapDeselect}
                         detailedProfile={detailedProfile}
                         isLoading={isDetailsLoading}
+                        selectedProject={selectedProject}
+                        onSelectProfile={handleSelectProfile}
+                        onSelectProject={handleSelectProject}
                     />
                 </div>
 
-                 {/* --- LAYOUT MÒBIL (default) --- */}
-                 {/* Mapa Mòbil (Sempre al fons) */}
-                 {/* ✅ Posicionat absolutament dins del pare 'relative' */}
+                {/* --- LAYOUT MÒBIL (default) --- */}
+
+                {/* Mapa Mòbil (Sempre al fons) */}
                 <div className="absolute inset-0 lg:hidden">
                     <DynamicMapContainer
                         profiles={filteredProfiles}
+                        jobPostings={filteredJobPostings}
+                        searchMode={searchMode}
                         selectedProfile={selectedProfile}
-                        onSelectProfile={handleMapDeselect}
                         detailedProfile={detailedProfile}
                         isLoading={isDetailsLoading}
+                        selectedProject={selectedProject}
+                        onSelectProfile={handleSelectProfile}
+                        onSelectProject={handleSelectProject}
                     />
                 </div>
 
-                 {/* Llista Mòbil (Panell animat) */}
-                 <AnimatePresence>
+                {/* Llista Mòbil (Panell animat) */}
+                <AnimatePresence>
                     {viewMode === 'list' && (
                         <motion.div
-                            key="profile-list-mobile"
+                            key="panel-mobile"
                             className={cn(
-                                // ✅ Posicionat absolutament per omplir l'àrea de contingut
-                                "absolute inset-0 z-10 bg-background shadow-lg", // shadow-lg en lloc de shadow[...]
-                                "lg:hidden" // Només visible en pantalles petites
+                                "absolute inset-0 z-10 bg-background shadow-lg",
+                                "lg:hidden",
+                                "flex flex-col"
                             )}
-                            // ✅ Animació amb transform translateY
-                            initial={{ y: "100%" }} // Comença fora (desplaçat cap avall)
-                            animate={{ y: 0 }} // Puja (y=0)
-                            exit={{ y: "100%" }} // Baixa en sortir
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
                             transition={{ type: "tween", ease: "easeInOut", duration: 0.3 }}
                         >
-                            {/* ProfileList ha d'omplir aquest contenidor */}
-                            <ProfileList
-                                profiles={filteredProfiles}
-                                searchTerm={searchTerm}
-                                onSearchChange={setSearchTerm}
-                                onSelectProfile={handleSelectProfile}
-                                selectedProfileId={selectedProfile?.id}
-                                className="flex flex-col h-full" // Assegura alçada interna
-                            />
+                            <div className="p-4 border-b border-border flex-shrink-0">
+                                <div className="flex w-full bg-muted p-1 rounded-md mb-4">
+                                    <Button variant={searchMode === 'profiles' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeSearchMode('profiles')}>
+                                        <Building2 className="mr-2 h-5 w-5" /> Professionals
+                                    </Button>
+                                    <Button variant={searchMode === 'projects' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeSearchMode('projects')}>
+                                        <Briefcase className="mr-2 h-5 w-5" /> Projectes
+                                    </Button>
+                                </div>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl font-bold">
+                                        {searchMode === 'profiles' ? t('networkTitle') : "Projectes Oberts"}
+                                    </h2>
+                                    {searchMode === 'projects' && (
+                                        <Button size="sm" onClick={() => {/* TODO: Obrir Dialog */ }}>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Publicar
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        placeholder={searchMode === 'profiles' ? t('searchPlaceholder') : "Cercar projectes..."}
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* ✅ 3. CORRECCIÓ: Renderitzat condicional arreglat */}
+                            {searchMode === 'profiles' ? (
+                                <ProfileList
+                                    profiles={filteredProfiles}
+                                    searchTerm={searchTerm}
+                                    onSearchChange={setSearchTerm}
+                                    onSelectProfile={handleSelectProfile}
+                                    selectedProfileId={selectedProfile?.id}
+                                    className="flex-1"
+                                />
+                            ) : (
+                                <ProjectList
+                                    projects={filteredJobPostings}
+                                    onSelectProject={handleSelectProject}
+                                    selectedProjectId={selectedProject?.id}
+                                    className="flex-1"
+                                />
+                            )}
                         </motion.div>
                     )}
-                 </AnimatePresence>
+                </AnimatePresence>
+                {/* ✅ RENDERITZEM EL DIALOG (només si hi ha un equip actiu) */}
+                {activeTeam && (
+                    <CreateProjectDialog
+                        open={isCreateDialogOpen}
+                        onOpenChange={setIsCreateDialogOpen}
+                        teamId={activeTeam.id}
+                    />
+                )}
             </div>
         </div>
     );

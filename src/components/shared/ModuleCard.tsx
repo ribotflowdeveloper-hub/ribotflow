@@ -18,7 +18,7 @@ const cardHeaderVariants = cva(
         agenda: "bg-green-700",
         activity: "bg-orange-500",
         radar: "bg-purple-600",
-        invoices: "bg-red-500",
+        invoices: "bg-teal-500",
         quotes: "bg-teal-600",
         tasks: "bg-yellow-600",
         inbox: "bg-indigo-600",

@@ -1044,6 +1044,59 @@ export type Database = {
           },
         ]
       }
+      job_postings: {
+        Row: {
+          address_text: string | null
+          budget: number | null
+          created_at: string
+          description: string | null
+          expires_at: string | null
+          id: string
+          latitude: number | null
+          longitude: number | null
+          required_skills: string[] | null
+          status: Database["public"]["Enums"]["job_status"]
+          team_id: string
+          title: string
+        }
+        Insert: {
+          address_text?: string | null
+          budget?: number | null
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          required_skills?: string[] | null
+          status?: Database["public"]["Enums"]["job_status"]
+          team_id: string
+          title: string
+        }
+        Update: {
+          address_text?: string | null
+          budget?: number | null
+          created_at?: string
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          required_skills?: string[] | null
+          status?: Database["public"]["Enums"]["job_status"]
+          team_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_postings_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -3221,11 +3274,11 @@ export type Database = {
         Returns: unknown
       }
       st_generatepoints:
-        | { Args: { area: unknown; npoints: number }; Returns: unknown }
         | {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
@@ -3493,11 +3546,11 @@ export type Database = {
           }
       st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
       st_union:
-        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
         | {
             Args: { geom1: unknown; geom2: unknown; gridsize: number }
             Returns: unknown
           }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
       st_voronoilines: {
         Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
         Returns: unknown
@@ -3571,6 +3624,7 @@ export type Database = {
     Enums: {
       expense_status: "pending" | "paid" | "overdue" | "cancelled"
       invoice_status: "Draft" | "Sent" | "Paid" | "Overdue" | "Cancelled"
+      job_status: "open" | "closed"
       opportunity_stage:
         | "Nou Lead"
         | "Contactat"
@@ -3728,6 +3782,7 @@ export const Constants = {
     Enums: {
       expense_status: ["pending", "paid", "overdue", "cancelled"],
       invoice_status: ["Draft", "Sent", "Paid", "Overdue", "Cancelled"],
+      job_status: ["open", "closed"],
       opportunity_stage: [
         "Nou Lead",
         "Contactat",

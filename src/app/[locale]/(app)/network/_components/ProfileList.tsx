@@ -1,65 +1,52 @@
 // src/app/[locale]/(app)/network/_components/ProfileList.tsx
 
-import { Search } from 'lucide-react';
 import type { PublicProfileListItem } from '../types';
 import ProfileCard from './ProfileCard';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils/utils'; // <-- Importa cn
+import type { Dispatch, SetStateAction } from 'react'; // Importem tipus
 
 interface ProfileListProps {
     profiles: PublicProfileListItem[];
+    // Aquestes props les rep del NetworkClient (on hi ha la barra de cerca)
     searchTerm: string;
-    onSearchChange: (term: string) => void;
+    onSearchChange: Dispatch<SetStateAction<string>>; 
     onSelectProfile: (profile: PublicProfileListItem) => void;
     selectedProfileId?: string;
-    className?: string; // <-- Afegeix className com a prop opcional
+    className?: string; 
 }
 
 export default function ProfileList({
     profiles,
-    searchTerm,
-    onSearchChange,
+    // No necessitem searchTerm ni onSearchChange aquí dins,
+    // ja que la barra de cerca està al NetworkClient.
+    // Les mantenim (o les podríem treure) per si decidim moure la cerca aquí.
+    // De fet, per netejar, les traurem.
     onSelectProfile,
     selectedProfileId,
-    className // <-- Rep la prop
+    className
 }: ProfileListProps) {
     const t = useTranslations('NetworkPage');
+    
     return (
-        // ✅ Aplica la className rebuda a l'element arrel
+        // Aquest component només gestiona la llista i l'scroll
+        // La capçalera amb la cerca està ara al NetworkClient
         <div className={cn(
-            "flex flex-col", // Treiem h-full d'aquí, ja que vindrà de fora
-            // Eliminem glass-effect i rounded-lg d'aquí, s'aplicaran des del pare (NetworkClient)
-            className // Aplica les classes passades (incloent h-full, glass-effect condicional, etc.)
+            "flex-1 overflow-y-auto custom-scrollbar p-2",
+            className
         )}>
-            {/* Capçalera amb títol i cerca */}
-            <div className="p-4 border-b border-border flex-shrink-0">
-                <h2 className="text-xl font-bold mb-4">{t('networkTitle')}</h2>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                    <input
-                        type="text"
-                        placeholder={t('searchPlaceholder')}
-                        value={searchTerm}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        className="w-full bg-background border border-border rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-primary focus:outline-none"
+            {profiles.length > 0 ? (
+                profiles.map(profile => (
+                    <ProfileCard
+                        key={profile.id}
+                        profile={profile}
+                        isSelected={profile.id === selectedProfileId}
+                        onClick={() => onSelectProfile(profile)}
                     />
-                </div>
-            </div>
-            {/* Llista scrollable */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-                {profiles.length > 0 ? (
-                    profiles.map(profile => (
-                        <ProfileCard
-                            key={profile.id}
-                            profile={profile}
-                            isSelected={profile.id === selectedProfileId}
-                            onClick={() => onSelectProfile(profile)}
-                        />
-                    ))
-                ) : (
-                    <p className="text-center text-muted-foreground p-4">{t('noResults')}</p>
-                )}
-            </div>
+                ))
+            ) : (
+                <p className="text-center text-muted-foreground p-4">{t('noResults')}</p>
+            )}
         </div>
     );
 }
