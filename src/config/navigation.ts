@@ -12,7 +12,6 @@ import {
   Bot,
   Settings,
   Users,
-  Workflow,
   Activity,
   CalendarDays,
   Truck,

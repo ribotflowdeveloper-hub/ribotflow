@@ -8,7 +8,7 @@ import {
 // ✅ Importem les definicions i helpers universals
 import {
   hasPermission,
-  type Role,
+ 
   type Permission,
 } from './permissions.config';
 export * from './permissions.config'; // Re-exportem

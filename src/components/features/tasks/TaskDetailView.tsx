@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 // ✅ NOU: Importem 'Loader2' i 'Send' (per a Google)
-import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Clock, Send, Loader2, RefreshCw } from "lucide-react";
+import { Calendar, Flag, User, CheckCircle2, Trash2, RotateCcw, Pencil, Building, Clock, Loader2, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 // ✅ NOU: Importem la nova acció
 import { deleteTask, updateSimpleTask, setTaskActiveStatus, getSignedUrlForFile, syncTaskToGoogleAction } from '@/app/actions/tasks/actions';
@@ -22,7 +22,6 @@ import { priorityStyles, TaskPriority } from '@/config/styles/task';
 import parse, { domToReact, Element, DOMNode } from 'html-react-parser';
 import { Tables, Json } from '@/types/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Caladea } from 'next/font/google';
 
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
 

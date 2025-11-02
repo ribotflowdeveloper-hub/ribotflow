@@ -39,7 +39,7 @@ export async function generateMetadata(props: ProductDetailPageProps): Promise<M
        return { title: 'Producte no trobat | Ribot' };
     }
     return { title: `${product.name} | Productes | Ribot` };
-  } catch (error) {
+  } catch {
     // Si fetchProductDetail llança 'notFound()', Next.js ho gestionarà.
     return { title: 'Producte no trobat | Ribot' };
   }

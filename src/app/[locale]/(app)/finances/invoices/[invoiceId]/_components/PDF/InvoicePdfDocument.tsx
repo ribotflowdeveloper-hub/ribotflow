@@ -227,7 +227,6 @@ export function InvoicePdfDocument({
   const companyEmail = invoice.company_email || company.company_email
   
   const clientName = invoice.client_name || contact?.nom
-  const clientAddress = invoice.client_address || contact?.address
   //const clientTaxId = invoice.client_tax_id || contact?.nif // Segueix comentat
   const clientEmail = invoice.client_email || contact?.email
 

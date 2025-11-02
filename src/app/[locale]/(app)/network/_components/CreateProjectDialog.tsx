@@ -24,7 +24,6 @@ import { useForm} from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { useTranslations } from 'next-intl';
 import type { DetailedAddress } from '@/types/shared/index';
 import { createJobPostingAction } from '../actions';
 import { toast } from 'sonner';
@@ -54,7 +53,6 @@ interface CreateProjectDialogProps {
 }
 
 export default function CreateProjectDialog({ open, onOpenChange, teamId }: CreateProjectDialogProps) {
-    const t = useTranslations('NetworkPage');
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
 

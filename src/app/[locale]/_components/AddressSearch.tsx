@@ -44,7 +44,7 @@ export function AddressSearch({ onAddressSelect }: AddressSearchProps) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchSuggestions(debouncedQuery);
