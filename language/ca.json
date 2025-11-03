@@ -126,7 +126,7 @@
     "noTicketSelected": "Cap correu seleccionat",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament",
-      "preparingMessage": "Preparant missatge...",  
+      "preparingMessage": "Preparant missatge...",
       "messageReady": "Missatge a punt!",
       "errorPreparingMessage": "Error preparant el missatge",
       "deleteConfirmTitle": "Estàs segur?",
@@ -1230,7 +1230,6 @@
       "selectStatus": "Selecciona un estat",
       "selectProject": "Selecciona un projecte"
     },
-    
     "productSelector": {
       "newProductTitle": "Crear nou producte",
       "newProductNamePlaceholder": "Nom del producte (ex: Disseny Web)",
@@ -1732,7 +1731,29 @@
     "errors": {
       "invalidCredentials": "Credencials invàlides.",
       "authFailed": "L'autenticació ha fallat.",
-      "inviteFailed": "No s'ha pogut enviar la invitació."
+      "inviteFailed": "No s'ha pogut enviar la invitació.",
+      "invalid_credentials": "Credencials incorrectes.",
+      "validation_failed": "Revisa les dades introduïdes.",
+      "user_exists": "Ja existeix un compte amb aquest correu.",
+      "signup_failed": "Error en crear el compte.",
+      "signup_failed_no_user": "No s'ha pogut crear l'usuari.",
+      "forgot_success": "Si l'email existeix, rebràs un enllaç per restablir la teva contrasenya.",
+      "forgot_error": "No s'ha pogut iniciar el procés de restabliment.",
+      "reset_invalid": "L'enllaç de restabliment és invàlid o ha caducat.",
+      "reset_success": "La teva contrasenya s'ha actualitzat correctament.",
+      "google_failed": "No s'ha pogut iniciar sessió amb Google."
+    },
+    "AuthMessages": {
+      "invalid_credentials": "Credencials incorrectes.",
+      "validation_failed": "Revisa les dades introduïdes.",
+      "user_exists": "Ja existeix un compte amb aquest correu.",
+      "signup_failed": "Error en crear el compte.",
+      "signup_failed_no_user": "No s'ha pogut crear l'usuari.",
+      "forgot_success": "Si l'email existeix, rebràs un enllaç per restablir la teva contrasenya.",
+      "forgot_error": "No s'ha pogut iniciar el procés de restabliment.",
+      "reset_invalid": "L'enllaç de restabliment és invàlid o ha caducat.",
+      "reset_success": "La teva contrasenya s'ha actualitzat correctament.",
+      "google_failed": "No s'ha pogut iniciar sessió amb Google."
     }
   },
   "AuthMessages": {
@@ -2327,5 +2348,73 @@
     "limitReachedTitle": "Límit del teu pla assolit",
     "limitReachedDefault": "Has arribat al límit de contactes permès en el teu pla actual. Actualitza’l per afegir-ne més.",
     "upgradePlan": "Actualitza el Pla"
+  },
+  "Transcripcio": {
+    
+    "listTitle": "Transcripcions d'Àudio",
+    "listDescription": "Gestiona les teves gravacions i tasques extretes.",
+    "listNewButton": "Nova Transcripció",
+    "detailTitle": "Resultat de la Transcripció",
+    "detailDescription": "Estat de la feina: {jobId}",
+    "listEmpty": "No hi ha cap transcripció.",
+    "cardTitle": "Feina d'Àudio",
+    "cardSummaryEmpty": "Completat sense resum.",
+    "cardErrorUnknown": "Error desconegut",
+    "cardInProgress": "La transcripció està en progrés...",
+    "cardViewDetailsButton": "Veure Detalls",
+    "pendingTitle": "Processant...",
+    "pendingDescription": "El teu àudio s'està analitzant. Això pot trigar uns minuts.",
+    "failedTitle": "Error de Processament",
+    "failedDescription": "Hi ha hagut un error en processar l'àudio:",
+    "completedTitle": "Procés Completat",
+    "completedDescription": "L'àudio ha estat analitzat.",
+    "actionsTitle": "Accions",
+    "summaryTitle": "Resum de la Reunió",
+    "summaryEmpty": "No s'ha generat cap resum.",
+    "participantsTitle": "Participants",
+    "participantsEmpty": "No s'han assignat participants.",
+    "keyMomentsTitle": "Moments Clau de la Reunió",
+    "keyMomentsEmpty": "No s'han extret moments clau d'aquesta transcripció.",
+    "keyMomentsNoWork": "L'anàlisi no ha trobat cap tema de treball rellevant en aquesta conversa.",
+    "keyMomentsDecisions": "Decisions Preses",
+    "fullTranscriptionTitle": "Transcripció Completa",
+    "fullTranscriptionEmpty": "No s'ha generat cap transcripció.",
+    "toggleButton": "Mostrar/Amagar",
+    "status": {
+      "completed": "Completat",
+      "failed": "Fallit",
+      "processing": "En progrés",
+      "pending": "Pendent",
+      "unknown": "Desconnegut"
+    },
+    "createTaskButton": "Crear Tasca Manual",
+    "sendEmailButton": "Enviar Resum per Email",
+    "deleteButton": "Esborrar Transcripció",
+    "deleteButtonConfirm": "Sí, esborrar",
+    "cancelButton": "Cancel·lar",
+    "createTaskDialogTitle": "Crear Tasca Nova",
+    "createTaskDialogDescription": "La tasca s'afegirà a la llista d'activitats.",
+    "defaultTaskTitle": "Nova tasca de la transcripció",
+    "createTaskLabelTitle": "Títol",
+    "createTaskLabelDescription": "Descripció",
+    "createTaskLabelAssignee": "Assignar a (Opcional)",
+    "createButton": "Crear",
+    "deleteDialogTitle": "Estàs segur?",
+    "deleteDialogDescription": "Aquesta acció és permanent i no es pot desfer. S'esborrarà la feina, l'àudio i la transcripció associada.",
+    "errorTitle": "Error",
+    "errorLoading": "No s'ha pogut carregar la feina de transcripció o no hi tens accés.",
+    "createTaskErrorTitle": "Error en crear la tasca",
+    "createTaskSuccessTitle": "Tasca creada",
+    "deleteErrorTitle": "Error en esborrar",
+    "sendEmailErrorTitle": "Error en enviar l'email",
+    "sendEmailSuccessTitle": "Resum enviat correctament",
+    "sendEmailInvalidData": "Dades de la feina invàlides.",
+    "sendEmailNoRecipients": "No s'han trobat destinataris amb email vàlid entre els participants.",
+    "sendEmailSubject": "Resum de la reunió: {jobDate}",
+    "viewFullTranscriptionButton": "Veure transcripció completa",
+    "automatedEmail": "Email generat automàticament",
+    "backToListButton": "Tornar a la llista",
+    "errorUnknown": "Error desconegut"
+   
   }
 }

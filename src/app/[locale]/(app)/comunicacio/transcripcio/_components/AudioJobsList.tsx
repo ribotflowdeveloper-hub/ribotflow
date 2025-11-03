@@ -1,26 +1,28 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { type Database } from '@/types/supabase'
 import { createClient as createSupabaseBrowserClient} from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, CheckCircle, XCircle, FileText } from 'lucide-react'
+import { FileText } from 'lucide-react'
 import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 import { ca } from 'date-fns/locale'
 
-type AudioJob = Pick<Database['public']['Tables']['audio_jobs']['Row'], 
+// ✅ 1. Importem el tipus des de la font original
+import type { AudioJob } from '@/types/db'
+import { JobStatusBadge } from './JobStatusBadge'
+
+// Redefinim el tipus localment per a la llista (només els camps que necessitem)
+type AudioJobListJob = Pick<AudioJob, 
   'id' | 'created_at' | 'status' | 'summary' | 'error_message'
 >
-
-export function AudioJobsList({ initialJobs }: { initialJobs: AudioJob[] }) {
+// ... (la resta del component es manté igual) ...
+export function AudioJobsList({ initialJobs }: { initialJobs: AudioJobListJob[] }) {
   const [jobs, setJobs] = useState(initialJobs)
   const supabase = createSupabaseBrowserClient()
 
   useEffect(() => {
-    // Escolta TOTS els canvis a la taula 'audio_jobs'
     const channel = supabase
       .channel('audio_jobs_list')
       .on(
@@ -28,15 +30,13 @@ export function AudioJobsList({ initialJobs }: { initialJobs: AudioJob[] }) {
         { event: '*', schema: 'public', table: 'audio_jobs' },
         (payload) => {
           console.log('Canvi rebut a la llista:', payload)
-          // Actualitzem la llista quan hi ha canvis
-          // (Això es pot optimitzar, però de moment refresquem)
           if (payload.eventType === 'INSERT') {
-            setJobs((prevJobs) => [payload.new as AudioJob, ...prevJobs])
+            setJobs((prevJobs) => [payload.new as AudioJobListJob, ...prevJobs])
           }
           if (payload.eventType === 'UPDATE') {
             setJobs((prevJobs) =>
               prevJobs.map((job) =>
-                job.id === payload.old.id ? (payload.new as AudioJob) : job
+                job.id === payload.old.id ? (payload.new as AudioJobListJob) : job
               )
             )
           }
@@ -95,14 +95,4 @@ export function AudioJobsList({ initialJobs }: { initialJobs: AudioJob[] }) {
       ))}
     </div>
   )
-}
-
-function JobStatusBadge({ status }: { status: AudioJob['status'] }) {
-  if (status === 'completed') {
-    return <Badge variant="success" className={undefined}><CheckCircle className="mr-1 h-3 w-3" /> Completat</Badge>
-  }
-  if (status === 'failed') {
-    return <Badge variant="destructive" className={undefined}><XCircle className="mr-1 h-3 w-3" /> Fallit</Badge>
-  }
-  return <Badge variant="outline" className={undefined}><Loader2 className="mr-1 h-3 w-3 animate-spin" /> En progrés</Badge>
 }
