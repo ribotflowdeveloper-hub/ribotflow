@@ -73,7 +73,7 @@ export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="glass-effect max-w-4xl h-[90vh] flex flex-col">
+            <DialogContent className="max-w-2xl min-h-[400px]">
                 {/* Només renderitzem el contingut si tenim una campanya per editar */}
                 {editedCampaign && (
                     <>

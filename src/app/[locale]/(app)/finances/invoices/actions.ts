@@ -1,171 +1,102 @@
-// src/app/[locale]/(app)/finances/invoices/actions.ts
 "use server";
 
 import { validateUserSession } from "@/lib/supabase/session";
-import {
-  type InvoiceListRow,
-  type InvoiceStatus
-  // ❗ Eliminem l'import no utilitzat: type InvoiceFilters as OriginalInvoiceFilters
-} from '@/types/finances/invoices';
-import {
-  type PaginatedActionParams,
-  type PaginatedResponse
-} from '@/hooks/usePaginateResource'; // ✅ Importació corregida
-import { unstable_cache as cache } from 'next/cache';
-import { createAdminClient } from "@/lib/supabase/admin";
+import { type InvoiceListRow } from '@/types/finances/invoices';
+import { type InvoiceStatus } from '@/types/db'; // ✅ Importem des de db.ts
+import { type PaginatedActionParams, type PaginatedResponse } from '@/hooks/usePaginateResource';
+import { revalidatePath } from 'next/cache';
+import { type ActionResult } from "@/types/shared/actionResult";
 
-// --- Tipus Específics per a la Pàgina de Factures ---
+// ✅ Importem el nostre servei (i el tipus RpcInvoiceRow que EXPORTA)
+import { 
+  getPaginatedInvoices, 
+  getClientsForFilterService,
+  // type RpcInvoiceRow // ❗ Ja no cal importar RpcInvoiceRow aquí
+} from '@/lib/services/finances/invoices/invoices.service';
 
-// Filtres específics per a la pàgina de factures (TFilters)
+// --- Tipus Específics (Aquests es queden aquí, són per la UI) ---
+
 export interface InvoicePageFilters {
   status: InvoiceStatus | 'all';
-  contactId: string | 'all'; // Canviat a string per coherència amb el Select
+  contactId: string | 'all';
 }
 
-// Alias per als paràmetres i la resposta del hook genèric
 type FetchInvoicesParams = PaginatedActionParams<InvoicePageFilters>;
 type PaginatedInvoicesData = PaginatedResponse<InvoiceListRow>;
 
-// Tipus per a la resposta RPC (manté el teu)
-// ✅ Definició de tipus per a la resposta de la funció RPC
-// Això reflecteix exactament el 'RETURNS TABLE' de la nostra funció SQL.
-interface RpcInvoiceRow {
-  id: number;
-  invoice_number: string; // o text
-  issue_date: string; // o date
-  due_date: string | null; // o date
-  total_amount: number; // o numeric
-  status: InvoiceStatus; // o public.invoice_status
-  client_name: string; // o text
-  contact_id: number | null;
-  contact_nom: string | null; // Columna del JOIN
-  total_count: number; // o bigint
-}
-// --- Acció Principal per Obtenir Dades Paginades ---
 
-/**
- * Obté factures paginades usant RPC, adaptat per a usePaginatedResource.
- */
+// --- Acció Principal (Orquestrador + Traductor) ---
 export async function fetchPaginatedInvoices(
-  params: FetchInvoicesParams // <-- Paràmetre genèric
+  params: FetchInvoicesParams
 ): Promise<PaginatedInvoicesData> {
 
-  const { searchTerm, filters, sortBy, sortOrder, limit, offset } = params; // Desestructurem
+  const { searchTerm, filters, sortBy, sortOrder, limit, offset } = params;
 
+  // 1. Validar Sessió
   const session = await validateUserSession();
   if ("error" in session) return { data: [], count: 0 };
   const { supabase, activeTeamId } = session;
 
-  // Adaptem els filtres específics
+  // ✅ CORRECCIÓ: L'Acció fa la "traducció" de la lògica de la UI
+  // Converteix els valors 'all' en 'null' o '0' que el servei espera.
   const statusParam = (filters.status === 'all' || !filters.status) ? null : filters.status;
-  // Convertim contactId a número o 0 si és 'all' (segons la teva lògica RPC)
-  const contactIdParam = (filters.contactId === 'all' || !filters.contactId) ? 0 : Number(filters.contactId);
+  const contactIdParam = (filters.contactId === 'all' || !filters.contactId) ? 0 : Number(filters.contactId); // O null si 0 no és vàlid
 
-  const rpcParams = {
-    team_id_param: activeTeamId,
-    search_term_param: searchTerm || null,
-    status_param: statusParam,
-    contact_id_param: contactIdParam,
-    sort_by_param: sortBy || 'issue_date', // Valor per defecte
-    sort_order_param: sortOrder || 'desc',   // Valor per defecte
-    limit_param: limit, // Ja ve del hook
-    offset_param: offset, // Ja ve del hook
-  };
+  try {
+    // 2. Orquestrar la crida al servei amb paràmetres simples
+    const result = await getPaginatedInvoices({
+      teamId: activeTeamId,
+      supabase: supabase,
+      searchTerm,
+      statusParam, // ✅ Passa el valor traduït
+      contactIdParam, // ✅ Passa el valor traduït
+      sortBy: sortBy || 'issue_date',
+      sortOrder: sortOrder || 'desc',
+      limit,
+      offset,
+    });
 
-  const { data, error } = await supabase
-    .rpc('search_paginated_invoices', rpcParams)
-    .returns<RpcInvoiceRow[]>();
+    // 3. Retornar les dades
+    return result;
 
-  if (error) {
-    console.error("Error calling search_paginated_invoices RPC:", error, "Params:", rpcParams);
-    // Podries llançar l'error perquè el hook el gestioni si vols
-    // throw new Error("Error en carregar les factures.");
-    return { data: [], count: 0 }; // O retornar buit
-  }
-
-  if (!Array.isArray(data) || data.length === 0) {
+  } catch (error) {
+    console.error("Error in fetchPaginatedInvoices action:", error);
     return { data: [], count: 0 };
   }
-
-  const totalCount = data[0].total_count ?? 0;
-
-  const mappedData: InvoiceListRow[] = data.map((row): InvoiceListRow => ({
-    id: row.id,
-    invoice_number: row.invoice_number,
-    issue_date: row.issue_date,
-    due_date: row.due_date,
-    total_amount: row.total_amount,
-    status: row.status,
-    client_name: row.client_name,
-    contact_id: row.contact_id,
-    contacts: row.contact_id ? { nom: row.contact_nom || null } : null,
-  }));
-
-  return {
-    data: mappedData,
-    count: totalCount
-  };
 }
 
-
-// --- Acció per Esborrar (necessària per al hook) ---
-// Mou o assegura't que existeix deleteInvoiceAction
-// Normalment estaria a [invoiceId]/actions.ts
-// Aquí un exemple si no la tens:
-/*
-export async function deleteInvoiceAction(invoiceId: number): Promise<ActionResult> {
-    const session = await validateUserSession();
-    if ("error" in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase, activeTeamId } = session;
-
-    const { error } = await supabase
-        .from('invoices')
-        .delete()
-        .eq('id', invoiceId)
-        .eq('team_id', activeTeamId); // Important per seguretat
-
-    if (error) {
-        console.error("Error deleting invoice:", error);
-        return { success: false, message: "Error en eliminar la factura." };
-    }
-
-    revalidatePath('/finances/invoices'); // Revalida la llista
-    return { success: true, message: "Factura eliminada correctament." };
-}
-*/
-// Assegura't d'importar-la correctament al InvoicesClient des d'on estigui
-
-// --- (Opcional) Acció per obtenir opcions de filtre (Ex: Clients) ---
-
-const getCachedClientsForFilter = cache(
-  async (activeTeamId: string): Promise<{ id: number; nom: string | null }[]> => {
-    const supabaseAdmin = createAdminClient();
-    console.log(`[Cache Miss] Fetching clients for filter, team ${activeTeamId}`);
-    const { data, error } = await supabaseAdmin
-      .from('contacts') // O la taula correcta de clients
-      .select('id, nom')
-      .eq('team_id', activeTeamId)
-      .is('is_client', true) // O la condició que defineixi un client
-      .order('nom', { ascending: true });
-
-    if (error) {
-      console.error(`Error fetching clients for filter (Admin):`, error.message);
-      return [];
-    }
-    console.log(`[Cache Miss] Fetched ${data.length} clients for filter (Admin)`);
-    return data || [];
-  },
-  ['clients_for_invoice_filter'],
-  { tags: ["filters", "contacts"] }
-);
-
+// --- Acció per als Filtres (Correcta) ---
 export async function getClientsForFilter(): Promise<{ id: number; nom: string | null }[]> {
   const session = await validateUserSession();
   if ("error" in session) {
     console.error("Session error in getClientsForFilter:", session.error);
     return [];
   }
-  return getCachedClientsForFilter(session.activeTeamId);
+  return getClientsForFilterService(session.activeTeamId);
+}
+
+// --- Acció per Esborrar (Correcta) ---
+export async function deleteInvoiceAction(invoiceId: number): Promise<ActionResult> {
+    const session = await validateUserSession();
+    if ("error" in session) {
+      return { success: false, message: session.error.message };
+    }
+    const { supabase, activeTeamId } = session;
+
+    // Aquesta lògica és simple i pot quedar aquí.
+    // Si es compliqués (p.ex. comprovar estats abans d'esborrar),
+    // la mouríem a un 'deleteInvoiceService'.
+    const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', invoiceId)
+        .eq('team_id', activeTeamId);
+
+    if (error) {
+      console.error("Error deleting invoice:", error);
+      return { success: false, message: "Error en eliminar la factura." };
+    }
+
+    revalidatePath('/finances/invoices');
+    return { success: true, message: "Factura eliminada correctament." };
 }

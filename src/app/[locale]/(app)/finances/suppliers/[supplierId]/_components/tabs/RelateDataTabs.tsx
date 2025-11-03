@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, CreditCard, Inbox } from 'lucide-react';
 
 // Importa els tipus de dades
-import { type ContactForSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
+import { type ContactForSupplier } from '@/types/db';
 import { type ExpenseForSupplier } from '@/app/[locale]/(app)/finances/expenses/actions';
 import { type TicketForSupplier } from '@/app/[locale]/(app)/comunicacio/inbox/actions';
 

@@ -6,6 +6,10 @@ import { type EnrichedTask } from '@/components/features/tasks/TaskDialogManager
 import { type EnrichedQuote } from '@/app/[locale]/(app)/dashboard/_components/RecentQuotes';
 import { type EnrichedEmail } from '@/app/[locale]/(app)/dashboard/_components/RecentEmails';
 import { type ServerActivityItem } from '@/lib/data/dashboard';
+export type { EnrichedTask, EnrichedQuote, EnrichedEmail };
+// Importem els tipus de la nostra font de la veritat
+import type { DbTableInsert,  Department } from '@/types/db';
+import type { NewTaskPayload } from '@/types/dashboard/types';
 
 import {
     getStats as fetchStats,
@@ -209,5 +213,99 @@ export async function getDashboardInitialData(
         const error = err as Error;
         console.error("Error catastròfic a getDashboardInitialData (service):", error.message, error.stack);
         return { data: null, error: { message: `Error inesperat obtenint dades del dashboard: ${error.message}`, details: error } };
+    }
+}
+
+// ---
+// ⚙️ NOVES FUNCIONS DE MUTACIÓ (Mogudes des de 'actions.ts')
+// ---
+
+/**
+ * SERVEI: Afegeix una nova tasca.
+ * Llança un error si falla.
+ */
+export async function addTask(
+    supabase: SupabaseClient<Database>,
+    taskData: NewTaskPayload,
+    userId: string,
+    teamId: string
+): Promise<void> {
+    const dataToInsert: DbTableInsert<'tasks'> = {
+        ...taskData,
+        user_id: userId,
+        team_id: teamId,
+        is_active: false
+    };
+
+    const { error } = await supabase.from('tasks').insert(dataToInsert);
+
+    if (error) {
+        console.error('Error creating task (service):', error);
+        throw new Error(error.message);
+    }
+}
+
+/**
+ * SERVEI: Elimina una tasca.
+ * Llança un error si falla.
+ */
+export async function deleteTask(
+    supabase: SupabaseClient<Database>,
+    taskId: number
+): Promise<void> {
+    // La RLS hauria de gestionar la seguretat de l'equip
+    const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+    if (error) {
+        console.error('Error en eliminar la tasca (service):', error);
+        throw new Error(error.message);
+    }
+}
+
+/**
+ * SERVEI: Afegeix un nou departament.
+ * Llança un error si falla (incloent duplicats).
+ */
+export async function addDepartment(
+    supabase: SupabaseClient<Database>,
+    name: string,
+    teamId: string
+): Promise<Department> {
+    const { data, error } = await supabase
+        .from('departments')
+        .insert({ name, team_id: teamId })
+        .select()
+        .single();
+
+    if (error) {
+        console.error('Error en crear el departament (service):', error);
+        if (error.code === '23505') { // Error de clau duplicada
+            throw new Error(`El departament "${name}" ja existeix.`);
+        }
+        throw new Error(error.message);
+    }
+    return data as Department;
+}
+
+/**
+ * SERVEI: Actualitza una tasca.
+ * Llança un error si falla.
+ */
+export async function updateTask(
+    supabase: SupabaseClient<Database>,
+    taskId: number,
+    updatedData: Partial<Tables<'tasks'>>
+): Promise<void> {
+    const { error } = await supabase
+        .from('tasks')
+        .update(updatedData)
+        .eq('id', taskId);
+
+    if (error) {
+        console.error('Error en actualitzar la tasca (service):', error);
+        throw new Error(error.message);
     }
 }

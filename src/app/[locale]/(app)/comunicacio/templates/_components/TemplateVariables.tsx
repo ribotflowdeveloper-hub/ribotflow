@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Variable } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { EmailTemplate } from '../page';
+import type { EmailTemplate } from '@/types/db';
 
 interface TemplateVariablesProps {
   selectedTemplate: EmailTemplate | null;

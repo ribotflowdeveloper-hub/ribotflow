@@ -7,7 +7,7 @@
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import type { EmailTemplate } from '../page';
+import type { EmailTemplate } from '@/types/db';
 
 interface TemplateListProps {
   templates: EmailTemplate[];
@@ -41,7 +41,7 @@ export function TemplateList({
             key={template.id}
             onClick={() => onSelectTemplate(template)}
             className={`group flex justify-between items-center p-4 cursor-pointer border-l-4 ${
-              selectedTemplateId === template.id
+              selectedTemplateId === String(template.id)
                 ? 'bg-primary/20 border-primary'
                 : 'border-transparent hover:bg-muted'
             }`}

@@ -1,10 +1,15 @@
+// src/app/[locale]/(app)/crm/contactes/[contactId]/_hooks/useContactDetail.ts
 "use client";
 
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { updateContactAction, deleteContactAction, type ContactDetail } from '../actions';
 import { type useTranslations } from 'next-intl';
+
+// ✅ 1. Importem NOMÉS les accions des de 'actions'
+import { updateContactAction, deleteContactAction } from '../actions';
+// ✅ 2. Importem el TIPUS directament des del SERVEI
+import type { ContactDetail } from '@/lib/services/crm/contacts/contacts.service';
 
 type TFunction = ReturnType<typeof useTranslations<string>>;
 
@@ -19,22 +24,12 @@ export function useContactDetail(initialContact: ContactDetail, t: TFunction) {
     const [contact, setContact] = useState<ContactDetail>(initialContact);
     const formRef = useRef<HTMLFormElement>(null);
 
-    // ❌ 1. ELIMINEM LA FUNCIÓ 'hydrateFormData' D'AQUÍ
-    // const hydrateFormData = (formData: FormData) => { ... }
-
     const handleSaveChanges = (formData: FormData) => {
-        
-        // ❌ 2. ELIMINEM LA CRIDA A 'hydrateFormData'
-        // hydrateFormData(formData); 
-
         startTransition(async () => {
-            // Ara el FormData només s'enviarà quan 'DetailsTab' estigui
-            // muntat, gràcies al 'type="button"' que hem afegit a 
-            // 'ContactViewSwitcher'.
             const { data, error } = await updateContactAction(contact.id, formData);
             
             if (error) {
-                console.error("Error updating contact:", error); // Mantenim això per al log
+                console.error("Error updating contact:", error);
                 toast.error(t('toast.errorTitle'), { description: error.message });
             } else if (data) {
                 toast.success(t('toast.successTitle'), { description: t('toast.updateSuccess') });

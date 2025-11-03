@@ -35,63 +35,63 @@ const WizardProgressBar = ({ step }: { step: number }) => (
 );
 
 export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ open, onOpenChange, onCampaignCreated }) => {
-  const t = useTranslations('AICampaignWizard');
-  const {
-      step, goal, strategies, selectedStrategy, isPending, processingIndex,
-      setStep, setGoal, setSelectedStrategy, resetWizard,
-      handleGenerateStrategies, handleDraftContent, handleSaveCampaign
-  } = useAICampaignWizard({ 
-      onCampaignCreated, 
-      onClose: () => onOpenChange(false), 
-      t 
-  });
+    const t = useTranslations('AICampaignWizard');
+    const {
+        step, goal, strategies, selectedStrategy, isPending, processingIndex,
+        setStep, setGoal, setSelectedStrategy, resetWizard,
+        handleGenerateStrategies, handleDraftContent, handleSaveCampaign
+    } = useAICampaignWizard({
+        onCampaignCreated,
+        onClose: () => onOpenChange(false),
+        t
+    });
 
-  return (
-      <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetWizard(); onOpenChange(isOpen); }}>
-          <DialogContent className="glass-effect max-w-2xl min-h-[400px]">
-              <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-2xl">
-                      <Wand2 className="text-primary" /> {t('title')}
-                  </DialogTitle>
-                  <WizardProgressBar step={step} />
-              </DialogHeader>
+    return (
+        <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetWizard(); onOpenChange(isOpen); }}>
+            <DialogContent className="max-w-2xl min-h-[400px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-2xl">
+                        <Wand2 className="text-primary" /> {t('title')}
+                    </DialogTitle>
+                    <WizardProgressBar step={step} />
+                </DialogHeader>
 
-              <AnimatePresence mode="wait">
-                  {step === 1 && (
-                      <WizardStep1_Goal
-                          goal={goal}
-                          setGoal={setGoal}
-                          onGenerate={handleGenerateStrategies}
-                          isPending={isPending}
-                          t={t}
-                      />
-                  )}
+                <AnimatePresence mode="wait">
+                    {step === 1 && (
+                        <WizardStep1_Goal
+                            goal={goal}
+                            setGoal={setGoal}
+                            onGenerate={handleGenerateStrategies}
+                            isPending={isPending}
+                            t={t}
+                        />
+                    )}
 
-                  {step === 2 && (
-                      <WizardStep2_SelectStrategy
-                          strategies={strategies}
-                          onSelect={handleDraftContent}
-                          onBack={() => setStep(1)}
-                          isPending={isPending}
-                          processingIndex={processingIndex}
-                          t={t}
-                      />
-                  )}
-                  
-                  {step === 3 && selectedStrategy && (
-                      <WizardStep3_Finalize
-                          strategy={selectedStrategy}
-                          // ✅ CORRECCIÓ: Passem directament la funció 'setSelectedStrategy'
-                          // que ve del hook 'useState'.
-                          onStrategyChange={setSelectedStrategy}
-                          onSave={handleSaveCampaign}
-                          onBack={() => setStep(2)}
-                          isPending={isPending}
-                          t={t}
-                      />
-                  )}
-              </AnimatePresence>
-          </DialogContent>
-      </Dialog>
-  );
+                    {step === 2 && (
+                        <WizardStep2_SelectStrategy
+                            strategies={strategies}
+                            onSelect={handleDraftContent}
+                            onBack={() => setStep(1)}
+                            isPending={isPending}
+                            processingIndex={processingIndex}
+                            t={t}
+                        />
+                    )}
+
+                    {step === 3 && selectedStrategy && (
+                        <WizardStep3_Finalize
+                            strategy={selectedStrategy}
+                            // ✅ CORRECCIÓ: Passem directament la funció 'setSelectedStrategy'
+                            // que ve del hook 'useState'.
+                            onStrategyChange={setSelectedStrategy}
+                            onSave={handleSaveCampaign}
+                            onBack={() => setStep(2)}
+                            isPending={isPending}
+                            t={t}
+                        />
+                    )}
+                </AnimatePresence>
+            </DialogContent>
+        </Dialog>
+    );
 };

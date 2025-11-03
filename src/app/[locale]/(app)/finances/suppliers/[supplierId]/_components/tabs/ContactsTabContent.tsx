@@ -11,9 +11,8 @@ import {
   Trash2, Loader2 // ✅ Afegim icones
 } from 'lucide-react';
 import { unlinkContactFromSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
-import type { ContactForSupplier } from '@/lib/services/crm/contacts/contacts.service';
 import { LinkContactDialog } from '../LinkContactDialog';
-import type { Contact } from "@/types/db";
+import type { Contact , ContactForSupplier } from "@/types/db";
 import {
   AlertDialog,
   AlertDialogAction,

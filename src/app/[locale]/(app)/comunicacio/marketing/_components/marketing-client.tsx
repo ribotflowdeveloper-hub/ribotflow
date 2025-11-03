@@ -1,4 +1,4 @@
-// /app/(app)/comunicacio/marketing/_components/MarketingClient.tsx
+// Ubicació: /app/(app)/comunicacio/marketing/_components/MarketingClient.tsx
 "use client";
 
 import React from 'react';
@@ -8,12 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Sparkles, List, Calendar, Target, BarChart2, CheckCircle } from 'lucide-react';
 
 import { useMarketing } from '../_hooks/useMarketing';
-
-// ✅ CORRECCIÓ: Importem els tipus des del component de dades (el seu pare)
-// que ja els hauria de re-exportar.
 import type { Campaign, Kpis } from './MarketingData';
 
-// ✅ Importem els components fills
 import { MetricCard } from './MetricCard';
 import { CampaignList } from './CampaignList';
 import { CampaignCalendar } from './CampaignCalendar';
@@ -49,7 +45,6 @@ export function MarketingClient({ initialKpis, initialCampaigns }: { initialKpis
             />
 
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                {/* ... (la resta del teu JSX és correcte) ... */}
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold">{t('title')}</h1>
                     <Button onClick={handleOpenWizard}>
@@ -58,9 +53,13 @@ export function MarketingClient({ initialKpis, initialCampaigns }: { initialKpis
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-6">
-                    <MetricCard title={t('kpiNewContacts')} value={initialKpis.totalLeads} icon={<Target className="text-purple-400" />} />
-                    <MetricCard title={t('kpiConversionRate')} value={`${initialKpis.conversionRate.toFixed(1)}%`} icon={<CheckCircle className="text-purple-400" />} />
-                    <MetricCard title={t('kpiInteraction')} value="N/A" icon={<BarChart2 className="text-purple-400" />} />
+                    {/* ✅ CANVI: Passem el component icona (Target) directament,
+                        en lloc d'un element React (<Target className="..." />).
+                        La 'MetricCard' ara s'encarrega d'afegir el color.
+                    */}
+                    <MetricCard title={t('kpiNewContacts')} value={initialKpis.totalLeads} icon={Target} />
+                    <MetricCard title={t('kpiConversionRate')} value={`${initialKpis.conversionRate.toFixed(1)}%`} icon={CheckCircle} />
+                    <MetricCard title={t('kpiInteraction')} value="N/A" icon={BarChart2} />
                 </div>
 
                 <div className="flex justify-between items-center mt-8">
@@ -68,11 +67,12 @@ export function MarketingClient({ initialKpis, initialCampaigns }: { initialKpis
                     <div className="flex gap-2">
                         <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
                         <Button variant={view === 'calendar' ? 'secondary' : 'ghost'} size="icon" onClick={() => setView('calendar')}><Calendar className="h-4 w-4" /></Button>
-                        IA                 </div>
+                    </div>
                 </div>
 
+                {/* ✅ CANVI: Text semàntic per al missatge de "no campanyes" */}
                 {initialCampaigns.length === 0 ? (
-                    <p className="text-center text-gray-400 p-8">{t('noCampaignsMessage')}</p>
+                    <p className="text-center text-muted-foreground p-8">{t('noCampaignsMessage')}</p>
                 ) : view === 'list' ? (
                     <CampaignList campaigns={initialCampaigns} onCampaignSelect={handleSelectCampaign} />
                 ) : (
@@ -81,4 +81,4 @@ export function MarketingClient({ initialKpis, initialCampaigns }: { initialKpis
             </motion.div>
         </>
     );
-};
+}

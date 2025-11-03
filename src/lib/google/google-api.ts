@@ -1,11 +1,15 @@
-// src/lib/google-api.ts (o on vulguis)
+// src/lib/google-api.ts
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import AES from 'crypto-js/aes';
-import CryptoJS from 'crypto-js'; // Importa tot CryptoJS per accedir a enc.Utf8
+// ✅ CORRECCIÓ: Importem les nostres noves funcions híbrides
+import { encryptToken, decryptToken } from '@/lib/utils/crypto';
+import { validateUserSession } from "@/lib/supabase/session";
+import { Task  } from "@/types/db";
+import { ActionResult } from "@/types/shared";
+import { revalidatePath } from "next/cache";
 
-// Tipus per a la fila de la BD (amb dades encriptades)
+// ... (Els teus tipus 'EncryptedCredential' i 'GoogleRefreshResponse' es queden igual)
 type EncryptedCredential = {
   refresh_token: string | null;
   access_token: string;
@@ -13,8 +17,6 @@ type EncryptedCredential = {
   provider_user_id: string;
   team_id: string | null;
 };
-
-// Tipus per a la resposta de refresc de Google
 type GoogleRefreshResponse = {
   access_token: string;
   expires_in: number;
@@ -22,14 +24,9 @@ type GoogleRefreshResponse = {
   token_type: "Bearer";
 };
 
-/**
- * Obté un Access Token vàlid per a Google Calendar.
- * Si el token actual ha caducat, utilitza el refresh_token per obtenir-ne un de nou
- * i l'actualitza a la base de dades.
- */
+
 export async function getValidGoogleCalendarToken(userId: string): Promise<string> {
   
-  // Creem un client normal per llegir la dada de l'usuari
   const supabase = createClient(); 
   
   const secretKey = process.env.ENCRYPTION_SECRET_KEY;
@@ -50,10 +47,11 @@ export async function getValidGoogleCalendarToken(userId: string): Promise<strin
     throw new Error("No s'ha trobat la credencial de Google Calendar. Si us plau, torna a connectar.");
   }
 
-  // 2. DESENCRIPTAR els tokens
-  const access_token = AES.decrypt(creds.access_token, secretKey).toString(CryptoJS.enc.Utf8);
+  // 2. DESENCRIPTAR els tokens usant la funció híbrida
+  // ✅ CORRECCIÓ: Fem servir 'await decryptToken'
+  const access_token = await decryptToken(creds.access_token, secretKey);
   const refresh_token = creds.refresh_token 
-    ? AES.decrypt(creds.refresh_token, secretKey).toString(CryptoJS.enc.Utf8) 
+    ? await decryptToken(creds.refresh_token, secretKey) 
     : null;
   
   if (!refresh_token) {
@@ -72,6 +70,7 @@ export async function getValidGoogleCalendarToken(userId: string): Promise<strin
   // 4. El token ha caducat. L'hem de refrescar.
   console.log("Token de Google Calendar caducat. Refrescant...");
   const response = await fetch("https://oauth2.googleapis.com/token", {
+    // ... (la teva crida a fetch es queda igual)
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -92,26 +91,165 @@ export async function getValidGoogleCalendarToken(userId: string): Promise<strin
   const new_expires_at = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
   // 5. Guardar els nous tokens (encriptats) a la BD
-  const new_encrypted_access_token = AES.encrypt(newTokens.access_token, secretKey).toString();
+  // ✅ CORRECCIÓ: Encriptem amb el mètode NOU i RÀPID (SubtleCrypto)
+  const new_encrypted_access_token = await encryptToken(newTokens.access_token, secretKey);
   
-  // Fem servir 'createAdminClient' per escriure a la BD des del servidor
+  // El refresh token que guardem és l'original ENCRIPTAT
+  // (El 'refresh_token' de Google només es retorna la primera vegada, així que reutilitzem el vell)
+  const original_encrypted_refresh_token = creds.refresh_token; 
+
   const supabaseAdmin = createAdminClient();
   const { error: updateError } = await supabaseAdmin.from("user_credentials").upsert({
       user_id: userId,
       provider: "google_calendar",
-      access_token: new_encrypted_access_token, // El nou token encriptat
-      refresh_token: creds.refresh_token, // El refresh token encriptat original (no canvia)
+      access_token: new_encrypted_access_token, // El nou token ràpid
+      refresh_token: original_encrypted_refresh_token, // El refresh token encriptat original
       expires_at: new_expires_at,
-      team_id: creds.team_id, // Mantenim el team_id que ja teníem
-      provider_user_id: creds.provider_user_id, // Mantenim l'email
+      team_id: creds.team_id, 
+      provider_user_id: creds.provider_user_id,
   }, { onConflict: 'user_id, provider' });
 
 
   if (updateError) {
-    // No llencem un error fatal, però ho registrem
     console.error(`Error en guardar el token refrescat: ${updateError.message}`);
   }
 
   // 6. Retornar el nou access token (desencriptat)
   return newTokens.access_token;
+}
+
+// ... (La resta del teu codi)
+// type SyncResult = ...
+// async function syncTaskWithGoogle(...)
+// export async function syncTaskToGoogleAction(...)
+// ... (Tota la lògica de 'syncTaskWithGoogle' i 'syncTaskToGoogleAction' es queda exactament igual)
+type SyncResult = {
+  synced: boolean;
+  googleCalendarId: string | null;
+  message: string;
+};
+
+async function syncTaskWithGoogle(
+  task: Task,
+  accessToken: string,
+): Promise<SyncResult> {
+
+  // 1. Definir l'inici i el final de l'esdeveniment
+  const endDate = new Date(task.due_date as string);
+  const durationInMinutes = typeof task.duration === 'number' ? task.duration : 60;
+  const startDate = new Date(endDate.getTime() - durationInMinutes * 60 * 1000);
+
+  // 2. Construir el cos de l'esdeveniment
+  const eventBody = {
+    summary: task.title,
+    description: task.description || "Tasca de Ribotflow",
+    start: {
+      dateTime: startDate.toISOString(),
+      timeZone: "UTC", 
+    },
+    end: {
+      dateTime: endDate.toISOString(),
+      timeZone: "UTC",
+    },
+  };
+
+  let url: string;
+  let method: string;
+
+  // 3. Decidir si CREEM (POST) o ACTUALITZEM (PATCH)
+  if (task.google_calendar_id) {
+    console.log(`Actualitzant tasca ${task.id} a Google Calendar...`);
+    url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${task.google_calendar_id}`;
+    method = "PATCH";
+  } else {
+    console.log(`Creant tasca ${task.id} a Google Calendar...`);
+    url = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+    method = "POST";
+  }
+
+  // 4. Cridar a l'API de Google
+  const response = await fetch(url, {
+    method: method,
+    headers: {
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(eventBody),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json();
+    console.error(`Error de Google API [${method}] per a la tasca ${task.id}:`, errorBody);
+    
+    if (response.status === 404 && task.google_calendar_id) {
+      console.log("L'esdeveniment no existia a Google. Forçant nova creació...");
+      const newTask = { ...task, google_calendar_id: null };
+      return syncTaskWithGoogle(newTask, accessToken);
+    }
+    
+    return {
+      synced: false,
+      googleCalendarId: task.google_calendar_id, 
+      message: errorBody.error.message || "Error desconegut de Google API",
+    };
+  }
+
+  // 5. Èxit! Obtenim l'ID de Google i el retornem
+  const googleEvent = await response.json();
+  return {
+    synced: true,
+    googleCalendarId: googleEvent.id, 
+    message: "Sincronitzat correctament.",
+  };
+}
+
+export async function syncTaskToGoogleAction(
+  taskId: number,
+): Promise<ActionResult> {
+  const session = await validateUserSession();
+  if ("error" in session) {
+    return { success: false, message: "No autenticat" };
+  }
+  const { user, supabase } = session;
+
+  try {
+    // 1. Obtenim la tasca completa
+    const { data: task, error: taskError } = await supabase
+      .from("tasks")
+      .select("*")
+      .eq("id", taskId)
+      .single();
+
+    if (taskError) throw new Error(`No s'ha trobat la tasca amb ID ${taskId}`);
+
+    // 2. Obtenim un token vàlid (la nostra funció màgica)
+    const accessToken = await getValidGoogleCalendarToken(user.id);
+
+    // 3. Cridem a la lògica de sincronització
+    const syncResult = await syncTaskWithGoogle(task, accessToken);
+
+    if (!syncResult.synced) {
+      throw new Error(syncResult.message);
+    }
+
+    // 4. Si ha anat bé, actualitzem la nostra BD amb el nou google_calendar_id
+    if (syncResult.googleCalendarId !== task.google_calendar_id) {
+      const { error: updateError } = await supabase
+        .from("tasks")
+        .update({ google_calendar_id: syncResult.googleCalendarId })
+        .eq("id", task.id);
+      
+      if (updateError) {
+        console.error(`Error en desar el google_calendar_id per a la tasca ${task.id}:`, updateError);
+      }
+    }
+
+    revalidatePath("/[locale]/(app)/crm/calendari", "layout");
+    return { success: true, message: "Tasca sincronitzada amb Google Calendar!" };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut";
+    console.error("[syncTaskToGoogleAction] Error:", message, error);
+    return { success: false, message: message };
+  }
 }

@@ -14,7 +14,7 @@ import 'prismjs/components/prism-clike';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-markup';
 import { useTranslations } from 'next-intl';
-import type { EmailTemplate } from '../page';
+import type { EmailTemplate } from '@/types/db';
 
 interface TemplateEditorProps {
     selectedTemplate: EmailTemplate | null;
@@ -45,7 +45,7 @@ export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateE
         />
         <Input
           placeholder={t('subjectPlaceholder')}
-          value={selectedTemplate.subject}
+          value={selectedTemplate.subject ?? ""}
           onChange={(e) => onUpdateTemplate(t => t ? { ...t, subject: e.target.value } : null)}
         />
       </div>
@@ -76,7 +76,7 @@ export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateE
           </div>
         ) : (
           <iframe
-            srcDoc={selectedTemplate.body}
+            srcDoc={selectedTemplate.body ?? undefined}
             title={t('previewTitle')}
             className="w-full h-full border-0 bg-white"
           />

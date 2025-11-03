@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Save, Trash2, X, Loader2 } from 'lucide-react';
-import { type ContactDetail } from '../actions';
+import type { ContactDetail} from '@/lib/services/crm/contacts/contacts.service';
 import {
     AlertDialog,
     AlertDialogAction,

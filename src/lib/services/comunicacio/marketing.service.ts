@@ -6,7 +6,7 @@ import type {
   Campaign,
   Strategy,
   MarketingPageData,
-  Kpis,
+  
 } from '@/types/comunicacio/marketing';
 
 // Definim el tipus per al client de Supabase que rebrem

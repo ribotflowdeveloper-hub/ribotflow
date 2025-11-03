@@ -10,7 +10,7 @@ import { useTemplates } from '../_hooks/useTemplates';
 import { TemplateList } from './TemplateList';
 import { TemplateEditor } from './TemplateEditor';
 import { TemplateVariables } from './TemplateVariables';
-import { type EmailTemplate } from '../page';
+import type { EmailTemplate } from '@/types/db';
 
 export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailTemplate[] }) {
     const {
@@ -41,7 +41,7 @@ export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailT
                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 min-h-0">
                     <TemplateList
                         templates={templates}
-                        selectedTemplateId={selectedTemplate?.id || null}
+                        selectedTemplateId={selectedTemplate ? String(selectedTemplate.id) : null}
                         onSelectTemplate={setSelectedTemplate}
                         onNewTemplate={handleNewTemplate}
                         onSetTemplateToDelete={setTemplateToDelete}

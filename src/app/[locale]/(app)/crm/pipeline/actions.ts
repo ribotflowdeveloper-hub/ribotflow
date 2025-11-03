@@ -1,65 +1,66 @@
-// /app/[locale]/(app)/crm/pipeline/actions.ts (Refactoritzat)
-
+// /app/[locale]/(app)/crm/pipeline/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session";
 
+// ✅ 1. Importem el servei d'oportunitats
+import * as opportunityService from "@/lib/services/crm/pipeline/opportunities.service";
+
+/**
+ * ACCIÓ: Desa (crea o actualitza) una oportunitat.
+ */
 export async function saveOpportunityAction(formData: FormData) {
-    const session = await validateUserSession();
-    if ('error' in session) return { error: session.error };
-    const { supabase, user, activeTeamId } = session;
+    // 1. Validació de sessió
+    const session = await validateUserSession();
+    if ('error' in session) return { error: session.error };
+    const { supabase, user, activeTeamId } = session;
 
-    const rawData = Object.fromEntries(formData.entries());
-    
-    // ✅ Convertim els IDs a números abans de desar.
-    const contactId = rawData.contact_id ? parseInt(rawData.contact_id as string, 10) : null;
+    try {
+        // 2. Cridem al servei
+        await opportunityService.saveOpportunity(
+            supabase,
+            formData,
+            user.id,
+            activeTeamId
+        );
 
-    const dataToSave = {
-        name: rawData.name as string,
-        description: rawData.description as string,
-        contact_id: contactId,
-        stage_name: rawData.stage_name as string,
-        value: rawData.value ? parseFloat(rawData.value as string) : null,
-        close_date: rawData.close_date ? new Date(rawData.close_date as string).toISOString() : null,
-        user_id: user.id,
-        team_id: activeTeamId,
-    };
+        // 3. Efecte secundari
+        revalidatePath("/crm/pipeline");
+        return { success: true };
 
-    try {
-        const { error } = await (rawData.id
-            // Si estem actualitzant, l'ID ja és un número.
-            ? supabase.from("opportunities").update(dataToSave).eq("id", parseInt(rawData.id as string, 10))
-            : supabase.from("opportunities").insert(dataToSave));
-        if (error) throw error;
-
-        revalidatePath("/crm/pipeline");
-        return { success: true };
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { error: { message } };
-    }
+    } catch (error: unknown) {
+        // 4. Gestió d'errors
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { error: { message } };
+    }
 }
  
+/**
+ * ACCIÓ: Actualitza l'etapa d'una oportunitat (per Drag-n-Drop).
+ */
 export async function updateOpportunityStageAction(opportunityId: number, newStage: string) {
-    const session = await validateUserSession();
-    if ('error' in session) return { error: session.error };
-    const { supabase, activeTeamId } = session;
+    // 1. Validació de sessió
+    const session = await validateUserSession();
+    if ('error' in session) return { error: session.error };
+    const { supabase, activeTeamId } = session;
  
-    try {
-        const { error } = await supabase
-            .from("opportunities")
-            .update({ stage_name: newStage })
-            // ✅ L'ID que rebem ja és un número.
-            .eq("id", opportunityId)
-            .eq("team_id", activeTeamId);
+    try {
+        // 2. Cridem al servei
+        await opportunityService.updateOpportunityStage(
+            supabase,
+            opportunityId,
+            newStage,
+            activeTeamId
+        );
  
-        if (error) throw error;
- 
-        revalidatePath("/crm/pipeline");
-        return { success: true };
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { error: { message } };
-    }
+        // 3. Efecte secundari
+        revalidatePath("/crm/pipeline");
+        return { success: true };
+
+    } catch (error: unknown) {
+        // 4. Gestió d'errors
+        const message = error instanceof Error ? error.message : "Error desconegut";
+        return { error: { message } };
+    }
 }

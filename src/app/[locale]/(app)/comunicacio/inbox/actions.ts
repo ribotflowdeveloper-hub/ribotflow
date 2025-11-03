@@ -36,11 +36,11 @@ export type TicketForSupplier = Database['public']['Tables']['tickets']['Row'] &
 export async function getTicketBodyAction(ticketId: number): Promise<{ body: string }> {
   const session = await validateUserSession();
   if ('error' in session) return { body: `<p>Error: ${session.error.message}</p>` };
-  const { supabase, activeTeamId } = session;
+  const { supabase } = session;
 
   try {
     // 2. Cridem al servei
-    const body = await inboxService.getTicketBody(supabase, ticketId, activeTeamId);
+    const body = await inboxService.getTicketBody(supabase, ticketId);
     return { body };
   } catch (error: unknown) {
     console.error("Error en getTicketBodyAction:", (error as Error).message);
@@ -55,11 +55,11 @@ export async function deleteTicketAction(ticketId: number): Promise<ActionResult
   // 1. Validar Sessió
   const session = await validateUserSession();
   if ('error' in session) return { success: false, message: session.error.message };
-  const { supabase, activeTeamId } = session;
+  const { supabase } = session;
 
   try {
     // 2. Cridar al SERVEI
-    await inboxService.deleteTicket(supabase, ticketId, activeTeamId);
+    await inboxService.deleteTicket(supabase, ticketId);
 
     // 3. Gestionar Infraestructura
     revalidatePath("/comunicacio/inbox");
@@ -77,10 +77,10 @@ export async function deleteTicketAction(ticketId: number): Promise<ActionResult
 export async function markTicketAsReadAction(ticketId: number): Promise<ActionResult> {
   const session = await validateUserSession();
   if ('error' in session) return { success: false, message: session.error.message };
-  const { supabase, activeTeamId } = session;
+  const { supabase} = session;
 
   try {
-    await inboxService.markTicketAsRead(supabase, ticketId, activeTeamId);
+    await inboxService.markTicketAsRead(supabase, ticketId);
     revalidatePath("/comunicacio/inbox", 'page');
     return { success: true };
   } catch (error: unknown) {
@@ -205,10 +205,10 @@ export async function addToBlacklistAction(emailToBlock: string): Promise<Action
 export async function linkTicketsToContactAction(contactId: number, senderEmail: string): Promise<ActionResult> {
   const session = await validateUserSession();
   if ('error' in session) return { success: false, message: session.error.message };
-  const { supabase, user, activeTeamId } = session;
+  const { supabase, user } = session;
 
   try {
-    await inboxService.linkTicketsToContact(supabase, contactId, senderEmail, user.id, activeTeamId);
+    await inboxService.linkTicketsToContact(supabase, contactId, senderEmail, user.id);
     revalidatePath("/comunicacio/inbox");
     return { success: true, message: "Contacte vinculat correctament." };
   } catch (error: unknown) {
@@ -299,10 +299,10 @@ export async function deleteMultipleTicketsAction(ticketIds: number[]): Promise<
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
-  const { supabase, activeTeamId } = session;
+  const { supabase} = session;
 
   try {
-    await inboxService.deleteMultipleTickets(supabase, ticketIds, activeTeamId);
+    await inboxService.deleteMultipleTickets(supabase, ticketIds);
     revalidatePath("/comunicacio/inbox");
     return { success: true, message: "Tiquets eliminats." };
   } catch (error: unknown) {

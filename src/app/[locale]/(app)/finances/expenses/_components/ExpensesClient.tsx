@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Plus, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useLocale, useTranslations } from 'next-intl';
-import { type ExpenseWithContact } from '@/types/finances/expenses';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 import { formatCurrency, formatLocalizedDate } from '@/lib/utils/formatters';
@@ -19,11 +18,13 @@ import {
   type PaginatedActionParams
 } from '@/hooks/usePaginateResource';
 import { PageHeader } from '@/components/shared/PageHeader'; // <-- Importa PageHeader
+import { ExpenseFilters } from './ExpenseFilters'; // <-- Importa ExpenseFilters
 // Pas 2: Importar les Server Actions específiques
-import { fetchPaginatedExpenses } from '../actions';
+import { fetchPaginatedExpenses} from '../actions';
+// Importa els tipus des del fitxer de tipus principal d'expenses
+import type { ExpenseWithContact } from '@/types/finances/expenses';
+import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
 
-// Pas 3: Importar els filtres específics i el seu tipus
-import { ExpenseFilters, type ExpensePageFilters } from './ExpenseFilters';
 
 // ✅ NOU: Importem ActionResult per a la funció adaptadora
 import { type ActionResult } from '@/types/shared/actionResult';

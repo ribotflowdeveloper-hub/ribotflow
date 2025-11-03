@@ -5,10 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
 // ✅ Importem QuoteStatus aquí, ja que sí s'usa per al tipus de filtre
-import { type QuoteStatus, type QuotePageFilters } from '../actions';
-
+import { type QuoteWithContact, type QuotePageFilters } from '@/types/finances/quotes';
 // ✅ CORRECCIÓ: Valors amb majúscula inicial per coincidir amb l'enum
-const statusOptions: { value: QuoteStatus | 'all', labelKey: string }[] = [
+const statusOptions: { value: QuoteWithContact['status'] | 'all', labelKey: string }[] = [
    { value: 'all', labelKey: 'allStatuses' },
    { value: 'Draft', labelKey: 'status.Draft' }, // <-- Majúscula
    { value: 'Sent', labelKey: 'status.Sent' },   // <-- Majúscula
@@ -49,7 +48,7 @@ export function QuotesFilters({
       <Select
         value={filters.status}
         // Passem el valor directament. L'assertion 'as' assegura la compatibilitat
-        onValueChange={(value) => onFilterChange('status', value as QuoteStatus | 'all')} // <-- Assertion de tipus aquí
+        onValueChange={(value) => onFilterChange('status', value as QuoteWithContact['status'] | 'all')} // <-- Assertion de tipus aquí
       >
         <SelectTrigger className="w-[160px] h-9 bg-card border border-input">
           <SelectValue placeholder={t('statusPlaceholder')} />

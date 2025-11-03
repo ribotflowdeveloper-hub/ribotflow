@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Campaign } from '../page';
+import type { Campaign } from '../_components/MarketingData';
 
 export function useMarketing() {
     const router = useRouter();

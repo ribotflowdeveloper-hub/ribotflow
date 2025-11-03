@@ -112,6 +112,7 @@ export type Database = {
           created_at: string
           error_message: string | null
           id: string
+          key_moments: Json | null
           participants: Json | null
           project_id: string | null
           status: Database["public"]["Enums"]["audio_job_status"]
@@ -125,6 +126,7 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
+          key_moments?: Json | null
           participants?: Json | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["audio_job_status"]
@@ -138,6 +140,7 @@ export type Database = {
           created_at?: string
           error_message?: string | null
           id?: string
+          key_moments?: Json | null
           participants?: Json | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["audio_job_status"]
@@ -3346,11 +3349,11 @@ export type Database = {
         Returns: unknown
       }
       st_generatepoints:
-        | { Args: { area: unknown; npoints: number }; Returns: unknown }
         | {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
@@ -3618,11 +3621,11 @@ export type Database = {
           }
       st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
       st_union:
-        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
         | {
             Args: { geom1: unknown; geom2: unknown; gridsize: number }
             Returns: unknown
           }
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
       st_voronoilines: {
         Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
         Returns: unknown

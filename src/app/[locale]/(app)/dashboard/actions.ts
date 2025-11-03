@@ -1,107 +1,112 @@
 'use server';
 
-import { createClient } from "@/lib/supabase/server";
-import { validateUserSession } from "@/lib/supabase/session";
 import { revalidatePath } from "next/cache";
-import { NewTaskPayload } from "@/types/dashboard/types"; // ✅ Importem el nostre tipus centralitzat   
-import { Tables } from "@/types/supabase";
+import { validateUserSession } from "@/lib/supabase/session";
+import { NewTaskPayload } from "@/types/dashboard/types"; 
+import type { Tables } from "@/types/supabase";
+import type { Department } from "@/types/db"; // Importem el tipus correcte
 
-export async function addTask(taskData: NewTaskPayload) {
-  const supabase = createClient();
+// ✅ 1. Importem el nostre servei
+import * as dashboardService from "@/lib/services/dashboard/dashboard.service";
+import { type ActionResult } from "@/types/shared/index"; // Resultat genèric
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: { message: "Not authenticated" } };
-  }
 
-  const session = await validateUserSession();
-  if ('error' in session) return { error: session.error };
-  const { activeTeamId } = session;
+/**
+ * ACCIÓ: Afegeix una nova tasca.
+ */
+export async function addTask(taskData: NewTaskPayload): Promise<ActionResult> {
+  // 1. Validar Sessió
+  const session = await validateUserSession();
+  if ('error' in session) return { success: false, message: session.error.message };
+  const { supabase, user, activeTeamId } = session;
 
-  const { error } = await supabase
-    .from('tasks')
-    .insert([{ 
-        ...taskData,
-        user_id: user.id,
-        team_id: activeTeamId,
-        is_active: false
-    }]);
+  try {
+    // 2. Cridar al Servei
+    await dashboardService.addTask(supabase, taskData, user.id, activeTeamId);
+    
+    // 3. Efecte secundari
+    revalidatePath('/dashboard');
+    return { success: true };
 
-  if (error) {
-    console.error('Error creating task:', error);
-    return { error };
-  }
-
-  revalidatePath('/dashboard');
-  return { error: null };
+  } catch (error: unknown) {
+    // 4. Gestió d'errors
+    const message = (error as Error).message;
+    console.error('Error creating task (action):', message);
+    return { success: false, message };
+  }
 }
 
-// ✅ NOVA ACCIÓ: Afegeix aquesta funció per eliminar una tasca
-export async function deleteTask(taskId: number) {
-  const supabase = createClient();
+/**
+ * ACCIÓ: Elimina una tasca.
+ */
+export async function deleteTask(taskId: number): Promise<ActionResult> {
+  // 1. Validar Sessió
+  const session = await validateUserSession();
+  if ('error' in session) return { success: false, message: session.error.message };
+  const { supabase } = session;
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return { error: { message: "No autenticat" } };
-  }
+  try {
+    // 2. Cridar al Servei
+    await dashboardService.deleteTask(supabase, taskId);
+    
+    // 3. Efecte secundari
+    revalidatePath('/dashboard');
+    return { success: true };
 
-  // La política RLS ja s'encarrega de verificar que l'usuari
-  // només pot eliminar tasques del seu equip.
-  const { error } = await supabase
-    .from('tasks')
-    .delete()
-    .eq('id', taskId);
-
-  if (error) {
-    console.error('Error en eliminar la tasca:', error);
-    return { error };
-  }
-
-  revalidatePath('/dashboard'); // Refresquem les dades del servidor
-  return { error: null };
+  } catch (error: unknown) {
+    // 4. Gestió d'errors
+    const message = (error as Error).message;
+    console.error('Error en eliminar la tasca (action):', message);
+    return { success: false, message };
+  }
 }
 
-// ✅ NOVA ACCIÓ: Afegeix aquesta funció per crear un departament
-export async function addDepartment(name: string) {
-  const supabase = createClient();
+/**
+ * ACCIÓ: Afegeix un nou departament.
+ */
+export async function addDepartment(name: string): Promise<ActionResult<Department>> {
+  // 1. Validar Sessió
+  const session = await validateUserSession();
+  if ('error' in session) return { success: false, message: session.error.message };
+  const { supabase, activeTeamId } = session;
 
-  const session = await validateUserSession();
-  if ('error' in session) return { error: session.error };
-  const { activeTeamId } = session;
+  try {
+    // 2. Cridar al Servei
+    const data = await dashboardService.addDepartment(supabase, name, activeTeamId);
 
-  // Intentem inserir el nou departament i retornem la fila creada
-  const { data, error } = await supabase
-    .from('departments')
-    .insert({ name, team_id: activeTeamId })
-    .select()
-    .single(); // .single() és clau per obtenir l'objecte creat
+    // 3. Efecte secundari
+    revalidatePath('/dashboard');
+    return { success: true, data };
 
-  if (error) {
-    console.error('Error en crear el departament:', error);
-    // Gestionem errors de duplicitat d'una manera més amigable
-    if (error.code === '23505') {
-      return { error: { message: `El departament "${name}" ja existeix.` } };
-    }
-    return { error };
-  }
-
-  revalidatePath('/dashboard'); // Assegurem que les dades del servidor es refresquin
-  return { data };
+  } catch (error: unknown) {
+    // 4. Gestió d'errors (incloent duplicats)
+    const message = (error as Error).message;
+    console.error('Error en crear el departament (action):', message);
+    return { success: false, message };
+  }
 }
 
-// ✅ NOVA ACCIÓ PER ACTUALITZAR UNA TASCA
-export async function updateTaskAction(taskId: number, updatedData: Partial<Tables<'tasks'>>) {
-    const session = await validateUserSession();
-    if ('error' in session) return { error: session.error };
-    const { supabase } = session;
+/**
+ * ACCIÓ: Actualitza una tasca.
+ */
+export async function updateTaskAction(taskId: number, updatedData: Partial<Tables<'tasks'>>): Promise<ActionResult> {
+  // 1. Validar Sessió
+  const session = await validateUserSession();
+  if ('error' in session) return { success: false, message: session.error.message };
+  const { supabase } = session;
 
-    const { error } = await supabase
-        .from('tasks')
-        .update(updatedData)
-        .eq('id', taskId);
+  try {
+    // 2. Cridar al Servei
+    await dashboardService.updateTask(supabase, taskId, updatedData);
 
-    if (error) return { error };
+    // 3. Efecte secundari
+    revalidatePath('/dashboard');
+    return { success: true };
 
-    revalidatePath('/dashboard');
-    return { error: null };
+  } catch (error: unknown) {
+    // 4. Gestió d'errors
+    const message = (error as Error).message;
+    console.error('Error en actualitzar la tasca (action):', message);
+    return { success: false, message };
+  }
 }

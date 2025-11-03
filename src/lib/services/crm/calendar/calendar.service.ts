@@ -7,7 +7,7 @@ import { type ActiveSources } from '@/types/crm/calendar'; // Importem el tipus 
 import { z } from 'zod';
 
 // Serveis d'entitat que orquestrarem
-import { getTeamMembers } from '../../team.service';
+import { getTeamMembers } from '@/lib/services/settings/team/team.service';
 import { getAllContacts } from '../contacts/contacts.service';
 import { getDepartments } from '../../departments.service';
 
@@ -197,7 +197,18 @@ export async function getCalendarMetadata(
 
   const errors: CalendarMetadataError = {};
   if (usersResult.error) errors.usersError = usersResult.error;
-  if (contactsResult.error) errors.contactsError = contactsResult.error;
+  if (
+    'error' in contactsResult &&
+    contactsResult.error !== null &&
+    typeof contactsResult.error === 'object' &&
+    'message' in contactsResult.error &&
+    'details' in contactsResult.error &&
+    'hint' in contactsResult.error &&
+    'code' in contactsResult.error &&
+    'name' in contactsResult.error
+  ) {
+    errors.contactsError = contactsResult.error as PostgrestError;
+  }
   if (departmentsResult.error) errors.departmentsError = departmentsResult.error;
 
   if (Object.keys(errors).length > 0) {
@@ -213,7 +224,7 @@ export async function getCalendarMetadata(
   return {
     data: {
       teamUsers: users,
-      contacts: contactsResult.data ?? [],
+      contacts: contactsResult ?? [],
       departments: departmentsResult.data ?? []
     },
     error: null

@@ -1,32 +1,30 @@
+// src/app/[locale]/(app)/crm/contactes/[contactId]/_components/contact-detail-client.tsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { ca, es, enUS } from 'date-fns/locale';
-import { type ContactDetail } from '../actions';
 import { useContactDetail } from '../_hooks/useContactDetail';
 import { ContactDetailHeader } from './ContactDetailHeader';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
 
-// ✅ 1. Importem els nous components de layout
-import { ContactSummaryDashboard, type RelatedData } from './tabs/ContactSummaryDashboard';
+// ✅ 1. Importem els tipus DIRECTAMENT des del SERVEI
+import type { ContactDetail, ContactRelatedData } from '@/lib/services/crm/contacts/contacts.service';
+
+// ✅ 2. Importem els components de layout
+import { ContactSummaryDashboard } from './tabs/ContactSummaryDashboard';
 import { ContactViewSwitcher, type ContactViewKey } from './ContactViewSwitcher';
 
-// ✅ 2. Importem el contingut que abans estava dins les pestanyes
+// ✅ 3. Importem el contingut que abans estava dins les pestanyes
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { RelatedDataTable } from './tabs/RelatedDataTable';
 import { DetailsTab } from './tabs/DetailsTab';
 
-// ❌ Ja no necessitem ContactDetailTabs
-// import { ContactDetailTabs } from './ContactDetailTabs';
-
-// Tipus (ja no calen aquí, els importa 'RelatedData')
-// type Quote = ...
-
 interface ContactDetailClientProps {
     initialContact: ContactDetail;
-    initialRelatedData: RelatedData;
+    // ✅ 4. Corregim el nom del tipus (coincidint amb el Server Component)
+    initialRelatedData: ContactRelatedData;
 }
 
 // Definim les animacions per al canvi de vista
@@ -41,7 +39,6 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
     const locale = useLocale();
     const dateLocale = { ca, es, en: enUS }[locale] || ca;
     
-    // ✅ 3. Estat per a la vista activa. Comencem per 'summary' (el nou dashboard)
     const [activeView, setActiveView] = useState<ContactViewKey>('summary');
 
     const {
@@ -55,14 +52,12 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
         setIsEditing,
     } = useContactDetail(initialContact, t);
 
-    // Funció per obtenir el text de l'estat (necessària per a DetailsTab)
     const getStatusLabel = (statusCode?: string | null) => {
         if (!statusCode) return t('details.noData');
         const status = CONTACT_STATUS_MAP.find(s => s.code === statusCode);
         return status ? t(`contactStatuses.${status.key}`) : statusCode;
     };
 
-    // ✅ 4. Efecte per forçar la vista de "Detalls" quan s'està editant
     useEffect(() => {
         if (isEditing) {
             setActiveView('details');
@@ -73,7 +68,6 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
         <motion.div 
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
-            // Permet scroll vertical a tota la pàgina de detall
             className="flex flex-col h-full overflow-y-auto"
         >
             <form action={handleSaveChanges} ref={formRef} className="flex flex-col h-full">
@@ -100,8 +94,6 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                 <div className="p-4 md:px-6 flex-1">
                     <AnimatePresence mode="wait">
                         <motion.div
-                            // La clau és crucial per a l'animació.
-                            // Si estem editant, la clau és 'edit', sinó, és la vista activa.
                             key={isEditing ? 'edit' : activeView}
                             variants={viewVariants}
                             initial="hidden"
@@ -149,7 +141,7 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                                             columns={[
                                                 { key: 'quote_number', label: t('quotes.table.number') }, 
                                                 { key: 'status', label: t('quotes.table.status') }, 
-                                                { key: 'total_amount', label: t('quotes.table.total') }
+                                                { key: 'total_amount', label: t('quotes.table.total') } // Assegura't que 'total_amount' existeix
                                             ]} 
                                             linkPath="/crm/quotes" 
                                             emptyMessage={t('quotes.empty')} 
@@ -161,7 +153,7 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                                             columns={[
                                                 { key: 'invoice_number', label: t('invoices.table.number') }, 
                                                 { key: 'status', label: t('invoices.table.status') }, 
-                                                { key: 'total_amount', label: t('invoices.table.total') }
+                                                { key: 'total_amount', label: t('invoices.table.total') } // Assegura't que 'total_amount' existeix
                                             ]} 
                                             emptyMessage={t('invoices.empty')} 
                                         />

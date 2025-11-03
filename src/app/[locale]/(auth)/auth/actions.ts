@@ -1,5 +1,3 @@
-// /app/[locale]/auth/actions.ts
-
 "use server";
 
 import { z } from 'zod';
@@ -38,39 +36,81 @@ const UpdatePasswordSchema = z.object({
     code: z.string().min(1, "Falta el token de restabliment."),
 });
 
+// --- ✅ CANVI: Definim un tipus de retorn unificat per a les accions d'autenticació ---
+// Això permetrà al client gestionar errors sense recarregar la pàgina.
+type AuthActionResult = {
+  success: boolean;
+  message?: string | null;      // Missatge d'error directe
+  errorKey?: string | null;     // Clau per a traduccions (i18n)
+  email?: string | null;        // Per repoblar el camp email
+};
+
 
 // --- Accions Refactoritzades ---
 
-export async function loginAction(formData: FormData) {
+// ✅ CANVI: La funció ara retorna una Promise<AuthActionResult>
+export async function loginAction(formData: FormData): Promise<AuthActionResult> {
     const { supabase, locale } = await createActionContext();
+    const email = formData.get('email') as string; // Obtenim l'email abans de validar
     const result = LoginSchema.safeParse(Object.fromEntries(formData));
 
     if (!result.success) {
-        return redirect(`/${locale}/login?message=${encodeURIComponent(result.error.issues[0].message)}`);
+        // ❌ Abans: return redirect(...)
+        // ✅ Ara: Retornem un objecte d'error
+        return {
+            success: false,
+            message: result.error.issues[0].message,
+            errorKey: 'validation_failed',
+            email: email, // Retornem l'email (fins i tot si és invàlid) per mantenir-lo al camp
+        };
     }
 
     const { error } = await supabase.auth.signInWithPassword(result.data);
     if (error) {
-        return redirect(`/${locale}/login?message=${encodeURIComponent("Credencials incorrectes.")}`);
+        // ❌ Abans: return redirect(...)
+        // ✅ Ara: Retornem un objecte d'error
+        return {
+            success: false,
+            message: "Credencials incorrectes.", // Missatge simple
+            errorKey: 'invalid_credentials',    // Clau per a i18n al client
+            email: result.data.email,         // Retornem l'email validat
+        };
     }
 
+    // ✅ Èxit: La redirecció només passa si tot ha anat bé.
     redirect(`/${locale}/dashboard`);
 }
 
-export async function signupAction(formData: FormData) {
-    const { supabase, locale, origin } = await createActionContext();
+// ✅ CANVI: La funció ara retorna una Promise<AuthActionResult>
+export async function signupAction(formData: FormData): Promise<AuthActionResult> {
+    const { supabase, origin } = await createActionContext();
     const supabaseAdmin = createAdminClient();
+    const email = formData.get('email') as string; // Obtenim l'email abans de validar
     const result = SignupSchema.safeParse(Object.fromEntries(formData));
 
     if (!result.success) {
-        return redirect(`/${locale}/signup?message=${encodeURIComponent(result.error.issues[0].message)}`);
+        // ❌ Abans: return redirect(...)
+        // ✅ Ara: Retornem un objecte d'error
+        return {
+            success: false,
+            message: result.error.issues[0].message,
+            errorKey: 'validation_failed',
+            email: email,
+        };
     }
 
-    const { email, password, fullName, invite_token } = result.data;
+    const { password, fullName, invite_token } = result.data;
 
     const { data: existingUser } = await supabaseAdmin.from('users').select('id').eq('email', email).single();
     if (existingUser) {
-        return redirect(`/${locale}/login?message=${encodeURIComponent("Ja existeix un compte amb aquest correu.")}`);
+        // ❌ Abans: return redirect(...)
+        // ✅ Ara: Retornem un objecte d'error
+        return {
+            success: false,
+            message: "Ja existeix un compte amb aquest correu.",
+            errorKey: 'user_exists',
+            email: email,
+        };
     }
 
     const nextUrl = invite_token ? `/dashboard?token=${invite_token}` : `/onboarding`;
@@ -85,13 +125,27 @@ export async function signupAction(formData: FormData) {
     });
 
     if (signUpError) {
-        return redirect(`/${locale}/signup?message=${encodeURIComponent(signUpError.message)}`);
+        // ❌ Abans: return redirect(...)
+        // ✅ Ara: Retornem un objecte d'error
+        return {
+            success: false,
+            message: signUpError.message,
+            errorKey: 'signup_failed',
+            email: email,
+        };
     }
     if (!signUpData.user) {
-        return redirect(`/${locale}/signup?message=No s'ha pogut crear l'usuari.`);
+        // ❌ Abans: return redirect(...)
+        // ✅ Ara: Retornem un objecte d'error
+        return {
+            success: false,
+            message: "No s'ha pogut crear l'usuari.",
+            errorKey: 'signup_failed_no_user',
+            email: email,
+        };
     }
 
-
+    // ✅ Èxit: Redirigim a la pàgina de "comprova el teu email"
     return redirect(`/auth/check-email?email=${encodeURIComponent(email)}`);
 }
 
@@ -116,11 +170,14 @@ export async function googleAuthAction(inviteToken?: string | null) {
     });
 
     if (error) {
+        // Aquesta redirecció és correcta, ja que el flux OAuth és diferent
+        // i no podem retornar un objecte a un formulari que no ha iniciat l'acció.
         return redirect(`/login?message=${encodeURIComponent("No s'ha pogut iniciar sessió amb Google.")}`);
     }
     return redirect(data.url);
 }
 
+// ✅ Aquesta funció ja seguia el patró correcte de retornar un objecte.
 export async function forgotPasswordAction(formData: FormData): Promise<{ success: boolean; message: string }> {
     const { supabase, origin, locale } = await createActionContext();
     const result = ForgotPasswordSchema.safeParse(Object.fromEntries(formData));
@@ -141,7 +198,6 @@ export async function forgotPasswordAction(formData: FormData): Promise<{ succes
     return { success: true, message: "Si l'email existeix, rebràs un enllaç per a restablir la teva contrasenya." };
 }
 
-// ✅ Aquesta és la nova acció que hem mogut des del component de pàgina
 export async function updatePasswordAction(formData: FormData) {
     const { supabase, locale } = await createActionContext();
     const result = UpdatePasswordSchema.safeParse(Object.fromEntries(formData));

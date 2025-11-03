@@ -124,7 +124,7 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
               <TableBody>
                 {expenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell>{formatDate(expense.expense_date)}</TableCell>
+                    <TableCell>{formatDate(expense.expense_date ?? "")}</TableCell>
                     <TableCell>
                       {/* ✅ MILLORA NAVEGACIÓ: Afegim el paràmetre 'from' */}
                       <Link
@@ -163,7 +163,7 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
                             <AlertDialogCancel disabled={isUnlinking}>Cancel·lar</AlertDialogCancel>
                             <AlertDialogAction
                               className="bg-destructive hover:bg-destructive/90"
-                              onClick={() => handleUnlink(expense.id)}
+                              onClick={() => expense.id !== undefined && handleUnlink(expense.id)}
                               disabled={isUnlinking}
                             >
                               {isUnlinking ? <Loader2 className="h-4 w-4 animate-spin" /> : "Desvincular"}

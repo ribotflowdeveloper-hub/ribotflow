@@ -111,7 +111,7 @@ export function ExpenseDetailClient({ initialData, isNew }: ExpenseDetailClientP
                             <SupplierCombobox
                                 value={formData.supplier_id}
                                 onChange={(value) => handleFieldChange('supplier_id', value)}
-                                initialSupplier={initialData?.suppliers ? { id: initialData.suppliers.id, nom: initialData.suppliers.nom } : null}
+                                initialSupplier={initialData?.suppliers ? { id: String(initialData.suppliers.id), nom: initialData.suppliers.nom } : null}
                                 disabled={isSaving}
                             />
                             </div>

@@ -24,6 +24,7 @@ import { ImapSmtpDialog } from './ImapSmtpDialog';
 import instagram from '@/../public/instagram.jpeg';
 import facebook from '@/../public/facebook.jpeg';
 import linkedin from '@/../public/linkedin.png';
+import iconGmail from '@/../public/IconGmail.webp';
 
 interface IntegrationsClientProps {
     initialConnectionStatuses: {
@@ -110,7 +111,7 @@ export function IntegrationsClient({ initialConnectionStatuses }: IntegrationsCl
 
     const integrationList = [
         // ✅ NOU: Llista d'integracions actualitzada
-        { name: 'google_gmail', title: t('googleTitle'), description: t('googleDescription'), icon: "https://w7.pngwing.com/pngs/758/665/png-transparent-new-logo-gmail-google-new-logos-icon.png" },
+        { name: 'google_gmail', title: t('googleTitle'), description: t('googleDescription'), icon: iconGmail },
         // Hauràs d'afegir 'googleCalendar.title' i 'googleCalendar.description' als teus fitxers de traducció (p.ex. en.json)
         { name: 'google_calendar', title: t('googleCalendar.title'), description: t('googleCalendar.description'), icon: "https://upload.wikimedia.org/wikipedia/commons/a/a5/Google_Calendar_icon_%282020%29.svg" },
         { name: 'microsoft', title: t('microsoftTitle'), description: t('microsoftDescription'), icon: "https://img.icons8.com/?size=100&id=117562&format=png&color=000000" },

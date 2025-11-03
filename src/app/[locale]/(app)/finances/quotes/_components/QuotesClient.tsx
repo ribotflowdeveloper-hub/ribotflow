@@ -1,32 +1,32 @@
+// /app/[locale]/(app)/finances/quotes/_components/QuotesClient.tsx (FITXER CORREGIT)
 "use client";
 
 import { useMemo } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { Plus, Edit } from 'lucide-react';
-import { PageHeader } from '@/components/shared/PageHeader'; // Importa PageHeader
-// Tipus i Accions
-import { type QuoteWithContact, type QuotePageFilters, fetchPaginatedQuotes, deleteQuoteAction } from '../actions';
+import { PageHeader } from '@/components/shared/PageHeader';
+
+// ✅ CORRECCIÓ: Importem les ACCIONS des d'../actions
+import { fetchPaginatedQuotes, deleteQuoteAction } from '../actions';
+// ✅ CORRECCIÓ: Importem els TIPUS des del fitxer de tipus
+import { type QuoteWithContact, type QuotePageFilters } from '@/types/finances/quotes';
+
 import { type ActionResult } from '@/types/shared/actionResult';
-import { usePathname } from 'next/navigation'; // ✅ 1. Importar usePathname
-// Components Compartits
+import { usePathname } from 'next/navigation';
+// ... (la resta d'imports de components UI) ...
 import { Button } from '@/components/ui/button';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 import { Badge } from '@/components/ui/badge';
-
-// Components Específics
 import { QuotesFilters } from './QuotesFilters';
-
-// Hook Genèric
 import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource';
-
-// Utilitats
 import { formatDate, formatCurrency } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils/utils';
 import { QUOTE_STATUS_MAP } from '@/config/styles/quotes';
 
-// Alias i Constants
+// ... (la resta del component es manté igual) ...
+// ... (Alias i Constants) ...
 type PaginatedQuotesResponse = PaginatedResponse<QuoteWithContact>;
 type FetchQuotesParams = PaginatedActionParams<QuotePageFilters>;
 const QUOTE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
@@ -39,7 +39,7 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
   const t = useTranslations('QuotesPage');
   const tShared = useTranslations('Shared');
   const locale = useLocale();
-  const pathname = usePathname(); // ✅ 2. Obtenir la ruta actual
+  const pathname = usePathname(); 
 
   const allColumns = useMemo<ColumnDef<QuoteWithContact>[]>(() => [
     {
@@ -61,14 +61,10 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
       header: t('table.client'),
       enableSorting: true,
       cell: (quote) => {
-        // ✅ MODIFICACIÓ: Obtenim el contacte per més claredat
         const contact = quote.contacts;
-
-        // ✅ MODIFICACIÓ: Comprovem que el contacte i el seu ID existeixen
         if (contact && contact.id) {
           return (
             <Link
-              // ✅ 3. Afegir el paràmetre ?from=... a la URL
               href={`/${locale}/crm/contactes/${contact.id}?from=${pathname}`}
               className="text-primary hover:underline font-medium"
             >
@@ -76,8 +72,6 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
             </Link>
           );
         }
-
-        // Fallback si no hi ha contacte o ID
         return t('noClient', { defaultValue: 'Sense Client' });
       },
     },
@@ -102,7 +96,7 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
         return (
           <Badge
             variant="outline"
-            className={cn("text-xs", statusInfo.colorClass)} // colorClass ja inclou el color de text
+            className={cn("text-xs", statusInfo.colorClass)}
           >
             {t(`status.${statusInfo.key}`)}
           </Badge>
@@ -115,13 +109,13 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
       enableSorting: false,
       cellClassName: "text-right",
       cell: (quote) => (
-        // ✅ CORRECCIÓ: Unifiquem la ruta d'edició a /crm/ en lloc de /finances/
         <Link href={`/${locale}/crm/quotes/${quote.id}`} title={tShared('actions.edit')}>
           <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
         </Link>
       ),
     }
-  ], [t, tShared, locale, pathname]); // ✅ 4. Afegir pathname a les dependències del useMemo
+  ], [t, tShared, locale, pathname]);
+  
   const {
     isPending,
     data: quotes,
@@ -184,10 +178,7 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
 
   return (
     <div className="flex flex-col gap-4 h-full">
-      {/* Capçalera */}
-      {/* ✅ Substituïm la capçalera manual per PageHeader */}
       <PageHeader title={t('title')}>
-        {/* El botó "Nova Quote" va com a 'children' */}
         <Button asChild>
           <Link href={`/${locale}/finances/quotes/new`}>
             <Plus className="w-4 h-4 mr-1" /> {t('newQuoteButton')}
@@ -195,14 +186,12 @@ export function QuotesClient({ initialData }: QuotesClientProps) {
         </Button>
       </PageHeader>
 
-      {/* Barra de Filtres / Accions */}
       <div className="flex justify-between items-center">
         <QuotesFilters
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
           filters={filters}
           onFilterChange={handleFilterChange}
-        // clients={contactsForFilter}
         />
         <ColumnToggleButton
           allColumns={allColumns}

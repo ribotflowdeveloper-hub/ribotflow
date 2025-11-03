@@ -1,4 +1,4 @@
-// /app/[locale]/(app)/crm/quotes/[id]/_components/CompanyProfileDialog.tsx (Refactoritzat)
+// /app/[locale]/(app)/finances/quotes/[id]/_components/CompanyProfileDialog.tsx (FITXER CORREGIT)
 "use client";
 
 import React, { useState, useEffect, useTransition } from 'react';
@@ -9,23 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Loader2, Upload } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { updateTeamProfileAction } from '../actions';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-// ✅ 1. Importem la definició de la base de dades.
-import { type Database } from '@/types/supabase';
 
-// ✅ 2. Definim el tipus per a la taula 'teams'.
-type Team = Database['public']['Tables']['teams']['Row'];
+// ✅ CORRECCIÓ: Importem l'ACCIÓ des del fitxer d'accions
+import { updateTeamProfileAction } from '../actions';
+// ✅ CORRECCIÓ: Importem el TIPUS directament des del fitxer de tipus
+import { type Team } from '@/types/finances/quotes';
+
 
 export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpdate }: {
     open: boolean;
     onOpenChange: (isOpen: boolean) => void;
-    profile: Team | null; // <-- Tipus correcte
-    onProfileUpdate: (newProfile: Team) => void; // <-- Tipus correcte
+    profile: Team | null;
+    onProfileUpdate: (newProfile: Team) => void;
 }) {
     const t = useTranslations('QuoteEditor');
-    // ✅ 3. L'estat local ara és un objecte parcial del tipus 'Team'.
     const [localProfile, setLocalProfile] = useState<Partial<Team>>({});
     const [isSaving, startSaveTransition] = useTransition();
     const [isUploading, setIsUploading] = useState(false);
@@ -33,7 +32,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
 
     useEffect(() => {
         if (profile) {
-            // No cal "traduir" els camps, simplement copiem el perfil.
             setLocalProfile(profile);
         }
     }, [profile]);
@@ -57,7 +55,6 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
 
     const handleSaveProfile = () => {
         startSaveTransition(async () => {
-            // ✅ 4. Passem directament l'estat local, que ja té el format correcte.
             const result = await updateTeamProfileAction(localProfile);
 
             if (result.success && result.data) {
@@ -98,7 +95,7 @@ export function CompanyProfileDialog({ open, onOpenChange, profile, onProfileUpd
                             <input id="logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploading} />
                         </div>
                     </div>
-                    {/* ✅ 5. Els camps ara corresponen a les columnes de la taula 'teams'. */}
+                    {/* Camps del perfil */}
                     <div><Label htmlFor="name">{t('companyProfileDialog.nameLabel')}</Label><Input id="name" name="name" value={localProfile.name || ''} onChange={handleInputChange} /></div>
                     <div><Label htmlFor="tax_id">{t('companyProfileDialog.taxIdLabel')}</Label><Input id="tax_id" name="tax_id" value={localProfile.tax_id || ''} onChange={handleInputChange} /></div>
                     <div><Label htmlFor="address">{t('companyProfileDialog.addressLabel')}</Label><Input id="address" name="address" value={localProfile.address || ''} onChange={handleInputChange} /></div>
