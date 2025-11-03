@@ -19,7 +19,7 @@ import {
   searchContactsForLinking, 
   linkContactToSupplier 
 } from '@/app/[locale]/(app)/crm/contactes/actions';
-import { type Contact } from '@/types/crm/contacts'; 
+import type { Contact } from "@/types/db"; 
 
 type SearchResult = Pick<Contact, 'id' | 'nom' | 'email'>;
 
@@ -124,7 +124,7 @@ export function LinkContactDialog({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleLinkClick(contact.id)}
+                onClick={() => handleLinkClick(String(contact.id))}
                 disabled={isLinking}
               >
                 <UserPlus className="h-4 w-4 mr-2" />

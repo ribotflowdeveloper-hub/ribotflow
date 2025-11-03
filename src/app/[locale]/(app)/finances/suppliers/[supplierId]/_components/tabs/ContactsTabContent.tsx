@@ -10,12 +10,10 @@ import {
   PlusCircle, Users, Mail, Phone, Link2,
   Trash2, Loader2 // ✅ Afegim icones
 } from 'lucide-react';
-import {
-  type ContactForSupplier,
-  unlinkContactFromSupplier // ✅ Importem la nova acció
-} from '@/app/[locale]/(app)/crm/contactes/actions';
+import { unlinkContactFromSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
+import type { ContactForSupplier } from '@/lib/services/crm/contacts/contacts.service';
 import { LinkContactDialog } from '../LinkContactDialog';
-import { type Contact } from '@/types/crm/contacts';
+import type { Contact } from "@/types/db";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,13 +53,13 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
     ]);
   };
 
-  // ✅ Nova funció per gestionar la desvinculació
-  const handleUnlink = (contactId: string) => {
+  // ✅ 4. 'contactId' ara és un NÚMERO
+  const handleUnlink = (contactId: number) => {
     startUnlinkTransition(async () => {
-      const result = await unlinkContactFromSupplier(contactId, supplierId);
+      // L'acció 'unlinkContactFromSupplier' espera un 'string', així que el convertim
+      const result = await unlinkContactFromSupplier(String(contactId), supplierId);
       if (result.success) {
         toast.success(result.message);
-        // Actualitzem l'estat local per eliminar el contacte de la UI
         setContacts(prev => prev.filter(c => c.id !== contactId));
       } else {
         toast.error(result.message || "Error en desvincular.");
@@ -121,7 +119,6 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                       >
                         {contact.nom}
                       </Link>
-                      {contact.job_title && (<span className="block text-xs text-muted-foreground">{contact.job_title}</span>)}
                     </TableCell>
                     <TableCell>{contact.email ? (<a href={`mailto:${contact.email}`} className="flex items-center gap-2 hover:underline"><Mail className="h-3 w-3" /> {contact.email}</a>) : '-'}</TableCell>
                     <TableCell>{contact.telefon ? (<a href={`tel:${contact.telefon}`} className="flex items-center gap-2 hover:underline"><Phone className="h-3 w-3" /> {contact.telefon}</a>) : '-'}</TableCell>

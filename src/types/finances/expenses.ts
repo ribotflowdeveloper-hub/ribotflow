@@ -1,6 +1,6 @@
 // src/types/finances/expenses.ts (Versió consolidada i tipada)
 
-import { Contact } from '@/types/crm/contacts'; // Per a la relació amb el Proveïdor
+import type { Contact } from "@/types/db"; 
 // import { Database } from '@/types/supabase'; // Si l'SDK ho genera automàticament
 
 // --- 1. Tipus d'Elements (Basats en les teves definicions) ---
@@ -61,7 +61,7 @@ export type ExpenseWithContact = Expense & {
 
 // Tipus per a la vista de detall (totes les dades relacionals)
 export type ExpenseDetail = ExpenseWithContact & {
-    suppliers: Pick<Contact, 'id' | 'nom' | 'nif'> | null; // Tipus de detall del proveïdor
+    suppliers: Pick<Contact, 'id' | 'nom'> | null; // Tipus de detall del proveïdor
     expense_items: ExpenseItem[];
     expense_attachments: ExpenseAttachment[];
 };

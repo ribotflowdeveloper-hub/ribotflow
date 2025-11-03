@@ -7,7 +7,7 @@ import { addMonths, subMonths } from 'date-fns';
 import { toast } from 'sonner';
 
 import { scheduleSocialPostAction, unscheduleSocialPostAction, deleteSocialPostAction } from '../actions';
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
+import type { SocialPost } from '@/types/db';
 
 interface UseSocialPlannerProps {
     initialPosts: SocialPost[];

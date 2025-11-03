@@ -14,7 +14,7 @@ interface Props {
 export function QuoteDetailDialog({ quote, open, onOpenChange }: Props) {
   if (!quote) return null;
 
-  const quoteUrl = `/crm/quotes/${quote.id}`;
+  const quoteUrl = `/finances/quotes/${quote.id}`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

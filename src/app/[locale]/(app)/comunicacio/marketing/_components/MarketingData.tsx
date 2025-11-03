@@ -1,29 +1,45 @@
-// Ubicació: /app/(app)/comunicacio/marketing/_components/MarketingData.tsx
+// src/app/[locale]/(app)/comunicacio/marketing/_components/MarketingData.tsx
 
-import { validatePageSession } from '@/lib/supabase/session'; // ✅ Importem el helper correcte
+import { validatePageSession } from '@/lib/supabase/session';
 import { MarketingClient } from './marketing-client';
-import type { Campaign, Kpis } from '../page';
 
+// ✅ 1. Importem el nostre servei
+import { marketingService } from '@/lib/services/comunicacio/marketing.service';
+
+// ✅ 2. Importem els tipus des de la nostra font de la veritat
+import type { Campaign, Kpis } from '@/types/comunicacio/marketing';
+
+// ✅ 3. Re-exportem els tipus per al Client Component (bona pràctica)
+export type { Campaign, Kpis };
+
+/**
+ * @summary Component de servidor que obté les dades de màrqueting
+ * utilitzant el servei centralitzat.
+ */
 export async function MarketingData() {
-    // ✅ La validació de sessió és ara una sola línia!
-    const { supabase, activeTeamId } = await validatePageSession();
+    const { supabase, activeTeamId } = await validatePageSession();
 
-    const { data, error } = await supabase.rpc('get_marketing_page_data', {
-        p_team_id: activeTeamId 
-    });
+    // ✅ 4. Cridem al servei en lloc de l'RPC directament
+    const { data, error } = await marketingService.getMarketingPageData(
+      supabase,
+      activeTeamId 
+    );
 
-    if (error) {
-        console.error("Error en obtenir les dades de màrqueting:", error);
-        return <MarketingClient initialKpis={{ totalLeads: 0, conversionRate: 0 }} initialCampaigns={[]} />;
-    }
-    
-    const isObject = typeof data === 'object' && data !== null && !Array.isArray(data);
-
-    type MarketingPageData = { kpis: Kpis; campaigns: Campaign[] };
-    const typedData = isObject ? (data as MarketingPageData) : undefined;
-
-    const kpis: Kpis = typedData && typedData.kpis ? typedData.kpis : { totalLeads: 0, conversionRate: 0 };
-    const campaigns: Campaign[] = typedData && typedData.campaigns ? typedData.campaigns : [];
-
-    return <MarketingClient initialKpis={kpis} initialCampaigns={campaigns} />;
+    // ✅ 5. La gestió d'errors és més senzilla
+    // El servei ja ens retorna un 'fallbackData' si 'data' és nul,
+    // així que 'data' sempre hauria de ser un objecte vàlid si no hi ha error.
+    if (error || !data) {
+        console.error("Error en obtenir les dades de màrqueting (MarketingData):", error);
+        // Retornem un estat buit en cas d'error
+        return <MarketingClient 
+            initialKpis={{ totalLeads: 0, conversionRate: 0 }} 
+            initialCampaigns={[]} 
+        />;
+    }
+    
+    // ✅ 6. Passem les dades netes del servei al client
+    return <MarketingClient 
+        initialKpis={data.kpis} 
+        initialCampaigns={data.campaigns} 
+    />;
 }

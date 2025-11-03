@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
-import { type Campaign } from '../page';
+import { type Campaign } from './MarketingData';
 import { updateCampaignAction } from '../actions';
 import { format } from 'date-fns';
 import { ca, es, enUS } from 'date-fns/locale';
@@ -41,7 +41,15 @@ export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, 
     const handleSave = () => {
         if (!editedCampaign) return;
         startTransition(async () => {
-            const { error } = await updateCampaignAction(editedCampaign.id, editedCampaign.name, editedCampaign.content);
+            // ✅ CORRECCIÓ: 'editedCampaign.id' és 'number',
+            // però la teva acció 'updateCampaignAction' espera un 'string'.
+            // Hauríem de corregir l'ACCIÓ perquè accepti 'number',
+            // però si no podem, fem la conversió aquí:
+            const { error } = await updateCampaignAction(
+                String(editedCampaign.id), // Convertim number a string
+                editedCampaign.name,
+                editedCampaign.content ?? '' // Assegurem que no sigui null
+            );
             if (error) {
                 toast.error('Error', { description: t('toastErrorUpdate') });
             } else {
@@ -51,9 +59,8 @@ export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, 
             }
         });
     };
-
     const getDateLocale = () => {
-        switch(locale) {
+        switch (locale) {
             case 'es': return es;
             case 'en': return enUS;
             default: return ca;
@@ -92,7 +99,8 @@ export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, 
                                 <Label htmlFor="campaignAudience" className="font-semibold">{t('detailDialogAudienceLabel')}</Label>
                                 <Input
                                     id="campaignAudience"
-                                    value={editedCampaign.target_audience}
+                                    // ✅ CORRECCIÓ: Un <Input> no pot acceptar 'null'. Donem un 'fallback' a string buit.
+                                    value={editedCampaign.target_audience ?? ''}
                                     disabled
                                 />
                             </div>
@@ -100,7 +108,8 @@ export const CampaignDetailDialog: FC<CampaignDetailDialogProps> = ({ campaign, 
                                 <Label htmlFor="campaignContent" className="font-semibold">{t('detailDialogContentLabel')}</Label>
                                 <Textarea
                                     id="campaignContent"
-                                    value={editedCampaign.content}
+                                    // ✅ CORRECCIÓ: Un <Textarea> no pot acceptar 'null'.
+                                    value={editedCampaign.content ?? ''}
                                     onChange={(e) => setEditedCampaign(c => c ? { ...c, content: e.target.value } : null)}
                                     className="flex-1 text-base"
                                     rows={15}

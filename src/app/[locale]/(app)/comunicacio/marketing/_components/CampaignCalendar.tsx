@@ -12,7 +12,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 // Importem funcions de la llibreria 'date-fns' per a la manipulació de dates. És molt potent i lleugera.
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from 'date-fns';
 import { ca, es, enUS } from 'date-fns/locale';
-import { type Campaign } from '../page'; // Tipus de dades per a una campanya.
+import { type Campaign } from './MarketingData'; // Tipus de dades per a una campanya.
 import { useLocale, useTranslations } from 'next-intl';
 
 // Interfície de propietats del component.

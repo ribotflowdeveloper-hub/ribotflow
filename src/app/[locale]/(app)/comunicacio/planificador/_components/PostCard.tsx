@@ -1,5 +1,5 @@
 // --- PostCard.tsx ---
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
+import type { SocialPost } from '@/types/db';
 import { format, parseISO } from 'date-fns';
 import { Clock, CheckCircle, XCircle, Trash2, AlertTriangle, Images, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';

@@ -4,11 +4,10 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { toast } from 'sonner';
-import { getPresignedUploadUrlAction, createSocialPostAction } from '../actions';
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
 import { type ConnectionStatuses } from '../types';
 import { generateVideoThumbnail } from '@/lib/utils/media';
-
+import { getPresignedUploadUrlAction, createSocialPostAction } from '../actions';
+import type { SocialPost } from '@/types/db';   
 interface UseCreatePostProps {
     isOpen: boolean;
     connectionStatuses: ConnectionStatuses;

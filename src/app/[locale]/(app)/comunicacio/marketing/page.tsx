@@ -16,22 +16,6 @@ export const metadata: Metadata = {
 // --- Definició de Tipus de Dades ---
 // Aquests tipus asseguren la consistència de les dades entre el servidor, el client i la base de dades.
 
-export type Campaign = {
-  id: string;
-  name: string;
-  type: string;
-  status: 'Completat' | 'Actiu' | 'Planificat';
-  campaign_date: string; // Utilitzem string per a una fàcil serialització.
-  goal: string;
-  target_audience: string;
-  content: string;
-};
-
-export type Kpis = {
-  totalLeads: number;
-  conversionRate: number;
-};
-
 /**
 * @function MarketingPage
 * @summary Aquesta pàgina ja no és 'async'. Mostra un esquelet de càrrega

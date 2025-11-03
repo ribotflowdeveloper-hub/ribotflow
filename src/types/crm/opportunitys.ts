@@ -1,5 +1,5 @@
 import type {PipelineStageName} from "@/config/pipeline";
-import type { Contact } from "./contacts";  
+import type { Contact } from "@/types/db"; 
 
 export type OpportunityPipline = { 
   id: string; 

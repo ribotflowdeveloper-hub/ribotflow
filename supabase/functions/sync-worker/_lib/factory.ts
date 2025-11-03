@@ -5,7 +5,7 @@ import { MicrosoftMailProvider } from '../_providers/microsoft.ts';
 import { CustomMailProvider } from '../_providers/custom.ts';
 
 export function getMailProvider(provider: string): MailProvider {
-  if (provider === 'google') return new GoogleMailProvider();
+  if (provider === 'google_gmail') return new GoogleMailProvider();
   if (provider === 'microsoft') return new MicrosoftMailProvider();
   if (provider === 'custom_email') return new CustomMailProvider();
   throw new Error(`Proveïdor desconegut: ${provider}`);

@@ -11,7 +11,7 @@ import Image from 'next/image';
 import { Link, Loader2, PlayCircle, Trash2 } from 'lucide-react';
 
 import { useCreatePost } from '../_hooks/useCreatePost';
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
+import type { SocialPost } from '@/types/db';
 import { type ConnectionStatuses } from '../types'; // ✅ Importem el tipus centralitzat
 
 interface CreatePostDialogProps {

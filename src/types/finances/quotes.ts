@@ -4,7 +4,7 @@
  */
 
 
-import type {Contact} from "@/types/crm";
+import type { Contact } from "@/types/db"; 
 import type { Team as CompanyProfile } from "@/types/settings/team";
 import type { InvoiceStatus } from "@/config/invoices";
 import type { QuoteStatus } from "@/config/styles/quotes";

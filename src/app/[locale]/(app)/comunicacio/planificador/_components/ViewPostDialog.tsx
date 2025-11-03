@@ -1,4 +1,4 @@
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
+import type { SocialPost } from '@/types/db';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Undo2, Trash2 } from 'lucide-react';

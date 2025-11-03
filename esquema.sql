@@ -1996,6 +1996,8 @@ CREATE TABLE IF NOT EXISTS "public"."audio_jobs" (
     "participants" "jsonb" DEFAULT '[]'::"jsonb"
 );
 
+ALTER TABLE ONLY "public"."audio_jobs" REPLICA IDENTITY FULL;
+
 
 ALTER TABLE "public"."audio_jobs" OWNER TO "postgres";
 

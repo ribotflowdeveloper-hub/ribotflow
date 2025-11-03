@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
+import type { SocialPost } from '@/types/db';
 import Image from 'next/image';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';

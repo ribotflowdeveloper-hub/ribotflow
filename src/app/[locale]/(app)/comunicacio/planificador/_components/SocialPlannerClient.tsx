@@ -14,8 +14,8 @@ import { PostCard } from './PostCard';
 import { CreatePostDialog } from './CreatePostDialog';
 import { SchedulePostDialog } from './SchedulePostDialog';
 import { ViewPostDialog } from './ViewPostDialog';
-import type { SocialPost } from '@/types/comunicacio/SocialPost';
-import { type ConnectionStatuses } from '../types';
+import type { SocialPost, ConnectionStatuses } from './SocialPlannerData';
+
 import { cn } from '@/lib/utils/utils'; // ✅ Importem la utilitat 'cn'
 
 interface SocialPlannerClientProps {
@@ -24,12 +24,12 @@ interface SocialPlannerClientProps {
 }
 
 export function SocialPlannerClient({ initialPosts, connectionStatuses }: SocialPlannerClientProps) {
-    const t = useTranslations('Planificador');
-    const {
-        currentMonth, isPending, unscheduledDrafts, calendarPosts, dialogState, postToView,
-        onDragEnd, handleScheduleConfirm, handleCreatePost, handleUnschedule, handleDeletePost,
-        openViewDialog, openCreateDialog, setDialogState, nextMonth, prevMonth
-    } = useSocialPlanner({ initialPosts });
+    const t = useTranslations('Planificador');
+    const {
+        currentMonth, isPending, unscheduledDrafts, calendarPosts, dialogState, postToView,
+        onDragEnd, handleScheduleConfirm, handleCreatePost, handleUnschedule, handleDeletePost,
+        openViewDialog, openCreateDialog, setDialogState, nextMonth, prevMonth
+    } = useSocialPlanner({ initialPosts }); // ✅ 'initialPosts' ara coincideix
 
     const firstDayOfMonth = startOfMonth(currentMonth);
     const daysInMonth = eachDayOfInterval({ start: firstDayOfMonth, end: endOfMonth(currentMonth) });

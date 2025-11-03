@@ -1,52 +1,44 @@
 // /app/[locale]/(app)/crm/contactes/[contactId]/_components/ContactDetailData.tsx
 import { notFound } from 'next/navigation';
-// ✅ Importem fetchContactDetail
-import { fetchContactDetail } from '../actions';
 import { ContactDetailClient } from './contact-detail-client';
 import { validatePageSession } from "@/lib/supabase/session";
-import { type Database } from '@/types/supabase';
 
-// Tipus per a dades relacionades
-type Quote = Database['public']['Tables']['quotes']['Row'];
-type Opportunity = Database['public']['Tables']['opportunities']['Row'];
-type Invoice = Database['public']['Tables']['invoices']['Row'];
-type Activity = Database['public']['Tables']['activities']['Row'];
+// ✅ 1. Importem els nostres serveis
+import { 
+    fetchContactDetail, 
+    getContactRelatedData 
+} from '@/lib/services/crm/contacts/contacts.service';
+// ✅ 2. Importem el tipus des del servei (per passar-lo al client)
+import type { ContactDetail, ContactRelatedData } from '@/lib/services/crm/contacts/contacts.service';
+export type { ContactDetail, ContactRelatedData }; // Re-exportem
 
 interface ContactDetailDataProps {
-    params: { contactId: string };
+    params: { contactId: string };
 }
 
 export async function ContactDetailData({ params }: ContactDetailDataProps) {
-    const { supabase, activeTeamId } = await validatePageSession();
-    const contactId = params.contactId;
+    const { supabase, activeTeamId } = await validatePageSession();
+    const contactId = params.contactId;
 
-    const numericContactId = parseInt(contactId, 10);
-    if (isNaN(numericContactId)) {
-        notFound();
-    }
+    const numericContactId = parseInt(contactId, 10);
+    if (isNaN(numericContactId)) {
+        notFound();
+    }
 
-    // ✅ Cridem a fetchContactDetail
-    const contactData = await fetchContactDetail(numericContactId);
+    // ✅ 3. Cridem a TOTA la lògica de dades en paral·lel
+    const [contactData, relatedData] = await Promise.all([
+        fetchContactDetail(supabase, numericContactId, activeTeamId),
+        getContactRelatedData(supabase, numericContactId, activeTeamId)
+    ]);
 
-    if (!contactData) {
-        notFound();
-    }
+    // Si el contacte principal no existeix, és un 404
+    if (!contactData) {
+        notFound();
+    }
 
-    // Carreguem dades relacionades
-    const [quotesRes, oppsRes, invoicesRes, activitiesRes] = await Promise.all([
-        supabase.from('quotes').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-        supabase.from('opportunities').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-        supabase.from('invoices').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false }),
-        supabase.from('activities').select('*').eq('contact_id', numericContactId).eq('team_id', activeTeamId).order('created_at', { ascending: false })
-    ]);
-
-    const relatedData = {
-        quotes: (quotesRes.data as Quote[]) || [],
-        opportunities: (oppsRes.data as Opportunity[]) || [],
-        invoices: (invoicesRes.data as Invoice[]) || [],
-        activities: (activitiesRes.data as Activity[]) || []
-    };
-
-    // ✅ Passem contactData (tipus ContactDetail) a initialContact
-    return <ContactDetailClient initialContact={contactData} initialRelatedData={relatedData} />;
+    // ✅ 4. Passem les dades netes al client
+    return <ContactDetailClient 
+        initialContact={contactData} 
+        initialRelatedData={relatedData} 
+    />;
 }
