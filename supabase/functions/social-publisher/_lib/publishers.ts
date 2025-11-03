@@ -22,8 +22,8 @@ async function publishToLinkedIn(creds: Credentials, post: Post) {
                 status: 'READY',
                 media: urn,
                 ...(assetURNs.length === 1 && {
-                    title: { text: post.content.substring(0, 200) },
-                    description: { text: post.content }
+                    title: { text: (post.content ?? '').substring(0, 200) },
+                    description: { text: post.content ?? '' }
                 })
             }))
         };
@@ -112,7 +112,7 @@ async function publishToFacebook(creds: Credentials, post: Post) {
         }));
 
         const body: FacebookBody = {
-            message: post.content,
+            message: post.content ?? undefined,
             attached_media: attachedMediaIds,
             access_token: creds.access_token,
         };
@@ -126,7 +126,7 @@ async function publishToFacebook(creds: Credentials, post: Post) {
         // Lògica per a publicació simple (text, 1 foto, 1 vídeo)
         let endpoint = 'feed';
         let body: FacebookBody = {
-            message: post.content,
+            message: post.content ?? undefined,
             access_token: creds.access_token
         };
 

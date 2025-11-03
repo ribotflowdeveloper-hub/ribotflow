@@ -17,13 +17,13 @@ async function getKey(secret: string): Promise<CryptoKey> {
 /**
  * Converteix una cadena Base64 a un ArrayBuffer.
  */
-function base64ToBuffer(base64: string): ArrayBuffer { // <-- CORRECCIÓ LINTER
+function base64ToBuffer(base64: string): ArrayBuffer {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return bytes.buffer; // <-- CORRECCIÓ LINTER
+  return bytes.buffer;
 }
 
 export async function decrypt(
@@ -52,7 +52,6 @@ export async function decrypt(
       const iv = base64ToBuffer(base64_iv);
       const ciphertext = base64ToBuffer(base64_ciphertext);
 
-      // L'error de VS Code (fals positiu) hauria de desaparèixer amb això
       const decryptedBuffer = await subtle.decrypt(
         { name: 'AES-GCM', iv: iv }, 
         key,

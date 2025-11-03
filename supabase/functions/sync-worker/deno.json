@@ -1,0 +1,23 @@
+{
+  "imports": {
+    "std/http/server.ts": "https://deno.land/std@0.224.0/http/server.ts",
+
+    "crypto-js": "https://esm.sh/crypto-js@4.2.0",
+    "crypto-js/enc-base64": "https://esm.sh/crypto-js@4.2.0/enc-base64.js",
+    "crypto-js/enc-utf8": "https://esm.sh/crypto-js@4.2.0/enc-utf8.js",
+    "crypto-js/aes": "https://esm.sh/crypto-js@4.2.0/aes.js",
+
+    "supabase-admin": "https://esm.sh/@supabase/supabase-js@2",
+    
+    "tslib": "https://esm.sh/tslib@2.6.3",
+    "@supabase/auth-js": "https://esm.sh/@supabase/auth-js@2.78.0",
+    "@supabase/functions-js": "https://esm.sh/@supabase/functions-js@2.78.0",
+    "@supabase/node-fetch": "https://esm.sh/@supabase/node-fetch@2.6.15",
+    "@supabase/postgrest-js": "https://esm.sh/@supabase/postgrest-js@2.78.0",
+    "@supabase/realtime-js": "https://esm.sh/@supabase/realtime-js@2.78.0",
+    "@supabase/storage-js": "https://esm.sh/@supabase/storage-js@2.78.0",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.78.0",
+    "node/process.mjs": "https://esm.sh/node/process.mjs",
+    "node/buffer.mjs": "https://esm.sh/node/buffer.mjs"
+  }
+}

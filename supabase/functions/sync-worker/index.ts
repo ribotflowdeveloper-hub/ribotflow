@@ -1,5 +1,4 @@
-// supabase/functions/sync-worker/index.ts
-import { serve } from "std/http/server.ts"; // <-- CORREGIT
+import { serve } from "std/http/server.ts"; 
 import { handleSyncRequest } from './_lib/handler.ts';
 
 const corsHeaders = {
@@ -13,17 +12,14 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Tota la lògica complexa està ara a 'handleSyncRequest'
     const response = await handleSyncRequest(req);
     
-    // Afegim capçaleres CORS a la resposta exitosa
     for (const [key, value] of Object.entries(corsHeaders)) {
       response.headers.set(key, value);
     }
     return response;
   
   } catch (err) {
-    // Gestió d'errors centralitzada
     const errorMessage = typeof err === 'object' && err !== null && 'message' in err 
       ? (err as Error).message 
       : String(err);

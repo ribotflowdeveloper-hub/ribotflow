@@ -1,17 +1,13 @@
-// Ubicació: /supabase/functions/social-publisher/index.ts
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'supabase-admin'; // ✅ CORREGIT
+import { serve } from 'std/http/server.ts'; // ✅ CORREGIT
 import { corsHeaders } from '../_shared/cors.ts';
 import { processPost } from './_lib/processPost.ts';
 import { getScheduledPosts } from './_lib/db.ts';
 
-// ✅ CORRECCIÓ CLAU: La variable es defineix a l'inici, fora de qualsevol funció.
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
 async function handler(req: Request): Promise<Response> {
     const authHeader = req.headers.get('Authorization');
-    // Ara la comparació utilitza la constant definida a l'inici.
     if (authHeader !== `Bearer ${SERVICE_ROLE_KEY}`) {
         return new Response('Unauthorized', { status: 401, headers: corsHeaders });
     }
@@ -27,7 +23,17 @@ async function handler(req: Request): Promise<Response> {
     }
 
     console.log(`[INFO] S'han trobat ${postsToProcess.length} publicacions per a processar.`);
-    await Promise.all(postsToProcess.map(post => processPost(post, supabaseAdmin)));
+    
+    // Utilitzem Promise.allSettled per evitar que un error en un post aturi tots els altres
+    const results = await Promise.allSettled(
+      postsToProcess.map(post => processPost(post, supabaseAdmin))
+    );
+
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        console.error(`[FATAL] Error irrecuperable processant el post ID ${postsToProcess[index].id}:`, result.reason);
+      }
+    });
 
     console.log("--- [SUCCESS] Funció finalitzada correctament. ---");
     return new Response(JSON.stringify({ status: 'ok', processed: postsToProcess.length }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }});
@@ -35,15 +41,21 @@ async function handler(req: Request): Promise<Response> {
 
 // Servidor principal
 serve(async (req) => {
-    // ✅ CORRECCIÓ CLAU: Es comprova la variable abans d'executar res.
     if (!SERVICE_ROLE_KEY) {
         console.error("[FATAL ERROR] La variable d'entorn SUPABASE_SERVICE_ROLE_KEY no està definida.");
         return new Response(JSON.stringify({ error: 'Server configuration error' }), { status: 500, headers: corsHeaders });
     }
+    
+    // Ignorem les peticions OPTIONS (preflight)
+    if (req.method === 'OPTIONS') {
+      return new Response('ok', { headers: corsHeaders });
+    }
+
     try {
         return await handler(req);
     } catch (error) {
         console.error("[FATAL ERROR]", error);
-        return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return new Response(JSON.stringify({ error: errorMessage }), { status: 500, headers: corsHeaders });
     }
 });

@@ -1,28 +1,30 @@
-// Ubicació: /supabase/functions/social-publisher/_lib/types.ts
-
+// Tipus inferits de /_lib/db.ts
 export interface Post {
     id: number;
-    team_id: string | null;
-    user_id: string | null;
+    team_id: string;
+    user_id: string; // Necessari per a les notificacions
     provider: string[];
-    content: string;
-    media_url?: string[];
-    media_type?: 'image' | 'video' | null; // Pot ser null
+    content: string | null;
+    media_url: string[] | null;
+    media_type: 'image' | 'video' | null;
+    status: 'scheduled' | 'published' | 'partial_success' | 'failed';
+    scheduled_at: string;
 }
-
+  
 export interface Credentials {
     access_token: string;
-    provider_user_id?: string;
-    provider_page_id?: string;
+    refresh_token: string | null; // L'afegim per a futures revisions de refresc
+    provider_user_id: string | null;
+    provider_page_id: string | null;
 }
 
-// ✅ CORRECCIÓ: Afegim el tipus que faltava
-export type FacebookBody = {
+// Tipus inferits de /_lib/publishers.ts
+export interface FacebookBody {
     message?: string;
-    caption?: string;
-    description?: string;
-    file_url?: string;
-    url?: string;
     access_token: string;
     attached_media?: { media_fbid: string }[];
-};
+    caption?: string | null;
+    url?: string;
+    description?: string | null;
+    file_url?: string;
+}

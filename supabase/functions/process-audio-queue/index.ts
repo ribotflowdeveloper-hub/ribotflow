@@ -1,15 +1,18 @@
 // supabase/functions/process-audio-queue/index.ts
 
-// ✨ CORRECCIÓ 1: Imports nets (funcionaran amb l'import_map.json)
 import { serve } from 'std/http/server.ts';
 import { createClient, SupabaseClient } from 'supabase-js';
 import { OpenAI } from 'openai';
 
-// Definim els tipus per a les dades
+// --- Tipus ---
 interface Participant {
   contact_id: number;
   name: string;
   role: string;
+}
+
+interface EnrichedParticipant extends Participant {
+  industry?: string | null;
 }
 
 interface AudioJob {
@@ -17,7 +20,7 @@ interface AudioJob {
   storage_path: string;
   team_id: string;
   user_id: string;
-  project_id?: string; // Encara que existeixi aquí, no l'usarem a 'tasks'
+  project_id?: string | null; // Assegurem que pugui ser null
   participants: Participant[];
 }
 
@@ -26,12 +29,19 @@ interface ExtractedTask {
   assignee_name: string;
 }
 
-// Inicialitzem el client d'OpenAI
+// ✅ NOU: Tipus per al flux de la reunió
+interface KeyMoment {
+  topic: string; // Títol del tema (ex: "Discussió Sòl")
+  details: string; // Resum del que s'ha parlat
+  decisions: string[]; // Llista de decisions preses
+  is_work_related: boolean; // Per filtrar el soroll
+}
+
+// --- Funció Principal (sense canvis) ---
 const openai = new OpenAI({
   apiKey: Deno.env.get('OPENAI_API_KEY'),
 });
 
-// Funció principal que s'executa amb la crida de pg_cron
 serve(async (_req: Request) => {
   try {
     const supabaseAdmin = createClient(
@@ -39,27 +49,24 @@ serve(async (_req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // ✨ CORRECCIÓ 2: S'ha eliminat .forUpdate().skipLocked() per evitar el crash
     const { data: jobsData, error: selectError } = await supabaseAdmin
       .from('audio_jobs')
       .select('*')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
-      .limit(5); // <-- El .forUpdate() ja no hi és
+      .limit(5);
 
     if (selectError) {
       throw new Error(`Error seleccionant feines: ${selectError.message}`);
     }
 
-    const jobs = jobsData as AudioJob[]; // ✨ CORRECCIÓ: Fem el cast aquí per evitar 'any'
+    const jobs = jobsData as AudioJob[];
 
     if (!jobs || jobs.length === 0) {
       console.log('No hi ha feines pendents. Sortint.');
       return new Response(
         JSON.stringify({ message: 'No hi ha feines pendents' }),
-        {
-          headers: { 'Content-Type': 'application/json' },
-        },
+        { headers: { 'Content-Type': 'application/json' } },
       );
     }
 
@@ -78,9 +85,7 @@ serve(async (_req: Request) => {
 
     return new Response(
       JSON.stringify({ message: `Processades ${jobs.length} feina(es)` }),
-      {
-        headers: { 'Content-Type': 'application/json' },
-      },
+      { headers: { 'Content-Type': 'application/json' } },
     );
   } catch (err: unknown) {
     let errorMessage = 'Error desconegut al worker principal.';
@@ -88,7 +93,6 @@ serve(async (_req: Request) => {
       errorMessage = err.message;
     }
     console.error('Error al worker principal:', errorMessage);
-
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
@@ -96,117 +100,189 @@ serve(async (_req: Request) => {
   }
 });
 
-/**
- * Funció que processa una única feina d'àudio.
- */
+// --- Processador de Feines (AMB CANVIS IMPORTANTS) ---
 async function processJob(supabaseAdmin: SupabaseClient, job: AudioJob) {
   try {
-    // 1. Obtenir l'arxiu d'àudio
+    // 1. Obtenir Àudio (sense canvis)
     const { data: audioBlob, error: storageError } = await supabaseAdmin.storage
       .from('audio-uploads')
       .download(job.storage_path);
-
     if (storageError) {
       throw new Error(`Error descarregant àudio: ${storageError.message}`);
     }
-
     const audioFile = new File([audioBlob], 'audio.mp3', {
       type: audioBlob.type,
     });
 
-    // 2. Transcriure l'àudio (Whisper)
+    // 2. Transcriure Àudio (sense canvis)
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
     });
-
     const transcriptionText = transcription.text;
 
-    // 3. Generar llista de participants per al prompt
-    const participantsList = job.participants
-      .map((p) => `- ${p.name} (Rol: ${p.role})`)
+    // 3. Enriquir Participants (sense canvis, ja era correcte)
+    let enrichedParticipants: EnrichedParticipant[] = job.participants || [];
+    if (job.participants && job.participants.length > 0) {
+      const contactIds = job.participants.map((p) => p.contact_id).filter(
+        (id) => id != null,
+      );
+      if (contactIds.length > 0) {
+        const { data: contactsData, error: contactsError } = await supabaseAdmin
+          .from('contacts')
+          .select('id, industry')
+          .in('id', contactIds);
+        if (!contactsError && contactsData) {
+          const industryMap = new Map(
+            contactsData.map((
+              c: { id: number; industry: string | null },
+            ) => [c.id, c.industry]),
+          );
+          enrichedParticipants = job.participants.map((p) => ({
+            ...p,
+            industry: typeof industryMap.get(p.contact_id) === 'string'
+              ? industryMap.get(p.contact_id) as string | null
+              : null,
+          }));
+        }
+      }
+    }
+    const participantsList = enrichedParticipants
+      .map((p) => {
+        const specialties = [p.role, p.industry].filter(Boolean).join(', ');
+        return `- ${p.name}${
+          specialties ? ` (Especialitat: ${specialties})` : ''
+        }`;
+      })
       .join('\n');
 
-    // 4. Crear el Prompt Dinàmic (el teu prompt millorat)
+    // ✅ CANVI: Pas 4: Nou Prompt Millorat
     const analysisPrompt = `
-      Ets un Assistent Tècnic expert en analitzar transcripcions de reunions.
-      La teva missió és extreure tasques i assignar-les a la persona correcta.
+Ets un Assistent Tècnic expert en analitzar transcripcions de reunions i projectes. La teva missió és analitzar una transcripció d'una reunió i extreure totes les dades tècniques, tasques i decisions amb la màxima precisió, sense ometre detalls.
 
-      👥 PARTICIPANTS DE LA REUNIÓ:
-      Aquesta reunió inclou les següents persones. Fes servir aquesta llista
-      per identificar a qui s'assigna cada tasca:
-      ${
-      participantsList.length > 0
-        ? participantsList
-        : "No s'han identificat participants."
+📜 La Teva Tasca Principal:
+Anàlisi Exhaustiva: Llegeix tota la transcripció i centra't en els detalls tècnics.
+
+Extracció Precisa: Per a cada departament, has d'identificar i extreure de manera literal i completa:
+
+Tasques assignades: Què s'ha de fer exactament.
+
+Decisions preses: Acords i solucions aprovades.
+
+Les tasques s’han d’ordenar segons el seu flux de dependència. Si una tasca requereix una acció prèvia (com obtenir un permís abans d'executar una obra), aquesta acció ha de situar-se primer en la seqüència.
+
+Dades Tècniques Clau: Presta especial atenció a:
+
+Codis de materials (p. ex., "pintura RAL 9010", "acer corten", "IPE-200").
+
+Mides i cotes exactes ("canonada de 22mm", "paret de 15cm").
+
+Noms d'eines, marques o models específics.
+
+Dates i terminis concrets ("abans de dijous", "la setmana del 15").
+
+Problemes tècnics descrits (p. ex., "fuita a la junta", "humitat per capil·laritat").
+
+Creació de Resums Globals: Genera un title i un generalSummary que capturin l'essència del meeting.
+
+Generació del JSON: Construeix l'objecte JSON de sortida amb tota la informació recopilada.
+
+❌ Regles del que NO has de fer:
+No resumeixis en excés: És preferible que un resum de tasca sigui llarg i detallat a què sigui curt i li falti informació. Prioritza la precisió sobre la brevetat.
+
+No ignoris números o codis: Qualsevol dada numèrica, codi o nom propi és potencialment crític. Inclou-ho sempre.
+
+Filtra només el personal: Ignora únicament les converses personals que no tenen cap relació amb el projecte (salutacions, com va el cap de setmana, etc.).
+
+Només inclou departaments que tinguin tasques assignades.
+No t'inventis dates o horaris si la reunio no s'ha dit.
+
+
+      👥 PARTICIPANTS CONEGUTS (AJUDA):
+      ${
+      participantsList.length > 0 ? participantsList : "No s'han proporcionat."
     }
-      
-      📜 LA TEVA TASCA:
-      1. Analitza la transcripció.
-      2. Extreu tasques, decisions i detalls tècnics (mides, materials, etc.).
-      3. Assigna cada tasca a un dels participants.
-      4. Si una tasca és general i no per a algú específic, assigna-la al rol (ex: "Pintor", "Lampista").
+      
+      🧠 DETECCIÓ DE PARTICIPANTS:
+      La transcripció pot esmentar altres rols (ex: 'el fuster', 'el lampista').
+      Has d'assignar tasques a aquestes persones també.
 
-      ❌ REGLES:
-      - Inclou detalls tècnics (mides, codis RAL, models) a la descripció de la tasca.
-      - Fes servir el NOM EXACTE (ex: "Marta", "Josep") a la clau "assignee_name".
-      - NO t'inventis noms. Si no és a la llista, utilitza el rol (ex: "Client").
-      
-      ---
-      TRANSCRIPCIÓ:
-      "${transcriptionText}"
-      ---
+      ---
+      TRANSCRIPCIÓ:
+      "${transcriptionText}"
+      ---
 
-      Respon ÚNICAMENT en format JSON amb l'estructura:
-      {
-        "summary": "Resum concís de la reunió...",
-        "tasks": [
-          { "task": "Descripció detallada de la tasca 1 (ex: pintar paret despatx RAL 9010)", "assignee_name": "Marta" },
-          { "task": "Descripció detallada de la tasca 2 (ex: instal·lar porta garatge)", "assignee_name": "Josep" },
-          { "task": "Tasca general 3", "assignee_name": "Lampista" }
-        ]
-      }
-    `;
+      Respon ÚNICAMENT en format JSON amb l'estructura següent:
+      {
+        "summary": "Resum concís de la reunió...",
+        
+        "key_moments": [
+          {
+            "topic": "Títol del tema principal 1 (ex: 'Anàlisi del Sòl')",
+            "details": "Resum del que s'ha parlat sobre aquest tema.",
+            "decisions": ["Decisió 1 presa", "Decisió 2 presa"],
+            "is_work_related": true
+          },
+          {
+            "topic": "Comentari sobre el cap de setmana",
+            "details": "En Josep explica que ha anat a la platja.",
+            "decisions": [],
+            "is_work_related": false 
+          },
+          {
+            "topic": "Elecció de Pintura",
+            "details": "Es discuteix entre el RAL 9010 i el 9003. S'escull el 9010.",
+            "decisions": ["Pintar amb RAL 9010"],
+            "is_work_related": true
+          }
+        ],
+        
+        "tasks": [
+          { "task": "Comprar pintura RAL 9010 per al despatx", "assignee_name": "Marta" },
+          { "task": "Contactar amb el fuster per a la porta", "assignee_name": "Josep" }
+        ]
+      }
+    `;
 
+    // 5. Cridar a OpenAI (sense canvis)
     const analysis = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [{ role: 'user', content: analysisPrompt }],
       response_format: { type: 'json_object' },
     });
 
-    // ✨ CORRECCIÓ 3: Comprovació de nul abans de JSON.parse()
+    // 6. Processar resposta (sense canvis)
     const content = analysis.choices[0].message.content;
-    if (!content) {
-      throw new Error("La resposta d'OpenAI no té contingut.");
-    }
+    if (!content) throw new Error("La resposta d'OpenAI no té contingut.");
 
     const resultJson = JSON.parse(content);
     const summary = resultJson.summary;
     const tasks: ExtractedTask[] = resultJson.tasks;
+    // ✅ NOU: Capturem els moments clau
+    const keyMoments: KeyMoment[] = resultJson.key_moments;
 
-    // 5. Actualitzar la feina a 'completed'
+    // ✅ CANVI: Pas 7: Actualitzar la feina a 'completed' (amb les noves dades)
     await supabaseAdmin
       .from('audio_jobs')
       .update({
         status: 'completed',
         transcription_text: transcriptionText,
         summary: summary,
+        key_moments: keyMoments as KeyMoment[], // Desem el JSON
       })
       .eq('id', job.id);
 
-    // 6. Desar les tasques amb 'contact_id'
+    // 8. Desar les tasques (sense canvis, ja era correcte)
     if (tasks && tasks.length > 0) {
       const getContactIdFromName = (name: string): number | null => {
-        const participant = job.participants.find(
+        const participant = enrichedParticipants.find(
           (p) => p.name.toLowerCase() === name.toLowerCase(),
         );
         return participant ? participant.contact_id : null;
       };
 
-      // ✨ CORRECCIÓ 4: S'ha eliminat 'project_id'
       const tasksToInsert = tasks.map((task: ExtractedTask) => {
         const contactId = getContactIdFromName(task.assignee_name);
-
         return {
           team_id: job.team_id,
           user_id: job.user_id,
@@ -217,7 +293,6 @@ async function processJob(supabaseAdmin: SupabaseClient, job: AudioJob) {
           is_completed: false,
           priority: 'Mitjana' as const,
           due_date: null,
-          // ❌ 'project_id' ESBORRAT
         };
       });
 
@@ -232,13 +307,13 @@ async function processJob(supabaseAdmin: SupabaseClient, job: AudioJob) {
       }
     }
   } catch (err: unknown) {
+    // 9. Gestió d'errors (sense canvis)
     let errorMessage = `Error processant la feina ${job.id}.`;
     if (err instanceof Error) {
       errorMessage = err.message;
     }
     console.error(`Error processant la feina ${job.id}:`, errorMessage);
 
-    // 7. Si falla, actualitzem la feina a 'failed'
     await supabaseAdmin
       .from('audio_jobs')
       .update({
