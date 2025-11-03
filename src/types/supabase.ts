@@ -107,6 +107,63 @@ export type Database = {
           },
         ]
       }
+      audio_jobs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          participants: Json | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["audio_job_status"]
+          storage_path: string
+          summary: string | null
+          team_id: string
+          transcription_text: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          participants?: Json | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["audio_job_status"]
+          storage_path: string
+          summary?: string | null
+          team_id: string
+          transcription_text?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          participants?: Json | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["audio_job_status"]
+          storage_path?: string
+          summary?: string | null
+          team_id?: string
+          transcription_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_jobs_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blacklist_rules: {
         Row: {
           created_at: string
@@ -3637,6 +3694,7 @@ export type Database = {
       upsert_quote_with_items: { Args: { quote_payload: Json }; Returns: Json }
     }
     Enums: {
+      audio_job_status: "pending" | "processing" | "completed" | "failed"
       expense_status: "pending" | "paid" | "overdue" | "cancelled"
       invoice_status: "Draft" | "Sent" | "Paid" | "Overdue" | "Cancelled"
       job_status: "open" | "closed"
@@ -3795,6 +3853,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      audio_job_status: ["pending", "processing", "completed", "failed"],
       expense_status: ["pending", "paid", "overdue", "cancelled"],
       invoice_status: ["Draft", "Sent", "Paid", "Overdue", "Cancelled"],
       job_status: ["open", "closed"],

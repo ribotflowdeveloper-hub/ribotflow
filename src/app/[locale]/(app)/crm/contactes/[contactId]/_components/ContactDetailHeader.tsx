@@ -3,17 +3,17 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Edit, Save, Trash2, X, Loader2 } from 'lucide-react';
-import { type ContactDetail } from '../actions'; 
+import { type ContactDetail } from '../actions';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 // ✅ 1. Importem Input i useTranslations
 import { Input } from '@/components/ui/input';
@@ -37,13 +37,13 @@ export function ContactDetailHeader({
     onDelete,
 }: ContactDetailHeaderProps) {
     const router = useRouter();
-    const searchParams = useSearchParams(); 
+    const searchParams = useSearchParams();
     const fromUrl = searchParams.get('from');
     const t = useTranslations('ContactDetailPage');
 
     const handleBackOrCancel = () => {
         if (isEditing) {
-            onCancel(); 
+            onCancel();
         } else if (fromUrl) {
             router.push(fromUrl);
         } else {
@@ -64,7 +64,7 @@ export function ContactDetailHeader({
                 >
                     {isEditing ? <X className="h-4 w-4" /> : <ArrowLeft className="h-4 w-4" />}
                 </Button>
-                
+
                 <div className="flex-1">
                     {isEditing ? (
                         <div>
@@ -93,57 +93,69 @@ export function ContactDetailHeader({
             <div className="flex items-center gap-2">
                 {isEditing ? (
                     <>
-                        <Button type="submit" disabled={isPending}> {/* Aquest SÍ és 'submit' */}
-                            {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        <Button type="submit" disabled={isPending}>
+                            {isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : (
+                                <Save className="h-4 w-4 mr-2" />
+                            )}
                             Desar
+                        </Button>
+
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onCancel}
+                            disabled={isPending}
+                        >
+                            Cancel·lar
                         </Button>
                     </>
                 ) : (
-                    <>
-                        <Button 
-                            type="button" // ✅ SOLUCIÓ 2
-                            variant="outline" 
-                            onClick={onEdit} 
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={onEdit}
+                        disabled={isPending}
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar
+                    </Button>
+                )}
+
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button
+                            type="button" // ✅ SOLUCIÓ 3
+                            variant="destructive"
+                            size="icon"
                             disabled={isPending}
                         >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
+                            <Trash2 className="h-4 w-4" />
                         </Button>
-                        
-                        <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button 
-                                    type="button" // ✅ SOLUCIÓ 3
-                                    variant="destructive" 
-                                    size="icon" 
-                                    disabled={isPending}
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Estàs segur?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Aquesta acció no es pot desfer. S'esborrarà permanentment el contacte 
-                                        <span className="font-medium"> {contact.nom}</span>.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={isPending}>Cancel·lar</AlertDialogCancel>
-                                    <AlertDialogAction 
-                                        className="bg-destructive hover:bg-destructive/90"
-                                        onClick={onDelete}
-                                        disabled={isPending}
-                                    >
-                                        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Esborrar"}
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </AlertDialogContent>
-                        </AlertDialog>
-                    </>
-                )}
-            </div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Estàs segur?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Aquesta acció no es pot desfer. S'esborrarà permanentment el contacte
+                                <span className="font-medium"> {contact.nom}</span>.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isPending}>Cancel·lar</AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive hover:bg-destructive/90"
+                                onClick={onDelete}
+                                disabled={isPending}
+                            >
+                                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Esborrar"}
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
         </div>
+    </div>
+    
     );
 }

@@ -22,6 +22,17 @@ COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
+CREATE TYPE "public"."audio_job_status" AS ENUM (
+    'pending',
+    'processing',
+    'completed',
+    'failed'
+);
+
+
+ALTER TYPE "public"."audio_job_status" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."expense_status" AS ENUM (
     'pending',
     'paid',
@@ -1971,6 +1982,24 @@ ALTER TABLE "public"."activities" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDEN
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."audio_jobs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "project_id" "uuid",
+    "storage_path" "text" NOT NULL,
+    "status" "public"."audio_job_status" DEFAULT 'pending'::"public"."audio_job_status" NOT NULL,
+    "transcription_text" "text",
+    "summary" "text",
+    "error_message" "text",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "participants" "jsonb" DEFAULT '[]'::"jsonb"
+);
+
+
+ALTER TABLE "public"."audio_jobs" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."blacklist_rules" (
     "id" bigint NOT NULL,
     "user_id" "uuid" NOT NULL,
@@ -2480,7 +2509,11 @@ CREATE TABLE IF NOT EXISTS "public"."job_postings" (
     "address_text" "text",
     "required_skills" "text"[],
     "budget" numeric(10,2),
-    "expires_at" timestamp with time zone
+    "expires_at" timestamp with time zone,
+    "city" "text",
+    "region" "text",
+    "postcode" "text",
+    "country" "text"
 );
 
 
@@ -2843,7 +2876,8 @@ CREATE TABLE IF NOT EXISTS "public"."tasks" (
     "time_tracking_log" "jsonb" DEFAULT '[]'::"jsonb",
     "is_active" boolean,
     "description_json" "jsonb",
-    "checklist_progress" "jsonb" DEFAULT '{"total": 0, "completed": 0}'::"jsonb"
+    "checklist_progress" "jsonb" DEFAULT '{"total": 0, "completed": 0}'::"jsonb",
+    "google_calendar_id" "text"
 );
 
 
@@ -3036,6 +3070,11 @@ ALTER TABLE ONLY "public"."tickets" ALTER COLUMN "id" SET DEFAULT "nextval"('"pu
 
 ALTER TABLE ONLY "public"."activities"
     ADD CONSTRAINT "activities_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."audio_jobs"
+    ADD CONSTRAINT "audio_jobs_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3323,6 +3362,10 @@ CREATE INDEX "idx_activities_user_id_is_read" ON "public"."activities" USING "bt
 
 
 
+CREATE INDEX "idx_audio_jobs_participants" ON "public"."audio_jobs" USING "gin" ("participants");
+
+
+
 CREATE INDEX "idx_contacts_created_at_desc" ON "public"."contacts" USING "btree" ("created_at" DESC);
 
 
@@ -3383,6 +3426,10 @@ CREATE INDEX "idx_quotes_user_id" ON "public"."quotes" USING "btree" ("user_id")
 
 
 
+CREATE INDEX "idx_tasks_google_calendar_id" ON "public"."tasks" USING "btree" ("google_calendar_id");
+
+
+
 CREATE INDEX "ticket_assignments_deal_id_idx" ON "public"."ticket_assignments" USING "btree" ("deal_id");
 
 
@@ -3425,6 +3472,21 @@ ALTER TABLE ONLY "public"."activities"
 
 ALTER TABLE ONLY "public"."activities"
     ADD CONSTRAINT "activities_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."audio_jobs"
+    ADD CONSTRAINT "audio_jobs_project_id_fkey" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."audio_jobs"
+    ADD CONSTRAINT "audio_jobs_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."audio_jobs"
+    ADD CONSTRAINT "audio_jobs_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -3899,6 +3961,10 @@ CREATE POLICY "Allow authenticated users to UPDATE tasks of their teams" ON "pub
 
 
 
+CREATE POLICY "Allow individual access" ON "public"."user_credentials" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
 CREATE POLICY "Allow members to read their own team" ON "public"."teams" FOR SELECT USING (("id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE ("team_members"."user_id" = "auth"."uid"()))));
@@ -3938,6 +4004,14 @@ CREATE POLICY "Allow team members to create job postings" ON "public"."job_posti
 CREATE POLICY "Allow team members to delete their job postings" ON "public"."job_postings" FOR DELETE TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE ("team_members"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow team members to manage audio jobs" ON "public"."audio_jobs" TO "authenticated" USING (("auth"."uid"() IN ( SELECT "team_members"."user_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."team_id" = "audio_jobs"."team_id")))) WITH CHECK (("auth"."uid"() IN ( SELECT "team_members"."user_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."team_id" = "audio_jobs"."team_id"))));
 
 
 
@@ -4318,6 +4392,9 @@ CREATE POLICY "Users on Plus plans or higher can manage social posts." ON "publi
 
 
 ALTER TABLE "public"."activities" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."audio_jobs" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."blacklist_rules" ENABLE ROW LEVEL SECURITY;
@@ -4805,6 +4882,12 @@ GRANT ALL ON TABLE "public"."activities" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."activities_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."activities_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."activities_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."audio_jobs" TO "anon";
+GRANT ALL ON TABLE "public"."audio_jobs" TO "authenticated";
+GRANT ALL ON TABLE "public"."audio_jobs" TO "service_role";
 
 
 

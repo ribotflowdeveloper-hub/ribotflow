@@ -55,7 +55,8 @@
     "blacklist": "Llista Negra",
     "install": "Instal·lar Ribotflow",
     "permissions": "Permisos d'Aplicació",
-    "brandNameMobile": "Ribotflow"
+    "brandNameMobile": "Ribotflow",
+    "transcription": "Transcripció d'Àudio"
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",

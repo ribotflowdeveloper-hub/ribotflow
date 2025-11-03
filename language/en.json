@@ -55,7 +55,8 @@
     "blacklist": "Blacklist",
     "install": "Install Ribotflow",
     "permissions": "Application Permissions",
-    "brandNameMobile": "Ribotflow"
+    "brandNameMobile": "Ribotflow",
+    "transcription": "Audio Transcription"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",

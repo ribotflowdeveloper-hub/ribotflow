@@ -10,10 +10,11 @@ import {
   validateSessionAndPermission,
 } from "@/lib/permissions/permissions";
 import { checkUsageLimit } from "@/lib/subscription/subscription";
+import { type Database } from "@/types/supabase";
 // ----------------------------------------------------
 // ACCIONS DE LLISTA/FETCHING
 // ----------------------------------------------------
-
+type ContactRow = Database['public']['Tables']['contacts']['Row']
 /**
  * Obté tots els contactes/proveïdors de l'equip actiu.
  * Aquesta funció és cridada per Server Components com ExpenseDetailData.tsx.
@@ -302,4 +303,31 @@ export async function unlinkContactFromSupplier(
   revalidatePath(`/crm/contactes/${contactId}`);
 
   return { success: true, message: "Contacte desvinculat." };
+}
+/**
+ * Obté una llista de tots els contactes d'un equip.
+ * Ideal per a selectors, comboboxes, etc.
+ */
+export async function getTeamContactsList(): Promise<ContactRow[]> {
+  const session = await validateUserSession()
+  if ('error' in session) {
+    return []
+  }
+
+  const { supabase, activeTeamId } = session
+
+  // Seleccionem la fila sencera per compatibilitat,
+  // tal com fas a InvoiceDetailClient
+  const { data: contacts, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('team_id', activeTeamId)
+    .order('nom', { ascending: true })
+
+  if (error) {
+    console.error('Error fetching contacts list:', error.message)
+    return []
+  }
+
+  return contacts
 }

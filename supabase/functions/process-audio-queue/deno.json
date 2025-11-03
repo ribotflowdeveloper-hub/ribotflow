@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.unstable", "dom", "dom.iterable"]
+  },
+  "tasks": {
+    "serve-local": "deno run --allow-all --watch --env-file=../../.env.local index.ts"
+  },
+  "fmt": {
+    "options": {
+      "singleQuote": true,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "rules": {
+      "exclude": ["no-unused-vars"]
+    }
+  },
+  "importMap": "./import_map.json"
+}
