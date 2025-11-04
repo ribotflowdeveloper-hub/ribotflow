@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import { type Locale } from 'date-fns';
 import { type Json } from '@/types/supabase';
-import { type ContactDetail } from '../../actions';
+import type { ContactDetail} from '@/lib/services/crm/contacts/contacts.service';
 
 // Importem els components necessaris
 import { ModuleCard } from '@/components/shared/ModuleCard';

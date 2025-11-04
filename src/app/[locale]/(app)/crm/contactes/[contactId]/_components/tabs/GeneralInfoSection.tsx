@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 
-import { type ContactDetail } from '../../actions';
+import type { ContactDetail } from '@/lib/services/crm/contacts/contacts.service';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
 import { SupplierCombobox } from '@/components/shared/SupplierCombobox';
 

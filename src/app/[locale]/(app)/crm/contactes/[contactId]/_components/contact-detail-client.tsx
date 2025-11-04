@@ -143,7 +143,7 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
                                                 { key: 'status', label: t('quotes.table.status') }, 
                                                 { key: 'total_amount', label: t('quotes.table.total') } // Assegura't que 'total_amount' existeix
                                             ]} 
-                                            linkPath="/crm/quotes" 
+                                            linkPath="/finances/quotes" 
                                             emptyMessage={t('quotes.empty')} 
                                         />
                                     )}
