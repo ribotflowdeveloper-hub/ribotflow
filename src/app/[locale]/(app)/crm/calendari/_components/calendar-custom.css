@@ -26,18 +26,7 @@
     min-height: 40px; /* Mantenim una alçada mínima per a les hores buides */
 }
 
-/* * Assegura que el contenidor que agrupa els esdeveniments en una mateixa
- * franja horària sigui flexible i organitzi els fills en columna.
-*/
-.rbc-day-slot .rbc-events-container {
-    display: flex;
-    flex-direction: column;
-    gap: 2px; /* Espai entre esdeveniments */
-    position: relative !important;
-    width: 100% !important;
-    top: 0 !important;
-    left: 0 !important;
-}
+
 
 /* * Ajusta l'estil de l'indicador "now" (la línia de l'hora actual)
  * per assegurar que es mostri correctament amb la nova estructura flexible.
