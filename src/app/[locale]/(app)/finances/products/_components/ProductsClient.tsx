@@ -9,8 +9,9 @@ import { Plus, Edit } from 'lucide-react'; // Keep Edit for link, Plus for butto
 // Tipus i Accions
 import { type Product } from "./ProductsData";
 import { type ActionResult } from '@/types/shared/actionResult';
-import { fetchPaginatedProducts, deleteProduct, type ProductPageFilters } from '../actions';
+import { fetchPaginatedProducts, deleteProduct} from '../actions';
 // createProduct/updateProduct actions are used within ProductForm
+import type { ProductPageFilters } from '@/lib/services/finances/products/products.service';
 
 // Components Compartits
 import { Button } from "@/components/ui/button";

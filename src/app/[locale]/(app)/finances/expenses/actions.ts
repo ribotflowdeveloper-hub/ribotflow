@@ -25,7 +25,6 @@ type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 type PaginatedExpensesData = PaginatedResponse<ExpenseWithContact>;
 export type ExpenseForSupplier = Partial<Expense>; // Aquest export de tipus local és correcte
 
-
 /**
  * ACCIÓ: Obté les dades paginades per al client.
  */
@@ -39,9 +38,17 @@ export async function fetchPaginatedExpenses(
   }
   const { supabase, activeTeamId } = session;
 
+  // 🔴 LOG 6: Paràmetres rebuts per l'ACCIÓ (Consola del Servidor)
+  console.log("expenses/actions.ts (fetchPaginatedExpenses): Paràmetres rebuts:", JSON.stringify(params, null, 2));
+
   try {
     // ✅ Crida al servei de LLISTA
-    return await expensesListService.fetchPaginatedExpenses(supabase, activeTeamId, params);
+    const result = await expensesListService.fetchPaginatedExpenses(supabase, activeTeamId, params);
+    
+    // 🔴 LOG 7: Resultat del SERVEI (Consola del Servidor)
+    console.log(`expenses/actions.ts (fetchPaginatedExpenses): Retornant ${result.data.length} files i un count de ${result.count}`);
+    return result;
+
   } catch (error: unknown) {
     // ✅ CORRECCIÓ: Propaguem l'error a la UI
     const message = (error as Error).message;
@@ -160,6 +167,7 @@ export async function getUniqueExpenseCategories(): Promise<string[]> {
   }
   const { activeTeamId } = session;
 
+  console.log("expenses/actions.ts (getUniqueExpenseCategories): Cridant al servei...");
   // ✅ Crida al servei de LLISTA
   return await expensesListService.getUniqueExpenseCategories(activeTeamId);
 }

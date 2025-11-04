@@ -1993,7 +1993,8 @@ CREATE TABLE IF NOT EXISTS "public"."audio_jobs" (
     "summary" "text",
     "error_message" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "participants" "jsonb" DEFAULT '[]'::"jsonb"
+    "participants" "jsonb" DEFAULT '[]'::"jsonb",
+    "key_moments" "jsonb"
 );
 
 ALTER TABLE ONLY "public"."audio_jobs" REPLICA IDENTITY FULL;

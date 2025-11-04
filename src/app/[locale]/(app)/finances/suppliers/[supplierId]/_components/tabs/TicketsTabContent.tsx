@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Inbox } from 'lucide-react';
-import { type TicketForSupplier } from '@/app/[locale]/(app)/comunicacio/inbox/actions';
+import { type TicketForSupplier } from '@/types/db';
 import { formatDate } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 

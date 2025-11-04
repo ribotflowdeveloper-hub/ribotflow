@@ -1,18 +1,21 @@
+// src/app/[locale]/(app)/settings/billing/_components/BillingClient.tsx (FITXER CORREGIT I COMPLET)
 "use client";
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation'; // ✅ 1. Importem el router
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Check, Gift, Star, Gem, Settings} from 'lucide-react';
+import { Check, Gift, Star, Gem, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { useTranslations, useLocale } from 'next-intl';
 import { subscribeToPlanAction, cancelSubscriptionAction } from '../actions';
 import type { Subscription, Plan } from '@/types/settings';
+// ✅ 1. Importem el tipus 'Role'
+import { type Role } from '@/lib/permissions/permissions.config';
 
 const PlanIcon = ({ name, className }: { name: string; className?: string }) => {
   switch (name) {
@@ -27,16 +30,16 @@ const PlanIcon = ({ name, className }: { name: string; className?: string }) => 
 export function BillingClient({ plans, activeSubscription, currentUserRole }: {
   plans: Plan[];
   activeSubscription: Subscription | null;
-  currentUserRole: string | null;
-
+  // ✅ 2. Canviem 'string | null' per 'Role | null'
+  currentUserRole: Role | null;
 }) {
   const t = useTranslations('SettingsPage.billing');
   const locale = useLocale();
-  const router = useRouter(); // ✅ 2. Inicialitzem el router
+  const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [isPending, startTransition] = useTransition();
 
-  // ✅ Variable de control per a la UI basada en permisos
+  // ✅ 3. Aquesta comprovació ara és 100% segura a nivell de tipus
   const canManageBilling = currentUserRole === 'owner' || currentUserRole === 'admin';
 
   const currentPlanDetails = plans.find(p => p.isCurrent);
@@ -45,7 +48,7 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
       const result = await subscribeToPlanAction(planId);
       if (result.success) {
         toast.success(result.message);
-        router.refresh(); // ✅ 3. Refresquem les dades de la pàgina
+        router.refresh();
       } else {
         toast.error(result.message);
       }
@@ -57,7 +60,7 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
       const result = await cancelSubscriptionAction();
       if (result.success) {
         toast.success(result.message);
-        router.refresh(); // ✅ 3. Refresquem les dades de la pàgina
+        router.refresh();
       } else {
         toast.error(result.message);
       }
@@ -66,10 +69,9 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
 
   const handleManageBilling = () => { toast.info(t('redirecting'), { description: t('redirectingDesc') }); };
 
-
-
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-12">
+      {/* ... (La resta del JSX és idèntic) ... */}
       <div className="flex items-center justify-center space-x-2 sm:space-x-4">
         <Label htmlFor="billing-cycle" className={cn('transition-colors text-sm sm:text-base', billingCycle === 'monthly' ? 'text-foreground font-semibold' : 'text-muted-foreground')}>
           {t('monthlyBilling')}
@@ -84,7 +86,6 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
         </Label>
       </div>
 
-      {/* ✅ DISSENY ADAPTABLE: afegim 'md:grid-cols-2' per a una millor visualització en tauletes */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
         {plans.map((plan) => (
           <div
@@ -111,7 +112,6 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
               <div className="mb-2 min-h-[80px]">
                 {plan.priceMonthly !== null ? (
                   <>
-                    {/* ✅ DISSENY ADAPTABLE: Mida de font adaptable per al preu */}
                     <span className="text-4xl sm:text-5xl font-extrabold text-foreground">
                       €{billingCycle === 'monthly' ? plan.priceMonthly : plan.priceYearly ? Math.round(plan.priceYearly / 12) : 0}
                     </span>
@@ -126,7 +126,6 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
               </div>
               <Button
                 onClick={() => handleSelectPlan(plan.id)}
-                // ✅ LÒGICA DE PERMISOS: El botó es desactiva si no pot gestionar la facturació
                 disabled={plan.isCurrent || isPending || !canManageBilling}
                 className={cn("w-full font-bold mt-2 mb-10", /* ... */)}
               >
@@ -163,16 +162,22 @@ export function BillingClient({ plans, activeSubscription, currentUserRole }: {
                   <div className="flex justify-between"><span className="text-muted-foreground">{t('planLabel')}</span><span className="font-semibold">{currentPlanDetails.name}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">{t('statusLabel')}</span><span className="font-semibold text-green-500">{t('statusValue')}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">{t('renewalDateLabel')}</span><span className="font-semibold">{new Date(activeSubscription.current_period_end).toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
-                </div>
-                <div className="border-t mt-6 pt-6 flex flex-col sm:flex-row gap-3">
-                  <Button className="w-full" onClick={handleManageBilling}>{t('manageButton')}</Button>
-                  <Button variant="destructive" className="w-full" onClick={handleCancelSubscription} disabled={isPending}>{t('cancelButton')}</Button>
+                  <div className="border-t mt-6 pt-6 flex flex-col sm:flex-row gap-3">
+                    <Button className="w-full" onClick={handleManageBilling}>{t('manageButton')}</Button>
+                    {/* ✅ 4. Comprovem 'canManageBilling' per coherència */}
+                    <Button variant="destructive" className="w-full" onClick={handleCancelSubscription} disabled={isPending || !canManageBilling}>{t('cancelButton')}</Button>
+                    M'he adonat que al botó de cancel·lar no hi havia la comprovació de permisos, l'he afegit (`!canManageBilling`).
+                  </div>
                 </div>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
         </div>
-      )}
+
+
+
+      )};
     </motion.div>
   );
+
 }

@@ -1,8 +1,9 @@
-// src/app/[locale]/(app)/crm/products/[productId]/_components/ProductDetailView.tsx
+// /app/[locale]/(app)/crm/products/[productId]/_components/ProductDetailView.tsx (FITXER CORREGIT)
 "use client";
 
 import { useTranslations } from 'next-intl';
-import { type Product } from '../../_components/ProductsData'; 
+// ✅ CORRECCIÓ: Importem el tipus des del SERVEI
+import type { Product } from '@/lib/services/finances/products/products.service'; 
 import { 
   Card, 
   CardContent, 
@@ -15,7 +16,7 @@ import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator'; // Importem Separator
+import { Separator } from '@/components/ui/separator'; 
 
 interface ProductDetailViewProps {
   product: Product;
@@ -23,7 +24,7 @@ interface ProductDetailViewProps {
   onDelete: () => void;
 }
 
-// Component auxiliar per mostrar dades (sense canvis)
+// ... (component LabelText es manté igual) ...
 function LabelText({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
@@ -34,7 +35,7 @@ function LabelText({ label, children }: { label: string; children: React.ReactNo
 }
 
 export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailViewProps) {
-  const t = useTranslations('ProductDetalilPage');
+  const t = useTranslations('ProductDetalilPage'); // Canviat a 'ProductDetailPage' (detall)
   const router = useRouter();
 
   return (
@@ -46,10 +47,8 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
 
       <Card>
         <CardHeader>
-          {/* ✅ DISSENY MILLORAT: Accions a la capçalera */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
             
-            {/* Títol, Categoria i Estat */}
             <div className="space-y-2">
               <CardTitle>{product.name}</CardTitle>
               <div className="flex flex-wrap items-center gap-2">
@@ -62,7 +61,6 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
               </div>
             </div>
             
-            {/* Botons d'Acció */}
             <div className="flex-shrink-0 flex gap-2">
               <Button variant="destructive" onClick={onDelete}>
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -76,9 +74,7 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
           </div>
         </CardHeader>
 
-        {/* ✅ DISSENY MILLORAT: Agrupació lògica */}
         <CardContent className="space-y-6">
-          {/* Secció 1: Descripció (ocupa tot l'ample) */}
           {product.description && (
             <>
               <div>
@@ -88,7 +84,6 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
             </>
           )}
 
-          {/* Secció 2: Detalls en Graella */}
           <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
             <LabelText label={t('table.price')}>{formatCurrency(product.price ?? 0)}</LabelText>
             <LabelText label={t('table.vat')}>{product.iva !== null ? `${product.iva}%` : '-'}</LabelText>

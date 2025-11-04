@@ -1,45 +1,39 @@
+// src/app/[locale]/(app)/settings/permissions/actions.ts (FITXER CORREGIT I NET)
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from '@/lib/supabase/session'; // Importem la nova funció
-// El tipus de dades que rebrem del client
-type Permission = {
-    grantee_user_id: string; // Qui rep el permís
-    target_user_id: string;  // De qui veurà els correus
-};
+import { validateUserSession } from '@/lib/supabase/session';
+
+// ✅ 1. Importem el NOU servei
+import * as permissionsService from '@/lib/services/settings/permissions/permissions.service';
+
+// ✅ 2. Importem els tipus del servei
+import type { Permission, FormState } from '@/lib/services/settings/permissions/permissions.service';
 
 /**
  * Actualitza tots els permisos d'inbox per a l'equip actiu.
  */
-export async function updateInboxPermissionsAction(permissions: Permission[]) {
-    // ✅ 2. Validació centralitzada
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase, user, activeTeamId } = session;
+export async function updateInboxPermissionsAction(permissions: Permission[]): Promise<FormState> {
+  // 1. Validació de sessió
+  const session = await validateUserSession();
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
-    // Comprovació de rol: només owners/admins poden canviar permisos
-    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
-    if (!['owner', 'admin'].includes(member?.role || '')) {
-        return { success: false, message: "No tens permisos per a gestionar els permisos de l'inbox." };
-    }
-    
-    try {
-        // Estratègia "esborrar i tornar a crear": és la més simple i robusta.
-        // 1. Esborrem tots els permisos existents per a aquest equip.
-        await supabase.from('inbox_permissions').delete().eq('team_id', activeTeamId);
+  // 2. Crida al servei
+  // Tota la lògica (comprovació de rol, delete, insert) està ara al servei.
+  const result = await permissionsService.updateInboxPermissions(
+    supabase, 
+    user, 
+    activeTeamId, 
+    permissions
+  );
 
-        // 2. Si hi ha nous permisos per a desar, els inserim.
-        if (permissions.length > 0) {
-            const permissionsToInsert = permissions.map(p => ({ ...p, team_id: activeTeamId }));
-            await supabase.from('inbox_permissions').insert(permissionsToInsert).throwOnError();
-        }
+  // 3. Efectes (revalidació)
+  if (result.success) {
+    revalidatePath('/settings/permissions');
+  }
 
-        revalidatePath('/settings/permissions');
-        return { success: true, message: "Permisos actualitzats correctament." };
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Error desconegut en desar els permisos.";
-        return { success: false, message };
-    }
+  return result;
 }

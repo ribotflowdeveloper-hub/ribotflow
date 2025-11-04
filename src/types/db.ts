@@ -41,10 +41,16 @@ export type Ticket = DbTableRow<'tickets'>;
 export type SocialPost = DbTableRow<'social_posts'>;
 export type AudioJob = DbTableRow<'audio_jobs'>; // ✅ AFEGIT
 
-// --- TIPUS DE RELACIONS ---
-export type TicketForSupplier = Ticket & {
-  contacts: Pick<Contact, 'id' | 'nom' | 'email'> | null;
+// Aquest tipus és específic per a una funció de lectura.
+// Idealment, mou-ho a src/types/db.ts o similar.
+export type TicketForSupplier = Database['public']['Tables']['tickets']['Row'] & {
+  contacts: {
+    id: number;
+    nom: string | null;
+    email: string | null;
+  } | null;
 };
+
 export type Department = DbTableRow<'departments'>;
 export type EmailTemplate = DbTableRow<'email_templates'>;
 export type Supplier = DbTableRow<'suppliers'>;

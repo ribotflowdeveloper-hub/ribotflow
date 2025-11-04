@@ -1,6 +1,8 @@
-import { notFound } from 'next/navigation';
-import { fetchSupplierDetail } from '../../actions';
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/SupplierDetailData.tsx (FITXER CORREGIT)
+// ✅ CORRECCIÓ: Importem l'acció local de detall
+import { fetchSupplierDetail } from '../actions';
 import { SupplierDetailClient } from './SupplierDetailClient';
+// ✅ Imports correctes per a dades relacionades
 import { fetchContactsForSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
 import { fetchExpensesForSupplier } from '@/app/[locale]/(app)/finances/expenses/actions';
 import { fetchTicketsForSupplierContacts } from '@/app/[locale]/(app)/comunicacio/inbox/actions';
@@ -28,7 +30,7 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
         />
         <SupplierDetailClient
           initialData={null}
-          supplierId={null}
+          supplierId={null} // Passem null per a 'new'
           contacts={[]}
           expenses={[]}
           tickets={[]}
@@ -37,21 +39,21 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
     );
   }
 
+  // Càrrega de dades en paral·lel
   const [
     supplierData,
     contactsData,
     expensesData,
     ticketsData
   ] = await Promise.all([
-    fetchSupplierDetail(supplierId),
+    fetchSupplierDetail(supplierId), // ✅ Crida a l'acció local
     fetchContactsForSupplier(supplierId),
     fetchExpensesForSupplier(supplierId),
     fetchTicketsForSupplierContacts(supplierId)
   ]);
 
-  if (!supplierData) {
-    notFound();
-  }
+  // 'fetchSupplierDetail' ja llança notFound() si no troba dades
+  // (Ho hem definit al servei)
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,8 +62,6 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
         description={description}
         showBackButton={true}
       />
-      {/* ✅ CORRECCIÓ: Passem les dades directament sense 'map'. */}
-      {/* La funció 'fetchTicketsForSupplierContacts' ja retorna el tipus correcte. */}
       <SupplierDetailClient
         initialData={supplierData}
         supplierId={supplierId}

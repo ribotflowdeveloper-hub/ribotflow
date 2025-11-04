@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_hooks/useSupplierForm.ts (FITXER CORREGIT)
 "use client";
 
 import { useState, useTransition } from 'react';
@@ -6,9 +7,11 @@ import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { type z } from 'zod';
 
-import { type Supplier } from '@/types/finances/suppliers';
-import { type SupplierFormData, saveSupplierAction } from '../../actions';
-// Assumeix que tens 'schemas.ts' a '../../schemas'
+// ✅ 1. Importem l'acció de detall
+import { saveSupplierAction } from '../actions';
+// ✅ 2. Importem els tipus des del SERVEI
+import { type Supplier, type SupplierFormData } from '@/lib/services/finances/suppliers/suppliers.service';
+// ✅ 3. Importem el schema
 import { type supplierFormSchema } from '../schemas';
 
 type SupplierFormValues = z.infer<typeof supplierFormSchema>;
@@ -27,13 +30,15 @@ export function useSupplierForm({ initialData, supplierId }: UseSupplierFormProp
   const [formData, setFormData] = useState<SupplierFormData>(
     initialData
       ? {
-        nom: initialData.nom ?? '',
-        nif: initialData.nif ?? null,
-        email: initialData.email ?? null,
-        telefon: initialData.telefon ?? null,
+          nom: initialData.nom ?? '',
+          nif: initialData.nif ?? null,
+          email: initialData.email ?? null,
+          telefon: initialData.telefon ?? null,
+          // Afegeix aquí la resta de camps del formulari
       }
       : defaultValues
   );
+  // Validació simple, ja que 'schemas.ts' no l'estàs fent servir amb useFormState
   const [errors, setErrors] = useState<Partial<Record<keyof SupplierFormValues, string>>>({});
 
   const handleFieldChange = (field: keyof SupplierFormData, value: string | null) => {
@@ -52,24 +57,19 @@ export function useSupplierForm({ initialData, supplierId }: UseSupplierFormProp
     }
 
     startTransition(async () => {
+      // ✅ Crida a l'acció de detall
       const result = await saveSupplierAction(formData, supplierId);
+      
       if (result.success) {
         toast.success(result.message);
 
-        // ✅ LÒGICA DE REDIRECCIÓ CORREGIDA
         if (supplierId === null && result.data?.id) {
-          // Si estàvem CREANT ('supplierId' era null) i tenim un nou ID:
-          // REPLACEM '/new' amb '/[id]' a l'historial.
+          // Estàvem CREANT -> Anem a la nova pàgina d'edició
           router.replace(`/finances/suppliers/${result.data.id}`);
-          // Opcionalment, podríem fer un refresh addicional si calgués
-          // router.refresh(); // Potser no és necessari amb replace
         } else if (supplierId !== null) {
-          // Si estàvem EDITANT ('supplierId' NO era null):
-          // Només refresquem les dades de la pàgina actual.
+          // Estàvem EDITANT -> Refresquem dades
           router.refresh();
         }
-        // Si no hi ha ID (error?), no fem res o mostrem error.
-
       } else {
         toast.error(result.message || t('toast.saveError'));
       }

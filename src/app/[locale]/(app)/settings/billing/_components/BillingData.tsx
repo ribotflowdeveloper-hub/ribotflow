@@ -1,48 +1,47 @@
+// src/app/[locale]/(app)/settings/billing/_components/BillingData.tsx (FITXER CORREGIT I NET)
 import { BillingClient } from './BillingClient';
 import { getTranslations } from 'next-intl/server';
-import type { Subscription, Plan } from '@/types/settings';
-import { validatePageSession } from '@/lib/supabase/session'; // ✅ 1. Importem l'assistent de sessió
+import { validatePageSession } from '@/lib/supabase/session';
 import { plansStructure } from '@/config/billing';
 
+// ✅ 1. Importem el NOU servei i els seus tipus
+import * as billingService from '@/lib/services/settings/billing/billing.service';
+import type { Plan } from '@/types/settings'; // Aquest tipus 'Plan' és de UI, està bé aquí
 
 export async function BillingData() {
-    const t = await getTranslations('SettingsPage.billing');
-       // ✅ 1. Validació de sessió neta i centralitzada
-    const { supabase, user, activeTeamId } = await validatePageSession();
+  const t = await getTranslations('SettingsPage.billing');
+  
+  // ✅ 2. Validació de sessió neta
+  const { supabase, user, activeTeamId } = await validatePageSession();
 
-    const [subscriptionRes, memberRes] = await Promise.all([
-        supabase.from('subscriptions').select('*').eq('team_id', activeTeamId).maybeSingle(),
-        supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single()
-    ]);
-    
-    const activeSubscription = subscriptionRes.data;
-    const currentUserRole = memberRes.data?.role || null;
+  // ✅ 3. Crida al SERVEI per obtenir dades
+  // Tota la lògica de 'Promise.all' i consultes s'ha mogut al servei.
+  const { activeSubscription, currentUserRole } = await billingService.getBillingPageData(
+    supabase,
+    user.id,
+    activeTeamId
+  );
 
-    // ✅ TRAMPA DE DEPURACIÓ
-    console.log("\n--- DEPURACIÓ DE PERMISOS (BillingData.tsx) ---");
-    console.log("ID de l'usuari actual:", user.id);
-    console.log("ID de l'equip actiu:", activeTeamId);
-    console.log("Resultat de la consulta de rol (memberRes):", JSON.stringify(memberRes, null, 2));
-    console.log("Rol de l'usuari detectat:", currentUserRole);
-    console.log("----------------------------------------------\n");
+  // 4. Lògica de presentació (mapa de traduccions)
+  // Això és correcte que estigui aquí, ja que és lògica de la UI (i18n).
+  const finalPlansData: Plan[] = plansStructure.map(plan => ({
+    ...plan,
+    name: plan.id === 'custom' ? t(`plans.${plan.id}.name`) : plan.name,
+    description: t(`plans.${plan.id}.description`),
+    features: t.raw(`plans.${plan.id}.features`),
+    isCurrent: activeSubscription?.status === 'active' && activeSubscription.plan_id === plan.id,
+  }));
 
-    const finalPlansData: Plan[] = plansStructure.map(plan => ({
-        ...plan,
-        name: plan.id === 'custom' ? t(`plans.${plan.id}.name`) : plan.name,
-        description: t(`plans.${plan.id}.description`),
-        features: t.raw(`plans.${plan.id}.features`),
-        isCurrent: activeSubscription?.status === 'active' && activeSubscription.plan_id === plan.id,
-    }));
-
-    return (
-        <div>
-            <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>
-            <p className="text-muted-foreground mb-8">{t('pageDescription')}</p>
-            <BillingClient 
-                plans={finalPlansData} 
-                activeSubscription={activeSubscription as Subscription | null}
-                currentUserRole={currentUserRole}
-            />
-        </div>
-    );
+  // 5. Renderitzat del Client Component
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>
+      <p className="text-muted-foreground mb-8">{t('pageDescription')}</p>
+      <BillingClient 
+        plans={finalPlansData} 
+        activeSubscription={activeSubscription} // El tipus ja és 'Subscription | null'
+        currentUserRole={currentUserRole}       // El tipus ja és 'TeamMemberRole | null'
+      />
+    </div>
+  );
 }

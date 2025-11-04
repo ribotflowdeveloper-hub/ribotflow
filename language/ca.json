@@ -2416,5 +2416,15 @@
     "backToListButton": "Tornar a la llista",
     "errorUnknown": "Error desconegut"
    
+  },
+  "Global": {
+    "loading": "Carregant...",
+    "error": "S'ha produït un error. Si el problema persisteix, contacta amb el suport.",
+    "noData": "No hi ha dades disponibles.",
+    "searchPlaceholder": "Cerca...",
+    "confirm": "Confirma",
+    "cancel": "Cancel·la",
+    "delete": "Esborra",
+    "edit": "Edita"
   }
 }

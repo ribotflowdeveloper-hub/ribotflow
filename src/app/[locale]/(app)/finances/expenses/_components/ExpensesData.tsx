@@ -8,7 +8,7 @@ import { createClient as createServerActionClient } from '@/lib/supabase/server'
 // ✅ CORRECCIÓ: Importem el tipus directament des del SERVEI DE LLISTA
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
 
-const INITIAL_PAGE_LIMIT = 15;
+const INITIAL_PAGE_LIMIT = 15; // Nota: El teu servei té un fallback de 50, assegura't que 'limit' s'està aplicant correctament.
 
 export async function ExpensesData() {
     const supabase = createServerActionClient();
@@ -20,6 +20,9 @@ export async function ExpensesData() {
     const t = await getTranslations('ExpensesPage');
 
     try {
+        // 🔴 LOG 8: Iniciant càrrega de dades (Consola del Servidor)
+        console.log("ExpensesData.tsx: Iniciant Promise.allSettled per dades inicials i categories...");
+
         const [initialDataResult, categoriesResult] = await Promise.allSettled([
             fetchPaginatedExpenses({
                 searchTerm: '',
@@ -46,7 +49,11 @@ export async function ExpensesData() {
 
         const initialData = initialDataResult.value;
         const categories = categoriesResult.status === 'fulfilled' ? categoriesResult.value : [];
-        console.log("ExpensesData: Passing categories to ExpensesClient:", categories);
+        
+        // 🔴 LOG 9: Dades que es passen al ExpensesClient (Consola del Servidor)
+        console.log("ExpensesData.tsx: Dades inicials obtingudes:", JSON.stringify(initialData, null, 2));
+        console.log("ExpensesData.tsx: Categories obtingudes:", JSON.stringify(categories, null, 2));
+
 
         return (
             <ExpensesClient

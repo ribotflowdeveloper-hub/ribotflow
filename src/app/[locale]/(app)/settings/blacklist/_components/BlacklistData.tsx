@@ -1,8 +1,11 @@
+// src/app/[locale]/(app)/settings/blacklist/_components/BlacklistData.tsx (FITXER CORREGIT I NET)
 import { getTranslations } from 'next-intl/server';
 import { BlacklistClient } from './BlacklistClient';
 import { validatePageSession } from '@/lib/supabase/session';
-import type { BlacklistRule } from '@/types/settings';
 import type { Role } from '@/lib/permissions/permissions.config';
+
+// ✅ 1. Importem el NOU servei i els seus tipus
+import * as blacklistService from '@/lib/services/settings/blacklist/blacklist.service';
 
 interface BlacklistDataProps {
   currentUserRole: Role | null;
@@ -10,30 +13,18 @@ interface BlacklistDataProps {
 
 export async function BlacklistData({ currentUserRole }: BlacklistDataProps) {
   const t = await getTranslations('SettingsPage.blacklist');
-  const { supabase } = await validatePageSession();
+  
+  // ✅ 2. Validació de sessió neta
+  const { supabase, activeTeamId } = await validatePageSession();
 
-  const { data: rulesFromDb, error } = await supabase
-    .from('blacklist_rules')
-    .select('*')
-    .order('created_at', { ascending: false });
+  // ✅ 3. Crida al SERVEI per obtenir dades
+  // Tota la lògica de 'select', 'filter' i 'map' s'ha mogut al servei.
+  const formattedRules = await blacklistService.getBlacklistRules(
+    supabase,
+    activeTeamId
+  );
 
-  if (error) {
-    console.error("Error en carregar les regles de la blacklist:", error.message);
-  }
-
-  // ✅ CORRECCIÓ DEFINITIVA: Filtrem i després transformem.
-  const formattedRules: BlacklistRule[] = (rulesFromDb || [])
-    // 1. Filtrem per descartar les regles que tenen 'team_id' com a null,
-    //    ja que el tipus 'BlacklistRule' requereix un string.
-    .filter(rule => !!rule.team_id) 
-    // 2. Transformem les regles restants al format correcte.
-    .map(rule => ({
-      ...rule,
-      id: String(rule.id), // Convertim id: number -> string
-      team_id: rule.team_id as string, // Ara podem assegurar que team_id és un string
-      rule_type: rule.rule_type as 'domain' | 'email', // Assegurem el tipus per a més seguretat
-    }));
-
+  // 4. Renderitzat del Client Component
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">{t('pageTitle')}</h1>

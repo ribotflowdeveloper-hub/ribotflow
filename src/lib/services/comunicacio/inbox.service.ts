@@ -447,39 +447,64 @@ export async function getTicketById(
 }
 
 /**
- * SERVEI: Obté els tickets dels contactes associats a un proveïdor.
+* SERVEI: Obté els tickets dels contactes associats a un proveïdor.
  */
 export async function fetchTicketsForSupplierContacts(
-    supabase: SupabaseClient<Database>,
-    supplierId: string,
-    teamId: string
-): Promise<TicketForSupplier[]> { // ✅ Tipus corregit
-    const { data: contacts, error: contactsError } = await supabase
-        .from('contacts')
-        .select('id')
-        .eq('supplier_id', supplierId)
-        .eq('team_id', teamId); // Correcte
+  supabase: SupabaseClient<Database>,
+  supplierId: string,
+  teamId: string
+): Promise<TicketForSupplier[]> {
+  // 1. Obté els IDs dels contactes directament associats a aquest proveïdor i equip
+  const { data: contacts, error: contactsError } = await supabase
+    .from('contacts')
+    .select('id')
+    .eq('supplier_id', supplierId)
+    .eq('team_id', teamId) // Correcte
 
-    if (contactsError || !contacts || contacts.length === 0) {
-        if(contactsError) console.error("Error fetching contacts for supplier (service):", contactsError);
-        return [];
-    }
+  if (contactsError) {
+    console.error(
+      'Error fetching contacts for supplier (service):',
+      contactsError
+    )
+    return []
+  }
 
-    const contactIds = contacts.map(c => c.id);
+  if (!contacts || contacts.length === 0) {
+    return [] // No hi ha contactes, retornem array buit
+  }
 
-    const { data: tickets, error: ticketsError } = await supabase
-        .from('tickets')
-        .select('*, contacts(id, nom, email)')
-        .in('contact_id', contactIds)
-        // ❌ ELIMINAT: .eq('team_id', teamId)
-        .order('last_message_at', { ascending: false });
+  const contactIds = contacts.map((c) => c.id)
 
-    if (ticketsError) {
-        console.error("Error fetching tickets for supplier contacts (service):", ticketsError);
-        return [];
-    }
-    
-    return (tickets as TicketForSupplier[]) || [];
+  // 2. Obté els tickets per a aquests contactes, assegurant que també pertanyin a l'equip
+  const { data: tickets, error: ticketsError } = await supabase
+    .from('tickets')
+    .select(
+      `
+      *, 
+      contacts (
+        id, 
+        full_name,  /* <-- CORRECCIÓ 3: 'full_name' en lloc de 'nom' */
+        email
+      )
+    `
+    )
+    .in('contact_id', contactIds)
+    .eq('team_id', teamId) /* <-- CORRECCIÓ 2: Filtre de 'team_id' RE-AFEGIT */
+    .order(
+      'last_reply_at',
+      { ascending: false }
+    ) /* <-- CORRECCIÓ 1: 'last_reply_at' */
+
+  if (ticketsError) {
+    console.error(
+      'Error fetching tickets for supplier contacts (service):',
+      ticketsError
+    )
+    return []
+  }
+
+  // Assegurem el tipus de retorn
+  return (tickets as unknown as TicketForSupplier[]) || []
 }
 
 /**

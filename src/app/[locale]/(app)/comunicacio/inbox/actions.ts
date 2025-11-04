@@ -4,8 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session";
 import { getActiveTeam } from "@/lib/supabase/teams";
-import type { Database } from "@/types/supabase";
-import type { EnrichedTicket, TicketFilter } from '@/types/db';
+import type { EnrichedTicket, TicketFilter, TicketForSupplier } from '@/types/db';
 
 // ✅ 1. Importem TOT el nostre servei
 import * as inboxService from "@/lib/services/comunicacio/inbox.service";
@@ -16,16 +15,6 @@ interface ActionResult {
   success: boolean;
   message?: string;
 }
-
-// Aquest tipus és específic per a una funció de lectura.
-// Idealment, mou-ho a src/types/db.ts o similar.
-export type TicketForSupplier = Database['public']['Tables']['tickets']['Row'] & {
-  contacts: {
-    id: number;
-    nom: string | null;
-    email: string | null;
-  } | null;
-};
 
 // --- Accions Refactoritzades ---
 

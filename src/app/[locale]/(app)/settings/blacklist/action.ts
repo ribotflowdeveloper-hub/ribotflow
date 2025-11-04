@@ -1,73 +1,55 @@
+// src/app/[locale]/(app)/settings/blacklist/actions.ts (FITXER CORREGIT I NET)
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session";
-import { hasPermission, PERMISSIONS } from "@/lib/permissions/permissions";
+
+// ✅ 1. Importem el NOU servei
+import * as blacklistService from '@/lib/services/settings/blacklist/blacklist.service';
+
+// ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
+import type { FormState } from '@/lib/services/settings/blacklist/blacklist.service';
 
 /**
  * Afegeix una nova regla a la blacklist per a l'equip actiu.
  */
-export async function addRuleAction(formData: FormData) {
+export async function addRuleAction(formData: FormData): Promise<FormState> {
+  // 1. Validació de sessió
   const session = await validateUserSession();
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
   const { supabase, user, activeTeamId } = session;
 
-  // ✅ REFACTORITZACIÓ: Comprovació de permisos. Només usuaris autoritzats poden afegir regles.
-  const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
-  if (!hasPermission(member?.role, PERMISSIONS.MANAGE_BLACKLIST)) {
-    return { success: false, message: "No tens permisos per a gestionar la llista negra." };
+  // 2. Crida al servei
+  const result = await blacklistService.addRule(supabase, user, activeTeamId, formData);
+
+  // 3. Efectes (revalidació)
+  if (result.success) {
+    revalidatePath('/settings/blacklist');
   }
 
-  const newRule = formData.get('newRule') as string;
-  if (!newRule || !newRule.trim()) {
-    return { success: false, message: "La regla no pot estar buida." };
-  }
-
-  const value = newRule.trim().toLowerCase();
-  const rule_type = value.includes('@') ? 'email' : 'domain';
-
-  const { error } = await supabase.from('blacklist_rules').insert({
-    user_id: user.id,
-    team_id: activeTeamId,
-    value,
-    rule_type
-  });
-
-  if (error) {
-    console.error('Error afegint regla de blacklist:', error);
-    return { success: false, message: "No s'ha pogut afegir la regla. Potser ja existeix." };
-  }
-
-  revalidatePath('/settings/blacklist');
-  return { success: true, message: "Regla afegida correctament." };
+  return result;
 }
 
 /**
  * Elimina una regla de la blacklist.
  */
-export async function deleteRuleAction(id: string) {
+export async function deleteRuleAction(id: string): Promise<FormState> {
+  // 1. Validació de sessió
   const session = await validateUserSession();
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
   const { supabase, user, activeTeamId } = session;
 
-  // ✅ REFACTORITZACIÓ: Comprovació de permisos abans d'intentar l'eliminació.
-  const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
-  if (!hasPermission(member?.role, PERMISSIONS.MANAGE_BLACKLIST)) {
-    return { success: false, message: "No tens permisos per a gestionar la llista negra." };
+  // 2. Crida al servei
+  const result = await blacklistService.deleteRule(supabase, user, activeTeamId, id);
+
+  // 3. Efectes (revalidació)
+  if (result.success) {
+    revalidatePath('/settings/blacklist');
   }
 
-  // La política RLS a la base de dades s'encarregarà de la seguretat a nivell de fila.
-  const { error } = await supabase.from('blacklist_rules').delete().eq('id', id);
-
-  if (error) {
-    console.error('Error eliminant regla de blacklist:', error);
-    return { success: false, message: "No s'ha pogut eliminar la regla." };
-  }
-
-  revalidatePath('/settings/blacklist');
-  return { success: true, message: "Regla eliminada correctament." };
+  return result;
 }

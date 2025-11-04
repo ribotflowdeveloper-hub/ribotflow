@@ -1,90 +1,57 @@
+// src/app/[locale]/(app)/settings/billing/actions.ts (FITXER CORREGIT I NET)
 "use server";
 
-import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from '@/lib/supabase/session'; // Importem la nova funció
+import { validateUserSession } from '@/lib/supabase/session';
 
-/**
- * Subscriu l'equip actiu de l'usuari a un nou pla.
- * En un entorn real, aquesta funció crearia una sessió de checkout de Stripe.
- * Ara mateix, només crea/actualitza la subscripció a la nostra base de dades.
- */
-/**
- * Subscriu l'equip actiu de l'usuari a un nou pla.
- */
-export async function subscribeToPlanAction(planId: string) {
-    // ✅ 2. Validació centralitzada
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase, user, activeTeamId } = session;
+// ✅ 1. Importem el NOU servei
+import * as billingService from '@/lib/services/settings/billing/billing.service';
 
-    try {
-        await supabase
-            .from('subscriptions')
-            .upsert({
-                team_id: activeTeamId,
-                plan_id: planId,
-                status: 'active',
-                current_period_end: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString(),
-            }, { onConflict: 'team_id' })
-            .throwOnError();
+// ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
+import type { FormState } from '@/lib/services/settings/billing/billing.service';
 
-        // ✅ PAS CLAU: Actualitzem el token de l'usuari amb el nou pla.
-        const supabaseAdmin = createAdminClient();
-        await supabaseAdmin.auth.admin.updateUserById(
-            user.id,
-            { app_metadata: { ...user.app_metadata, active_team_plan: planId } }
-        );
+// --- Acció per Subscriure's ---
 
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Error en subscriure's al pla.";
-        return { success: false, message };
-    }
+export async function subscribeToPlanAction(planId: string): Promise<FormState> {
+  // 1. Validació de sessió
+  const session = await validateUserSession();
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
+  // 2. Crida al servei
+  const result = await billingService.subscribeToPlan(supabase, user, activeTeamId, planId);
+
+  // 3. Efectes (revalidació)
+  if (result.success) {
     revalidatePath('/settings/billing');
-    return { success: true, message: `Subscripció al pla '${planId}' realitzada!` };
+    // Important: També revalidem el layout de l'app si el pla canvia,
+    // ja que pot afectar la UI (p.ex. un bàner d'actualització)
+    revalidatePath('/[locale]/(app)', 'layout');
+  }
+
+  return result;
 }
 
-/**
- * Cancel·la la subscripció de l'equip actiu.
- */
-export async function cancelSubscriptionAction() {
-    // ✅ 2. Validació centralitzada
-    const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase, user, activeTeamId } = session;
+// --- Acció per Cancel·lar ---
 
-    // Per a cancel·lar, necessitem permisos d'administrador de l'equip.
-    // Ho gestionarem amb una comprovació de rol.
-    const { data: member } = await supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single();
-    if (member?.role !== 'owner') {
-        return { success: false, message: "Només el propietari de l'equip pot cancel·lar la subscripció." };
-    }
+export async function cancelSubscriptionAction(): Promise<FormState> {
+  // 1. Validació de sessió
+  const session = await validateUserSession();
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
-    try {
-        await createClient()
-            .from('subscriptions')
-            .update({ status: 'canceled' })
-            .eq('team_id', activeTeamId)
-            .throwOnError();
+  // 2. Crida al servei
+  const result = await billingService.cancelSubscription(supabase, user, activeTeamId);
 
-        // ✅ PAS CLAU: Actualitzem també el token de l'usuari per a reflectir la cancel·lació.
-        const supabaseAdmin = createAdminClient();
-        await supabaseAdmin.auth.admin.updateUserById(
-            user.id,
-            { app_metadata: { ...user.app_metadata, active_team_plan: 'free' } }
-        );
-
-
-    } catch (error) {
-        const message = error instanceof Error ? error.message : "Error en cancel·lar la subscripció.";
-        return { success: false, message };
-    }
-
+  // 3. Efectes (revalidació)
+  if (result.success) {
     revalidatePath('/settings/billing');
-    return { success: true, message: "Subscripció cancel·lada." };
+    revalidatePath('/[locale]/(app)', 'layout');
+  }
+
+  return result;
 }

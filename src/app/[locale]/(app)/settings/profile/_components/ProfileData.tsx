@@ -1,33 +1,45 @@
-// src/app/[locale]/(app)/settings/profile/_components/ProfileData.tsx
-
+// src/app/[locale]/(app)/settings/profile/_components/ProfileData.tsx (FITXER CORREGIT I NET)
 import { validatePageSession } from '@/lib/supabase/session';
-import { getActiveTeam } from '@/lib/supabase/teams';
 import { ProfileForm } from "./ProfileForm";
-import type { Profile, Team } from "@/types/settings";
-import { Role } from '@/lib/permissions/permissions.config';
+import type { Role } from '@/lib/permissions/permissions.config';
+
+// ✅ 1. Importem el NOU servei i els tipus de domini
+import * as profileService from '@/lib/services/settings/profile/profile.service';
+import type { Profile, Team } from "@/types/settings"; // Assegurem que importem Profile
 
 export async function ProfileData() {
-  const { supabase, user } = await validatePageSession();
-
-  const activeTeamId = user.app_metadata.active_team_id;
-
-  // Fem les consultes en paral·lel per a màxima eficiència
-  const [profileRes, team, memberRes] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
-    // Només cridem a getActiveTeam si realment hi ha un ID, sinó passem null.
-    activeTeamId ? getActiveTeam(supabase, activeTeamId) : Promise.resolve(null),
-    activeTeamId ? supabase.from('team_members').select('role').eq('user_id', user.id).eq('team_id', activeTeamId).single() : Promise.resolve({ data: null })
-  ]);
   
-  const profile = profileRes.data as Profile | null;
-  const role = memberRes?.data?.role as Role | null;
+  const { supabase, user } = await validatePageSession();
+  const activeTeamId = user.app_metadata.active_team_id || null;
 
+  // 2. Cridem al SERVEI per obtenir dades
+  const { profile, team, role } = await profileService.getProfilePageData(
+    supabase,
+    user,
+    activeTeamId
+  );
+
+  // ✅ 3. AQUESTA ÉS LA CORRECCIÓ DE L'ERROR
+  // Creem un objecte 'default' que satisfà el tipus 'Profile' complet
+  const defaultProfile: Profile = {
+    id: user.id,
+    full_name: '',
+    phone: null,
+    job_title: null,
+    avatar_url: null,
+    onboarding_completed: false,
+    // Afegeix aquí qualsevol altra propietat no-nul·la que 'Profile' pugui requerir
+    // per exemple, si 'created_at' fos requerit (tot i que normalment és opcional):
+    // created_at: new Date().toISOString(), 
+  };
+
+  // 4. Renderitzat del Client Component
+  // Passem el 'profile' real si existeix, o el 'defaultProfile' complet si no.
   return (
     <ProfileForm 
       email={user.email || ''}
-      // Assegurem que profile mai sigui null per evitar errors
-      profile={profile!} 
-      team={team as Team | null}
+      profile={profile || defaultProfile} // ✅ Ara sempre és un tipus 'Profile' vàlid
+      team={team as Team | null} // 'team' pot ser null
       role={role}
     />
   );

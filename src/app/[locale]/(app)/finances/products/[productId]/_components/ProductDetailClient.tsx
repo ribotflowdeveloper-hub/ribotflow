@@ -1,25 +1,22 @@
-// src/app/[locale]/(app)/crm/products/[productId]/_components/ProductDetailClient.tsx
+// /app/[locale]/(app)/crm/products/[productId]/_components/ProductDetailClient.tsx (FITXER CORREGIT)
 "use client";
 
-import { useState, useTransition, useEffect } from 'react';
-import { useFormState } from 'react-dom';
+// ✅ CORRECCIÓ: Importem 'useActionState' des de 'react'
+import { useState, useTransition, useEffect, useActionState } from 'react';
+// ❌ ELIMINEM: import { useFormState } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-// Importa el formulari reutilitzable
-// Importa el nou component de visualització
 import { ProductDetailView } from './ProductDetailView';
 
-// Importa accions i tipus del fitxer general
-import { 
-  updateProduct, 
-  deleteProduct, 
-  type FormState 
-} from '../../actions';
-import { type Product } from '../../_components/ProductsData';
+// ✅ 1. Importem ACCIONS de LLISTA
+import { deleteProduct } from '../../actions';
+// ✅ 2. Importem ACCIONS de DETALL
+import { updateProduct } from '../actions';
+// ✅ 3. Importem TIPUS des del SERVEI (Soluciona ts(2459))
+import type { FormState, Product } from '@/lib/services/finances/products/products.service';
 
-// Importa components de UI
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -45,43 +42,35 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const tGlobal = useTranslations('Global');
   const router = useRouter();
 
-  // Estat per canviar entre vista i edició
   const [isEditing, setIsEditing] = useState(false);
-  // Estat per al diàleg de confirmació d'eliminació
   const [isAlertOpen, setIsAlertOpen] = useState(false);
-  // Estat per desar les dades del producte (per actualitzacions optimistes)
   const [currentProduct, setCurrentProduct] = useState(product);
-
   const [isDeletePending, startDeleteTransition] = useTransition();
 
-  // 1. Configuració de useFormState per a l'ACTUALITZACIÓ
-  // Bindejem l'ID del producte a l'acció d'actualitzar
+  // ✅ CORRECCIÓ: Canviem 'useFormState' per 'useActionState'
   const updateProductWithId = updateProduct.bind(null, currentProduct.id);
-  const [formState] = useFormState(updateProductWithId, initialState);
+  const [formState, formAction] = useActionState(updateProductWithId, initialState);
 
-  // 2. Efecte per gestionar la resposta del formulari d'actualització
+  // Efecte per gestionar la resposta del formulari
   useEffect(() => {
     if (formState.success) {
       toast.success(formState.message);
-      setIsEditing(false); // Tornem a la vista de detall
+      setIsEditing(false); 
       if (formState.data) {
-        // Actualitzem l'estat local amb les noves dades
         setCurrentProduct(formState.data);
       }
-    } else if (formState.message && !formState.success) {
-      // Només mostrem error si el missatge existeix i success és false
-      // (evita mostrar-se en la càrrega inicial)
-      toast.error(formState.message);
+    } else if (formState.message && !formState.success && !formState.errors) {
+       toast.error(formState.message);
     }
   }, [formState]);
 
-  // 3. Gestor per a l'ELIMINACIÓ
+  // Gestor per a l'ELIMINACIÓ
   const handleDelete = () => {
     startDeleteTransition(async () => {
-      const result = await deleteProduct(currentProduct.id);
+      const result = await deleteProduct(currentProduct.id); // Aquesta crida està bé
       if (result.success) {
         toast.success(result.message);
-        router.push('/crm/products'); // Tornem a la llista
+        router.push('/crm/products'); 
       } else {
         toast.error(result.message);
       }
@@ -102,27 +91,38 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             <CardTitle>{t('editDialog.title')}</CardTitle>
           </CardHeader>
           <CardContent>
-    
-            {/* El botó de Cancel·lar ha d'estar fora del ProductForm 
-              si ProductForm té el seu propi botó de Submit.
-              Si `ProductForm` no té botó de submit, el pots afegir aquí
-              juntament amb el de cancel·lar.
-              
-              Assumint que `ProductForm` JA TÉ un botó de Submit:
+            
+            {/* Aquí hauries d'inserir el teu component ProductForm */}
+            {/* <ProductForm 
+                action={formAction} 
+                initialState={formState} 
+                defaultValues={currentProduct}
+                onCancel={() => setIsEditing(false)} 
+            /> 
             */}
-            <div className="flex justify-end mt-4">
-              <Button 
-                variant="outline" 
-                onClick={() => setIsEditing(false)}
-              >
-                {tGlobal('cancel')}
-              </Button>
-               {/* Si `ProductForm` NO té botó de submit, descomenta això:
-                 <Button type="submit" form="product-form-id">
-                   {tGlobal('save')}
-                 </Button>
-              */}
-            </div>
+
+            {/* Placeholder si encara no tens el formulari */}
+            <form action={formAction} className="space-y-4">
+              <p>Aquí aniria el teu formulari d'edició (ProductForm).</p>
+              {formState.errors && (
+                  <div className="text-red-500 text-sm">
+                      {Object.values(formState.errors).map(errs => errs.join(', ')).join('; ')}
+                  </div>
+              )}
+              <div className="flex justify-end gap-2 mt-4">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={() => setIsEditing(false)}
+                >
+                  {tGlobal('cancel')}
+                </Button>
+                <Button type="submit">
+                  {tGlobal('save')}
+                </Button>
+              </div>
+            </form>
+            
           </CardContent>
         </Card>
       </div>
@@ -138,7 +138,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         onDelete={() => setIsAlertOpen(true)}
       />
 
-      {/* Diàleg de confirmació d'eliminació */}
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

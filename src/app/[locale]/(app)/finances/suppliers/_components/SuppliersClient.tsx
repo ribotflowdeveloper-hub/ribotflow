@@ -1,30 +1,26 @@
-// src/app/[locale]/(app)/finances/suppliers/_components/SuppliersClient.tsx
+// /app/[locale]/(app)/finances/suppliers/_components/SuppliersClient.tsx (FITXER CORREGIT)
 "use client";
 
 import { useMemo } from 'react';
-import Link from 'next/link'; // Afegit per si vols fer el nom clicable
+import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { PlusCircle, Edit } from 'lucide-react'; // Afegit Edit
+import { PlusCircle, Edit } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
-// Tipus i Accions
-import { type Supplier } from '@/types/finances/suppliers';
+// ✅ 1. Importem ACCIONS des d'../actions
+import { fetchPaginatedSuppliers, deleteSupplierAction } from '../actions';
+// ✅ 2. Importem TIPUS des del SERVEI
+import type { Supplier, SupplierPageFilters } from '@/lib/services/finances/suppliers/suppliers.service';
+// Importem tipus genèrics que ja teníem
 import { type ActionResult } from '@/types/shared/actionResult';
-import { fetchPaginatedSuppliers, deleteSupplierAction, type SupplierPageFilters } from '../actions'; // Accions refactoritzades
+import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource';
 
 // Components Compartits
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
-
-// Components Específics
-import { SuppliersFilters } from './SuppliersFilters'; // Nou component de filtres
-
-// Hook Genèric
-import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; // <-- Corregit 'usePaginateResource' a 'usePaginatedResource'
-
-// Utilitats
+import { SuppliersFilters } from './SuppliersFilters';
 import { formatDate } from '@/lib/utils/formatters';
 
 // Alias i Constants
@@ -35,7 +31,6 @@ const SUPPLIER_ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
 // Props del Component
 interface SuppliersClientProps {
   initialData: PaginatedSuppliersResponse;
-  // No necessitem categories aquí per ara
 }
 
 export function SuppliersClient({ initialData }: SuppliersClientProps) {
@@ -71,19 +66,18 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
     {
       accessorKey: 'telefon',
       header: t('table.phone'),
-      enableSorting: false, // Probablement no cal ordenar
+      enableSorting: false,
       cell: (supplier) => supplier.telefon || '-',
     },
     {
       accessorKey: 'created_at',
       header: t('table.created'),
       enableSorting: true,
-      cell: (supplier) => formatDate(supplier.created_at),
+      cell: (supplier) => formatDate(supplier.created_at ?? ""),
     },
-    // Accions (Edit/Delete) - Afegim botó Edit
     {
       accessorKey: "actions_edit",
-      header: "", // Capçalera Accions
+      header: "",
       enableSorting: false,
       cellClassName: "text-right",
       cell: (supplier) => (
@@ -92,20 +86,20 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
         </Link>
       ),
     }
-  ], [t, tShared, locale]); // <-- Eliminat 'router'
+  ], [t, tShared, locale]);
+
   // --- Hook Genèric ---
   const {
     isPending,
     data: suppliers,
-    itemToDelete: supplierToDelete, // Renombrem
-    setItemToDelete: setSupplierToDelete, // Renombrem
+    itemToDelete: supplierToDelete,
+    setItemToDelete: setSupplierToDelete,
     handleDelete,
     handleSort,
     currentSortColumn,
     currentSortOrder,
     searchTerm,
     handleSearchChange,
-
     columnVisibility,
     toggleColumnVisibility,
     page,
@@ -113,31 +107,43 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
     handlePageChange,
     rowsPerPage,
     handleRowsPerPageChange,
-  } = usePaginatedResource<Supplier, SupplierPageFilters>({ // <-- Tipus Supplier i SupplierPageFilters
+  } = usePaginatedResource<Supplier, SupplierPageFilters>({
     initialData,
-    initialFilters: {}, // Filtres inicials buits
-    initialSort: { column: 'nom', order: 'asc' }, // Ordenació inicial
+    initialFilters: {}, // ✅ Tipus correcte
+    initialSort: { column: 'nom', order: 'asc' },
     allColumns,
     fetchAction: fetchPaginatedSuppliers as (params: FetchSuppliersParams) => Promise<PaginatedSuppliersResponse>,
-    // Adaptador per a deleteAction (Supplier ID és string/UUID)
     deleteAction: async (id: string | number): Promise<ActionResult> => {
-      if (typeof id !== 'string') { // Comprovem que sigui string
+      if (typeof id !== 'string') {
         const msg = tShared('errors.invalidId') + " (expected string UUID)";
         console.error(msg, { id });
         return { success: false, message: msg };
       }
-      return deleteSupplierAction(id); // Funció d'eliminació real
+      return deleteSupplierAction(id);
     },
     initialRowsPerPage: SUPPLIER_ROWS_PER_PAGE_OPTIONS[0],
     rowsPerPageOptions: SUPPLIER_ROWS_PER_PAGE_OPTIONS,
     toastMessages: {
-      deleteSuccess: t('toast.deleteSuccess'), // Assegura't que existeix
+      deleteSuccess: t('toast.deleteSuccess'),
     }
   });
 
   // --- Columnes Visibles i Descripció Esborrat ---
+  // --- Columnes Visibles i Descripció Esborrat ---
   const visibleColumns = useMemo(
-    () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
+    () => allColumns.filter(col => {
+      // ✅ CORRECCIÓ: Lògica millorada per obtenir la clau de la columna.
+      // Prioritzem 'id' (si existeix) i després 'accessorKey'.
+      const key: string | undefined = ('id' in col && col.id)
+        ? col.id.toString()
+        : ('accessorKey' in col && col.accessorKey)
+          ? col.accessorKey.toString()
+          : undefined;
+
+      // Si no tenim clau (columna sense id ni accessorKey), la mostrem per defecte.
+      // Si tenim clau, comprovem la visibilitat.
+      return key ? (columnVisibility[key] ?? true) : true;
+    }),
     [allColumns, columnVisibility]
   );
 
@@ -146,17 +152,15 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
       {tShared('deleteDialog.description1')}{' '}
       <span className="font-bold">{supplierToDelete?.nom}</span>.
       <br />
-      {/* Pots afegir una descripció específica si vols */}
       {tShared('deleteDialog.description2')}
     </>
   );
 
   // --- Renderització ---
   return (
-    <div className="flex flex-col gap-4 h-full"> {/* Ajustat gap i h-full */}
+    <div className="flex flex-col gap-4 h-full">
       <PageHeader
         title={t('title')}
-        
       >
         <Button onClick={() => router.push(`/${locale}/finances/suppliers/new`)}>
           <PlusCircle className="mr-2 h-4 w-4" />
@@ -164,12 +168,10 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
         </Button>
       </PageHeader>
 
-      {/* Barra de Filtres / Accions */}
       <div className="flex justify-between items-center">
         <SuppliersFilters
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
-          // categories={[]} // No hi ha categories
         />
         <ColumnToggleButton
           allColumns={allColumns}
@@ -178,9 +180,8 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
         />
       </div>
 
-      {/* Taula Genèrica */}
       <GenericDataTable<Supplier>
-        className="flex-grow overflow-hidden" // Ocupa espai restant
+        className="flex-grow overflow-hidden"
         columns={visibleColumns}
         data={suppliers}
         isPending={isPending}
@@ -196,7 +197,7 @@ export function SuppliersClient({ initialData }: SuppliersClientProps) {
         deleteItem={supplierToDelete}
         setDeleteItem={setSupplierToDelete}
         onDelete={handleDelete}
-        deleteTitleKey="SuppliersPage.deleteDialog.title" // Clau específica o genèrica
+        deleteTitleKey="SuppliersPage.deleteDialog.title"
         deleteDescription={deleteDescription}
         emptyStateMessage={t('emptyState')}
       />

@@ -4,7 +4,7 @@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslations } from "next-intl";
-import { type ProductPageFilters } from '../actions'; // Tipus de filtre
+import type { ProductPageFilters } from '@/lib/services/finances/products/products.service';
 
 interface ProductsFiltersProps {
   searchTerm: string;

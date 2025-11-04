@@ -1,30 +1,28 @@
-// /app/[locale]/(app)/crm/products/_components/ProductsData.tsx
-
+// /app/[locale]/(app)/crm/products/_components/ProductsData.tsx (FITXER CORREGIT)
 import { ProductsClient } from "./ProductsClient";
-
 import { type Database } from '@/types/supabase';
-// Importem les noves accions i tipus
-import { fetchPaginatedProducts, getUniqueProductCategories, type ProductPageFilters } from '../actions';
-import { getTranslations } from 'next-intl/server'; // Per errors
+import { getTranslations } from 'next-intl/server';
 
-// Tipus Product (es pot mantenir aquí o moure a un fitxer central de tipus)
+// ✅ 1. Importem les ACCIONS des d'../actions
+import { fetchPaginatedProducts, getUniqueProductCategories } from '../actions';
+
+// ✅ 2. Importem els TIPUS des del SERVEI
+import type { ProductPageFilters } from '@/lib/services/finances/products/products.service';
 export type Product = Database['public']['Tables']['products']['Row'];
 
 // Constants inicials
-const INITIAL_ROWS_PER_PAGE = 15; // Coincideix amb PRODUCT_ROWS_PER_PAGE_OPTIONS[0]
+const INITIAL_ROWS_PER_PAGE = 15; 
 const INITIAL_SORT_COLUMN = 'name';
 const INITIAL_SORT_ORDER = 'asc';
 
 export async function ProductsData() {
-    // Validació de sessió (validatePageSession ja redirigeix si cal)
-    const t = await getTranslations('ProductsPage'); // Per errors
+    const t = await getTranslations('ProductsPage'); 
 
     try {
-        // Obtenim dades i categories en paral·lel
         const [initialDataResult, categoriesResult] = await Promise.allSettled([
             fetchPaginatedProducts({
                 searchTerm: '',
-                filters: { category: 'all' } as ProductPageFilters,
+                filters: { category: 'all' } as ProductPageFilters, // ✅ Aquest tipus ara es troba
                 sortBy: INITIAL_SORT_COLUMN,
                 sortOrder: INITIAL_SORT_ORDER,
                 limit: INITIAL_ROWS_PER_PAGE,
@@ -40,13 +38,11 @@ export async function ProductsData() {
         }
         if (categoriesResult.status === 'rejected') {
             console.error("Error fetching product categories:", categoriesResult.reason);
-            // Continuem sense categories
         }
 
         const initialData = initialDataResult.value;
         const categoriesForFilter = categoriesResult.status === 'fulfilled' ? categoriesResult.value : [];
 
-        // Passem dades i categories al client
         return (
             <ProductsClient
                 initialData={initialData}

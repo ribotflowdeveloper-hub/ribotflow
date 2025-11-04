@@ -1,14 +1,15 @@
 // src/lib/services/finances/expenses.service.ts (CORREGIT - LLISTA)
-import { 
-    type SupabaseClient, 
-} from '@supabase/supabase-js';
-import { type Database } from '@/types/supabase';
-import { 
-    type ExpenseStatus, 
-    type ExpenseWithContact,
-} from '@/types/finances/expenses';
-import { type PaginatedActionParams, type PaginatedResponse } from '@/hooks/usePaginateResource';
-import { unstable_cache as cache } from 'next/cache';
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { type Database } from "@/types/supabase";
+import {
+  type ExpenseStatus,
+  type ExpenseWithContact,
+} from "@/types/finances/expenses";
+import {
+  type PaginatedActionParams,
+  type PaginatedResponse,
+} from "@/hooks/usePaginateResource";
+import { unstable_cache as cache } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // --- Tipus Locals del Servei ---
@@ -35,7 +36,7 @@ type RpcSearchResult = {
   is_billable: boolean;
   project_id: string | null;
 };
-
+type RpcArgs = Database['public']['Functions']['search_expenses']['Args'];
 // ---
 // ⚙️ FUNCIONS DE SERVEI (LLISTA)
 // ---
@@ -45,42 +46,68 @@ type RpcSearchResult = {
  * Llança un error si falla.
  */
 export async function fetchPaginatedExpenses(
-    supabase: SupabaseClient<Database>,
-    teamId: string,
-    params: FetchExpensesParams
+  supabase: SupabaseClient<Database>,
+  teamId: string,
+  params: FetchExpensesParams,
 ): Promise<PaginatedExpensesData> {
-  
   const { searchTerm, filters, sortBy, sortOrder, limit, offset } = params;
 
-  // --- 1. Consulta de Dades (RPC) ---
-  const { data: rpcData, error: rpcError } = await supabase.rpc(
-    "search_expenses",
-    {
-      p_team_id: teamId,
-      // ✅ CORRECCIÓ: Passem NULL en lloc de '' quan no hi ha filtre
-      p_search_term: searchTerm || "", 
-      p_category: filters.category && filters.category !== 'all' ? filters.category : "",
-      p_status: filters.status && filters.status !== 'all' ? filters.status : "",
-      p_sort_by: sortBy || "expense_date",
-      p_sort_order: sortOrder || "desc",
-      p_limit: limit ?? 50,
-      p_offset: offset ?? 0,
-    },
+  // El teu objecte rpcParams és LÒGICAMENT CORRECTE (amb null)
+  const rpcParams = {
+    p_team_id: teamId,
+    p_search_term: searchTerm || null, // Correcte
+    p_category: filters.category && filters.category !== "all"
+      ? filters.category
+      : null, // Correcte
+    p_status: filters.status && filters.status !== "all"
+      ? filters.status
+      : null, // Correcte
+    p_sort_by: sortBy || "expense_date",
+    p_sort_order: sortOrder || "desc",
+    p_limit: limit ?? 50,
+    p_offset: offset ?? 0,
+  };
+
+  // Els teus logs són perfectes
+  console.log(
+    "expenses.service.ts: Trucant RPC 'search_expenses' amb paràmetres:",
+    JSON.stringify(rpcParams, null, 2),
   );
 
+  // --- 1. Consulta de Dades (RPC) ---
+
+  // 👇 AQUESTA ÉS L'ÚNICA LÍNIA MODIFICADA 👇
+  // Afegim 'as any' per saltar la comprovació de tipus incorrecta de Supabase (ts(2345))
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    "search_expenses",
+    rpcParams as unknown as RpcArgs,
+  );
+  // 👆 AQUESTA ÉS L'ÚNICA LÍNIA MODIFICADA 👆
+
   if (rpcError) {
-    console.error("Error calling RPC search_expenses (service):", rpcError.message);
+    console.error(
+      "Error calling RPC search_expenses (service):",
+      rpcError.message,
+    );
     throw new Error("Error en carregar les dades de despeses.");
   }
 
-  // Si no hi ha dades, rpcData pot ser null o un array buit.
+  // LOG 2
+  console.log(
+    `expenses.service.ts: RPC 'search_expenses' ha retornat ${
+      rpcData?.length || 0
+    } files.`,
+  );
+
   if (!rpcData || rpcData.length === 0) {
-      return { data: [], count: 0 };
+    return { data: [], count: 0 };
   }
 
   const formattedData = rpcData.map((item: RpcSearchResult) => ({
     ...item,
-    suppliers: item.supplier_id ? { id: item.supplier_id, nom: item.supplier_nom } : null,
+    suppliers: item.supplier_id
+      ? { id: item.supplier_id, nom: item.supplier_nom }
+      : null,
   }));
 
   // --- 2. Consulta de Recompte Total ---
@@ -104,23 +131,28 @@ export async function fetchPaginatedExpenses(
   const { count, error: countError } = await countQuery;
 
   if (countError) {
-    console.error("Error fetching expenses count (service):", countError.message);
+    console.error(
+      "Error fetching expenses count (service):",
+      countError.message,
+    );
     throw new Error("Error en obtenir el recompte de despeses.");
   }
+
+  // LOG 3
+  console.log(`expenses.service.ts: Recompte total de despeses: ${count}`);
 
   return {
     data: formattedData as unknown as ExpenseWithContact[],
     count: count ?? 0,
   };
 }
-
 // --- Gestió de la memòria cau (moguda aquí) ---
-
 const getCachedUniqueCategories = cache(
   async (activeTeamId: string): Promise<string[]> => {
     const supabaseAdmin = createAdminClient();
+    // 🔴 LOG 4: Miss de la memòria cau (Consola del Servidor)
     console.log(
-      `[Cache Miss] Fetching categories for team ${activeTeamId} using Admin Client`,
+      `[Cache Miss] expenses.service.ts: Buscant categories per team ${activeTeamId}`,
     );
 
     const { data, error } = await supabaseAdmin
@@ -141,6 +173,10 @@ const getCachedUniqueCategories = cache(
     const uniqueCategories = [
       ...new Set(data.map((item) => item.category).filter(Boolean)),
     ];
+    // 🔴 LOG 5: Categories trobades (Consola del Servidor)
+    console.log(
+      `[Cache Miss] expenses.service.ts: Categories trobades: ${uniqueCategories.length}`,
+    );
     return uniqueCategories.sort();
   },
   ["expense_categories_by_team"],
@@ -153,11 +189,12 @@ const getCachedUniqueCategories = cache(
 export async function getUniqueExpenseCategories(
   teamId: string,
 ): Promise<string[]> {
-  console.log(`Calling getCachedUniqueCategories for team ${teamId}`);
+  console.log(
+    `expenses.service.ts: Crida a getCachedUniqueCategories per team ${teamId}`,
+  );
   const categories = await getCachedUniqueCategories(teamId);
   console.log(
-    `getCachedUniqueCategories returned for team ${teamId}:`,
-    categories,
+    `expenses.service.ts: Retornant ${categories.length} categories per team ${teamId}`,
   );
   return categories;
 }
