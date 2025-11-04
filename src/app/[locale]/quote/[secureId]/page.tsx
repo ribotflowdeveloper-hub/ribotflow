@@ -1,4 +1,4 @@
-// FITXER: app/[locale]/(app)/crm/quotes/[id]/page.ts
+// FITXER: app/[locale]/(app)/crm/quotes/[secureId]/page.ts
 
 import { notFound } from 'next/navigation';
 import { PublicQuoteClient } from './_components/PublicQuoteClient';

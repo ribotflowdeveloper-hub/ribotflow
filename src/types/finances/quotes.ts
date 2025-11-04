@@ -8,6 +8,9 @@ import { type PaginatedResponse } from '@/hooks/usePaginateResource'; // ✅ Ass
 export type Quote = Tables<'quotes'>;
 export type QuoteId = Quote["id"];
 export type QuoteStatus = Database["public"]["Enums"]["quote_status"]; 
+export type QuoteRow = Database['public']['Tables']['quotes']['Row'];
+export type ContactRow = Database['public']['Tables']['contacts']['Row'];
+export type TeamRow = Database['public']['Tables']['teams']['Row'];
 
 // --- Tipus de la Funció RPC (Contracte Manual) ---
 // Aquest és el tipus que la BD retorna de la funció 'search_paginated_quotes'
@@ -120,3 +123,14 @@ export type QuoteEditorDataPayload = {
     initialOpportunities: Opportunity[];
     pdfUrl: string | null;
 }
+
+/**
+ * Aquest és el tipus de dades que passem del servidor al client
+ * a la pàgina PÚBLICA del pressupost.
+ */
+export type QuoteDataFromServer = QuoteRow & {
+  contacts: ContactRow | null;  // 'contacts' (en minúscula)
+  team: TeamRow | null;         // 'team' (en minúscula)
+  items: QuoteItem[];           // 'items' (en lloc de 'quote_items')
+};
+

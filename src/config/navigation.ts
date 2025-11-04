@@ -137,7 +137,7 @@ export const navModules: NavItem[] = [
       {
         id: "inbox",
         labelKey: "inbox",
-        icon: Headphones,
+        icon: Mail,
         path: "/comunicacio/inbox",
         isSingle: true,
       },
@@ -151,7 +151,7 @@ export const navModules: NavItem[] = [
       {
         id: "marketing",
         labelKey: "marketing",
-        icon: Mail,
+        icon: Headphones,
         path: "/comunicacio/marketing",
         isSingle: true,
       },

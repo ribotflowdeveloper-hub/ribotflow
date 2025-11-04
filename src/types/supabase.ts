@@ -2818,6 +2818,51 @@ export type Database = {
         Returns: Json
       }
       gettransactionid: { Args: never; Returns: unknown }
+      handle_onboarding:
+        | {
+            Args: {
+              p_city: string
+              p_company_name: string
+              p_country: string
+              p_email: string
+              p_full_name: string
+              p_latitude: number
+              p_longitude: number
+              p_phone: string
+              p_postal_code: string
+              p_region: string
+              p_sector: string
+              p_services: string[]
+              p_street: string
+              p_summary: string
+              p_tax_id: string
+              p_user_id: string
+              p_website: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_city: string
+              p_company_name: string
+              p_country: string
+              p_email: string
+              p_full_name: string
+              p_latitude?: number
+              p_longitude?: number
+              p_phone: string
+              p_postal_code: string
+              p_region: string
+              p_sector: string
+              p_services: string[]
+              p_street: string
+              p_summary: string
+              p_tax_id: string
+              p_user_id: string
+              p_website: string
+            }
+            Returns: string
+          }
       increment_invoice_sequence: {
         Args: { p_series: string; p_user_id: string }
         Returns: number

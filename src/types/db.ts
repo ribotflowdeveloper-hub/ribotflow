@@ -66,3 +66,4 @@ export type TicketFilter = 'tots' | 'rebuts' | 'noLlegits' | 'enviats';
 export type ContactForSupplier = Contact & {
   supplier?: Pick<Supplier, "id" | "nom" | "email"> | null;
 };
+
