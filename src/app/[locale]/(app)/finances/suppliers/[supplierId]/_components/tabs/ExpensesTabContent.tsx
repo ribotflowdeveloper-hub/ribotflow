@@ -1,27 +1,26 @@
-// src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ExpensesTabContent.tsx
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ExpensesTabContent.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
-import { useState, useTransition } from 'react'; // ✅ Afegim useState i useTransition
+import { useState, useTransition } from 'react'; 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Expense } from '@/types/finances';
+import { type Expense } from '@/types/finances';
 import {
-  PlusCircle, CreditCard, Link2 as LinkIcon, // ✅ Canviem nom Link2
-  Trash2, Loader2 // ✅ Afegim icones
+  PlusCircle, CreditCard, Link2 as LinkIcon, 
+  Trash2, Loader2 
 } from 'lucide-react';
 import {
   type ExpenseForSupplier,
-  unlinkExpenseFromSupplier, // ✅ Importem unlink
-  // Si has creat el tipus Expense complet, importa'l també
+  unlinkExpenseFromSupplier, 
 
 } from '@/app/[locale]/(app)/finances/expenses/actions';
 
 import { formatDate, formatCurrency } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { LinkExpenseDialog } from '../LinkExpenseDialog'; // ✅ Importem el nou diàleg
+import { LinkExpenseDialog } from '../LinkExpenseDialog'; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // ✅ Importem Alert Dialog
+} from "@/components/ui/alert-dialog"; 
 import { toast } from 'sonner';
 
 interface ExpensesTabContentProps {
@@ -44,14 +43,11 @@ interface ExpensesTabContentProps {
 export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, t }: ExpensesTabContentProps) {
   const router = useRouter();
 
-  // ✅ Gestionem l'estat localment
   const [expenses, setExpenses] = useState(initialExpensesProp || []);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [isUnlinking, startUnlinkTransition] = useTransition();
 
-  // ✅ Funció per afegir una despesa vinculada a l'estat
   const handleLinkSuccess = (newlyLinkedExpense: Expense) => {
-    // Adaptem el tipus complet 'Expense' al tipus 'ExpenseForSupplier' necessari per la taula
     setExpenses(prevExpenses => [
       ...prevExpenses,
       {
@@ -59,12 +55,11 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
         expense_date: newlyLinkedExpense.expense_date,
         description: newlyLinkedExpense.description,
         total_amount: newlyLinkedExpense.total_amount,
-        status: newlyLinkedExpense.status, // Assegura't que 'status' existeix a 'Expense'
+        status: newlyLinkedExpense.status, 
       } as ExpenseForSupplier
-    ].sort((a, b) => new Date(b.expense_date || 0).getTime() - new Date(a.expense_date || 0).getTime())); // Reordenem per data
+    ].sort((a, b) => new Date(b.expense_date || 0).getTime() - new Date(a.expense_date || 0).getTime())); 
   };
 
-  // ✅ Funció per gestionar la desvinculació
   const handleUnlink = (expenseId: number) => {
     startUnlinkTransition(async () => {
       const result = await unlinkExpenseFromSupplier(expenseId, supplierId);
@@ -80,27 +75,29 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* ✅ MILLORA MÒBIL: Capçalera apilable */}
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />{t('expensesCard.title')}</CardTitle>
             <CardDescription>{t('expensesCard.description')}</CardDescription>
           </div>
-          <div className="flex gap-2">
-            {/* ✅ Botó per VINCULAR existent */}
+          {/* ✅ MILLORA MÒBIL: Botons apilables i amplada completa en mòbil */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsLinkDialogOpen(true)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <LinkIcon className="h-4 w-4 mr-2" />
               {t('expensesCard.linkButton')}
             </Button>
 
-            {/* Botó per CREAR nou */}
             <Button
               variant="default"
               size="sm"
               onClick={() => router.push(`/finances/expenses/new?supplierId=${supplierId}`)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               {t('expensesCard.newButton')}
@@ -112,11 +109,13 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('expensesCard.table.date')}</TableHead>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Data en pantalles petites */}
+                  <TableHead className="hidden md:table-cell">{t('expensesCard.table.date')}</TableHead>
                   <TableHead>{t('expensesCard.table.description')}</TableHead>
                   <TableHead className="text-right">{t('expensesCard.table.amount')}</TableHead>
-                  <TableHead>{t('expensesCard.table.status')}</TableHead>
-                  <TableHead className="w-[50px]"> {/* Columna Accions */}
+                  {/* ✅ MILLORA MÒBIL: Amaguem Estat en pantalles petites */}
+                  <TableHead className="hidden sm:table-cell">{t('expensesCard.table.status')}</TableHead>
+                  <TableHead className="w-[50px]"> 
                     <span className="sr-only">Accions</span>
                   </TableHead>
                 </TableRow>
@@ -124,9 +123,9 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
               <TableBody>
                 {expenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell>{formatDate(expense.expense_date ?? "")}</TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Data en pantalles petites */}
+                    <TableCell className="hidden md:table-cell">{formatDate(expense.expense_date ?? "")}</TableCell>
                     <TableCell>
-                      {/* ✅ MILLORA NAVEGACIÓ: Afegim el paràmetre 'from' */}
                       <Link
                         href={`/finances/expenses/${expense.id}?from=/finances/suppliers/${supplierId}`}
                         className="hover:underline"
@@ -135,9 +134,9 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
                       </Link>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(expense.total_amount)}</TableCell>
-                    <TableCell><StatusBadge status={expense.status} /></TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Estat en pantalles petites */}
+                    <TableCell className="hidden sm:table-cell"><StatusBadge status={expense.status} /></TableCell>
 
-                    {/* ✅ NOU: Cel·la d'accions (Desvincular) */}
                     <TableCell>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -155,7 +154,6 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('expensesCard.unlinkDialog.title')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {/* ✅ SOLUCIÓ: Passem la variable 'expenseDesc' a t() */}
                               {t('expensesCard.unlinkDialog.description') + ' ' + (expense.description || `Despesa #${expense.id}`)}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
@@ -183,7 +181,6 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
         </CardContent>
       </Card>
 
-      {/* ✅ Afegim el component de diàleg (controlat) */}
       <LinkExpenseDialog
         supplierId={supplierId}
         isOpen={isLinkDialogOpen}

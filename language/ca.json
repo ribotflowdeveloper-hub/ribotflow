@@ -132,7 +132,8 @@
       "deleteConfirmTitle": "Estàs segur?",
       "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
       "cancelButton": "Cancel·lar",
-      "confirmDeleteButton": "Sí, elimina'l"
+      "confirmDeleteButton": "Sí, elimina'l",
+      "deleteMultipleConfirm":"Estàs segur que vols eliminar els correus seleccionats? Aquesta acció no es pot desfer."
     },
     "editor": {
       "bold": "Negreta",
@@ -310,7 +311,12 @@
     "deleteConfirmDescription": "Aquesta acció no es pot desfer. Això eliminarà la plantilla permanentment.",
     "cancelButton": "Cancel·lar",
     "deletingButton": "Eliminant...",
-    "confirmDeleteButton": "Sí, elimina-la"
+    "confirmDeleteButton": "Sí, elimina-la",
+    "tabVariables": "Variables",
+    "tabEditor": "Editor",
+    "tabSettings": "Configuració",
+    "tabList": "Llista",
+    "newTemplate": "Nova Plantilla"
   },
   "ActivitiesClient": {
     "title": "Historial d'Activitats",
@@ -927,7 +933,9 @@
         "pendingAria": "Veure pendents",
         "completedAria": "Veure completes",
         "departmentPlaceholder": "Departament",
-        "allDepartments": "Tots els departaments"
+        "allDepartments": "Tots els departaments",
+        "statusPlaceholder": "Estat",
+        "allStatuses": "Tots els estats"
       }
     },
     "taskActions": {
@@ -2425,6 +2433,8 @@
     "confirm": "Confirma",
     "cancel": "Cancel·la",
     "delete": "Esborra",
-    "edit": "Edita"
+    "edit": "Edita",
+    "deleting": "S'esborra...",
+    "saving": "Desant..."
   }
 }

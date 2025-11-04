@@ -131,7 +131,8 @@
       "deleteConfirmTitle": "Are you sure?",
       "deleteConfirmDescription": "This action cannot be undone.",
       "cancelButton": "Cancel",
-      "confirmDeleteButton": "Yes, delete it"
+      "confirmDeleteButton": "Yes, delete it",
+      "deleteMultipleConfirm": "Are you sure you want to delete the selected emails? This action cannot be undone."
     },
     "editor": {
       "bold": "Bold",
@@ -896,7 +897,9 @@
         "pendingAria": "View pending",
         "completedAria": "View completed",
         "departmentPlaceholder": "Department",
-        "allDepartments": "All departments"
+        "allDepartments": "All departments",
+        "statusPlaceholder": "Status",
+        "allStatuses": "All statuses"
       }
     },
     "taskActions": {
@@ -2364,5 +2367,17 @@
     "automatedEmail": "Automatically generated email",
     "backToListButton": "Back to Transcriptions",
     "errorUnknown": "Unknown error"
+  },
+  "Global": {
+    "loading": "Loading...",
+    "error": "An error has occurred. If the problem persists, please contact support.",
+    "noData": "No data available.",
+    "searchPlaceholder": "Search...",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "deleting": "Deleting...",
+    "saving": "Saving..."
   }
 }

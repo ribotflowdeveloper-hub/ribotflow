@@ -265,26 +265,70 @@ $$;
 ALTER FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_default_pipeline_stages"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
+DECLARE
+  v_quote record;
+  v_new_invoice_id uuid;
 BEGIN
-  -- Inserim les etapes per defecte per al NOU usuari
-  INSERT INTO public.pipeline_stages (user_id, name, "position")
-  VALUES
-    (new.id, 'Prospecte', 1),
-    (new.id, 'Contactat', 2),
-    (new.id, 'Proposta Enviada', 3),
-    (new.id, 'Negociació', 4),
-    (new.id, 'Guanyat', 5),
-    (new.id, 'Perdut', 6);
-  RETURN new;
+  -- Pas 1: Actualitzar el pressupost i obtenir les dades
+  UPDATE public.quotes
+  SET status = 'Accepted'
+  WHERE secure_id = p_secure_id
+  RETURNING * INTO v_quote;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
+  END IF;
+
+  -- Pas 2: Actualitzar l'oportunitat associada
+  IF v_quote.opportunity_id IS NOT NULL THEN
+    UPDATE public.opportunities
+    SET stage_name = 'Guanyat'
+    WHERE id = v_quote.opportunity_id;
+  END IF;
+
+  -- Pas 3: Crear la capçalera de la nova factura
+  INSERT INTO public.invoices (
+    user_id, team_id, contact_id, quote_id, status, 
+    total_amount, subtotal, tax_amount, discount_amount,
+    issue_date, due_date
+  ) VALUES (
+    v_quote.user_id, v_quote.team_id, v_quote.contact_id, v_quote.id, 'Draft',
+    v_quote.total, v_quote.subtotal, v_quote.tax, v_quote.discount,
+    CURRENT_DATE,
+    CURRENT_DATE + INTERVAL '30 days'
+  ) RETURNING id INTO v_new_invoice_id;
+
+  -- Pas 4: Copiar els conceptes del pressupost a la nova factura
+  INSERT INTO public.invoice_items (
+    invoice_id, product_id, description, quantity, unit_price, tax_rate, total, user_id, team_id
+  )
+  SELECT
+    v_new_invoice_id,
+    item.product_id,
+    item.description,
+    item.quantity,
+    item.unit_price,
+    item.tax_rate,
+    (item.quantity * item.unit_price), -- Calculem el total al servidor
+    v_quote.user_id,
+    v_quote.team_id
+  FROM public.quote_items AS item
+  WHERE item.quote_id = v_quote.id;
+
+  -- Si tot ha anat bé, la transacció fa COMMIT automàticament
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Si qualsevol pas falla, es fa ROLLBACK de tot
+    RAISE EXCEPTION 'Error a accept_quote_and_create_invoice: %', SQLERRM;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."create_default_pipeline_stages"() OWNER TO "postgres";
+ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_new_organization"("org_name" "text") RETURNS "uuid"
@@ -1114,6 +1158,135 @@ $$;
 ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  new_team_id uuid;
+  user_metadata jsonb;
+  app_metadata jsonb;
+BEGIN
+  -- 1. Actualitzar Perfil
+  UPDATE public.profiles
+  SET full_name = p_full_name, phone = p_phone, onboarding_completed = TRUE
+  WHERE id = p_user_id;
+
+  -- 2. Inserir Equip i obtenir el seu ID
+  INSERT INTO public.teams (
+    name, owner_id, tax_id, website, summary, sector, services, phone, email,
+    street, city, postal_code, region, country, latitude, longitude
+  ) VALUES (
+    p_company_name, p_user_id, p_tax_id, p_website, p_summary, p_sector, p_services, p_phone, p_email,
+    p_street, p_city, p_postal_code, p_region, p_country, p_latitude, p_longitude
+  ) RETURNING id INTO new_team_id;
+
+  -- 3. Inserir Membre d'Equip
+  INSERT INTO public.team_members (team_id, user_id, role)
+  VALUES (new_team_id, p_user_id, 'owner');
+
+  -- 4. Inserir Subscripció (amb client Admin)
+  -- Aquesta és una funció 'helper' que et permet utilitzar el rol 'service_role'
+  -- de forma segura dins d'una funció 'SECURITY DEFINER'.
+  INSERT INTO public.subscriptions (team_id, plan_id, status)
+  VALUES (new_team_id, 'free', 'active');
+
+  -- 5. Actualitzar Metadades de l'Usuari (Admin Auth)
+  -- Obtenim les metadades actuals
+  SELECT raw_user_meta_data, raw_app_meta_data
+  INTO user_metadata, app_metadata
+  FROM auth.users WHERE id = p_user_id;
+
+  -- Actualitzem les metadades
+  PERFORM auth.admin_update_user_by_id(
+    p_user_id,
+    jsonb_build_object(
+        'user_metadata', (user_metadata || jsonb_build_object('full_name', p_full_name)),
+        'app_metadata', (app_metadata || jsonb_build_object('active_team_id', new_team_id, 'active_team_plan', 'free'))
+    )
+  );
+  
+  -- 6. Retornem l'ID de l'equip
+  RETURN new_team_id;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Si qualsevol de les operacions anteriors falla, tot es reverteix
+    RAISE EXCEPTION 'Error a handle_onboarding: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision DEFAULT NULL::double precision, "p_longitude" double precision DEFAULT NULL::double precision) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  new_team_id uuid;
+  user_metadata jsonb;
+  app_metadata jsonb;
+BEGIN
+  -- 1. Actualitzar Perfil
+  UPDATE public.profiles
+  SET full_name = p_full_name, phone = p_phone, onboarding_completed = TRUE
+  WHERE id = p_user_id;
+
+  -- 2. Inserir Equip i obtenir el seu ID
+  INSERT INTO public.teams (
+    name, owner_id, tax_id, website, summary, sector, services, phone, email,
+    street, city, postal_code, region, country, latitude, longitude
+  ) VALUES (
+    p_company_name, p_user_id, p_tax_id, p_website, p_summary, p_sector, p_services, p_phone, p_email,
+    p_street, p_city, p_postal_code, p_region, p_country, p_latitude, p_longitude
+  ) RETURNING id INTO new_team_id;
+
+  -- 3. Inserir Membre d'Equip
+  INSERT INTO public.team_members (team_id, user_id, role)
+  VALUES (new_team_id, p_user_id, 'owner');
+
+  -- 4. Inserir Etapes del Pipeline
+  INSERT INTO public.pipeline_stages (name, "position", team_id, user_id)
+  VALUES
+    ('Prospecte', 1, new_team_id, p_user_id),
+    ('Contactat', 2, new_team_id, p_user_id),
+    ('Proposta Enviada', 3, new_team_id, p_user_id),
+    ('Negociació', 4, new_team_id, p_user_id),
+    ('Guanyat', 5, new_team_id, p_user_id),
+    ('Perdut', 6, new_team_id, p_user_id);
+
+  -- 5. Inserir Subscripció
+  INSERT INTO public.subscriptions (team_id, plan_id, status)
+  VALUES (new_team_id, 'free', 'active');
+
+  -- 6. Actualitzar Metadades de l'Usuari (Admin Auth)
+  SELECT raw_user_meta_data, raw_app_meta_data
+  INTO user_metadata, app_metadata
+  FROM auth.users WHERE id = p_user_id;
+
+  PERFORM auth.admin_update_user_by_id(
+    p_user_id,
+    jsonb_build_object(
+      'user_metadata', (user_metadata || jsonb_build_object('full_name', p_full_name)),
+      'app_metadata', (app_metadata || jsonb_build_object('active_team_id', new_team_id, 'active_team_plan', 'free'))
+    )
+  );
+  
+  -- 7. Retornar l'ID de l'equip
+  RETURN new_team_id;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error a handle_onboarding: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."handle_quote_acceptance"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1338,6 +1511,49 @@ $$;
 
 
 ALTER FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_quote record;
+BEGIN
+  -- Pas 1: Actualitzar el pressupost amb el motiu
+  UPDATE public.quotes
+  SET status = 'Declined', rejection_reason = p_reason
+  WHERE secure_id = p_secure_id
+  RETURNING * INTO v_quote;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
+  END IF;
+
+  -- Pas 2: Actualitzar l'oportunitat (si existeix)
+  IF v_quote.opportunity_id IS NOT NULL THEN
+    UPDATE public.opportunities
+    SET stage_name = 'Negociació' -- O l'etapa que consideris
+    WHERE id = v_quote.opportunity_id;
+  END IF;
+
+  -- Pas 3: Crear l'activitat de rebuig
+  INSERT INTO public.activities (
+    user_id, team_id, contact_id, quote_id, opportunity_id,
+    type, content, is_read
+  ) VALUES (
+    v_quote.user_id, v_quote.team_id, v_quote.contact_id, v_quote.id, v_quote.opportunity_id,
+    'Rebuig de Pressupost', p_reason, FALSE
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error a reject_quote_with_reason: %', SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") OWNER TO "postgres";
 
 SET default_tablespace = '';
 
@@ -4552,9 +4768,9 @@ GRANT ALL ON FUNCTION "public"."accept_personal_invitation"("invitation_id" "uui
 
 
 
-GRANT ALL ON FUNCTION "public"."create_default_pipeline_stages"() TO "anon";
-GRANT ALL ON FUNCTION "public"."create_default_pipeline_stages"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."create_default_pipeline_stages"() TO "service_role";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "service_role";
 
 
 
@@ -4744,6 +4960,18 @@ GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."handle_quote_acceptance"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_quote_acceptance"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_quote_acceptance"() TO "service_role";
@@ -4801,6 +5029,12 @@ GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "service_role";
 
 
 

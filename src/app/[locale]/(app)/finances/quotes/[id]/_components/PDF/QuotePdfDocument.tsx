@@ -236,7 +236,6 @@ export function QuotePdfDocument({
       <Page size="A4" style={styles.page}>
         {/* --- CAPÇALERA --- */}
         <View style={styles.header}>
-          {/* ✅ CORRECCIÓ LOGO: Simplificat per a més fiabilitat */}
           {company?.logo_url ? (
             <Image
               src={company.logo_url} // Passem la URL pública directament
@@ -332,8 +331,9 @@ export function QuotePdfDocument({
               </Text>
               {showQuantity && (
                 <>
+                  {/* ✅ CORRECCIÓ 1: Convertim a String */}
                   <Text style={[styles.tableCell, styles.colQty]}>
-                    {item.quantity}
+                    {String(item.quantity ?? 1)}
                   </Text>
                   <Text style={[styles.tableCell, styles.colPrice]}>
                     {formatCurrency(item.unit_price ?? 0)}
@@ -363,7 +363,8 @@ export function QuotePdfDocument({
 
             {quote.discount && quote.discount > 0 && (
               <View style={styles.totalsRowGreen}>
-                <Text>Descompte ({quote.discount}%)</Text>
+                {/* ✅ CORRECCIÓ 2: Convertim a String */}
+                <Text>Descompte ({String(quote.discount)}%)</Text>
                 <Text>-{formatCurrency(discountAmount)}</Text>
               </View>
             )}
@@ -374,7 +375,10 @@ export function QuotePdfDocument({
             </View>
 
             <View style={styles.totalsRow}>
-              <Text style={styles.textGray}>IVA ({quote.tax_percent ?? 21}%)</Text>
+              {/* ✅ CORRECCIÓ 3: Convertim a String */}
+              <Text style={styles.textGray}>
+                IVA ({String(quote.tax_percent ?? 21)}%)
+              </Text>
               <Text>{formatCurrency(tax)}</Text>
             </View>
 

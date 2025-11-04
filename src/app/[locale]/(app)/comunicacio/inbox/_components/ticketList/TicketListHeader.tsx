@@ -62,8 +62,8 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
   return (
     // ✅ CORRECCIÓ DE LAYOUT:
     // L'arrel és un 'div' amb 'flex-shrink-0' (NO un Fragment <>)
-    <div className="flex-shrink-0">
-      <div className="p-4 border-b border-border flex justify-between items-center">
+    <div className="flex-shrink-0 border-b border-border">
+      <div className="flex justify-between items-center px-2 py-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="text-lg font-bold p-2 -ml-2">
@@ -128,12 +128,14 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
         </div>
       </div>
 
-      <div className="p-2 border-b border-border">
+
+      {/* Cerca: molt més petita */}
+      <div className="p-1 border-t border-border">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder={t('searchInboxPlaceholder')}
-            className="pl-8"
+            className="px-8 pl-7 h-8 text-sm"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
           />

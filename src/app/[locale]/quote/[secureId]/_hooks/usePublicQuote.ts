@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { acceptQuoteAction, rejectQuoteAction } from '../actions';
-import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte    
 
 /**
  * Hook que encapsula tota la lògica per a la pàgina pública d'un pressupost.

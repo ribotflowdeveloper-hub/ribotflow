@@ -29,8 +29,7 @@ interface AgendaProps {
   onDepartmentFilterChange: (filter: number | 'all') => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  // ✅ CORRECCIÓ: Actualitzem la signatura per reflectir el canvi a TaskCard
-  onToggleTask: (task: EnrichedTask) => void; 
+  onToggleTask: (task: EnrichedTask) => void;
   onTaskMutation: () => void;
 }
 
@@ -74,39 +73,66 @@ export function Agenda(props: AgendaProps) {
     <div className="flex flex-col h-full max-h-[70vh]">
       {/* --- SECCIÓ DE FILTRES I CERCA (Contingut fix) --- */}
       <div className="flex-shrink-0 space-y-4">
+        {/* Aquesta estructura flex-col sm:flex-row és perfectament responsive */}
         <div className="flex flex-col sm:flex-row gap-2">
 
-          <div className="grid grid-cols-3 gap-1 bg-green-300/10 rounded-lg flex-grow border border-green-500/20">
-            {filterOptions.map(option => (
-              <Button
-                key={option.value}
-                variant={activeFilter === option.value ? 'default' : 'ghost'}
-                onClick={() => onFilterChange(option.value)}
-                className={cn(
-                  "w-full justify-center transition-all duration-200",
-                  activeFilter === option.value
-                    ? 'bg-green-600 text-white shadow hover:bg-green-700'
-                    : 'text-green-800 hover:bg-green-500/20 dark:text-green-300'
-                )}
+          {/* FILTRE ESTAT — Responsive: icones o dropdown en mòbil */}
+          <div className="w-full sm:w-auto">
+            {/* Desktop */}
+            <div className="hidden sm:grid grid-cols-3 gap-1 bg-green-300/10 rounded-lg border border-green-500/20">
+              {filterOptions.map(option => (
+                <Button
+                  key={option.value}
+                  variant={activeFilter === option.value ? 'default' : 'ghost'}
+                  onClick={() => onFilterChange(option.value)}
+                  className={cn(
+                    "w-full justify-center transition-all duration-200",
+                    activeFilter === option.value
+                      ? 'bg-green-600 text-white shadow hover:bg-green-700'
+                      : 'text-green-800 hover:bg-green-500/20 dark:text-green-300'
+                  )}
+                >
+                  {t(option.labelKey)}
+                  <span className={cn(
+                    "ml-2 text-xs font-semibold rounded-full px-2 py-0.5",
+                    activeFilter === option.value
+                      ? "bg-white/20 text-white"
+                      : "bg-green-600/10 text-green-700 dark:bg-green-300/10 dark:text-green-300"
+                  )}>
+                    {option.count(props)}
+                  </span>
+                </Button>
+              ))}
+            </div>
+
+            {/* Mòbil */}
+            <div className="sm:hidden">
+              <Select
+                value={activeFilter}
+                onValueChange={(value: TaskFilterStatus) => onFilterChange(value)}
               >
-                {t(option.labelKey)}
-                <span className={cn(
-                  "ml-2 text-xs font-semibold rounded-full px-2 py-0.5",
-                  activeFilter === option.value
-                    ? "bg-white/20 text-white"
-                    : "bg-green-600/10 text-green-700 dark:bg-green-300/10 dark:text-green-300"
-                )}>
-                  {option.count(props)}
-                </span>
-              </Button>
-            ))}
+                <SelectTrigger className="w-full bg-green-300/10 border-green-500/20">
+                  <SelectValue placeholder={t('filter.statusPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {t(option.labelKey)} ({option.count(props)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
 
           <Select
             value={String(departmentFilter)}
             onValueChange={(value) => onDepartmentFilterChange(value === 'all' ? 'all' : Number(value))}
           >
+            {/* Aquestes classes w-full sm:w-[180px] són correctes per responsive */}
             <SelectTrigger className="w-full sm:w-[180px] bg-green-300/10 border-green-500/20 focus:ring-green-500">
+              {/* Amagar la icona en mòbil (hidden sm:block) és una bona pràctica */}
               <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground hidden sm:block" />
               <SelectValue placeholder={t('filter.departmentPlaceholder')} />
             </SelectTrigger>
@@ -130,6 +156,7 @@ export function Agenda(props: AgendaProps) {
         </div>
       </div>
 
+      {/* Aquest contenidor de scroll és clau i funciona perfectament */}
       <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4 min-h-0 space-y-3">
         <AnimatePresence>
           {tasks.length > 0 ? (

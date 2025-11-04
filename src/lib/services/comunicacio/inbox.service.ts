@@ -447,19 +447,19 @@ export async function getTicketById(
 }
 
 /**
-* SERVEI: Obté els tickets dels contactes associats a un proveïdor.
+ * SERVEI: Obté els tickets dels contactes associats a un proveïdor.
  */
 export async function fetchTicketsForSupplierContacts(
   supabase: SupabaseClient<Database>,
   supplierId: string,
   teamId: string
 ): Promise<TicketForSupplier[]> {
-  // 1. Obté els IDs dels contactes directament associats a aquest proveïdor i equip
+  // 1. Obté els IDs dels contactes (aquesta part estava bé)
   const { data: contacts, error: contactsError } = await supabase
     .from('contacts')
     .select('id')
     .eq('supplier_id', supplierId)
-    .eq('team_id', teamId) // Correcte
+    .eq('team_id', teamId)
 
   if (contactsError) {
     console.error(
@@ -475,27 +475,28 @@ export async function fetchTicketsForSupplierContacts(
 
   const contactIds = contacts.map((c) => c.id)
 
-  // 2. Obté els tickets per a aquests contactes, assegurant que també pertanyin a l'equip
+  // 2. Obté els tickets per a aquests contactes
   const { data: tickets, error: ticketsError } = await supabase
     .from('tickets')
     .select(
       `
       *, 
-      contacts (
+      contacts!inner (  /* ✅ 1. Canviem a !inner per assegurar el join */
         id, 
-        full_name,  /* <-- CORRECCIÓ 3: 'full_name' en lloc de 'nom' */
+        full_name,
         email
       )
-    `
+      `
     )
     .in('contact_id', contactIds)
-    .eq('team_id', teamId) /* <-- CORRECCIÓ 2: Filtre de 'team_id' RE-AFEGIT */
-    .order(
-      'last_reply_at',
-      { ascending: false }
-    ) /* <-- CORRECCIÓ 1: 'last_reply_at' */
+    .eq('team_id', teamId)
+    // ✅✅✅ LÍNIA CLAU DE LA SOLUCIÓ ✅✅✅
+    .eq('contacts.team_id', teamId) /* 2. Afegim filtre RLS a la taula annidada */
+    // ✅✅✅ FI DE LA SOLUCIÓ ✅✅✅
+    .order('last_reply_at', { ascending: false })
 
   if (ticketsError) {
+    // Ara aquest error ja no hauria de ser {}, sinó un error real si n'hi hagués
     console.error(
       'Error fetching tickets for supplier contacts (service):',
       ticketsError

@@ -4,7 +4,8 @@
  */
 
 // Importem tipus d'altres mòduls a través del fitxer 'index.ts' per evitar errors de dependència circular.
-import type { Activity, Quote, Opportunity, Invoice, Task , CrmNotification} from './index';
+import type { Activity, Opportunity, Task , CrmNotification} from './index';
+import type { Invoice , Quote} from '@/types/db';
 import type { ContactStatusCode } from '@/config/contacts';
 // --- MAPA I TIPUS D'ESTAT DE CONTACTE ---
 

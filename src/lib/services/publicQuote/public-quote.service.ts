@@ -3,7 +3,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { z } from 'zod';
-import type { QuoteDataFromServer } from '@/types/finances';
+import type { QuoteDataFromServer } from '@/types/finances/quotes';
 import { type Database } from '@/types/supabase';
 
 // --- Tipus de Retorn ---

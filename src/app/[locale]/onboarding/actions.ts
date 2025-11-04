@@ -8,8 +8,7 @@ import { redirect } from "next/navigation";
 
 // ✅ 1. Importem el NOU servei i els seus tipus
 import * as onboardingService from '@/lib/services/onboarding/onboarding.service';
-import type { OnboardingFormData } from '@/lib/services/onboarding/onboarding.service';
-
+import type { OnboardingFormData } from '@/lib/services/onboarding/schema';
 
 export async function submitOnboardingAction(formData: OnboardingFormData) {
     // --- PAS 1: INICIALITZACIÓ I AUTENTICACIÓ ---

@@ -83,39 +83,62 @@ export function InvoiceDetailHeader({
   isFinalizing,
 }: InvoiceDetailHeaderProps) {
   return (
-    <div className="flex justify-between items-center gap-4 sticky top-[--header-height] bg-background  z-10 border-b px-4 md:px-0 -mx-4 md:-mx-0 sm:-mx-6 ">
-      {/* Part Esquerra */}
-      <div className="flex items-center gap-3">
+    <header
+      className="
+      sticky top-[--header-height] z-30 border-b bg-background/90 backdrop-blur-sm 
+      px-3 sm:px-6 py-2 sm:py-3 shadow-sm
+      flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+    "
+    >
+      {/* --- Esquerra: Títol + Back --- */}
+      <div className="flex items-center gap-2 sm:gap-3">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={handleBack}
           aria-label={t('button.goBack')}
+          className="shrink-0"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
+
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold leading-tight">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground hidden md:block">{description}</p>}
+          <h1 className="text-lg sm:text-xl font-semibold leading-tight">
+            {title}
+          </h1>
+          {description && (
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {description}
+            </p>
+          )}
         </div>
       </div>
-      {/* Part Dreta */}
-      <div className="flex items-center gap-2">
+
+      {/* --- Dreta: Accions --- */}
+      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+        {/* ⚙️ Configuració */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" disabled={formIsDisabled}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={formIsDisabled}
+              className="flex items-center gap-1"
+            >
               <Settings2 className="h-4 w-4" />
-              <span className="sr-only">{t('button.options')}</span>
+              <span className="hidden sm:inline">{t('button.options')}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-60 p-4 space-y-4">
+          <PopoverContent className="w-64 p-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="currency">{t('field.currency')}</Label>
               <Input
                 id="currency"
                 value={formData.currency || 'EUR'}
-                onChange={(e) => handleFieldChange('currency', e.target.value.toUpperCase())}
+                onChange={(e) =>
+                  handleFieldChange('currency', e.target.value.toUpperCase())
+                }
                 disabled={formIsDisabled}
                 maxLength={3}
               />
@@ -133,11 +156,18 @@ export function InvoiceDetailHeader({
           </PopoverContent>
         </Popover>
 
+        {/* 👁️ Previsualització */}
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" disabled={isSaving}>
-              <Eye className="w-4 h-4 mr-2" />
-              {t('button.preview')}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSaving}
+              className="flex items-center gap-1"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('button.preview')}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
@@ -149,23 +179,39 @@ export function InvoiceDetailHeader({
             </ScrollArea>
             <DialogFooter className="mt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">{t('button.close')}</Button>
+                <Button type="button" variant="outline">
+                  {t('button.close')}
+                </Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* ⬇️ Descarregar PDF */}
         {formData.status !== 'Draft' && initialData && company && contact && (
           <InvoiceDownloadButton
             invoice={initialData}
             company={company}
             contact={contact}
-          />)}
+          />
+        )}
 
+        {/* 💾 Desa / 🧾 Emissió */}
         {!isLocked && (
-          <Button type="submit" disabled={isSaving}>
-            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            {isPending ? t('button.saving') : t('button.saveDraft')}
+          <Button
+            type="submit"
+            disabled={isSaving}
+            size="sm"
+            className="flex items-center gap-1 min-w-[100px]"
+          >
+            {isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isPending ? t('button.saving') : t('button.saveDraft')}
+            </span>
           </Button>
         )}
 
@@ -175,19 +221,31 @@ export function InvoiceDetailHeader({
             variant="default"
             onClick={handleFinalize}
             disabled={isSaving}
+            size="sm"
+            className="flex items-center gap-1 min-w-[110px]"
           >
-            {isFinalizing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-            {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+            {isFinalizing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+            </span>
           </Button>
         )}
 
+        {/* 🔒 Estat enviat */}
         {isLocked && (
-          <Badge variant="outline" className="text-muted-foreground border-green-500 text-green-500">
-            <Lock className="w-4 h-4 mr-2" />
+          <Badge
+            variant="outline"
+            className="text-muted-foreground border-green-500 text-green-600"
+          >
+            <Lock className="w-4 h-4 mr-1" />
             {t('status.Sent')}
           </Badge>
         )}
       </div>
-    </div>
+    </header>
   );
 }

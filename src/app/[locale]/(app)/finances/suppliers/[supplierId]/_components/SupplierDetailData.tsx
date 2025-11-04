@@ -1,13 +1,14 @@
 // /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/SupplierDetailData.tsx (FITXER CORREGIT)
-// ✅ CORRECCIÓ: Importem l'acció local de detall
 import { fetchSupplierDetail } from '../actions';
 import { SupplierDetailClient } from './SupplierDetailClient';
-// ✅ Imports correctes per a dades relacionades
 import { fetchContactsForSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
 import { fetchExpensesForSupplier } from '@/app/[locale]/(app)/finances/expenses/actions';
 import { fetchTicketsForSupplierContacts } from '@/app/[locale]/(app)/comunicacio/inbox/actions';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { getTranslations } from 'next-intl/server';
+
+// ✅ 1. Importem el tipus que falta
+import { type TicketForSupplier } from '@/types/db';
 
 interface SupplierDetailDataProps {
   supplierId: string;
@@ -39,18 +40,32 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
     );
   }
 
-  // Càrrega de dades en paral·lel
+  // 1. Càrrega de dades principals en paral·lel
   const [
     supplierData,
     contactsData,
-    expensesData,
-    ticketsData
+    expensesData
   ] = await Promise.all([
-    fetchSupplierDetail(supplierId), // ✅ Crida a l'acció local
+    fetchSupplierDetail(supplierId),
     fetchContactsForSupplier(supplierId),
-    fetchExpensesForSupplier(supplierId),
-    fetchTicketsForSupplierContacts(supplierId)
+    fetchExpensesForSupplier(supplierId)
   ]);
+
+  // 2. Càrrega de dades dependents (Tiquets)
+  
+  // ✅ 2. Donem el tipus explícit a la variable
+  let ticketsData: TicketForSupplier[] = []; // Inicialitzem a buit
+  
+  if (contactsData && contactsData.length > 0) {
+    try {
+      // Només busquem tiquets si el proveïdor té contactes
+      ticketsData = await fetchTicketsForSupplierContacts(supplierId);
+    } catch (error) {
+      console.error("Error en fetchTicketsForSupplierContacts (SupplierDetailData):", error);
+      // No aturem la càrrega de la pàgina, simplement no hi haurà tiquets.
+      ticketsData = []; 
+    }
+  }
 
   // 'fetchSupplierDetail' ja llança notFound() si no troba dades
   // (Ho hem definit al servei)
@@ -67,7 +82,7 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
         supplierId={supplierId}
         contacts={contactsData || []}
         expenses={expensesData || []}
-        tickets={ticketsData || []}
+        tickets={ticketsData || []} // Passem les dades (plenes o buides)
       />
     </div>
   );

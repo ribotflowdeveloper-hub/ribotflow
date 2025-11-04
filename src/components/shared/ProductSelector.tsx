@@ -1,26 +1,27 @@
-// /src/components/shared/ProductSelector.tsx (REFACTORITZAT)
+// /src/components/shared/ProductSelector.tsx (COMPLET I CORREGIT)
 "use client";
 
-// ✅ Importem 'useActionState' (el nou 'useFormState' a React 19)
-// Si fas servir una versió anterior de Next/React, importa 'useFormState'
-import React, { useState, useEffect } from 'react';
-import { useActionState } from 'react'; 
+// ✅ Importem 'useRef' per al fix del bucle i 'Textarea' per a la millora
+import React, { useState, useEffect, useRef } from 'react';
+import { useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea'; // 👈 Importat!
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, BookPlus, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Database } from '@/types/supabase';
 
-// ✅✅✅
 // L'IMPORT CORREGIT A L'ACCIÓ QUE HAS PROPORCIONAT
-// Ajusta la ruta si no és exactament aquesta (ex: treure [locale])
-import { 
-    createProduct, 
-    type FormState as ProductFormState // Importem l'acció i el seu tipus de retorn
-} from '@/app/[locale]/(app)/finances/products/actions'; 
-// ✅✅✅
+import { createProduct } from '@/app/[locale]/(app)/finances/products/actions';
+// ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
+import type {
+
+    FormState,
+
+
+} from '@/lib/services/finances/products/products.service';
 
 type Product = Database['public']['Tables']['products']['Row'];
 
@@ -35,11 +36,28 @@ interface ProductSelectorProps {
 }
 
 // Estat inicial per useActionState
-const initialState: ProductFormState = {
+const initialState: FormState = {
     success: false,
     message: '',
     errors: {},
 };
+
+// ✅ 2. Hook personalitzat per obtenir el valor anterior (CORREGIT)
+function usePrevious<T>(value: T): T | undefined {
+    // ✅ CORRECCIÓ: Inicialitzem el ref amb 'undefined'
+    const ref = useRef<T | undefined>(undefined);
+
+    // Guardem el valor actual (que és el previ abans de l'actualització de l'efecte)
+    const previous = ref.current;
+
+    useEffect(() => {
+        // Actualitzem el ref amb el nou valor *després* del render
+        ref.current = value;
+    }, [value]);
+
+    // Retornem el valor que teníem abans de l'actualització de l'efecte
+    return previous;
+}
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
     products,
@@ -51,32 +69,39 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     const [isCreating, setIsCreating] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    // ✅ Nou hook per gestionar l'estat del formulari
-    // El 'isPending' ens diu si l'acció s'està executant
+    // Nou hook per gestionar l'estat del formulari
     const [formState, formAction, isPending] = useActionState(createProduct, initialState);
 
-    // ✅ useEffect per reaccionar al resultat de l'acció
+    // ✅ 3. Obtenim l'estat anterior (aquesta lògica és correcta)
+    const prevFormState = usePrevious(formState);
+
+    // ✅ 4. useEffect modificat (aquesta lògica és correcta)
     useEffect(() => {
-        // Quan el formulari es processa amb èxit...
+        // Si l'estat actual és el mateix que l'anterior, sortim d'hora.
+        if (prevFormState === formState) {
+            return;
+        }
+
+        // La lògica només s'executa quan formState REALMENT canvia
         if (formState.success && formState.data) {
             toast.success(t('toast.productCreated'), { description: formState.message });
-            
+
             // 1. Cridem el callback del pare amb el nou producte
             onProductSelect(formState.data as Product);
-            
+
             // 2. Resetejem l'estat i tanquem el popover
             setIsCreating(false);
             setIsPopoverOpen(false);
-            // L'estat 'formState' es resetejarà sol en la propera crida
 
         } else if (!formState.success && (formState.message || formState.errors) && formState.message !== '') {
             // Si hi ha un error de validació o de servidor
-            const description = formState.errors 
-                ? Object.values(formState.errors).flat().join(' ') 
+            const description = formState.errors
+                ? Object.values(formState.errors).flat().join(' ')
                 : t('toast.genericError');
             toast.error(formState.message || "Error", { description });
         }
-    }, [formState, onProductSelect, t]); // Reaccionem als canvis de formState
+
+    }, [formState, prevFormState, onProductSelect, t]); // Dependències completes
 
 
     const handleManualItemClick = () => {
@@ -111,48 +136,53 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             </PopoverTrigger>
             <PopoverContent className="w-[500px] p-0">
                 {isCreating ? (
-                    // ✅ Convertit a un <form> que crida la Server Action
+                    // Convertit a un <form> que crida la Server Action
                     <form action={formAction}>
                         <div className="p-4 space-y-2">
                             <p className="font-medium text-sm">{t('newProductTitle')}</p>
-                            
-                            {/* ✅ Els camps ara tenen 'name' per a FormData.
-                                Aquests 'name' han de coincidir amb els del 'productSchema'
-                            */}
+
+                            {/* Camp Nom (obligatori) */}
                             <div>
-                                <Input 
-                                    name="name" // ✅ Coincideix amb el schema
-                                    placeholder={t('newProductNamePlaceholder')} 
-                                    required 
+                                <Input
+                                    name="name" // Coincideix amb el schema
+                                    placeholder={t('newProductNamePlaceholder')}
+                                    required
                                 />
                                 {formState.errors?.name && (
                                     <p className="text-xs text-destructive pt-1">{formState.errors.name.join(', ')}</p>
                                 )}
                             </div>
 
+                            {/* ✅ MILLORA: Camp Descripció (opcional) */}
                             <div>
-                                <Input 
-                                    name="price" // ✅ Coincideix amb el schema
-                                    type="number" 
-                                    placeholder={t('newProductPricePlaceholder')} 
+                                <Textarea
+                                    name="description" // Coincideix amb el schema (opcional)
+                                    placeholder={t('newProductDescPlaceholder')} // Hauràs d'afegir aquesta traducció!
+                                    rows={3}
+                                    className="text-sm"
+                                />
+                                {formState.errors?.description && (
+                                    <p className="text-xs text-destructive pt-1">{formState.errors.description.join(', ')}</p>
+                                )}
+                            </div>
+                            {/* ✅ FI DE LA MILLORA */}
+
+                            {/* Camp Preu (obligatori) */}
+                            <div>
+                                <Input
+                                    name="price" // Coincideix amb el schema
+                                    type="number"
+                                    placeholder={t('newProductPricePlaceholder')}
                                     step="0.01"
-                                    required 
+                                    required
                                 />
                                 {formState.errors?.price && (
                                     <p className="text-xs text-destructive pt-1">{formState.errors.price.join(', ')}</p>
                                 )}
                             </div>
-                            
-                            {/* ❗ Important: La teva acció 'createProduct' valida 'is_active'.
-                                L'afegim com a camp ocult, assumint que un producte 
-                                creat des d'aquí sempre ha d'estar actiu.
-                            */}
+
+                            {/* Camp ocult 'is_active' */}
                             <input type="hidden" name="is_active" value="on" />
-                            
-                            {/* ⚠️ ATENCIÓ: Si el teu 'productSchema' té altres camps obligatoris
-                                (com 'description', 'category', etc.), has d'afegir-los aquí
-                                o la validació de Zod fallarà. Si són opcionals, no cal.
-                            */}
 
                             <div className="flex justify-end gap-2 pt-2">
                                 <Button variant="ghost" size="sm" type="button" onClick={() => setIsCreating(false)}>{t('cancelButton')}</Button>
@@ -163,35 +193,30 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                 ) : (
                     <Command>
                         <CommandInput placeholder={t('searchPlaceholder')} />
-                       {/* ✅ Aquí comencen els canvis */}
                         <CommandList>
                             <CommandEmpty>{t('emptySearch')}</CommandEmpty>
-                            
+
                             {/* GRUP 1: ACCIONS */}
                             <CommandGroup>
-                                <CommandItem 
+                                <CommandItem
                                     onSelect={handleManualItemClick}
-
-                                    className="bg-gray-600 text-card" // ✅ AFEGIT: mateix estil
+                                    className="bg-gray-600 text-card"
                                 >
                                     <Plus className="mr-2 h-4 w-4" />
                                     <span>{t('addManualItem')}</span>
                                 </CommandItem>
                                 <p className="py-1"></p>
-                                <CommandItem 
+                                <CommandItem
                                     onSelect={() => setIsCreating(true)}
-                                    className="bg-gray-600 text-card" // ✅ AFEGIT: mateix estil
+                                    className="bg-gray-600 text-card"
                                 >
                                     <Save className="mr-2 h-4 w-4" />
                                     <span>{t('createNewItem')}</span>
                                 </CommandItem>
                             </CommandGroup>
-                            
+
                             {/* GRUP 2: LLISTA DE PRODUCTES */}
-                            {/* Afegim un títol al grup si hi ha productes */}
-                            <CommandGroup 
-                        
-                            >
+                            <CommandGroup>
                                 {products.map((product) => (
                                     <CommandItem key={product.id} value={product.name} onSelect={() => handleProductSelectClick(product)}>
                                         <div className="flex justify-between w-full">

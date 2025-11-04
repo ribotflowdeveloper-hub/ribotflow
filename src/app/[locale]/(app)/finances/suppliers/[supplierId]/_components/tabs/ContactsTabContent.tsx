@@ -1,6 +1,7 @@
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ContactsTabContent.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
-import { useState, useTransition } from 'react'; // ✅ Afegim useTransition
+import { useState, useTransition } from 'react'; 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -8,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   PlusCircle, Users, Mail, Phone, Link2,
-  Trash2, Loader2 // ✅ Afegim icones
+  Trash2, Loader2 
 } from 'lucide-react';
 import { unlinkContactFromSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
 import { LinkContactDialog } from '../LinkContactDialog';
@@ -23,13 +24,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // ✅ Importem Alert Dialog
+} from "@/components/ui/alert-dialog"; 
 import { toast } from 'sonner';
 
 interface ContactsTabContentProps {
   contacts: ContactForSupplier[];
   supplierId: string;
-  t: (key: string) => string;
+  t: (key: string, values?: Record<string, unknown>) => string; 
 }
 
 export function ContactsTabContent({ contacts: initialContactsProp, supplierId, t }: ContactsTabContentProps) {
@@ -52,10 +53,8 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
     ]);
   };
 
-  // ✅ 4. 'contactId' ara és un NÚMERO
   const handleUnlink = (contactId: number) => {
     startUnlinkTransition(async () => {
-      // L'acció 'unlinkContactFromSupplier' espera un 'string', així que el convertim
       const result = await unlinkContactFromSupplier(String(contactId), supplierId);
       if (result.success) {
         toast.success(result.message);
@@ -69,16 +68,19 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* ✅ MILLORA MÒBIL: Capçalera apilable */}
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />{t('contactsCard.title')}</CardTitle>
             <CardDescription>{t('contactsCard.description')}</CardDescription>
           </div>
-          <div className="flex gap-2">
+           {/* ✅ MILLORA MÒBIL: Botons apilables i amplada completa en mòbil */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsLinkDialogOpen(true)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <Link2 className="h-4 w-4 mr-2" />
               {t('contactsCard.linkButton')}
@@ -88,6 +90,7 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
               variant="default"
               size="sm"
               onClick={() => router.push(`/crm/contactes/new?supplierId=${supplierId}`)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               {t('contactsCard.newButton')}
@@ -100,8 +103,10 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('contactsCard.table.name')}</TableHead>
-                  <TableHead>{t('contactsCard.table.email')}</TableHead>
-                  <TableHead>{t('contactsCard.table.phone')}</TableHead>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Email en pantalles mitjanes/petites */}
+                  <TableHead className="hidden md:table-cell">{t('contactsCard.table.email')}</TableHead>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Telèfon en pantalles petites */}
+                  <TableHead className="hidden sm:table-cell">{t('contactsCard.table.phone')}</TableHead>
                   <TableHead className="w-[50px]">
                     <span className="sr-only">Accions</span>
                   </TableHead>
@@ -111,7 +116,6 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                 {contacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell>
-                      {/* ✅ MILLORA NAVEGACIÓ: Afegim el paràmetre 'from' */}
                       <Link
                         href={`/crm/contactes/${contact.id}?from=/finances/suppliers/${supplierId}`}
                         className="font-medium text-blue-600 hover:underline"
@@ -119,10 +123,11 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                         {contact.nom}
                       </Link>
                     </TableCell>
-                    <TableCell>{contact.email ? (<a href={`mailto:${contact.email}`} className="flex items-center gap-2 hover:underline"><Mail className="h-3 w-3" /> {contact.email}</a>) : '-'}</TableCell>
-                    <TableCell>{contact.telefon ? (<a href={`tel:${contact.telefon}`} className="flex items-center gap-2 hover:underline"><Phone className="h-3 w-3" /> {contact.telefon}</a>) : '-'}</TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Email */}
+                    <TableCell className="hidden md:table-cell">{contact.email ? (<a href={`mailto:${contact.email}`} className="flex items-center gap-2 hover:underline"><Mail className="h-3 w-3" /> {contact.email}</a>) : '-'}</TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Telèfon */}
+                    <TableCell className="hidden sm:table-cell">{contact.telefon ? (<a href={`tel:${contact.telefon}`} className="flex items-center gap-2 hover:underline"><Phone className="h-3 w-3" /> {contact.telefon}</a>) : '-'}</TableCell>
 
-                    {/* ✅ NOU: Cel·la d'accions (Desvincular) */}
                     <TableCell>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -140,8 +145,7 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('contactsCard.unlinkDialog.title')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {/* 👇 AQUESTA ÉS LA LÍNIA CLAU 👇 */}
-                              {t('contactsCard.unlinkDialog.description')}
+                              {t('contactsCard.unlinkDialog.description', { contactName: contact.nom })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>

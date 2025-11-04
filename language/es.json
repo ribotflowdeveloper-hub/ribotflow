@@ -131,7 +131,8 @@
       "deleteConfirmTitle": "¿Estás seguro?",
       "deleteConfirmDescription": "Esta acción no se puede deshacer.",
       "cancelButton": "Cancelar",
-      "confirmDeleteButton": "Sí, eliminar"
+      "confirmDeleteButton": "Sí, eliminar",
+      "deleteMultipleConfirm": "¿Estás seguro de que quieres eliminar los correos seleccionados? Esta acción no se puede deshacer."
     },
     "editor": {
       "bold": "Negrita",
@@ -891,7 +892,9 @@
         "pendingAria": "Ver pendientes",
         "completedAria": "Ver completadas",
         "departmentPlaceholder": "Departamento",
-        "allDepartments": "Todos los departamentos"
+        "allDepartments": "Todos los departamentos",
+        "statusPlaceholder": "Estado",
+        "allStatuses": "Todos los estados"
       }
     },
     "taskActions": {
@@ -2357,5 +2360,17 @@
     "automatedEmail": "Email generado automáticamente",
     "backToListButton": "Volver a la lista de transcripciones",
     "errorUnknown": "Error desconocido"
+  },
+  "Global": {
+    "loading": "Cargando...",
+    "error": "Se ha producido un error. Si el problema persiste, contacta con el soporte.",
+    "noData": "No hay datos disponibles.",
+    "searchPlaceholder": "Buscar...",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "deleting": "Borrando...",
+    "saving": "Guardando..."
   }
 }

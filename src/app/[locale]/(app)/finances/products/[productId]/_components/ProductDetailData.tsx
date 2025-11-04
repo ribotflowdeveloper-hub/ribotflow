@@ -1,29 +1,41 @@
-// src/app/[locale]/(app)/crm/products/[productId]/_components/ProductDetailData.tsx
-import { fetchProductDetail } from '../actions'; // Acció del directori [productId]
-import { ProductDetailClient } from './ProductDetailClient'; // Component client que crearem
-import { getTranslations } from 'next-intl/server'; // Per a missatges d'error
+// /app/[locale]/(app)/finances/products/[productId]/_components/ProductDetailData.tsx (CORREGIT)
+
+import { notFound } from 'next/navigation'; // 👈 1. Importar notFound
+import { fetchProductDetail } from '../actions';
+import { ProductDetailClient } from './ProductDetailClient';
 
 interface ProductDetailDataProps {
   productId: number;
 }
 
 export async function ProductDetailData({ productId }: ProductDetailDataProps) {
-  const t = await getTranslations('ProductsPage'); // O un namespace específic
+  // Nota: Si 'fetchProductDetail' necessita 't', hauràs de crear-lo abans
+  // const t = await getTranslations('ProductsPage');
 
+  let product;
   try {
-    // Cridem l'acció per obtenir el producte.
-    // fetchProductDetail ja gestiona el 'notFound()' internament.
-    const product = await fetchProductDetail(productId);
+    // 2. Cridem l'acció per obtenir les dades
+    product = await fetchProductDetail(productId);
 
-    // Passem les dades al component client
-    return <ProductDetailClient product={product} />;
-
-  } catch (error) {
-    // Si fetchProductDetail llança un altre error (p.ex., error de BD)
-    console.error("Error loading product data:", error);
-    // Mostrem un missatge d'error genèric
-    // (L'error 404 ja s'hauria gestionat amb notFound())
-    // Podries llançar l'error perquè Error Boundary el capturi
-    throw new Error(t('errors.loadSingleFailed') || "No s'ha pogut carregar el detall del producte.");
+  } catch (error: unknown) {
+    // 3. Si l'acció llança un error (ex: error de base de dades),
+    // el capturem i mostrem la pàgina 404.
+    if (error instanceof Error) {
+      console.error(`[ProductDetailData] Error en carregar el producte ${productId}:`, error.message);
+    } else {
+      console.error(`[ProductDetailData] Error en carregar el producte ${productId}:`, error);
+    }
+    return notFound(); 
   }
+
+  // 4. Comprovació addicional per si l'acció retorna 'null' en lloc de llançar un error
+  if (!product) {
+    // Si el producte no es troba (null o undefined), mostrem 404
+    return notFound();
+  }
+
+  // 5. Si tot va bé, renderitzem el component client amb les dades
+  return (
+    <ProductDetailClient product={product} />
+  );
 }

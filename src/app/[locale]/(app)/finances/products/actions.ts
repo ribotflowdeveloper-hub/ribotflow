@@ -7,7 +7,7 @@ import { type PaginatedActionParams } from '@/hooks/usePaginateResource';
 
 // ✅ 1. Importem el NOU servei
 import * as productService from '@/lib/services/finances/products/products.service';
-
+import { redirect } from 'next/navigation'; // 👈 1. Importar redirect
 // ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
 import type { 
   ProductPageFilters, 
@@ -61,18 +61,37 @@ export async function createProduct(
   return result;
 }
 
-export async function deleteProduct(id: number): Promise<FormState> {
+/**
+ * ACCIÓ: Elimina un producte.
+ * Aquesta és la versió corregida.
+ */
+export async function deleteProduct(productId: number): Promise<FormState> {
   const session = await validateUserSession();
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
+  
+  // 1. Obtenim el client 'supabase' autenticat.
+  // No necessitem 'activeTeamId' per a la crida.
   const { supabase } = session;
 
-  const result = await productService.deleteProduct(supabase, id);
+  // 2. ✅ CRIDA CORREGIDA: Cridem al servei només amb (supabase, id)
+  const result = await productService.deleteProduct(supabase, productId);
 
   if (result.success) {
-    revalidatePath('/crm/products');
+    // 3. Si té èxit, revalidem la memòria cau de la PÀGINA DE LLISTA.
+    revalidatePath('/finances/products'); 
+    
+    // 4. Important: NO revalidem la pàgina de detall [productId]
+    //    perquè ja no existeix.
+
+  } else {
+    // Si el servei retorna un error, el passem al client
+    return { success: false, message: result.message };
   }
 
-  return result;
+  // 5. REDIRECCIÓ DES DEL SERVIDOR:
+  // Un cop eliminat i revalidat, redirigim l'usuari a la llista.
+  // Això evita la "cursa" (race condition) i el 404.
+  redirect(`/finances/products`);
 }

@@ -110,18 +110,21 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
 
             <div className="flex flex-col h-full">
                 {/* ------------------------------------------------------------- */}
-                {/* ✅ NOU DISSENY DE LA CAPÇALERA AMB L'ESTAT A L'ESQUERRA */}
+                {/* ✅ NOVA CAPÇALERA RESPONSIVE PER A MÒBIL I ESCRIPTORI */}
                 {/* ------------------------------------------------------------- */}
-                <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <div className="flex items-center gap-4">
-                        <Button variant="outline" onClick={handleBack}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />{t('quoteEditor.backButton')}
+                <header className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6 flex-shrink-0">
+                    {/* Esquerra: botó enrere + estat */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="outline" onClick={handleBack} className="flex-shrink-0">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            {t('quoteEditor.backButton')}
                         </Button>
-                        <SentStatusCard /> {/* ✅ Estat d'enviament al costat del botó de tornada */}
+                        <SentStatusCard />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* ✅ 3. Substituïm el botó de descàrrega */}
+                    {/* Dreta: accions */}
+                    <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 w-full sm:w-auto">
+                        {/* Descàrrega PDF */}
                         {typeof quote.id === 'number' ? (
                             <QuoteDownloadButton
                                 quote={quote}
@@ -131,7 +134,6 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 t={t}
                             />
                         ) : (
-                            // Si el pressupost és 'new', mostrem el botó desactivat
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -147,20 +149,48 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 </Tooltip>
                             </TooltipProvider>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => setIsProfileDialogOpen(true)} title={t('quoteEditor.companyDataTooltip')}>
+
+                        {/* Dades empresa */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setIsProfileDialogOpen(true)}
+                            title={t('quoteEditor.companyDataTooltip')}
+                        >
                             <Building className="w-4 h-4" />
                         </Button>
-                        {quote.id !== 'new' &&
-                            <Button variant="outline" size="icon" onClick={() => setIsDeleteDialogOpen(true)} title={t('quoteEditor.deleteTooltip')}>
+
+                        {/* Eliminar (si no és nou) */}
+                        {quote.id !== 'new' && (
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsDeleteDialogOpen(true)}
+                                title={t('quoteEditor.deleteTooltip')}
+                            >
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
-                        }
-                        <Button onClick={handleSave} disabled={isSaving || isSending} className="min-w-[100px]">
+                        )}
+
+                        {/* Guardar */}
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving || isSending}
+                            className="min-w-[110px] w-full sm:w-auto"
+                        >
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            {quote.id === 'new' ? t('quoteEditor.createButton') : t('quoteEditor.saveButton')}
+                            {quote.id === 'new'
+                                ? t('quoteEditor.createButton')
+                                : t('quoteEditor.saveButton')}
                         </Button>
+
+                        {/* Enviar */}
                         {quote.id !== 'new' && (
-                            <Button onClick={handleSend} disabled={isSaving || isSending} className="min-w-[120px]">
+                            <Button
+                                onClick={handleSend}
+                                disabled={isSaving || isSending}
+                                className="min-w-[120px] w-full sm:w-auto"
+                            >
                                 {isSending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -171,7 +201,9 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 ) : (
                                     <>
                                         <Send className="mr-2 h-4 w-4" />
-                                        {quote.sent_at ? t('quoteEditor.resendButton') : t('quoteEditor.sendButton')}
+                                        {quote.sent_at
+                                            ? t('quoteEditor.resendButton')
+                                            : t('quoteEditor.sendButton')}
                                     </>
                                 )}
                             </Button>

@@ -176,25 +176,40 @@ export function ContactsClient({
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
             {/* CAPÇALERA */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <h1 className="text-3xl font-bold">{t('title')}</h1>
-                <div className="flex w-full sm:w-auto items-center gap-2">
-                    {/* ... (Cercador i Filtres) ... */}
-                    <div className="relative flex-grow">
+            {/* CAPÇALERA RESPONSIVE */}
+            <div className="flex flex-col gap-3 sm:gap-4 mb-6">
+                {/* Títol */}
+                <h1 className="text-2xl sm:text-3xl font-bold text-balance">{t('title')}</h1>
+
+                {/* Controls */}
+                <div className="flex flex-wrap gap-2 w-full items-center">
+                    {/* 🔍 Cercador */}
+                    <div className="relative flex-grow min-w-[160px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Input
+                            placeholder={t('searchPlaceholder')}
+                            className="pl-9 w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
 
+                    {/* 🔽 Ordenar */}
                     <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.sortBy')} /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                            <SelectValue placeholder={t('filters.sortBy')} />
+                        </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="newest">{t('filters.newest')}</SelectItem>
                             <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
                         </SelectContent>
                     </Select>
 
+                    {/* 📊 Estat */}
                     <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.status')} /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                            <SelectValue placeholder={t('filters.status')} />
+                        </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
                             {CONTACT_STATUS_MAP.map(status => (
@@ -205,35 +220,43 @@ export function ContactsClient({
                         </SelectContent>
                     </Select>
 
-                    {/* Botons de vista */}
-                    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                        <Button variant={viewMode === 'cards' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleFilterChange('view', 'cards')}>
+                    {/* 👁️ Modes de vista (icones) */}
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                        <Button
+                            variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                            size="icon"
+                            onClick={() => handleFilterChange('view', 'cards')}
+                        >
                             <LayoutGrid className="w-4 h-4" />
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleFilterChange('view', 'list')}>
+                        <Button
+                            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                            size="icon"
+                            onClick={() => handleFilterChange('view', 'list')}
+                        >
                             <List className="w-4 h-4" />
                         </Button>
                     </div>
 
+                    {/* 🧾 Excel Dropdown */}
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
-                        disabled={isExporting} // Deshabilitat si ja s'està exportant
+                        disabled={isExporting}
                     />
 
-                    {/* ✅ 8. Botó de "Nou Contacte" amb Tooltip de límit */}
+                    {/* ➕ Nou contacte (amb límit) */}
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                {/* Afegim un 'span' per al correcte funcionament del Tooltip quan el botó està deshabilitat */}
                                 <span tabIndex={isLimitReached ? 0 : -1}>
                                     <ContactDialog
                                         trigger={
-                                            <Button className="flex-shrink-0" disabled={isLimitReached}>
+                                            <Button className="flex-shrink-0 w-full sm:w-auto" disabled={isLimitReached}>
                                                 {isLimitReached ? (
-                                                    <Lock className="w-4 h-4 md:mr-2" />
+                                                    <Lock className="w-4 h-4 mr-1" />
                                                 ) : (
-                                                    <Plus className="w-4 h-4 md:mr-2" />
+                                                    <Plus className="w-4 h-4 mr-1" />
                                                 )}
                                                 <span className="hidden md:inline">{t('newContactButton')}</span>
                                             </Button>
@@ -243,53 +266,35 @@ export function ContactsClient({
                                                 { ...(newContact as Contact), opportunities: [] },
                                                 ...prev
                                             ]);
-                                            // Refresquem per si hem assolit el límit
                                             router.refresh();
                                         }}
-                                        // Passem l'estat del límit al diàleg
                                         isLimitReached={isLimitReached}
                                         limitError={limitStatus.error}
                                     />
                                 </span>
                             </TooltipTrigger>
 
-                            {/* ============================================================
-                                ✅ INICI DE LA MILLORA DE DISSENY DEL TOOLTIP
-                                ============================================================
-                                */}
                             {isLimitReached && (
                                 <TooltipContent className="max-w-xs p-3 shadow-lg rounded-lg border-2 border-yellow-400 bg-yellow-50">
-                                    <div className="flex flex-col gap-3">
-
-                                        {/* Títol */}
+                                    <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="p-1.5  rounded-full">
-                                                <Lock className="w-4 h-4 text-yellow-900" />
-                                            </span>
-                                            <h3 className="font-semibold text-muted-foreground text-lg">
-                                                {t_billing('limitReachedTitle')}
-                                            </h3>
+                                            <Lock className="w-4 h-4 text-yellow-900" />
+                                            <h3 className="font-semibold">{t_billing('limitReachedTitle')}</h3>
                                         </div>
-
-                                        {/* Descripció (El motiu) */}
-                                        <p className="text-lg text-muted-foreground leading-snug">
+                                        <p className="text-sm text-muted-foreground">
                                             {limitStatus.error || t_billing('limitReachedDefault')}
                                         </p>
-
-                                        {/* Acció */}
-                                        <Button asChild size="lg" className="mt-1 w-full">
+                                        <Button asChild size="sm" className="mt-1 w-full">
                                             <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
                                         </Button>
                                     </div>
                                 </TooltipContent>
                             )}
-                           
-
                         </Tooltip>
                     </TooltipProvider>
-
                 </div>
             </div>
+
 
             {/* LLISTA DE CONTACTES */}
             <div className="flex-1 overflow-y-auto -mr-4 pr-4">

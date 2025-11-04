@@ -1,6 +1,6 @@
 // Al teu fitxer de servidor (p.ex. /quote/[secureId]/page.tsx)
 import { createClient } from '@/lib/supabase/server'; 
-import type { QuoteDataFromServer } from "@/types/crm"; 
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; 
 // Importem els tipus de la base de dades (assegura't que la ruta és correcta)
 import { type Database } from '@/types/supabase'; 
 

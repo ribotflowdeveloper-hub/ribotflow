@@ -8,7 +8,17 @@ import { useTranslations } from "next-intl";
 import Link from 'next/link';
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar, Quote, Mail } from "lucide-react";
+import {
+  BarChart2,
+  Activity,
+  ListChecks,
+  Radar as RadarIcon,
+  Plus,
+  Calendar,
+  Quote,
+  Mail,
+  MoreVertical // ➕ AFEGIT: Icona per al menú mòbil
+} from "lucide-react";
 
 import { ModuleCard } from "@/components/shared/ModuleCard";
 import { SalesPerformance } from "./_components/SalesPerformance";
@@ -26,6 +36,16 @@ import { Label } from "@/components/ui/label";
 import { ServerActivityItem } from "@/lib/data/dashboard";
 import { RecentQuotes, EnrichedQuote } from "./_components/RecentQuotes";
 import { RecentEmails, EnrichedEmail } from "./_components/RecentEmails";
+
+// ➕ AFEGIT: Imports per al DropdownMenu
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const MONTHLY_GOAL = 50_000;
 
@@ -102,30 +122,25 @@ export function DashboardClient({
       setIsDialogOpen(false);
     }
   }, [router]);
-  
-  // ✅ ÚNIC CANVI: Aquesta funció ara conté la lògica correcta
+
   const handleToggleTask = useCallback((task: EnrichedTask) => {
     const previousTasks = tasks;
     let updateData: Partial<Tables<'tasks'>> = {};
     let successMessage = "";
 
-    // Lògica del flux: Pendent -> Assignada -> Completada
     if (task.is_completed) {
-      // Si està completada, la reobrim i torna a 'Assignada' (mantenint l'usuari)
-      updateData = { 
-        is_completed: false, 
-        finish_date: null 
+      updateData = {
+        is_completed: false,
+        finish_date: null
       };
       successMessage = "Tasca reoberta.";
     } else if (task.user_asign_id) {
-      // Si ja està assignada (però no completa), la completem
-      updateData = { 
-        is_completed: true, 
-        finish_date: new Date().toISOString() 
+      updateData = {
+        is_completed: true,
+        finish_date: new Date().toISOString()
       };
       successMessage = "Tasca completada!";
     } else {
-      // Si no està assignada (Pendent), l'assignem a l'usuari actual
       updateData = {
         user_asign_id: userId,
         asigned_date: new Date().toISOString()
@@ -133,24 +148,21 @@ export function DashboardClient({
       successMessage = `T'has assignat la tasca.`;
     }
 
-    // Actualització optimista de la UI
     setTasks(prev =>
       prev.map(t =>
         t.id === task.id
-          ? { ...t, ...updateData } as EnrichedTask // Ensure the result is typed as EnrichedTask
+          ? { ...t, ...updateData } as EnrichedTask
           : t
       )
     );
 
-    // Cridem a la Server Action
     startTransition(async () => {
       const { error } = await updateSimpleTask(task.id, updateData);
       if (error) {
         toast.error("No s'ha pogut actualitzar l'estat de la tasca.");
-        setTasks(previousTasks); // Revertim en cas d'error
+        setTasks(previousTasks);
       } else {
         toast.success(successMessage);
-        // Refresquem les dades del servidor sense tancar cap diàleg
         handleTaskMutation({ closeDialog: false });
       }
     });
@@ -196,12 +208,13 @@ export function DashboardClient({
     setIsDialogOpen(true);
   };
 
-  const midaCardsSuperiors = "h-96";
+  {/* ❗ CORREGIT: L'alçada ara és automàtica en mòbil (h-auto) i fixa en escriptori (md:h-96) */ }
+  const midaCardsSuperiors = "h-auto md:h-96";
 
   return (
     <div className="relative w-full ">
       <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(theme(colors.gray.300)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.slate.800)_1px,transparent_1px)] [background-size:16px_16px]" />
-      
+
       <motion.div
         className="flex flex-col gap-6"
         initial={{ opacity: 0, y: 20 }}
@@ -244,19 +257,57 @@ export function DashboardClient({
               variant="agenda"
               className=""
               actions={
-                <div className="flex items-center space-x-4">
-                  <Button asChild variant="outline" size="icon" className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
-                    <Link href="/crm/calendari" aria-label={"Calendar"}> <Calendar className="h-5 w-5" /> </Link>
-                  </Button>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
-                    <Label htmlFor="show-all-tasks" className="text-xm font-normal cursor-pointer text-primary-foreground">{t('agenda.viewAll')}</Label>
+                // ❗ --- INICI CORRECCIÓ MOBIL ---
+                <>
+                  {/* Vista Escriptori (md i amunt) */}
+                  <div className="hidden md:flex items-center space-x-4">
+                    <Button asChild variant="outline" size="icon" className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                      <Link href="/crm/calendari" aria-label={"Calendar"}> <Calendar className="h-5 w-5" /> </Link>
+                    </Button>
+                    <div className="flex items-center space-x-2">
+                      {/* IDs únics per a accessibilitat */}
+                      <Switch id="show-all-tasks-desktop" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
+                      <Label htmlFor="show-all-tasks-desktop" className="text-xm font-normal cursor-pointer text-primary-foreground">{t('agenda.viewAll')}</Label>
+                    </div>
+                    <Button variant="ghost" onClick={openNewTaskDialog} className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                      <Plus className="w-4 h-4" />
+                      {t('agenda.newTask')}
+                    </Button>
                   </div>
-                  <Button variant="ghost" onClick={openNewTaskDialog} className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
-                    <Plus className="w-4 h-4" />
-                    {t('agenda.newTask')}
-                  </Button>
-                </div>
+
+                  {/* Vista Mòbil (sota md) */}
+                  <div className="flex md:hidden items-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                          <MoreVertical className="h-5 w-5" />
+                          <span className="sr-only">Obrir menú d'accions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>{t('agenda.title')}</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={openNewTaskDialog}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          <span>{t('agenda.newTask')}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/crm/calendari">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            <span>Anar al Calendari</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5 text-sm">
+                          <div className="flex items-center justify-between space-x-2">
+                            <Label htmlFor="show-all-tasks-mobile" className="font-normal cursor-pointer text-foreground">{t('agenda.viewAll')}</Label>
+                            <Switch id="show-all-tasks-mobile" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </>
+                // ❗ --- FI CORRECCIÓ MOBIL ---
               }
             >
               <Agenda

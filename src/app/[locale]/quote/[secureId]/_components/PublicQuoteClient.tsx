@@ -4,7 +4,7 @@ import { usePublicQuote } from "../_hooks/usePublicQuote";
 import { RejectionDialog } from "./RejectionDialog";
 import { QuoteStatusScreen } from "./QuoteStatusScreeen";
 import { PublicQuoteView } from "./PublicQuoteView";
-import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte    
 
 export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: QuoteDataFromServer; }) {
     // Tota la lògica complexa ara prové d'aquest hook.

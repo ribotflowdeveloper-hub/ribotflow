@@ -1,4 +1,3 @@
-// src/app/[locale]/(app)/finances/expenses/_components/ExpensesClient.tsx
 "use client";
 
 import { useMemo } from 'react';
@@ -10,40 +9,26 @@ import { useLocale, useTranslations } from 'next-intl';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 import { formatCurrency, formatLocalizedDate } from '@/lib/utils/formatters';
-import { deleteExpense } from '../[expenseId]/actions'; // Assegura't que deleteExpense està importat
-// Pas 1: Importar el nou hook genèric i els tipus
+import { deleteExpense } from '../[expenseId]/actions';
 import {
   usePaginatedResource,
   type PaginatedResponse,
   type PaginatedActionParams
 } from '@/hooks/usePaginateResource';
-import { PageHeader } from '@/components/shared/PageHeader'; // <-- Importa PageHeader
-import { ExpenseFilters } from './ExpenseFilters'; // <-- Importa ExpenseFilters
-// Pas 2: Importar les Server Actions específiques
-import { fetchPaginatedExpenses} from '../actions';
-// Importa els tipus des del fitxer de tipus principal d'expenses
+import { PageHeader } from '@/components/shared/PageHeader';
+import { ExpenseFilters } from './ExpenseFilters';
+import { fetchPaginatedExpenses } from '../actions';
 import type { ExpenseWithContact } from '@/types/finances/expenses';
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
-
-
-// ✅ NOU: Importem ActionResult per a la funció adaptadora
 import { type ActionResult } from '@/types/shared/actionResult';
 
-// ✅ ======================================
-// ✅ PROP INTERFACE ACTUALITZADA
-// ✅ ======================================
 interface ExpensesClientProps {
   initialData: PaginatedExpensesResponse;
-  filterOptions: {
-    categories: string[];
-  };
+  filterOptions: { categories: string[] };
 }
-// Definim el tipus de resposta per a claredat
-type PaginatedExpensesResponse = PaginatedResponse<ExpenseWithContact>;
-// Definim el tipus dels paràmetres de la nostra 'fetchAction'
-type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 
-// ✅ Definim les opcions de files per pàgina que volem
+type PaginatedExpensesResponse = PaginatedResponse<ExpenseWithContact>;
+type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 const EXPENSE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 export function ExpensesClient({ initialData, filterOptions }: ExpensesClientProps) {
@@ -51,20 +36,18 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
   const t = useTranslations('ExpensesPage');
   const tShared = useTranslations('Shared');
 
-  // La definició de columnes no canvia
   const allColumns = useMemo<ColumnDef<ExpenseWithContact>[]>(() => [
     {
       accessorKey: "invoice_number",
       header: t('table.number'),
       enableSorting: true,
-      // ✅ Fem que la cel·la sigui un enllaç
       cell: (row) => {
         const displayNumber = row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`;
         return (
           <Link
             href={`/${locale}/finances/expenses/${row.id}`}
-            className="text-green-600 hover:underline font-medium" // Estil opcional
-            title={`${tShared('actions.view')}: ${displayNumber}`} // Tooltip millorat
+            className="text-green-600 hover:underline font-medium"
+            title={`${tShared('actions.view')}: ${displayNumber}`}
           >
             {displayNumber}
           </Link>
@@ -75,20 +58,19 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
       accessorKey: "suppliers.nom",
       header: t('table.supplier'),
       enableSorting: true,
-      // ✅ Fem que la cel·la sigui un enllaç condicional
       cell: (row) => {
         if (row.suppliers) {
           return (
             <Link
               href={`/${locale}/finances/suppliers/${row.suppliers.id}`}
-              className="text-primary hover:underline font-medium" // Estil opcional
-              title={`${tShared('actions.view')}: ${row.suppliers.nom}`} // Tooltip millorat
+              className="text-primary hover:underline font-medium"
+              title={`${tShared('actions.view')}: ${row.suppliers.nom}`}
             >
               {row.suppliers.nom}
             </Link>
           );
         }
-        return <span className="text-muted-foreground italic">{t('noSupplier')}</span>; // Estil per diferenciar-lo
+        return <span className="text-muted-foreground italic">{t('noSupplier')}</span>;
       },
     },
     {
@@ -120,12 +102,15 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
       header: t('table.status'),
       enableSorting: true,
       cell: (row) => (
-        <Badge variant={row.status === 'paid' ? 'success' :
-          row.status === 'overdue' ? 'destructive' :
-            'secondary'} className={undefined}>
+        <Badge
+          variant={row.status === 'paid'
+            ? 'success'
+            : row.status === 'overdue'
+              ? 'destructive'
+              : 'secondary'} className={undefined}        >
           {t(`status.${row.status}`)}
         </Badge>
-      )
+      ),
     },
     {
       accessorKey: "actions_edit",
@@ -133,12 +118,14 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
       enableSorting: false,
       cell: (row) => (
         <Link href={`/${locale}/finances/expenses/${row.id}`} title={tShared('actions.edit')}>
-          <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon">
+            <Edit className="w-4 h-4" />
+          </Button>
         </Link>
       ),
-    }
+    },
   ], [locale, t, tShared]);
-  // Pas 4: Cridar el hook genèric amb la configuració de 'Despeses'
+
   const {
     isPending,
     data: expenses,
@@ -157,35 +144,25 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
     page,
     totalPages,
     handlePageChange,
-    // ✅ Rebem els nous valors del hook
     rowsPerPage,
     handleRowsPerPageChange,
-    // rowsPerPageOptions, // Podem obtenir-lo del hook o definir-lo aquí
   } = usePaginatedResource<ExpenseWithContact, ExpensePageFilters>({
     initialData,
     initialFilters: { category: 'all', status: 'all' },
     initialSort: { column: 'expense_date', order: 'desc' },
     allColumns,
     fetchAction: fetchPaginatedExpenses as (params: FetchExpensesParams) => Promise<PaginatedExpensesResponse>,
-    // ✅ CORRECCIÓ DE L'ERROR ts(2355):
     deleteAction: async (id: string | number): Promise<ActionResult> => {
       if (typeof id !== 'number') {
-        const errorMessage = tShared('errors.invalidId') || "Error: L'ID per eliminar no és vàlid.";
-        console.error(errorMessage, { id });
-        // 👇 Faltava aquest return
-        return { success: false, message: errorMessage };
+        return { success: false, message: tShared('errors.invalidId') };
       }
-      // Si id és un número, cridem la funció original
       return deleteExpense(id);
-    },    // ✅ Passem el valor inicial desitjat i les opcions
-    initialRowsPerPage: EXPENSE_ROWS_PER_PAGE_OPTIONS[0], // Comencem amb 10
+    },
+    initialRowsPerPage: EXPENSE_ROWS_PER_PAGE_OPTIONS[0],
     rowsPerPageOptions: EXPENSE_ROWS_PER_PAGE_OPTIONS,
-    toastMessages: {
-      deleteSuccess: t('toast.deleteSuccess'),
-    }
+    toastMessages: { deleteSuccess: t('toast.deleteSuccess') },
   });
 
-  // La lògica de 'visibleColumns' i 'deleteDescription' no canvia
   const visibleColumns = useMemo(
     () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
     [allColumns, columnVisibility]
@@ -193,38 +170,29 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
 
   const deleteDescription = (
     <>
-      {tShared('deleteDialog.description1')} <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
+      {tShared('deleteDialog.description1')}{' '}
+      <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
       <br />
       {tShared('deleteDialog.description2')}
     </>
   );
-  // ✅ Log 8: Verifiquem les filterOptions rebudes com a prop
-  console.log("ExpensesClient: Received filterOptions prop:", filterOptions);
-
-  // Extraiem les categories per claredat (opcional)
-  const categoriesForFilter = filterOptions?.categories || [];
-
-  // ✅ Log 9: Verifiquem l'array de categories que es passarà a ExpenseFilters
-  console.log("ExpensesClient: Categories extracted for filter component:", categoriesForFilter);
 
   return (
-<div className="h-full flex flex-col gap-4"> {/* Afegit gap-4 */}
+    <div className="h-full flex flex-col gap-3 md:gap-4">
 
-      {/* ✅ Substituïm la capçalera manual per PageHeader */}
-      <PageHeader title={t('title')}>
-         {/* El botó "Nova Despesa" va com a 'children' */}
-         <Button asChild>
-           <Link href={`/${locale}/finances/expenses/new`}>
-             <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
-           </Link>
-         </Button>
-      </PageHeader>
+      {/* 🧾 Header compacte i responsive */}
+      <div className="sticky top-0 z-10 bg-background border-b shadow-sm py-3 px-4 sm:px-0">
+        <PageHeader title={t('title')}>
+          <Button asChild className="w-full sm:w-auto">
+            <Link href={`/${locale}/finances/expenses/new`}>
+              <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
+            </Link>
+          </Button>
+        </PageHeader>
+      </div>
 
-      {/* ✅ ====================================== */}
-      {/* ✅ PASSEM LES CATEGORIES AL FILTRE       */}
-      {/* ✅ ====================================== */}
-      {/* ✅ Contenidor per a filtres i botó de columnes */}
-      <div className="flex justify-between items-center"> {/* Marge inferior per separar de la taula */}
+      {/* 🔍 Filtres i columnes responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 px-2 sm:px-0">
         <ExpenseFilters
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
@@ -239,32 +207,29 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
         />
       </div>
 
-      {/* ✅ Passem les noves props a GenericDataTable */}
-      <GenericDataTable
-        className="flex-grow overflow-hidden"
-        data={expenses}
-        columns={visibleColumns}
-        onSort={handleSort}
-        currentSortColumn={currentSortColumn}
-        currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
-        isPending={isPending}
-        onDelete={handleDelete}
-        deleteItem={expenseToDelete}
-        setDeleteItem={setExpenseToDelete}
-        deleteTitleKey='ExpensesPage.deleteDialog.title'
-        deleteDescription={deleteDescription}
-        emptyStateMessage={t('emptyState')}
-
-        // Propietats de paginació
-        page={page}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-
-        // ✅ Noves props
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={handleRowsPerPageChange}
-        rowsPerPageOptions={EXPENSE_ROWS_PER_PAGE_OPTIONS} // Passem les opcions definides
-      />
+      {/* 📊 Taula amb scroll suau */}
+      <div className="flex-grow overflow-x-auto">
+        <GenericDataTable
+          data={expenses}
+          columns={visibleColumns}
+          onSort={handleSort}
+          currentSortColumn={currentSortColumn}
+          currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
+          isPending={isPending}
+          onDelete={handleDelete}
+          deleteItem={expenseToDelete}
+          setDeleteItem={setExpenseToDelete}
+          deleteTitleKey="ExpensesPage.deleteDialog.title"
+          deleteDescription={deleteDescription}
+          emptyStateMessage={t('emptyState')}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={EXPENSE_ROWS_PER_PAGE_OPTIONS}
+        />
+      </div>
     </div>
   );
 }

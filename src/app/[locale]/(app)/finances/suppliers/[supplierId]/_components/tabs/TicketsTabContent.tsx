@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/TicketsTabContent.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -20,7 +21,8 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      {/* ✅ MILLORA MÒBIL: Capçalera apilable */}
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
         <div>
           <CardTitle className="flex items-center gap-2"><Inbox className="h-5 w-5" />{t('ticketsCard.title')}</CardTitle>
           <CardDescription>{t('ticketsCard.description')}</CardDescription>
@@ -30,6 +32,7 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
             variant="outline" 
             size="sm" 
             onClick={() => router.push(`/comunicacio/inbox?search=${encodeURIComponent(supplierEmail)}`)}
+            className="w-full sm:w-auto" // Amplada adaptativa
           >
             <Search className="h-4 w-4 mr-2" />
             {t('ticketsCard.searchInboxButton')}
@@ -42,7 +45,8 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
             <TableHeader>
               <TableRow>
                 <TableHead>{t('ticketsCard.table.subject')}</TableHead>
-                <TableHead>{t('ticketsCard.table.lastActivity')}</TableHead>
+                {/* ✅ MILLORA MÒBIL: Amaguem Última Activitat */}
+                <TableHead className="hidden sm:table-cell">{t('ticketsCard.table.lastActivity')}</TableHead>
                 <TableHead>{t('ticketsCard.table.status')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -52,8 +56,8 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
                   <TableCell>
                     {ticket.subject || t('ticketsCard.noSubject')}
                   </TableCell>
-                  {/* ✅ CORRECCIÓ: Utilitzem 'sent_at' i mantenim el control de nuls. */}
-                  <TableCell>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Última Activitat */}
+                  <TableCell className="hidden sm:table-cell">
                     {ticket.sent_at 
                       ? formatDate(ticket.sent_at, "true") 
                       : 'N/A'}

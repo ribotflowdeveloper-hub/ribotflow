@@ -68,11 +68,11 @@ export function InboxClient(props: InboxClientProps) {
 
     if (recipientTeamId && projectId) {
       networkContactProcessed.current = true;
-      
+
       startPreparingTransition(async () => {
         // ✅ 2. Arreglem la lògica del TOAST
         const toastId = toast.loading(t('preparingMessage', { default: "Preparant missatge..." }));
-        
+
         const result = await prepareNetworkContactAction(recipientTeamId, projectId);
 
         if (result.success) {
@@ -83,8 +83,8 @@ export function InboxClient(props: InboxClientProps) {
           });
         } else {
           toast.error(t('errorPreparingMessage', { default: "Error preparant el missatge" }), {
-            id: toastId, 
-            description: result.message 
+            id: toastId,
+            description: result.message
           });
         }
       });
@@ -105,7 +105,7 @@ export function InboxClient(props: InboxClientProps) {
         templates={props.initialTemplates}
         contacts={props.allTeamContacts}
       />
-      
+
       <AlertDialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -124,35 +124,35 @@ export function InboxClient(props: InboxClientProps) {
         style={{ gridTemplateColumns: isDesktop ? `384px 1fr minmax(0, ${isContactPanelOpen ? '320px' : '0px'})` : '1fr' }}
       >
         {(!isDesktop && selectedTicket) ? null : (
-          <div className="min-h-0">
+          <div className="min-h-0 flex flex-col h-full overflow-hidden">
             <TicketList
-               user={props.user}
-               teamMembers={props.teamMembers}
-               permissions={props.permissions}
-               tickets={enrichedTickets}
-               selectedTicketId={selectedTicket?.id ?? null}
-               activeFilter={activeFilter}
-               inboxFilter={inboxFilter}
-               onSetInboxFilter={setInboxFilter}
-               unreadCount={counts.unread}
-               sentCount={counts.sent}
-               totalCount={counts.received}
-               onSetFilter={setActiveFilter}
-               onSelectTicket={handleSelectTicket}
-               onComposeNew={handleComposeNew}
-               onRefresh={handleRefresh}
-               hasMore={hasMore}
-               onLoadMore={handleLoadMore}
-               // ✅ 3. Utilitzem l'estat 'isPreparingNetworkMessage' per desactivar la UI
-               isPendingRefresh={isPending || isPreparingNetworkMessage}
-               searchTerm={searchTerm}
-               onSearchChange={setSearchTerm}
-               isSelectionMode={isSelectionMode}
-               selectedTicketIds={selectedTicketIds}
-               onToggleSelection={onToggleSelection}
-               onToggleSelectionMode={onToggleSelectionMode}
-               onDeleteSelected={onDeleteSelected}
-             />
+              user={props.user}
+              teamMembers={props.teamMembers}
+              permissions={props.permissions}
+              tickets={enrichedTickets}
+              selectedTicketId={selectedTicket?.id ?? null}
+              activeFilter={activeFilter}
+              inboxFilter={inboxFilter}
+              onSetInboxFilter={setInboxFilter}
+              unreadCount={counts.unread}
+              sentCount={counts.sent}
+              totalCount={counts.received}
+              onSetFilter={setActiveFilter}
+              onSelectTicket={handleSelectTicket}
+              onComposeNew={handleComposeNew}
+              onRefresh={handleRefresh}
+              hasMore={hasMore}
+              onLoadMore={handleLoadMore}
+              // ✅ 3. Utilitzem l'estat 'isPreparingNetworkMessage' per desactivar la UI
+              isPendingRefresh={isPending || isPreparingNetworkMessage}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              isSelectionMode={isSelectionMode}
+              selectedTicketIds={selectedTicketIds}
+              onToggleSelection={onToggleSelection}
+              onToggleSelectionMode={onToggleSelectionMode}
+              onDeleteSelected={onDeleteSelected}
+            />
           </div>
         )}
 

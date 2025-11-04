@@ -1,4 +1,3 @@
-// src/components/shared/PaginationBar.tsx
 "use client";
 
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -6,68 +5,70 @@ import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 
 interface PaginationBarProps {
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-    totalItems: number;
-    itemsPerPage: number;
-    isLoading: boolean;
-    resourceName: string; // Nom del recurs (e.g., 'despeses', 'factures')
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+  itemsPerPage: number;
+  isLoading: boolean;
+  resourceName: string; // Nom del recurs (e.g., 'despeses', 'factures')
 }
 
-/**
- * Component reutilitzable per a la barra de paginació.
- * ✅ El Per Què: Encapsula la lògica de navegació i visualització de rang,
- * mantenint la consistència a tota l'aplicació (Quotes, Expenses, Invoices).
- */
 export function PaginationBar({
-    currentPage,
-    totalPages,
-    onPageChange,
-    totalItems,
-    itemsPerPage,
-    isLoading,
-    resourceName
+  currentPage,
+  totalPages,
+  onPageChange,
+  totalItems,
+  itemsPerPage,
+  isLoading,
+  resourceName
 }: PaginationBarProps) {
-    const t = useTranslations('Shared.Pagination'); // Assumint una clau d'i18n
+  const t = useTranslations('Shared.Pagination');
 
-    const startItem = (currentPage - 1) * itemsPerPage + 1;
-    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-    return (
-        <div className="flex items-center justify-between space-x-6 text-sm text-muted-foreground p-2">
-            {/* Informació de Rang */}
-            <div className="flex items-center gap-2">
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-                <span>
-                    {t('showing')} {startItem}-{endItem} {t('of')} {totalItems} {resourceName}
-                </span>
-            </div>
+  return (
+    <div
+      className="
+        flex flex-col sm:flex-row sm:items-center sm:justify-between 
+        gap-2 sm:gap-4 p-3 border-t text-sm text-muted-foreground
+      "
+    >
+      {/* 📊 Informació del rang */}
+      <div className="flex items-center justify-center sm:justify-start gap-2 text-center sm:text-left">
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+        <span className="truncate text-xs sm:text-sm">
+          {t('showing')} {startItem}-{endItem} {t('of')} {totalItems} {resourceName}
+        </span>
+      </div>
 
-            {/* Controls de Navegació */}
-            <div className="flex items-center space-x-2">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={currentPage <= 1 || isLoading}
-                >
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <span className="font-medium text-foreground">
-                    {currentPage} / {totalPages}
-                </span>
-                
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages || isLoading}
-                >
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-    );
+      {/* 🔁 Controls de navegació */}
+      <div className="flex items-center justify-center gap-1 sm:gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1 || isLoading}
+          className="h-8 w-8 sm:h-9 sm:w-9"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <span className="font-medium text-foreground text-xs sm:text-sm min-w-[60px] text-center">
+          {currentPage} / {totalPages}
+        </span>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages || isLoading}
+          className="h-8 w-8 sm:h-9 sm:w-9"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 }

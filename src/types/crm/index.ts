@@ -12,6 +12,5 @@ export * from '../comunicacio/inbox';
 export * from './general';
 export * from '../finances/products';
 export * from './deals';
-export * from '../finances/quotes';
 export * from '../shared/notification';
 export * from './calendar';

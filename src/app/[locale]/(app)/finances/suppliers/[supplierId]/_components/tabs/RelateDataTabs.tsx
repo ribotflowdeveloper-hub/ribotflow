@@ -1,3 +1,4 @@
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/RelateDataTabs.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +20,7 @@ interface RelatedDataTabsProps {
   tickets: TicketForSupplier[];
   supplierId: string | null; // ID per als botons "Nou"
   supplierEmail: string | null | undefined; // Email per al botó "Cercar Inbox"
-  t: (key: string) => string; // Tipus de la funció de traducció (ajusta'l segons next-intl)
+  t: (key: string) => string; 
 }
 
 export function RelatedDataTabs({
@@ -36,15 +37,34 @@ export function RelatedDataTabs({
 
   return (
     <Tabs defaultValue="contacts" className="w-full">
+      
+      {/* ✅ SOLUCIÓ: 
+        Mantenim el teu 'grid-cols-3' perquè les pestanyes ocupin tot l'ample,
+        però fem que el contingut s'adapti.
+      */}
       <TabsList className="grid w-full grid-cols-3 mb-4">
+        
         <TabsTrigger value="contacts">
-          <Users className="h-4 w-4 mr-2"/> {t('contactsCard.title')} ({contacts.length})
+          {/* L'icona sempre és visible. El marge dret (mr-2) només s'aplica en 'sm' (desktop) */}
+          <Users className="h-4 w-4 sm:mr-2"/> 
+          {/* El text s'amaga per defecte (mòbil) i es mostra com 'inline' a partir de 'sm' (desktop) */}
+          <span className="hidden sm:inline">
+            {t('contactsCard.title')} ({contacts.length})
+          </span>
         </TabsTrigger>
+        
         <TabsTrigger value="expenses">
-          <CreditCard className="h-4 w-4 mr-2"/> {t('expensesCard.title')} ({expenses.length})
+          <CreditCard className="h-4 w-4 sm:mr-2"/> 
+          <span className="hidden sm:inline">
+            {t('expensesCard.title')} ({expenses.length})
+          </span>
         </TabsTrigger>
+        
         <TabsTrigger value="tickets">
-          <Inbox className="h-4 w-4 mr-2"/> {t('ticketsCard.title')} ({tickets.length})
+          <Inbox className="h-4 w-4 sm:mr-2"/> 
+          <span className="hidden sm:inline">
+            {t('ticketsCard.title')} ({tickets.length})
+          </span>
         </TabsTrigger>
       </TabsList>
 
