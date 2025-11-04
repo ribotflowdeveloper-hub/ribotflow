@@ -82,6 +82,7 @@ export async function createProductAction(newProduct: {
   return result;
 }
 
+
 /**
  * ACCIÓ: Envia el pressupost per email.
  */
@@ -89,9 +90,12 @@ export async function sendQuoteAction(quoteId: number): Promise<ActionResult> {
   const session = await validateUserSession();
   if ("error" in session)
     return { success: false, message: session.error.message };
-  const { supabase } = session;
 
-  const result = await sendQuote(supabase, quoteId);
+  // ✅ CORRECCIÓ CLAU: Ara passem l'objecte 'user' complet
+  const { supabase, user } = session;
+
+  // ✅ El nostre servei 'sendQuote' ara necessita 'supabase', 'user', i 'quoteId'
+  const result = await sendQuote(supabase, user, quoteId);
 
   if (result.success) {
     revalidatePath(`/finances/quotes/${quoteId}`);

@@ -22,6 +22,8 @@ import { QuoteItems } from './QuoteItems';
 import { QuoteTotals } from './QuoteTotals';
 import { QuotePreview } from './QuotePreview';
 import { Separator } from '@/components/ui/separator'; // Importem el separador
+import { QuoteDownloadButton } from './PDF/QuoteDownloadButton'; // Importem el botó de descàrrega
+
 
 // --- Tipus Derivats de la Base de Dades ---
 type Contact = Database['public']['Tables']['contacts']['Row'];
@@ -37,10 +39,10 @@ interface QuoteEditorClientProps {
     initialOpportunities: Opportunity[];
     userId: string;
     locale: string;
-    pdfUrl: string | null; // ✅ 2. Afegim la nova prop per rebre la URL signada
 }
 
-export function QuoteEditorClient({ pdfUrl, ...props }: QuoteEditorClientProps) { // Destructurem pdfUrl aquí
+export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUrl' eliminat de les props    
+
     const router = useRouter();
 
     const {
@@ -117,26 +119,22 @@ export function QuoteEditorClient({ pdfUrl, ...props }: QuoteEditorClientProps) 
                         </Button>
                         <SentStatusCard /> {/* ✅ Estat d'enviament al costat del botó de tornada */}
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
-                        {/* ✅ 3. Afegim el botó de Descàrrega PDF */}
-                        {pdfUrl && (
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => window.open(pdfUrl, '_blank')}
-                                disabled={isSending}
-                                title={t('quoteEditor.downloadPDF')}
-                            >
-                                <Download className="h-4 w-4" />
-                            </Button>
-                        )}
-                        {/* Si no hi ha PDF però el pressupost existeix, mostrem botó desactivat amb tooltip */}
-                        {!pdfUrl && typeof quote.id === 'number' && (
+                        {/* ✅ 3. Substituïm el botó de descàrrega */}
+                        {typeof quote.id === 'number' ? (
+                            <QuoteDownloadButton
+                                quote={quote}
+                                company={state.currentTeamData}
+                                contact={props.contacts.find(c => c.id === quote.contact_id) || null}
+                                totals={{ subtotal, discountAmount, tax, total }}
+                                t={t}
+                            />
+                        ) : (
+                            // Si el pressupost és 'new', mostrem el botó desactivat
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        {/* Span necessari per al Tooltip amb botó desactivat */}
                                         <span>
                                             <Button variant="outline" size="icon" disabled>
                                                 <Download className="h-4 w-4" />
