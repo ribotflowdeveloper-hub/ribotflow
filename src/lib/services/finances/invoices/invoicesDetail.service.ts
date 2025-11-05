@@ -1,6 +1,8 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { type Database } from '@/types/supabase';
 import { createAdminClient } from "@/lib/supabase/admin";
+// ✅ 1. IMPORTEM EL MÒDUL 'crypto' Natiu
+import crypto from 'crypto'; 
 import { 
     type InvoiceDetail,
     type InvoiceItem,
@@ -36,25 +38,24 @@ async function _upsertInvoiceHeader(
     teamId: string
 ): Promise<{ id: number; error: string | null }> {
     const dataToUpsert: Partial<InvoiceRow> = {
-        // ... (tota la lògica de mapeig de dataToUpsert que ja tenies)
-        contact_id: invoiceData.contact_id || null,
-        budget_id: invoiceData.budget_id || null,
-        quote_id: invoiceData.quote_id || null,
-        project_id: invoiceData.project_id || null,
-        invoice_number: invoiceData.invoice_number,
-        issue_date: invoiceData.issue_date ? new Date(invoiceData.issue_date).toISOString().split('T')[0] : undefined,
-        due_date: invoiceData.due_date ? new Date(invoiceData.due_date).toISOString().split('T')[0] : null,
-        status: invoiceData.status,
-        notes: invoiceData.notes,
-        terms: invoiceData.terms,
-        payment_details: invoiceData.payment_details,
-        client_reference: invoiceData.client_reference,
-        currency: invoiceData.currency || 'EUR',
-        language: invoiceData.language || 'ca',
-        discount_amount: Number(invoiceData.discount_amount) || 0,
-        tax_rate: Number(invoiceData.tax_rate) || 0,
-        shipping_cost: Number(invoiceData.shipping_cost) || 0,
-        extra_data: invoiceData.extra_data,
+        contact_id: invoiceData.contact_id || null,
+        budget_id: invoiceData.budget_id || null,
+        quote_id: invoiceData.quote_id || null,
+        project_id: invoiceData.project_id || null,
+        invoice_number: invoiceData.invoice_number,
+        issue_date: invoiceData.issue_date ? new Date(invoiceData.issue_date).toISOString().split('T')[0] : undefined,
+        due_date: invoiceData.due_date ? new Date(invoiceData.due_date).toISOString().split('T')[0] : null,
+        status: invoiceData.status,
+        notes: invoiceData.notes,
+        terms: invoiceData.terms,
+        payment_details: invoiceData.payment_details,
+        client_reference: invoiceData.client_reference,
+        currency: invoiceData.currency || 'EUR',
+        language: invoiceData.language || 'ca',
+        discount_amount: Number(invoiceData.discount_amount) || 0,
+        tax_rate: Number(invoiceData.tax_rate) || 0,
+        shipping_cost: Number(invoiceData.shipping_cost) || 0,
+        extra_data: invoiceData.extra_data,
     };
 
     let query;
@@ -65,6 +66,9 @@ async function _upsertInvoiceHeader(
             ...dataToUpsert,
             user_id: userId,
             team_id: teamId,
+            total_amount: 0,
+            subtotal: 0,
+            tax_amount: 0,
         });
     }
 
@@ -90,75 +94,85 @@ async function _syncInvoiceItems(
     userId: string,
     teamId: string
 ): Promise<{ calculatedSubtotal: number; calculatedTotalLineDiscount: number; error: string | null }> {
-    // ... (Tota la lògica de càlcul i BBDD de 'syncInvoiceItems' que ja tenies)
-    let calculatedSubtotal = 0;
-    let calculatedTotalLineDiscount = 0;
+    
+    let calculatedSubtotal = 0;
+    let calculatedTotalLineDiscount = 0;
 
-    const { data: existingDbItems, error: fetchError } = await supabase
-        .from('invoice_items')
-        .select('id')
-        .eq('invoice_id', invoiceId)
-        .returns<{ id: string }[]>();
+    const { data: existingDbItems, error: fetchError } = await supabase
+        .from('invoice_items')
+        .select('id')
+        .eq('invoice_id', invoiceId)
+        .returns<{ id: string }[]>();
 
-    if (fetchError) return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, error: `Error obtenint items antics: ${fetchError.message}` };
+    if (fetchError) return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, error: `Error obtenint items antics: ${fetchError.message}` };
 
-    // ... (Resta de la lògica de syncInvoiceItems)
-    const existingDbItemIds = existingDbItems ? existingDbItems.map(item => item.id) : [];
+    const existingDbItemIds = existingDbItems ? existingDbItems.map(item => item.id) : [];
 
-    const itemsToUpsert = items.map(item => {
-        const quantity = Number(item.quantity) || 0;
-        const unit_price = Number(item.unit_price) || 0;
-        const lineTotal = quantity * unit_price;
-        calculatedSubtotal += lineTotal;
+    const itemsToUpsert = items.map(item => {
+        const quantity = Number(item.quantity) || 0;
+        const unit_price = Number(item.unit_price) || 0;
+        const lineTotal = quantity * unit_price;
+        calculatedSubtotal += lineTotal;
 
-        let lineDiscount = 0;
-        const discountPercentage = Number(item.discount_percentage) || 0;
-        const discountAmount = Number(item.discount_amount) || 0;
-        if (discountAmount > 0) {
-            lineDiscount = discountAmount;
-        } else if (discountPercentage > 0) {
-            lineDiscount = lineTotal * (discountPercentage / 100);
-        }
-        calculatedTotalLineDiscount += lineDiscount;
+        let lineDiscount = 0;
+        const discountPercentage = Number(item.discount_percentage) || 0;
+        const discountAmount = Number(item.discount_amount) || 0;
+        if (discountAmount > 0) {
+            lineDiscount = discountAmount;
+        } else if (discountPercentage > 0) {
+            lineDiscount = lineTotal * (discountPercentage / 100);
+        }
+        calculatedTotalLineDiscount += lineDiscount;
 
-        return {
-           id: typeof item.id === 'string' && item.id.startsWith('temp-') ? undefined : item.id,
-           invoice_id: invoiceId,
-           user_id: userId,
-           team_id: teamId,
-           product_id: item.product_id ? Number(item.product_id) : null,
-           description: item.description,
-           quantity: quantity,
-           unit_price: unit_price,
-           total: lineTotal - lineDiscount,
-           tax_rate: Number(item.tax_rate) || null,
-           discount_percentage: discountPercentage > 0 ? discountPercentage : null,
-           discount_amount: discountAmount > 0 ? discountAmount : null,
-           reference_sku: item.reference_sku || null,
-       };
-    });
+        // Lògica per determinar si és un ID nou
+        const isNewId = !item.id || 
+                        (typeof item.id === 'string' && 
+                            (item.id.startsWith('temp-') || item.id === 'null')
+                        );
 
-    const currentFormItemIds = items
-        .map(item => item.id)
-        .filter((id): id is string => typeof id === 'string' && !id.startsWith('temp-'));
+        return {
+           // ✅ 2. *** CORRECCIÓ DEFINITIVA ***
+           // Si és un ID nou/invàlid, generem un UUID nou aquí mateix.
+           // Altrament, fem servir l'ID existent (string UUID) per l'UPDATE.
+           id: isNewId ? crypto.randomUUID() : item.id,
+           invoice_id: invoiceId,
+           user_id: userId,
+           team_id: teamId,
+           product_id: item.product_id ? Number(item.product_id) : null,
+           description: item.description,
+           quantity: quantity,
+           unit_price: unit_price,
+           total: lineTotal - lineDiscount,
+           tax_rate: Number(item.tax_rate) || null,
+           discount_percentage: discountPercentage > 0 ? discountPercentage : null,
+           discount_amount: discountAmount > 0 ? discountAmount : null,
+           reference_sku: item.reference_sku || null,
+       };
+    });
 
-    const itemsToDeleteIds = existingDbItemIds.filter(dbId => !currentFormItemIds.includes(dbId));
+    const currentFormItemIds = items
+        .map(item => item.id)
+        .filter((id): id is string => typeof id === 'string' && !id.startsWith('temp-'));
 
-    if (itemsToUpsert.length > 0) {
-        const { error: upsertError } = await supabase.from('invoice_items').upsert(itemsToUpsert, { onConflict: 'id' });
-        if (upsertError) {
-             console.error("Error upserting invoice items:", upsertError);
-            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, error: `Error actualitzant línies: ${upsertError.message}` };
-        }
-    }
+    const itemsToDeleteIds = existingDbItemIds.filter(dbId => !currentFormItemIds.includes(dbId));
 
-    if (itemsToDeleteIds.length > 0) {
-        const { error: deleteError } = await supabase.from('invoice_items').delete().in('id', itemsToDeleteIds);
-        if (deleteError) {
-            console.error("Error deleting old invoice items:", deleteError);
-            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, error: `Error esborrant línies antigues: ${deleteError.message}` };
-        }
-    }
+    if (itemsToUpsert.length > 0) {
+        // En fer 'upsert', els items amb 'id' nou es crearan (INSERT)
+        // i els items amb 'id' existent s'actualitzaran (UPDATE).
+        const { error: upsertError } = await supabase.from('invoice_items').upsert(itemsToUpsert, { onConflict: 'id' });
+        if (upsertError) {
+             console.error("Error upserting invoice items:", upsertError);
+            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, error: `Error actualitzant línies: ${upsertError.message}` };
+        }
+    }
+
+    if (itemsToDeleteIds.length > 0) {
+        const { error: deleteError } = await supabase.from('invoice_items').delete().in('id', itemsToDeleteIds);
+        if (deleteError) {
+            console.error("Error deleting old invoice items:", deleteError);
+            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, error: `Error esborrant línies antigues: ${deleteError.message}` };
+        }
+    }
 
     return { calculatedSubtotal, calculatedTotalLineDiscount, error: null };
 }
@@ -175,22 +189,22 @@ async function _updateInvoiceTotals(
     taxRate: number,
     shippingCost: number
 ): Promise<{ error: string | null }> {
-    // ... (Tota la lògica de càlcul de 'updateInvoiceTotals' que ja tenies)
-   const subtotalAfterLineDiscounts = subtotal - totalLineDiscount;
-   const effectiveSubtotal = subtotalAfterLineDiscounts - generalDiscount;
-   const calculatedTaxRate = taxRate || 0;
-   const taxAmount = effectiveSubtotal > 0 ? effectiveSubtotal * (calculatedTaxRate / 100) : 0;
-   const totalAmount = effectiveSubtotal + taxAmount + shippingCost;
+    
+   const subtotalAfterLineDiscounts = subtotal - totalLineDiscount;
+   const effectiveSubtotal = subtotalAfterLineDiscounts - generalDiscount;
+   const calculatedTaxRate = taxRate || 0;
+   const taxAmount = effectiveSubtotal > 0 ? effectiveSubtotal * (calculatedTaxRate / 100) : 0;
+   const totalAmount = effectiveSubtotal + taxAmount + shippingCost;
 
-   const { error } = await supabase
-       .from('invoices')
-       .update({
-           subtotal: subtotal,
-           tax_amount: taxAmount,
-           total_amount: totalAmount,
-           shipping_cost: shippingCost,
-       })
-       .eq('id', invoiceId);
+   const { error } = await supabase
+       .from('invoices')
+       .update({
+           subtotal: subtotal,
+           tax_amount: taxAmount,
+           total_amount: totalAmount,
+           shipping_cost: shippingCost,
+       })
+       .eq('id', invoiceId);
 
     if (error) {
         console.error("Error updating invoice totals:", error);
@@ -462,7 +476,6 @@ export async function finalizeInvoice(
     const previousSignature = lastSignatureData?.verifactu_signature || null;
 
     // 3. Obtenir context (Emissor i Receptor)
-    // ✅ REUTILITZEM EL NOSTRE HELPER
     const { companyProfile, contact } = await _getInvoiceContext(supabase, teamId, invoiceData.contact_id);
 
     if (!companyProfile) {
@@ -473,7 +486,6 @@ export async function finalizeInvoice(
     }
     
     // 3c. Preparar dades "bloquejades"
-    // ✅ CORRECCIÓ: Mapegem camps de 'contacts' (no 'team_profiles')
     const lockedInvoiceData = {
         company_name: companyProfile.company_name,
         company_address: companyProfile.company_address,
@@ -541,7 +553,6 @@ export async function sendInvoiceByEmail(
     }
 
     // 2. Obtenir context (Emissor i Receptor)
-    // ✅ REUTILITZEM EL NOSTRE HELPER
     const { companyProfile, contact } = await _getInvoiceContext(supabase, teamId, invoiceData.contact_id);
 
     if (!companyProfile) {
@@ -554,7 +565,7 @@ export async function sendInvoiceByEmail(
     try {
         pdfBuffer = await generateInvoicePdfBuffer(
             invoiceData,
-            companyProfile, // Ja no cal 'as CompanyProfile' si getCompanyProfile retorna el tipus correcte
+            companyProfile, 
             contact
         );
     } catch (error) {

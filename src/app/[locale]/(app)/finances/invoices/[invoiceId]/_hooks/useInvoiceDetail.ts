@@ -120,7 +120,8 @@ export function useInvoiceDetail({
                 company_logo_url: initialData.company_logo_url ?? null, // Nou
                 invoice_items: initialData.invoice_items?.map((item) => ({
                     ...item,
-                    id: String(item.id), // L'ID de item és UUID (string)
+                    // ✅ CORRECCIÓ: id sempre string (mai null)
+                    id: item.id ? String(item.id) : `temp-${Date.now()}-${Math.random()}`,
                     // Assegurem tipus numèrics per als nous camps d'item si són nulls
                     discount_percentage: item.discount_percentage ?? null,
                     discount_amount: item.discount_amount ?? null,
@@ -353,11 +354,20 @@ export function useInvoiceDetail({
         const itemsForAction = (invoice_items || []).map((item) => {
             // Excloem camps interns o no editables de l'item
             const { ...restOfItem } = item;
+            
+            // ✅ *** CORRECCIÓ APLICADA AL CLIENT ***
+            // Definim quins ID són vàlids per un UPDATE
+            // Si és un string, no ha de ser 'temp-' (i per seguretat, tampoc 'null')
+            const isExistingStringId = typeof item.id === 'string' && !item.id.startsWith('temp-') && item.id !== 'null';
+            // Si és un número, és vàlid
+            const isExistingNumericId = typeof item.id === 'number';
+
             return {
                 ...restOfItem,
-                id: typeof item.id === "string" && item.id.startsWith("temp-")
-                    ? undefined
-                    : item.id,
+                // Si és un ID existent (string o numèric), l'enviem.
+                // Si és 'temp-', 'null', o undefined, enviem 'undefined' per forçar un INSERT.
+                id: (isExistingStringId || isExistingNumericId) ? item.id : undefined,
+                
                 quantity: Number(item.quantity) || 0,
                 unit_price: Number(item.unit_price) || 0,
                 tax_rate: item.tax_rate ? Number(item.tax_rate) : null,

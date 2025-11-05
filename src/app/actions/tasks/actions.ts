@@ -2,13 +2,18 @@
 
 "use server";
 
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
-import { validateUserSession } from '@/lib/supabase/session';
-import { Tables, Json } from '@/types/supabase';
-import { JSONContent } from '@tiptap/react';
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { Json, Tables } from "@/types/supabase";
+import { JSONContent } from "@tiptap/react";
 import { getValidGoogleCalendarToken } from "@/lib/google/google-api"; // ✅ NOU: Importem el gestor de tokens
-import type { ActionResult } from '@/types/shared';
+import type { ActionResult } from "@/types/shared";
+// ✅ 1. Importem ELS GUARDIANS
+import {
+  PERMISSIONS,
+  validateActionAndUsage,
+  validateSessionAndPermission,
+} from "@/lib/permissions/permissions";
 
 type FormState = {
   error?: {
@@ -103,10 +108,16 @@ export async function createTask(
   prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const session = await validateUserSession();
-  if ("error" in session) return { error: { form: session.error.message } };
-  const { supabase, activeTeamId, user } = session;
+  // ✅ 2. VALIDACIÓ 3-EN-1 (Sessió + Rol + Límit)
+  const validation = await validateActionAndUsage(
+    PERMISSIONS.MANAGE_TASKS, // Comprovem el Rol
+    "maxTasks", // Comprovem el Límit
+  );
 
+  if ("error" in validation) {
+    return { error: { form: validation.error.message } };
+  }
+  const { supabase, activeTeamId, user } = validation;
   const parsedData = processFormData(formData);
 
   const validatedFields = taskSchema.safeParse(parsedData);
@@ -161,9 +172,15 @@ export async function updateTask(
 ): Promise<FormState> {
   console.log("--- [Server Action] La funció 'updateTask' s'ha executat! ---");
 
-  const session = await validateUserSession();
-  if ("error" in session) return { error: { form: session.error.message } };
-  const { supabase } = session;
+  // ✅ 3. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  // Per actualitzar, no cal comprovar el límit, només el permís.
+  const validation = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_TASKS,
+  );
+  if ("error" in validation) {
+    return { error: { form: validation.error.message } };
+  }
+  const { supabase } = validation;
 
   const taskId = Number(formData.get("taskId"));
   if (!taskId || isNaN(taskId)) {
@@ -173,7 +190,7 @@ export async function updateTask(
   // ✅ PAS 1: Obtenim la tasca actual completa per preservar camps importants
   const { data: currentTask, error: fetchError } = await supabase
     .from("tasks")
-    .select('*') // Demanem TOTES les dades per no perdre res
+    .select("*") // Demanem TOTES les dades per no perdre res
     .eq("id", taskId)
     .single(); // Usem single() per assegurar que existeix
 
@@ -210,7 +227,7 @@ export async function updateTask(
       },
     };
   }
-  
+
   // ✅ PAS 2: Construïm l'objecte d'actualització barrejant l'existent amb el nou
   const dataToUpdate: Partial<Tables<"tasks">> = {
     ...currentTask, // Preservem TOTS els camps existents
@@ -228,7 +245,7 @@ export async function updateTask(
   } else if (!newAssignedId && oldAssignedId) {
     dataToUpdate.asigned_date = null;
   }
-  
+
   const { error } = await supabase
     .from("tasks")
     .update(dataToUpdate)
@@ -241,11 +258,15 @@ export async function updateTask(
   return { success: true };
 }
 
-
 export async function deleteTask(taskId: number): Promise<FormState> {
-  const session = await validateUserSession();
-  if ("error" in session) return { error: { db: session.error.message } };
-  const { supabase } = session;
+  // ✅ 4. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  const validation = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_TASKS,
+  );
+  if ("error" in validation) {
+    return { error: { db: validation.error.message } };
+  }
+  const { supabase } = validation;
 
   const { error } = await supabase.from("tasks").delete().eq("id", taskId);
 
@@ -256,19 +277,26 @@ export async function deleteTask(taskId: number): Promise<FormState> {
   return { success: true };
 }
 
-
 export async function updateSimpleTask(
   taskIdOrObject: number | { id: number },
   updatedData: Partial<Tables<"tasks">>,
 ) {
-  const session = await validateUserSession();
-  if ("error" in session) return { error: { db: session.error.message } };
-  const { supabase } = session;
+  // ✅ 5. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  const validation = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_TASKS,
+  );
+  if ("error" in validation) {
+    return { error: { db: validation.error.message } };
+  }
+  const { supabase } = validation;
 
-  const taskId = typeof taskIdOrObject === 'number' ? taskIdOrObject : taskIdOrObject.id;
+  const taskId = typeof taskIdOrObject === "number"
+    ? taskIdOrObject
+    : taskIdOrObject.id;
 
-  if (!taskId || typeof taskId !== 'number') {
-    const errorMessage = "ID de tasca invàlid o no proporcionat a updateSimpleTask.";
+  if (!taskId || typeof taskId !== "number") {
+    const errorMessage =
+      "ID de tasca invàlid o no proporcionat a updateSimpleTask.";
     console.error(errorMessage, { received: taskIdOrObject });
     return { error: { db: errorMessage } };
   }
@@ -289,11 +317,14 @@ export async function updateSimpleTask(
 }
 
 export async function setTaskActiveStatus(taskId: number, newStatus: boolean) {
-  const session = await validateUserSession();
-  if ("error" in session) {
-    return { error: { db: session.error.message } };
+  // ✅ 6. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  const validation = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_TASKS,
+  );
+  if ("error" in validation) {
+    return { error: { db: validation.error.message } };
   }
-  const { supabase } = session;
+  const { supabase } = validation;
 
   const { error } = await supabase.rpc("log_task_activity", {
     task_id_input: taskId,
@@ -315,73 +346,88 @@ export async function setTaskActiveStatus(taskId: number, newStatus: boolean) {
  * Server Action per pujar una imatge associada a una tasca des de l'editor.
  */
 type UploadSuccessData = {
-    signedUrl: string;
-    filePath: string;
+  signedUrl: string;
+  filePath: string;
 };
 
 // A 'src/app/actions/tasks/actions.ts'
 // (Assegura't que 'validateUserSession' estigui importat al principi del fitxer)
 // import { validateUserSession } from '@/lib/supabase/session';
 
-export async function uploadTaskImageAction(formData: FormData): Promise<ActionResult<UploadSuccessData>> {
-    
-    // ✅ PAS 1: Fer servir la mateixa validació que 'createTask'
-    const session = await validateUserSession();
-    if ("error" in session) {
-        console.error("[uploadTaskImageAction] Error validant sessió:", session.error.message);
-        return { success: false, message: session.error.message };
+export async function uploadTaskImageAction(
+  formData: FormData,
+): Promise<ActionResult<UploadSuccessData>> {
+  // ✅ 7. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  const validation = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_TASKS,
+  );
+  if ("error" in validation) {
+    console.error(
+      "[uploadTaskImageAction] Error validant sessió:",
+      validation.error.message,
+    );
+    return { success: false, message: validation.error.message };
+  }
+  const { supabase, activeTeamId, user } = validation;
+
+  console.log("[uploadTaskImageAction] Sessió validada per:", user.id);
+  console.log("[uploadTaskImageAction] Equip actiu:", activeTeamId);
+
+  // --- Lògica de Fitxer (Aquesta no canvia) ---
+  console.log("[uploadTaskImageAction] Validant fitxer...");
+  const file = formData.get("file") as File | null;
+  if (!file) return { success: false, message: "No s'ha rebut cap fitxer." };
+  if (file.size > 5 * 1024 * 1024) {
+    return { success: false, message: "Fitxer massa gran (màx 5MB)." };
+  }
+  if (!file.type.startsWith("image/")) {
+    return { success: false, message: "Format no permès (només imatges)." };
+  }
+  console.log("[uploadTaskImageAction] Fitxer vàlid:", file.name);
+
+  const fileExt = file.name.split(".").pop() || "tmp";
+  const uniqueFileName = `${user.id}-${Date.now()}-${
+    Math.random().toString(36).substring(2, 8)
+  }.${fileExt}`;
+  const filePath = `task-uploads/${activeTeamId}/${uniqueFileName}`;
+  console.log("[uploadTaskImageAction] Path destí:", filePath);
+
+  // --- Lògica de Pujada i URL Signada (Ara fem servir el client 'supabase' validat) ---
+  try {
+    console.log(`[uploadTaskImageAction] Iniciant pujada...`);
+    // Fem servir el client 'supabase' obtingut de 'validateUserSession'
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("fitxers-privats") // Bucket privat
+      .upload(filePath, file);
+
+    if (uploadError) throw new Error(`Error en pujar: ${uploadError.message}`);
+    console.log("[uploadTaskImageAction] Pujada OK:", uploadData.path);
+
+    console.log("[uploadTaskImageAction] Generant URL signada...");
+    const { data: signedUrlData, error: signedUrlError } = await supabase
+      .storage
+      .from("fitxers-privats")
+      .createSignedUrl(filePath, 60 * 5); // 5 minuts validesa
+
+    if (signedUrlError) {
+      throw new Error(`Error generant URL: ${signedUrlError.message}`);
     }
-    // Ara tenim el client 'supabase', 'activeTeamId' i 'user' correctes
-    const { supabase, activeTeamId, user } = session; 
-    
-    console.log("[uploadTaskImageAction] Sessió validada per:", user.id);
-    console.log("[uploadTaskImageAction] Equip actiu:", activeTeamId);
-    
-    // --- Lògica de Fitxer (Aquesta no canvia) ---
-    console.log("[uploadTaskImageAction] Validant fitxer...");
-    const file = formData.get('file') as File | null;
-    if (!file) return { success: false, message: "No s'ha rebut cap fitxer." };
-    if (file.size > 5 * 1024 * 1024) return { success: false, message: "Fitxer massa gran (màx 5MB)." };
-    if (!file.type.startsWith('image/')) return { success: false, message: "Format no permès (només imatges)." };
-    console.log("[uploadTaskImageAction] Fitxer vàlid:", file.name);
+    console.log("[uploadTaskImageAction] URL signada OK.");
 
-    const fileExt = file.name.split('.').pop() || 'tmp';
-    const uniqueFileName = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
-    const filePath = `task-uploads/${activeTeamId}/${uniqueFileName}`;
-    console.log("[uploadTaskImageAction] Path destí:", filePath);
-
-    // --- Lògica de Pujada i URL Signada (Ara fem servir el client 'supabase' validat) ---
-    try {
-        console.log(`[uploadTaskImageAction] Iniciant pujada...`);
-        // Fem servir el client 'supabase' obtingut de 'validateUserSession'
-        const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('fitxers-privats') // Bucket privat
-            .upload(filePath, file);
-
-        if (uploadError) throw new Error(`Error en pujar: ${uploadError.message}`);
-        console.log("[uploadTaskImageAction] Pujada OK:", uploadData.path);
-
-        console.log("[uploadTaskImageAction] Generant URL signada...");
-        const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-            .from('fitxers-privats')
-            .createSignedUrl(filePath, 60 * 5); // 5 minuts validesa
-
-        if (signedUrlError) throw new Error(`Error generant URL: ${signedUrlError.message}`);
-        console.log("[uploadTaskImageAction] URL signada OK.");
-
-        return {
-            success: true,
-            data: {
-                signedUrl: signedUrlData.signedUrl,
-                filePath: filePath
-            }
-        };
-
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : "Error desconegut processant imatge.";
-        console.error("[uploadTaskImageAction] Error:", message, error);
-        return { success: false, message: message };
-    }
+    return {
+      success: true,
+      data: {
+        signedUrl: signedUrlData.signedUrl,
+        filePath: filePath,
+      },
+    };
+  } catch (error: unknown) {
+    const message = error instanceof Error
+      ? error.message
+      : "Error desconegut processant imatge.";
+    console.error("[uploadTaskImageAction] Error:", message, error);
+    return { success: false, message: message };
+  }
 }
 /**
  * Server Action per obtenir una URL signada i segura per a un fitxer privat.
@@ -392,39 +438,48 @@ export async function uploadTaskImageAction(formData: FormData): Promise<ActionR
  */
 // A 'src/app/actions/tasks/actions.ts'
 
-export async function getSignedUrlForFile(filePath: string): Promise<ActionResult<string>> {
-    
-    // ✅ PAS 1: Fer servir la mateixa validació que 'createTask'
-    const session = await validateUserSession();
-    if ("error" in session) {
-        console.warn("[getSignedUrlForFile] Usuari no autenticat.");
-        return { success: false, message: "Sessió invàlida." };
-    }
-    // Ara tenim el client 'supabase' validat
-    const { supabase } = session;
+export async function getSignedUrlForFile(
+  filePath: string,
+): Promise<ActionResult<string>> {
+  // ✅ 8. VALIDACIÓ (PER LLEGIR)
+  // Per veure una imatge, n'hi ha prou amb tenir permís per VEURE tasques.
+  const validation = await validateSessionAndPermission(PERMISSIONS.VIEW_TASKS);
+  if ("error" in validation) {
+    console.warn("[getSignedUrlForFile] Usuari no autenticat.");
+    return { success: false, message: "Sessió invàlida." };
+  }
+  const { supabase } = validation;
 
-    if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
-        return { success: false, message: "No s'ha proporcionat cap 'filePath' o és invàlid." };
-    }
+  if (!filePath || typeof filePath !== "string" || filePath.trim() === "") {
+    return {
+      success: false,
+      message: "No s'ha proporcionat cap 'filePath' o és invàlid.",
+    };
+  }
 
-    // 3. Generar la URL signada
-    const expiresIn = 60 * 60; // 1 hora
-    
-    console.log(`[getSignedUrlForFile] Generant URL per a: ${filePath}`);
-    // Fem servir el client 'supabase' obtingut de 'validateUserSession'
-    const { data, error } = await supabase.storage
-        .from('fitxers-privats') // El teu bucket privat
-        .createSignedUrl(filePath, expiresIn);
+  // 3. Generar la URL signada
+  const expiresIn = 60 * 60; // 1 hora
 
-    if (error) {
-        console.error(`[getSignedUrlForFile] Error generant URL per a ${filePath}:`, error);
-        return { success: false, message: `No s'ha pogut obtenir la URL: ${error.message}` };
-    }
+  console.log(`[getSignedUrlForFile] Generant URL per a: ${filePath}`);
+  // Fem servir el client 'supabase' obtingut de 'validateUserSession'
+  const { data, error } = await supabase.storage
+    .from("fitxers-privats") // El teu bucket privat
+    .createSignedUrl(filePath, expiresIn);
 
-    // 4. Retornar èxit
-    return { success: true, data: data.signedUrl };
+  if (error) {
+    console.error(
+      `[getSignedUrlForFile] Error generant URL per a ${filePath}:`,
+      error,
+    );
+    return {
+      success: false,
+      message: `No s'ha pogut obtenir la URL: ${error.message}`,
+    };
+  }
+
+  // 4. Retornar èxit
+  return { success: true, data: data.signedUrl };
 }
-
 
 type SyncResult = {
   synced: boolean;
@@ -439,14 +494,15 @@ async function syncTaskWithGoogle(
   task: Tables<"tasks">,
   accessToken: string,
 ): Promise<SyncResult> {
-
   // 1. Definir l'inici i el final de l'esdeveniment
   // Suposem que 'due_date' és l'hora de FINALITZACIÓ
   const endDate = new Date(task.due_date as string);
-  
+
   // Mirem si tenim durada. Si no, per defecte és 1 hora.
-  const durationInMinutes = typeof task.duration === 'number' ? task.duration : 60;
-  
+  const durationInMinutes = typeof task.duration === "number"
+    ? task.duration
+    : 60;
+
   // Calculem l'inici restant-li la durada al final
   const startDate = new Date(endDate.getTime() - durationInMinutes * 60 * 1000);
 
@@ -476,7 +532,8 @@ async function syncTaskWithGoogle(
   if (task.google_calendar_id) {
     // Ja existeix, fem un UPDATE (PATCH)
     console.log(`Actualitzant tasca ${task.id} a Google Calendar...`);
-    url = `https://www.googleapis.com/calendar/v3/calendars/primary/events/${task.google_calendar_id}`;
+    url =
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${task.google_calendar_id}`;
     method = "PATCH";
   } else {
     // És nova, fem un CREATE (POST)
@@ -497,16 +554,21 @@ async function syncTaskWithGoogle(
 
   if (!response.ok) {
     const errorBody = await response.json();
-    console.error(`Error de Google API [${method}] per a la tasca ${task.id}:`, errorBody);
-    
+    console.error(
+      `Error de Google API [${method}] per a la tasca ${task.id}:`,
+      errorBody,
+    );
+
     // Cas especial: Si intentem actualitzar un event que no existeix (404)
     if (response.status === 404 && task.google_calendar_id) {
-      console.log("L'esdeveniment no existia a Google. Forçant nova creació...");
+      console.log(
+        "L'esdeveniment no existia a Google. Forçant nova creació...",
+      );
       // Netegem l'ID vell i intentem crear-lo de nou (només 1 cop)
       const newTask = { ...task, google_calendar_id: null };
       return syncTaskWithGoogle(newTask, accessToken);
     }
-    
+
     return {
       synced: false,
       googleCalendarId: task.google_calendar_id, // Retornem l'ID antic
@@ -523,7 +585,6 @@ async function syncTaskWithGoogle(
   };
 }
 
-
 /**
  * Acció pública per ser cridada des del botó del client.
  * Sincronitza una tasca específica amb Google Calendar.
@@ -531,11 +592,14 @@ async function syncTaskWithGoogle(
 export async function syncTaskToGoogleAction(
   taskId: number,
 ): Promise<ActionResult> {
-  const session = await validateUserSession();
-  if ("error" in session) {
-    return { success: false, message: "No autenticat" };
+  // ✅ 9. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  const validation = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_TASKS,
+  );
+  if ("error" in validation) {
+    return { success: false, message: validation.error.message };
   }
-  const { user, supabase } = session;
+  const { user, supabase } = validation;
 
   try {
     // 1. Obtenim la tasca completa
@@ -564,16 +628,21 @@ export async function syncTaskToGoogleAction(
         .from("tasks")
         .update({ google_calendar_id: syncResult.googleCalendarId })
         .eq("id", task.id);
-      
+
       if (updateError) {
         // No és un error fatal, però l'hem de registrar
-        console.error(`Error en desar el google_calendar_id per a la tasca ${task.id}:`, updateError);
+        console.error(
+          `Error en desar el google_calendar_id per a la tasca ${task.id}:`,
+          updateError,
+        );
       }
     }
 
     revalidatePath("/[locale]/(app)/crm/calendari", "layout");
-    return { success: true, message: "Tasca sincronitzada amb Google Calendar!" };
-
+    return {
+      success: true,
+      message: "Tasca sincronitzada amb Google Calendar!",
+    };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Error desconegut";
     console.error("[syncTaskToGoogleAction] Error:", message, error);
