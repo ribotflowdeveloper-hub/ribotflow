@@ -1,20 +1,21 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx
+// /src/app/[locale]/(app)/comunicacio/inbox/_components/InboxData.tsx (FITXER COMPLET I CORREGIT)
 
 import { redirect } from 'next/navigation';
 import { headers } from "next/headers";
 import { InboxClient } from "./InboxClient";
 import { validateUserSession } from "@/lib/supabase/session";
-// ✅ 1. Importem el servei i els tipus necessaris des del servei
 import { getInboxInitialData } from '@/lib/services/comunicacio/inbox.service';
-import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db'; // Mantenim tipus per claredat al component client
+import type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission } from '@/types/db'; 
 import { getUsageLimitStatus } from "@/lib/subscription/subscription";
+
 // Re-exportem tipus per a InboxClient
 export type { Contact, EnrichedTicket, TeamMemberWithProfile, Template, InboxPermission };
 
+// Definim estats de límit per defecte
+
 export async function InboxData() {
-    // Obtenim sessió i locale
     const session = await validateUserSession();
-    const locale = ((await headers()).get('x-next-intl-locale')) || 'ca'; // Simplificat
+    const locale = ((await headers()).get('x-next-intl-locale')) || 'ca'; 
 
     if ('error' in session) {
         console.error("InboxData: Sessió invàlida.", session.error.message);
@@ -22,38 +23,40 @@ export async function InboxData() {
     }
     const { supabase, user, activeTeamId } = session;
 
-    // ✅ 2. Executem la comprovació de límit i la càrrega de dades EN PARAL·LEL
-    const [limitCheck, { data, error }] = await Promise.all([
-        getUsageLimitStatus('maxContacts'), // <-- Més net i reutilitzable
+    // ✅ CORRECCIÓ: Carreguem AMBDÓS límits i les dades en UNA SOLA Promise.all
+    const [ticketLimitCheck, contactLimitCheck, { data, error }] = await Promise.all([
+        getUsageLimitStatus('maxTickets'),  // <-- Límit per a Tiquets
+        getUsageLimitStatus('maxContacts'), // <-- Límit per a Contactes
         getInboxInitialData(supabase, user.id, activeTeamId)
     ]);
-    // ✅ 2. Cridem al servei per obtenir totes les dades inicials
 
-    // ✅ 3. Gestionem l'error del servei
+    // Gestionem l'error del servei
     if (error || !data) {
         console.error("Error en carregar les dades de l'Inbox (Component):", error);
-        // Podries mostrar un missatge d'error més específic o un estat buit robust
         return (
             <InboxClient
                 user={user} initialTickets={[]} initialTemplates={[]}
                 initialReceivedCount={0} initialSentCount={0}
                 teamMembers={[]} permissions={[]} allTeamContacts={[]}
-                limitStatus={limitCheck} // Passa l'estat del límit fins i tot si falla la llista
-
-            // Passa un estat d'error opcional al client si vols
-            // errorLoading={error ? 'Error en carregar les dades inicials.' : undefined}
+                ticketLimitStatus={ticketLimitCheck} // Passa l'estat del límit de tiquets
+                contactLimitStatus={contactLimitCheck} // Passa l'estat del límit de contactes
             />
         );
     }
 
-    // ✅ 4. Passem les dades obtingudes del servei al component client
+    // Passem les dades i AMBDÓS límits al component client
     return (
         <InboxClient
-            user={user} initialTickets={data.tickets} initialTemplates={data.templates}
-            initialReceivedCount={data.receivedCount} initialSentCount={data.sentCount}
-            teamMembers={data.teamMembers} permissions={data.permissions} allTeamContacts={data.allTeamContacts}
-            limitStatus={limitCheck} // Passa l'estat del límit fins i tot si falla la llista
-
+            user={user} 
+            initialTickets={data.tickets} 
+            initialTemplates={data.templates}
+            initialReceivedCount={data.receivedCount} 
+            initialSentCount={data.sentCount}
+            teamMembers={data.teamMembers} 
+            permissions={data.permissions} 
+            allTeamContacts={data.allTeamContacts}
+            ticketLimitStatus={ticketLimitCheck}  // <-- Límit de Tiquets
+            contactLimitStatus={contactLimitCheck} // <-- Límit de Contactes
         />
     );
 }

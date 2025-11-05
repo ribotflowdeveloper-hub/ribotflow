@@ -124,6 +124,7 @@
     "blocking": "Bloquejant...",
     "addToBlacklist": "Afegeix remitent a la llista negra",
     "noTicketSelected": "Cap correu seleccionat",
+    "limitReached":" Has arribat al límit de correus per al teu pla.",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament",
       "preparingMessage": "Preparant missatge...",

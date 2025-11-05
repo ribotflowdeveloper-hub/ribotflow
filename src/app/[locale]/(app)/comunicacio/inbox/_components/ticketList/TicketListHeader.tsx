@@ -1,13 +1,18 @@
+// /src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/TicketListHeader.tsx (FITXER COMPLET I CORREGIT)
 "use client";
 
 import React, { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PenSquare, RefreshCw, ChevronDown, Search, ListChecks, Trash2 } from 'lucide-react';
+// ✅ 1. Importem 'Lock' i 'Tooltip'
+import { PenSquare, RefreshCw, ChevronDown, Search, ListChecks, Trash2, Lock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTranslations } from 'next-intl';
+import Link from 'next/link'; // ✅ Importem 'Link'
 import type { User } from '@supabase/supabase-js';
 import type { TeamMemberWithProfile, InboxPermission } from '@/types/db';
+import { type UsageCheckResult } from '@/lib/subscription/subscription'; // ✅ 2. Importem el tipus de límit
 
 interface TicketListHeaderProps {
   user: User;
@@ -20,12 +25,11 @@ interface TicketListHeaderProps {
   isPendingRefresh: boolean;
   searchTerm: string;
   onSearchChange: (value: string) => void;
-
-  // ✅ 2. Noves props per a la selecció múltiple
   isSelectionMode: boolean;
   selectedCount: number;
   onToggleSelectionMode: () => void;
   onDeleteSelected: () => void;
+  limitStatus: UsageCheckResult; // ✅ 3. Afegim la prop que faltava
 }
 
 export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
@@ -39,13 +43,17 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
   isPendingRefresh,
   searchTerm,
   onSearchChange,
-  // ✅ 3. Rebem les noves props
   isSelectionMode,
   selectedCount,
   onToggleSelectionMode,
-  onDeleteSelected
+  onDeleteSelected,
+  limitStatus, // ✅ 4. Extraiem la prop
 }) => {
   const t = useTranslations('InboxPage');
+  const t_billing = useTranslations('Billing'); // Per als missatges de límit
+
+  // ✅ 5. Calculem si el botó de composar s'ha de bloquejar
+  const isComposeLimitReached = !limitStatus.allowed;
 
   const permittedMembers = useMemo(() => {
     const permittedIds = new Set(permissions.map(p => p.target_user_id));
@@ -60,15 +68,13 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
   }, [inboxFilter, teamMembers, user.id, t]);
 
   return (
-    // ✅ CORRECCIÓ DE LAYOUT:
-    // L'arrel és un 'div' amb 'flex-shrink-0' (NO un Fragment <>)
     <div className="flex-shrink-0 border-b border-border">
       <div className="flex justify-between items-center px-2 py-1">
+        
+        {/* Aquest bloc utilitza les props que donaven 'warning', ara estan correctes */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="text-lg font-bold p-2 -ml-2">
-              {/* ✅ CORRECCIÓ DE CRASH:
-                  Un 'span' embolcalla els dos fills del botó */}
               <span className="flex items-center">
                 {selectedInboxName}
                 <ChevronDown className="w-5 h-5 ml-2 text-muted-foreground" />
@@ -78,9 +84,7 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={() => onSetInboxFilter('all')}>{t('allInboxes')}</DropdownMenuItem>
             <DropdownMenuItem onClick={() => onSetInboxFilter(user.id)}>{t('myEmails')}</DropdownMenuItem>
-
             {permittedMembers.length > 0 && <DropdownMenuSeparator />}
-
             {permittedMembers
               .filter(member => !!member.user_id)
               .map(member => (
@@ -91,24 +95,49 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
             }
           </DropdownMenuContent>
         </DropdownMenu>
-        {/* ✅ 4. Controls de la capçalera actualitzats */}
-        <div className="flex items-center gap-1">
-          {/* Botó de "Redactar" - es deshabilita en mode selecció */}
-          <Button variant="ghost" size="icon" onClick={onComposeNew} title={t('composeButtonTooltip')} disabled={isSelectionMode}>
-            <PenSquare className="w-4 h-4" />
-          </Button>
 
-          {/* Botó de "Refrescar" - es deshabilita en mode selecció */}
+        <div className="flex items-center gap-1">
+          {/* ✅ 6. Botó de "Redactar" amb control de límit */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={isComposeLimitReached ? 0 : -1}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={onComposeNew} 
+                    title={t('composeButtonTooltip')} 
+                    disabled={isSelectionMode || isComposeLimitReached}
+                  >
+                    {isComposeLimitReached ? <Lock className="w-4 h-4" /> : <PenSquare className="w-4 h-4" />}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isComposeLimitReached && (
+                <TooltipContent className="max-w-xs p-3 shadow-lg rounded-lg border-2 border-yellow-400 bg-yellow-50">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-yellow-900" />
+                      <h3 className="font-semibold">{t_billing('limitReachedTitle')}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {limitStatus.error || t_billing('limitReachedDefault')}
+                    </p>
+                    <Button asChild size="sm" className="mt-1 w-full">
+                      <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                    </Button>
+                  </div>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+
           <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isPendingRefresh || isSelectionMode} title={t('refreshButtonTooltip')}>
             <RefreshCw className={`w-4 h-4 ${isPendingRefresh ? 'animate-spin' : ''}`} />
           </Button>
-
-          {/* Botó per activar/desactivar mode selecció */}
           <Button variant={isSelectionMode ? "secondary" : "ghost"} size="icon" onClick={onToggleSelectionMode} title={t('selectMultiple')}>
             <ListChecks className="w-4 h-4" />
           </Button>
-
-          {/* Botó per esborrar seleccionats - NOMÉS visible en mode selecció */}
           {isSelectionMode && (
             <Button
               variant="ghost"
@@ -129,7 +158,6 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
       </div>
 
 
-      {/* Cerca: molt més petita */}
       <div className="p-1 border-t border-border">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />

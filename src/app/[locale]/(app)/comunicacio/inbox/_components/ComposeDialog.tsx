@@ -1,10 +1,11 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_components/ComposeDialog.tsx
+// /src/app/[locale]/(app)/comunicacio/inbox/_components/ComposeDialog.tsx (FITXER COMPLET I CORREGIT)
 "use client";
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
 import { EditorContent } from '@tiptap/react';
-import { Loader2, Send, FileText, Variable, User, Mail, Search } from 'lucide-react';
+import { Loader2, Send, FileText, Variable, User, Mail, Search, Lock } from 'lucide-react'; // ✅ 1. Importem 'Lock'
+import Link from 'next/link';
 
 // Components de UI
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -13,10 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { EmailEditorToolbar } from './EmailEditorToolbar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // ✅ 2. Importem Tooltip
+import { type UsageCheckResult } from '@/lib/subscription/subscription'; // ✅ 3. Importem el tipus
 
 // Hook i Tipus
 import { useCompose } from '../_hooks/useCompose';
-// ✨ CANVI: Importem els tipus de la nostra única font de la veritat.
 import type { Contact, Template } from '@/types/db';
 
 export type InitialData = {
@@ -33,11 +35,14 @@ interface ComposeDialogProps {
   initialData: InitialData | null;
   templates: Template[];
   contacts: Contact[];
+  limitStatus: UsageCheckResult; // ✅ 4. Afegim la prop de límit de tiquets
 }
 
 export const ComposeDialog = (props: ComposeDialogProps) => {
-  const { open, onOpenChange, onEmailSent, initialData, templates, contacts } = props;
+  // ✅ 5. Extraiem 'limitStatus' de les props
+  const { open, onOpenChange, onEmailSent, initialData, templates, contacts, limitStatus } = props;
   const t = useTranslations('InboxPage');
+  const t_billing = useTranslations('Billing'); // Per al missatge de límit
 
   const {
     editor, subject, setSubject,
@@ -53,6 +58,9 @@ export const ComposeDialog = (props: ComposeDialogProps) => {
     onClose: () => onOpenChange(false),
     onEmailSent,
   });
+
+  // ✅ 6. Calculem si s'ha assolit el límit
+  const isLimitReached = !limitStatus.allowed;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -126,12 +134,47 @@ export const ComposeDialog = (props: ComposeDialogProps) => {
             )}
           </div>
         </div>
+        
+        {/* ✅ 7. Botó "Enviar" amb control de límit */}
         <DialogFooter className="pt-4 border-t">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>{t('cancelButton')}</Button>
-          <Button onClick={handleSend} disabled={isSending}>
-            {isSending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-            {t('sendButton')}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSending}>
+            {t('cancelButton')}
           </Button>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={isLimitReached ? 0 : -1}>
+                  <Button onClick={handleSend} disabled={isSending || isLimitReached}>
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : isLimitReached ? (
+                      <Lock className="w-4 h-4 mr-2" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
+                    {isLimitReached ? t_billing('limitReachedTitle') : t('sendButton')}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isLimitReached && (
+                <TooltipContent className="max-w-xs p-3 shadow-lg rounded-lg border-2 border-yellow-400 bg-yellow-50">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-yellow-900" />
+                      <h3 className="font-semibold">{t_billing('limitReachedTitle')}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {limitStatus.error || t_billing('limitReachedDefault')}
+                    </p>
+                    <Button asChild size="sm" className="mt-1 w-full">
+                      <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                    </Button>
+                  </div>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,4 +1,4 @@
-// /app/[locale]/(app)/comunicacio/inbox/_components/InboxClient.tsx
+// /src/app/[locale]/(app)/comunicacio/inbox/_components/InboxClient.tsx (FITXER COMPLET I CORREGIT)
 "use client";
 
 import React, { useEffect, useRef, useTransition } from 'react';
@@ -20,7 +20,7 @@ import { MobileDetailView } from './MobileDetailView';
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
 
 import { prepareNetworkContactAction } from '../actions';
-import { toast } from 'sonner'; // Importem toast
+import { toast } from 'sonner';
 
 interface InboxClientProps {
   user: User;
@@ -31,14 +31,14 @@ interface InboxClientProps {
   teamMembers: TeamMemberWithProfile[];
   permissions: InboxPermission[];
   allTeamContacts: Contact[];
-  limitStatus: UsageCheckResult;
+  ticketLimitStatus: UsageCheckResult; // ✅ Prop de límit de Tiquets
+  contactLimitStatus: UsageCheckResult; // ✅ Prop de límit de Contactes
 }
 
 export function InboxClient(props: InboxClientProps) {
   const t = useTranslations('InboxPage.toast');
   const isDesktop = useMediaQuery('(min-width: 1024px)');
   const searchParams = useSearchParams();
-  // ✅ 1. Canviem el nom per a més claredat i per utilitzar-lo
   const [isPreparingNetworkMessage, startPreparingTransition] = useTransition();
   const networkContactProcessed = useRef(false);
 
@@ -68,19 +68,26 @@ export function InboxClient(props: InboxClientProps) {
 
     if (recipientTeamId && projectId) {
       networkContactProcessed.current = true;
-
       startPreparingTransition(async () => {
-        // ✅ 2. Arreglem la lògica del TOAST
+        // Comprovem AMBDÓS límits
+        if (!props.ticketLimitStatus.allowed) {
+          toast.error(t('limitErrorTitle', { default: "Límit de tiquets assolit" }), {
+            description: props.ticketLimitStatus.error || t('limitErrorDescription', { default: "No pots crear més tiquets." })
+          });
+          return;
+        }
+        if (!props.contactLimitStatus.allowed) {
+          toast.error(t('limitErrorTitle', { default: "Límit de contactes assolit" }), {
+            description: props.contactLimitStatus.error || t('limitErrorDescription_contact', { default: "No pots crear més contactes." })
+          });
+          return;
+        }
+
         const toastId = toast.loading(t('preparingMessage', { default: "Preparant missatge..." }));
-
         const result = await prepareNetworkContactAction(recipientTeamId, projectId);
-
         if (result.success) {
           toast.success(t('messageReady', { default: "Missatge a punt!" }), { id: toastId });
-          setComposeState({
-            open: true,
-            initialData: result.data ?? null
-          });
+          setComposeState({ open: true, initialData: result.data ?? null });
         } else {
           toast.error(t('errorPreparingMessage', { default: "Error preparant el missatge" }), {
             id: toastId,
@@ -91,8 +98,7 @@ export function InboxClient(props: InboxClientProps) {
     } else {
       networkContactProcessed.current = true;
     }
-    // Assegurem que les traduccions són estables o les traiem de les dependències
-  }, [searchParams, setComposeState, t]);
+  }, [searchParams, setComposeState, t, props.ticketLimitStatus, props.contactLimitStatus]);
 
 
   return (
@@ -104,6 +110,7 @@ export function InboxClient(props: InboxClientProps) {
         initialData={composeState.initialData}
         templates={props.initialTemplates}
         contacts={props.allTeamContacts}
+        limitStatus={props.ticketLimitStatus} // ✅ Passa el límit de Tiquets
       />
 
       <AlertDialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
@@ -143,7 +150,6 @@ export function InboxClient(props: InboxClientProps) {
               onRefresh={handleRefresh}
               hasMore={hasMore}
               onLoadMore={handleLoadMore}
-              // ✅ 3. Utilitzem l'estat 'isPreparingNetworkMessage' per desactivar la UI
               isPendingRefresh={isPending || isPreparingNetworkMessage}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -152,6 +158,7 @@ export function InboxClient(props: InboxClientProps) {
               onToggleSelection={onToggleSelection}
               onToggleSelectionMode={onToggleSelectionMode}
               onDeleteSelected={onDeleteSelected}
+              limitStatus={props.ticketLimitStatus} // ✅ Passa el límit de Tiquets
             />
           </div>
         )}
@@ -165,6 +172,7 @@ export function InboxClient(props: InboxClientProps) {
               onReply={handleReply}
               isContactPanelOpen={isContactPanelOpen}
               onToggleContactPanel={() => setIsContactPanelOpen(prev => !prev)}
+              limitStatus={props.ticketLimitStatus} // ✅ Passa el límit de Tiquets
             />
           </div>
         )}
@@ -176,7 +184,7 @@ export function InboxClient(props: InboxClientProps) {
               onSaveContact={handleSaveContact}
               isPendingSave={isPending}
               allTeamContacts={props.allTeamContacts}
-              limitStatus={props.limitStatus}
+              limitStatus={props.contactLimitStatus} // ✅ Passa el límit de Contactes
             />
           </div>
         )}
@@ -191,6 +199,8 @@ export function InboxClient(props: InboxClientProps) {
               onClose={() => handleSelectTicket(null)}
               onReply={handleReply}
               onSaveContact={handleSaveContact}
+              ticketLimitStatus={props.ticketLimitStatus}   // ✅ Passa el límit de Tiquets
+              contactLimitStatus={props.contactLimitStatus} // ✅ Passa el límit de Contactes
             />
           )}
         </AnimatePresence>

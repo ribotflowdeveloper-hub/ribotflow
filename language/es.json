@@ -123,6 +123,7 @@
     "statusLabel": "Estado:",
     "blocking": "Bloqueando...",
     "addToBlacklist": "Añadir remitente a la lista negra",
+    "limitReached": "Has alcanzado el límite de correos para tu plan.",
     "toast": {
       "contactSavedSuccess": "Contacto guardado correctamente",
       "preparingMessage": "Preparando mensaje...",

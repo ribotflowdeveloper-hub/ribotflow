@@ -1,13 +1,17 @@
+// /src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/index.tsx (FITXER COMPLET I CORREGIT)
 "use client";
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Inbox } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Inbox, TriangleAlert, Lock } from 'lucide-react';
+import Link from 'next/link';
 import type { User } from '@supabase/supabase-js';
 
 import { useTranslations } from 'next-intl';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { EnrichedTicket, TeamMemberWithProfile, InboxPermission, TicketFilter } from '@/types/db';
+import { type UsageCheckResult } from '@/lib/subscription/subscription'; 
 
 import { TicketListHeader } from './TicketListHeader';
 import { TicketListFilters } from './TicketListFilters';
@@ -20,7 +24,7 @@ interface TicketListProps {
   teamMembers: TeamMemberWithProfile[];
   permissions: InboxPermission[];
   tickets: UITicket[];
-  selectedTicketId: number | null; // Aquest és el tiquet OBERT per VEURE
+  selectedTicketId: number | null;
   activeFilter: string;
   inboxFilter: string;
   onSetInboxFilter: (userId: string) => void;
@@ -29,7 +33,6 @@ interface TicketListProps {
   isPendingRefresh: boolean;
   totalCount: number;
   onSelectTicket: (ticket: EnrichedTicket) => void;
-  // ❌ onDeleteTicket ja no és una prop de TicketList, es gestionarà al Header
   onSetFilter: (filter: TicketFilter) => void;
   onComposeNew: () => void;
   onRefresh: () => void;
@@ -37,13 +40,12 @@ interface TicketListProps {
   onLoadMore: () => void;
   searchTerm: string;
   onSearchChange: (value: string) => void;
-
-  // ✅ 1. Noves props per a la selecció
   isSelectionMode: boolean;
-  selectedTicketIds: Set<number>; // Un Set és més eficient per a lookups
+  selectedTicketIds: Set<number>;
   onToggleSelection: (ticketId: number) => void;
   onToggleSelectionMode: () => void;
   onDeleteSelected: () => void;
+  limitStatus: UsageCheckResult; // Aquesta és la prop TICKET_LIMIT_STATUS
 }
 
 export const TicketList: React.FC<TicketListProps> = (props) => {
@@ -54,32 +56,62 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
     hasMore,
     onLoadMore,
     isPendingRefresh,
-    // ✅ 2. Extraiem les noves props
     isSelectionMode,
     selectedTicketIds,
     onToggleSelection,
+    limitStatus, // Prop de límit de Tiquets
   } = props;
 
   const t = useTranslations('InboxPage');
+  const t_billing = useTranslations('Billing');
+
+  const isLimitExceeded = !limitStatus.allowed && limitStatus.current > limitStatus.max;
+  
+  // Tallem la llista de tiquets visibles si se supera el límit
+  const visibleTickets = isLimitExceeded 
+    ? tickets.slice(0, limitStatus.max) 
+    : tickets;
 
   return (
     <div className="w-full h-full flex flex-col flex-shrink-0 border-r border-border glass-card">
-      {/* ✅ 3. Passem totes les props (incloses les noves) al Header */}
+      
+      {/* ✅ CORRECCIÓ DEL CRASH:
+          Passem 'limitStatus' explícitament al Header.
+          L'error 'ts(2322)' significa que 'TicketListHeader' no l'accepta.
+          Anirem al següent fitxer (TicketListHeader.tsx) per arreglar-ho.
+      */}
       <TicketListHeader
         {...props}
         selectedCount={selectedTicketIds.size}
+        limitStatus={limitStatus} // Passa el límit de Tiquets al Header
       />
 
       <TicketListFilters {...props} />
 
+      {/* ALARMA DE LÍMIT SUPERAT */}
+      {isLimitExceeded && (
+        <div className="p-3 border-b border-border flex-shrink-0">
+          <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900">
+            <TriangleAlert className="h-4 w-4 text-yellow-900" />
+            <AlertTitle className="font-semibold">
+              {t_billing('limitReachedTitle', { default: 'Límit de tiquets assolit' })}
+            </AlertTitle>
+            <AlertDescription className="text-xs">
+              {limitStatus.error || t_billing('limitReachedDefault')}
+              <Button asChild variant="link" size="sm" className="px-1 h-auto py-0 text-yellow-900 font-semibold">
+                <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       <div className="flex-1 h-0 overflow-y-auto">
-        {/* ✅ 2. Embolcallem la llista amb AnimatePresence */}
-        {/* 'initial={false}' evita l'animació en la càrrega inicial */}
         <AnimatePresence initial={false}>
-          {tickets.length > 0 ? (
-            tickets.map(ticket => (
+          {visibleTickets.length > 0 ? (
+            visibleTickets.map(ticket => (
               <TicketListItem
-                key={ticket.id} // La 'key' és fonamental per AnimatePresence
+                key={ticket.id}
                 ticket={ticket}
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedTicketIds.has(ticket.id!)}
@@ -89,7 +121,6 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
               />
             ))
           ) : (
-            // També podem animar l'estat buit
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -109,9 +140,18 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
             variant="outline"
             className="w-full"
             onClick={onLoadMore}
-            disabled={isPendingRefresh || isSelectionMode} // Deshabilitem si estem seleccionant
+            disabled={isPendingRefresh || isSelectionMode || isLimitExceeded} 
           >
-            {isPendingRefresh ? t('loading') : t('loadMore')}
+            {isLimitExceeded ? (
+              <>
+                <Lock className="w-4 h-4 mr-2" />
+                {t('limitReached', { default: 'Límit assolit' })}
+              </>
+            ) : isPendingRefresh ? (
+              t('loading')
+            ) : (
+              t('loadMore')
+            )}
           </Button>
         </div>
       )}

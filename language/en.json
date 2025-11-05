@@ -123,6 +123,7 @@
     "statusLabel": "Status:",
     "blocking": "Blocking...",
     "addToBlacklist": "Add sender to blacklist",
+    "limitReached": "You have reached the email limit for your plan.",
     "toast": {
       "contactSavedSuccess": "Contact saved successfully",
       "preparingMessage": "Preparing message...",

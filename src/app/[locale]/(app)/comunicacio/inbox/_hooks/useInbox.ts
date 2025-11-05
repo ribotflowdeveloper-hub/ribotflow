@@ -20,6 +20,7 @@ import { useInboxStateAndFilters } from "./useInboxStateAndFilter";
 import { useTicketData } from "./useTicketData";
 import { useURLSync } from "./useURLSync";
 import { useInboxComputed } from "./useInboxComputed";
+import type { Contact } from '@/types/db'; // ✅ Afegeix aquesta línia
 
 // ✅ Mantenim el tipus original, però ara algunes props seran ignorades a favor de la lògica interna
 export type UseInboxProps = {
@@ -135,12 +136,16 @@ export function useInbox({
 
   const handleSaveContact = useCallback(
     (
-      newlyCreatedContact: DbTableRow<"contacts">,
+      newlyCreatedContact: Partial<Contact>,
       originalTicket: EnrichedTicket,
     ) => {
       startActionTransition(async () => {
         if (!originalTicket.sender_email) {
           toast.error("El tiquet no té un email de remitent per vincular.");
+          return;
+        }
+        if (typeof newlyCreatedContact.id !== "number") {
+          toast.error("No s'ha pogut obtenir l'ID del contacte creat.");
           return;
         }
         const result = await linkTicketsToContactAction(

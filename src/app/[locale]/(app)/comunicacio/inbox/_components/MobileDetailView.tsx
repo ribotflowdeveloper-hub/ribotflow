@@ -1,29 +1,51 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_components/MobileDetailView.tsx
+// /src/app/[locale]/(app)/comunicacio/inbox/_components/MobileDetailView.tsx (FITXER COMPLET I CORREGIT)
 "use client";
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { X, Reply, Info, UserPlus, Loader2 } from 'lucide-react';
+import { X, Reply, Info, UserPlus, Loader2, Lock } from 'lucide-react'; // ✅ Importem Lock
 import { useTranslations } from 'next-intl';
 import React from 'react';
+import Link from 'next/link'; // ✅ Importem Link
 import { ContactDialog } from '../../../crm/contactes/_components/ContactDialog';
 import { SafeEmailRenderer } from './SafeEmailRenderer';
-
-// ✨ CANVI: Importem els tipus de la nostra única font de la veritat.
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"; // ✅ Importem Tooltip
+import { type UsageCheckResult } from '@/lib/subscription/subscription'; // ✅ Importem el tipus
 import type { Contact, EnrichedTicket } from '@/types/db';
 
 interface MobileDetailViewProps {
   ticket: EnrichedTicket;
-  body: string | null;
+  body: string | null; // ✅ Aquesta línia ja era correcta
   isLoading: boolean;
   isPending: boolean;
   onClose: () => void;
   onReply: (ticket: EnrichedTicket) => void;
-  onSaveContact: (newlyCreatedContact: Contact, originalTicket: EnrichedTicket) => void;
+  // ✅ CORRECCIÓ 2: Canviem la signatura per reflectir la del hook 'useInbox'
+  onSaveContact: (contactData: Partial<Contact>, ticket: EnrichedTicket) => void;
+  // ✅ Afegim els dos límits
+  ticketLimitStatus: UsageCheckResult;
+  contactLimitStatus: UsageCheckResult;
 }
 
-export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, onReply, onSaveContact }: MobileDetailViewProps) {
+export const MobileDetailView: React.FC<MobileDetailViewProps> = ({ 
+  ticket, body, isLoading, isPending, 
+  onClose, onReply, onSaveContact,
+  ticketLimitStatus, contactLimitStatus // ✅ Extraiem els límits
+}) => {
   const t = useTranslations('InboxPage');
+  const t_billing = useTranslations('Billing');
+
+  // ✅ CORRECCIÓ 3: Creem un 'adapter' per al ContactDialog
+  // ContactDialog crida onContactSaved amb (Partial<Contact>)
+  // El nostre hook espera (Partial<Contact>, EnrichedTicket)
+  const handleSaveContactAdapter = (contactData: Partial<Contact>) => {
+    onSaveContact(contactData, ticket);
+  };
+
+  // Calculem els límits
+  const isTicketLimitReached = !ticketLimitStatus.allowed;
+  const isContactLimitReached = !contactLimitStatus.allowed;
+
   return (
     <motion.div 
       key={ticket.id} 
@@ -45,10 +67,34 @@ export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, 
             </p>
           </div>
         </div>
-        <Button size="sm" variant="outline" className="mr-2 flex-shrink-0" onClick={() => onReply(ticket)}>
-          <Reply className="mr-2 h-4 w-4" />
-          {t('replyButton')}
-        </Button>
+        
+        {/* ✅ Botó "Respondre" amb control de límit */}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={isTicketLimitReached ? 0 : -1} className="mr-2 flex-shrink-0">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => onReply(ticket)}
+                  disabled={isTicketLimitReached}
+                >
+                  {isTicketLimitReached ? <Lock className="w-4 h-4" /> : <Reply className="mr-2 h-4 w-4" />}
+                  {!isTicketLimitReached && t('replyButton')}
+                </Button>
+              </span>
+            </TooltipTrigger>
+            {isTicketLimitReached && (
+              <TooltipContent>
+                 <p>{ticketLimitStatus.error || t_billing('limitReachedDefault')}</p>
+                 <Button asChild size="sm" className="mt-2 w-full">
+                    <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                 </Button>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+
       </div>
       
       <div className="flex-1 min-h-0 flex flex-col">
@@ -58,23 +104,44 @@ export function MobileDetailView({ ticket, body, isLoading, isPending, onClose, 
               <Info className="w-4 h-4 text-primary" /> {t('senderDetailsLabel')}
             </summary>
             <div className="mt-3 pt-3 border-t space-y-2 text-sm">
-              {/* ✨ CORRECCIÓ: Utilitzem les propietats planes de EnrichedTicket */}
               <p><strong>{t('nameLabel')}:</strong> {ticket.contact_nom || ticket.sender_name}</p>
               <p><strong>{t('emailLabel')}:</strong> {ticket.contact_email || ticket.sender_email}</p>
               {!ticket.contact_id && (
-                <ContactDialog
-                  trigger={
-                    <Button size="sm" className="w-full mt-2" disabled={isPending}>
-                      <UserPlus className="w-4 h-4 mr-2"/>
-                      {t('saveContactButton')}
-                    </Button>
-                  }
-                  initialData={{
-                    nom: ticket.sender_name || '',
-                    email: ticket.sender_email || ''
-                  }}
-                  onContactSaved={(newContact) => onSaveContact(newContact as Contact, ticket)}
-                />
+                
+                // ✅ Botó "Desar Contacte" amb control de límit
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="w-full" tabIndex={isContactLimitReached ? 0 : -1}>
+                        <ContactDialog
+                          trigger={
+                            <Button size="sm" className="w-full mt-2" disabled={isPending || isContactLimitReached}>
+                              {isContactLimitReached ? <Lock className="w-4 h-4 mr-2"/> : <UserPlus className="w-4 h-4 mr-2"/>}
+                              {isContactLimitReached ? t('limitReached') : t('saveContactButton')}
+                            </Button>
+                          }
+                          initialData={{
+                            nom: ticket.sender_name || '',
+                            email: ticket.sender_email || ''
+                          }}
+                          // ✅ Passem l'adapter
+                          onContactSaved={handleSaveContactAdapter}
+                          isLimitReached={isContactLimitReached} // Passem el límit al diàleg
+                          limitError={contactLimitStatus.error}
+                        />
+                      </span>
+                    </TooltipTrigger>
+                     {isContactLimitReached && (
+                      <TooltipContent>
+                         <p>{contactLimitStatus.error || t_billing('limitReachedDefault')}</p>
+                         <Button asChild size="sm" className="mt-2 w-full">
+                            <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                         </Button>
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </TooltipProvider>
+
               )}
             </div>
           </details>
