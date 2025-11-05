@@ -32,3 +32,5 @@ export function sanitizeHtml(html: string | null | undefined, options?: DOMPurif
   // @ts-expect-error TypeScript is confused by the DOMPurify config type in this context.
   return DOMPurify.sanitize(html, configToUse);
 }
+
+export const Infinity = Number.POSITIVE_INFINITY;

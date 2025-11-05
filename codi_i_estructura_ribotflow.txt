@@ -316,8 +316,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       │   │   │   │   │   ├── QuoteItems.tsx
 │       │   │   │   │   │   ├── QuoteMeta.tsx
 │       │   │   │   │   │   ├── QuotePreview.tsx
-│       │   │   │   │   │   ├── QuoteTotals.tsx
-│       │   │   │   │   │   └── StatCardsGrid.tsx
+│       │   │   │   │   │   └── QuoteTotals.tsx
 │       │   │   │   │   └── _hooks
 │       │   │   │   │       ├── useQuoteEditor.ts
 │       │   │   │   │       └── useQuoteItems.ts
@@ -599,6 +598,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │       ├── drawer.tsx
 │       ├── dropdown-menu.tsx
 │       ├── form.tsx
+│       ├── index.tsx
 │       ├── input.tsx
 │       ├── label.tsx
 │       ├── LegalModalTrigger.tsx
@@ -699,7 +699,8 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   │   ├── network
 │   │   │   └── network.service.ts
 │   │   ├── onboarding
-│   │   │   └── onboarding.service.ts
+│   │   │   ├── onboarding.service.ts
+│   │   │   └── schema.ts
 │   │   ├── publicQuote
 │   │   │   └── public-quote.service.ts
 │   │   └── settings
@@ -3559,11 +3560,11 @@ export function InboxClient(props: InboxClientProps) {
 
     if (recipientTeamId && projectId) {
       networkContactProcessed.current = true;
-      
+
       startPreparingTransition(async () => {
         // ✅ 2. Arreglem la lògica del TOAST
         const toastId = toast.loading(t('preparingMessage', { default: "Preparant missatge..." }));
-        
+
         const result = await prepareNetworkContactAction(recipientTeamId, projectId);
 
         if (result.success) {
@@ -3574,8 +3575,8 @@ export function InboxClient(props: InboxClientProps) {
           });
         } else {
           toast.error(t('errorPreparingMessage', { default: "Error preparant el missatge" }), {
-            id: toastId, 
-            description: result.message 
+            id: toastId,
+            description: result.message
           });
         }
       });
@@ -3596,7 +3597,7 @@ export function InboxClient(props: InboxClientProps) {
         templates={props.initialTemplates}
         contacts={props.allTeamContacts}
       />
-      
+
       <AlertDialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -3615,35 +3616,35 @@ export function InboxClient(props: InboxClientProps) {
         style={{ gridTemplateColumns: isDesktop ? `384px 1fr minmax(0, ${isContactPanelOpen ? '320px' : '0px'})` : '1fr' }}
       >
         {(!isDesktop && selectedTicket) ? null : (
-          <div className="min-h-0">
+          <div className="min-h-0 flex flex-col h-full overflow-hidden">
             <TicketList
-               user={props.user}
-               teamMembers={props.teamMembers}
-               permissions={props.permissions}
-               tickets={enrichedTickets}
-               selectedTicketId={selectedTicket?.id ?? null}
-               activeFilter={activeFilter}
-               inboxFilter={inboxFilter}
-               onSetInboxFilter={setInboxFilter}
-               unreadCount={counts.unread}
-               sentCount={counts.sent}
-               totalCount={counts.received}
-               onSetFilter={setActiveFilter}
-               onSelectTicket={handleSelectTicket}
-               onComposeNew={handleComposeNew}
-               onRefresh={handleRefresh}
-               hasMore={hasMore}
-               onLoadMore={handleLoadMore}
-               // ✅ 3. Utilitzem l'estat 'isPreparingNetworkMessage' per desactivar la UI
-               isPendingRefresh={isPending || isPreparingNetworkMessage}
-               searchTerm={searchTerm}
-               onSearchChange={setSearchTerm}
-               isSelectionMode={isSelectionMode}
-               selectedTicketIds={selectedTicketIds}
-               onToggleSelection={onToggleSelection}
-               onToggleSelectionMode={onToggleSelectionMode}
-               onDeleteSelected={onDeleteSelected}
-             />
+              user={props.user}
+              teamMembers={props.teamMembers}
+              permissions={props.permissions}
+              tickets={enrichedTickets}
+              selectedTicketId={selectedTicket?.id ?? null}
+              activeFilter={activeFilter}
+              inboxFilter={inboxFilter}
+              onSetInboxFilter={setInboxFilter}
+              unreadCount={counts.unread}
+              sentCount={counts.sent}
+              totalCount={counts.received}
+              onSetFilter={setActiveFilter}
+              onSelectTicket={handleSelectTicket}
+              onComposeNew={handleComposeNew}
+              onRefresh={handleRefresh}
+              hasMore={hasMore}
+              onLoadMore={handleLoadMore}
+              // ✅ 3. Utilitzem l'estat 'isPreparingNetworkMessage' per desactivar la UI
+              isPendingRefresh={isPending || isPreparingNetworkMessage}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              isSelectionMode={isSelectionMode}
+              selectedTicketIds={selectedTicketIds}
+              onToggleSelection={onToggleSelection}
+              onToggleSelectionMode={onToggleSelectionMode}
+              onDeleteSelected={onDeleteSelected}
+            />
           </div>
         )}
 
@@ -4293,9 +4294,10 @@ export const TicketList: React.FC<TicketListProps> = (props) => {
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { LayoutGrid, Inbox, Mail, Send } from "lucide-react";
+import { LayoutGrid, Inbox, Mail, Send, Filter } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useTranslations } from 'next-intl';
-// ✨ CANVI: Importem el tipus directament de db.ts
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import type { TicketFilter } from '@/types/db';
 
 interface TicketListFiltersProps {
@@ -4306,26 +4308,65 @@ interface TicketListFiltersProps {
   unreadCount: number;
 }
 
-export const TicketListFilters: React.FC<TicketListFiltersProps> = ({ activeFilter, onSetFilter, totalCount, sentCount, unreadCount }) => {  
+export const TicketListFilters: React.FC<TicketListFiltersProps> = ({
+  activeFilter,
+  onSetFilter,
+  totalCount,
+  sentCount,
+  unreadCount
+}) => {  
   const t = useTranslations('InboxPage');
+  const isMobile = useMediaQuery('(max-width: 1023px)');
+
   const filters: { id: TicketFilter, label: string, icon: React.ElementType, count?: number | string }[] = [
     { id: 'tots', label: t('allFilter'), icon: LayoutGrid, count: totalCount },
-    { id: 'rebuts', label: t('receivedFilter'), icon: Inbox, count: totalCount - sentCount },
-    { id: 'noLlegits', label: t('unreadFilter'), icon: Mail, count: unreadCount },
-    { id: 'enviats', label: t('sentFilter'), icon: Send, count: sentCount },
+    { id: 'rebuts', label: t('receivedFilter'), icon: Inbox, count: totalCount - sentCount },
+    { id: 'noLlegits', label: t('unreadFilter'), icon: Mail, count: unreadCount },
+    { id: 'enviats', label: t('sentFilter'), icon: Send, count: sentCount },
   ];
 
+  if (isMobile) {
+    // 🧭 MODE MÒBIL: mostrem un botó amb menú desplegable
+    const active = filters.find(f => f.id === activeFilter) ?? filters[0];
+    return (
+      <div className="p-2 border-b border-border flex items-center justify-between">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="flex items-center gap-2 w-full justify-between">
+              <span className="flex items-center gap-2">
+                <active.icon className="h-4 w-4" />
+                {active.label}
+              </span>
+              <Filter className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-[180px]">
+            {filters.map(filter => (
+              <DropdownMenuItem key={filter.id} onClick={() => onSetFilter(filter.id)}>
+                <filter.icon className="h-4 w-4 mr-2" />
+                {filter.label}
+                <span className="ml-auto text-xs text-muted-foreground">{filter.count}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+
+  // 🧱 MODE DESKTOP: disseny original amb 4 botons
   return (
     <TooltipProvider delayDuration={0}>
       <div className="p-2 grid grid-cols-4 gap-2 border-b border-border flex-shrink-0">
         {filters.map(filter => (
           <Tooltip key={filter.id}>
             <TooltipTrigger asChild>
-              <Button variant={
-                activeFilter === filter.id ? 'secondary' : 'ghost'} 
+              <Button
+                variant={activeFilter === filter.id ? 'secondary' : 'ghost'} 
                 size="sm" 
                 onClick={() => onSetFilter(filter.id)} 
-                className="w-full flex items-center justify-center gap-2">
+                className="w-full flex items-center justify-center gap-2"
+              >
                 <filter.icon className="h-4 w-4" />
                 {filter.id === 'noLlegits' ? (
                   <span className={`text-xs px-2 py-0.5 rounded-full ${unreadCount > 0 ? 'bg-primary text-primary-foreground' : 'text-muted-foreground bg-muted'}`}>{filter.count}</span>
@@ -4341,6 +4382,7 @@ export const TicketListFilters: React.FC<TicketListFiltersProps> = ({ activeFilt
     </TooltipProvider>
   );
 };
+
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/inbox/_components/ticketList/TicketListHeader.tsx ===================
 
@@ -4408,8 +4450,8 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
   return (
     // ✅ CORRECCIÓ DE LAYOUT:
     // L'arrel és un 'div' amb 'flex-shrink-0' (NO un Fragment <>)
-    <div className="flex-shrink-0">
-      <div className="p-4 border-b border-border flex justify-between items-center">
+    <div className="flex-shrink-0 border-b border-border">
+      <div className="flex justify-between items-center px-2 py-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="text-lg font-bold p-2 -ml-2">
@@ -4474,12 +4516,14 @@ export const TicketListHeader: React.FC<TicketListHeaderProps> = ({
         </div>
       </div>
 
-      <div className="p-2 border-b border-border">
+
+      {/* Cerca: molt més petita */}
+      <div className="p-1 border-t border-border">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder={t('searchInboxPlaceholder')}
-            className="pl-8"
+            className="px-8 pl-7 h-8 text-sm"
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
           />
@@ -7772,10 +7816,6 @@ export default function TemplatesPage() {
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/templates/_components/TemplateEditor.tsx ===================
 
-/**
- * @file TemplateEditor.tsx
- * @summary Renderitza la columna central amb els camps d'edició (nom, assumpte) i l'editor de codi/vista prèvia.
- */
 "use client";
 
 import React, { useState } from 'react';
@@ -7791,10 +7831,10 @@ import { useTranslations } from 'next-intl';
 import type { EmailTemplate } from '@/types/db';
 
 interface TemplateEditorProps {
-    selectedTemplate: EmailTemplate | null;
-    onUpdateTemplate: React.Dispatch<React.SetStateAction<EmailTemplate | null>>;
-    onSave: (currentTemplate: EmailTemplate, detectedVariables: string[]) => void;
-  }
+  selectedTemplate: EmailTemplate | null;
+  onUpdateTemplate: React.Dispatch<React.SetStateAction<EmailTemplate | null>>;
+  onSave: (currentTemplate: EmailTemplate, detectedVariables: string[]) => void;
+}
 
 export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateEditorProps) {
   const t = useTranslations('TemplatesPage');
@@ -7803,62 +7843,96 @@ export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateE
   if (!selectedTemplate) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-4 glass-card rounded-xl">
-        <FileText className="w-16 h-16 text-muted-foreground mb-4" />
-        <h2 className="text-xl font-semibold">{t('noTemplateSelected')}</h2>
+        <FileText className="w-14 h-14 text-muted-foreground mb-3" />
+        <h2 className="text-lg font-medium text-muted-foreground">
+          {t('noTemplateSelected')}
+        </h2>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="flex flex-col gap-3 h-full min-h-0">
+      {/* 🧭 Capçalera amb inputs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           placeholder={t('templateNamePlaceholder')}
           value={selectedTemplate.name}
-          onChange={(e) => onUpdateTemplate(t => t ? { ...t, name: e.target.value } : null)}
+          onChange={(e) =>
+            onUpdateTemplate((t) => (t ? { ...t, name: e.target.value } : null))
+          }
         />
         <Input
           placeholder={t('subjectPlaceholder')}
-          value={selectedTemplate.subject ?? ""}
-          onChange={(e) => onUpdateTemplate(t => t ? { ...t, subject: e.target.value } : null)}
+          value={selectedTemplate.subject ?? ''}
+          onChange={(e) =>
+            onUpdateTemplate((t) => (t ? { ...t, subject: e.target.value } : null))
+          }
         />
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 glass-card rounded-xl overflow-hidden">
-        <div className="p-2 border-b border-border flex justify-between items-center">
-          <h3 className="font-semibold px-2">{t('contentTitle')}</h3>
-          <div className="flex items-center gap-1 p-1 rounded-lg bg-black/20">
-            <Button variant={editorView === 'code' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-3" onClick={() => setEditorView('code')}>
-              <Code className="w-4 h-4 mr-2"/>{t('codeButton')}
+      {/* 💻 Editor / Preview */}
+      <div className="flex-1 flex flex-col min-h-0 rounded-xl border border-border overflow-hidden bg-card">
+        {/* 🔹 Toolbar */}
+        <div className="flex items-center justify-between px-2 py-1 border-b border-border bg-muted/40">
+          <h3 className="text-sm font-medium text-muted-foreground">
+            {t('contentTitle')}
+          </h3>
+          <div className="flex items-center gap-1">
+            <Button
+              variant={editorView === 'code' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              title={t('codeButton')}
+              onClick={() => setEditorView('code')}
+            >
+              <Code className="w-4 h-4" />
             </Button>
-            <Button variant={editorView === 'preview' ? 'secondary' : 'ghost'} size="sm" className="h-7 px-3" onClick={() => setEditorView('preview')}>
-              <Eye className="w-4 h-4 mr-2"/>{t('previewButton')}
+            <Button
+              variant={editorView === 'preview' ? 'secondary' : 'ghost'}
+              size="icon"
+              className="h-8 w-8"
+              title={t('previewButton')}
+              onClick={() => setEditorView('preview')}
+            >
+              <Eye className="w-4 h-4" />
             </Button>
           </div>
         </div>
 
-        {editorView === 'code' ? (
-          <div className="flex-1 overflow-y-auto font-mono text-sm editor-container">
+        {/* ✏️ Cos de l’editor o vista prèvia */}
+        <div className="flex-1 min-h-0 overflow-auto bg-background">
+          {editorView === 'code' ? (
             <Editor
-              value={selectedTemplate.body || ""}
-              onValueChange={(code) => onUpdateTemplate(t => t ? { ...t, body: code } : null)}
-              highlight={(code) => highlight(code, languages.markup!, "markup")}
+              value={selectedTemplate.body || ''}
+              onValueChange={(code) =>
+                onUpdateTemplate((t) => (t ? { ...t, body: code } : null))
+              }
+              highlight={(code) => highlight(code, languages.markup!, 'markup')}
               padding={16}
-              className="bg-transparent h-full"
-              style={{ minHeight: "100%" }}
+              className="font-mono text-sm"
+              style={{
+                backgroundColor: '#1e1e1e',
+                color: '#dcdcdc',
+                height: '100%',
+                minHeight: '100%',
+                fontFamily: '"Fira Code", monospace',
+              }}
             />
-          </div>
-        ) : (
-          <iframe
-            srcDoc={selectedTemplate.body ?? undefined}
-            title={t('previewTitle')}
-            className="w-full h-full border-0 bg-white"
-          />
-        )}
+
+          ) : (
+            <iframe
+              srcDoc={selectedTemplate.body ?? undefined}
+              title={t('previewTitle')}
+              className="w-full h-full border-0 bg-white"
+            />
+          )}
+        </div>
       </div>
     </div>
   );
 }
+
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/templates/_components/TemplateList.tsx ===================
 
@@ -7933,11 +8007,15 @@ export function TemplateList({
 
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Loader2, List, FileText, Variable, Plus } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { useTemplates } from '../_hooks/useTemplates';
 
 import { TemplateList } from './TemplateList';
@@ -7946,71 +8024,140 @@ import { TemplateVariables } from './TemplateVariables';
 import type { EmailTemplate } from '@/types/db';
 
 export function TemplatesClient({ initialTemplates }: { initialTemplates: EmailTemplate[] }) {
-    const {
-        isSaving, isDeleting,
-        templates,
-        selectedTemplate, setSelectedTemplate,
-        templateToDelete, setTemplateToDelete,
-        // ✅ CORRECCIÓ 1: 'detectedVariables' ja no es necessita aquí.
-        // El seu valor es gestiona internament al hook.
-        setDetectedVariables,
-        handleNewTemplate,
-        handleSaveTemplate,
-        handleDeleteTemplate,
-        t,
-    } = useTemplates({ initialTemplates });
+  const {
+    isSaving, isDeleting,
+    templates,
+    selectedTemplate, setSelectedTemplate,
+    templateToDelete, setTemplateToDelete,
+    setDetectedVariables,
+    handleNewTemplate,
+    handleSaveTemplate,
+    handleDeleteTemplate,
+    t,
+  } = useTemplates({ initialTemplates });
 
-    return (
-        <>
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
-                <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <h1 className="text-3xl font-bold">{t('pageTitle')}</h1>
-                    <Button onClick={handleSaveTemplate} disabled={isSaving || !selectedTemplate}>
-                        {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {t('saveButton')}
-                    </Button>
-                </div>
+  const [activeTab, setActiveTab] = useState<'list' | 'editor' | 'variables'>('editor');
 
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 min-h-0">
-                    <TemplateList
-                        templates={templates}
-                        selectedTemplateId={selectedTemplate ? String(selectedTemplate.id) : null}
-                        onSelectTemplate={setSelectedTemplate}
-                        onNewTemplate={handleNewTemplate}
-                        onSetTemplateToDelete={setTemplateToDelete}
-                    />
-                    <TemplateEditor
-                        selectedTemplate={selectedTemplate}
-                        onUpdateTemplate={setSelectedTemplate}
-                        onSave={handleSaveTemplate}
-                    />
-                    <TemplateVariables
-                        selectedTemplate={selectedTemplate}
-                        onVariablesChange={setDetectedVariables}
-                    />
-                </div>
-            </motion.div>
+  // 🔹 Quan es crea una plantilla nova → canviem automàticament a l’editor
+  const handleCreateTemplate = () => {
+    handleNewTemplate();
+    setActiveTab('editor');
+  };
 
-            {/* ✅ CORRECCIÓ 2: Canviem 'onOpenChange' per a que passi el valor correcte */}
-            <AlertDialog open={!!templateToDelete} onOpenChange={(isOpen) => {
-                if (!isOpen) {
-                    setTemplateToDelete(null);
-                }
-            }}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
-                        <AlertDialogDescription>{t('deleteConfirmDescription')}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t('cancelButton')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteTemplate} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">{isDeleting ? t('deletingButton') : t('confirmDeleteButton')}</AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </>
-    );
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="h-full flex flex-col"
+      >
+        {/* 🔹 Header */}
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">{t('pageTitle')}</h1>
+          <div className="flex gap-2">
+            <Button onClick={handleCreateTemplate} variant="outline" className="h-9 px-3">
+              <Plus className="w-4 h-4 mr-1" />
+            </Button>
+            <Button onClick={handleSaveTemplate} disabled={isSaving || !selectedTemplate} className="h-9 px-4">
+              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t('saveButton')}
+            </Button>
+          </div>
+        </div>
+
+        {/* 💻 Layout Desktop */}
+        <div className="hidden lg:grid lg:grid-cols-[280px_1fr_280px] gap-6 flex-1 min-h-0">
+          <TemplateList
+            templates={templates}
+            selectedTemplateId={selectedTemplate ? String(selectedTemplate.id) : null}
+            onSelectTemplate={setSelectedTemplate}
+            onNewTemplate={handleCreateTemplate}
+            onSetTemplateToDelete={setTemplateToDelete}
+          />
+          <TemplateEditor
+            selectedTemplate={selectedTemplate}
+            onUpdateTemplate={setSelectedTemplate}
+            onSave={handleSaveTemplate}
+          />
+          <TemplateVariables
+            selectedTemplate={selectedTemplate}
+            onVariablesChange={setDetectedVariables}
+          />
+        </div>
+
+        {/* 📱 Layout Mobile */}
+        <div className="lg:hidden flex-1 min-h-0 flex flex-col">
+          <Tabs
+            defaultValue="editor"
+            value={activeTab}
+            onValueChange={(value: string) => setActiveTab(value as 'list' | 'editor' | 'variables')}
+            className="flex-1 flex flex-col"
+          >
+            {/* 🔹 TabsList responsive */}
+            <TabsList className="grid grid-cols-3 gap-1 mb-2 w-full bg-muted rounded-lg text-xs sm:text-sm">
+              <TabsTrigger value="list" className="flex items-center justify-center gap-1 py-2">
+                <List className="w-4 h-4" /> {t('tabList')}
+              </TabsTrigger>
+              <TabsTrigger value="editor" className="flex items-center justify-center gap-1 py-2">
+                <FileText className="w-4 h-4" /> {t('tabEditor')}
+              </TabsTrigger>
+              <TabsTrigger value="variables" className="flex items-center justify-center gap-1 py-2">
+                <Variable className="w-4 h-4" /> {t('tabVariables')}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* 🔹 Contingut per pestanya */}
+            <TabsContent value="list" className="flex-1 overflow-y-auto rounded-xl">
+              <TemplateList
+                templates={templates}
+                selectedTemplateId={selectedTemplate ? String(selectedTemplate.id) : null}
+                onSelectTemplate={setSelectedTemplate}
+                onNewTemplate={handleCreateTemplate}
+                onSetTemplateToDelete={setTemplateToDelete}
+              />
+            </TabsContent>
+
+            <TabsContent value="editor" className="flex-1 min-h-0">
+              <TemplateEditor
+                selectedTemplate={selectedTemplate}
+                onUpdateTemplate={setSelectedTemplate}
+                onSave={handleSaveTemplate}
+              />
+            </TabsContent>
+
+            <TabsContent value="variables" className="flex-1 overflow-y-auto">
+              <TemplateVariables
+                selectedTemplate={selectedTemplate}
+                onVariablesChange={setDetectedVariables}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </motion.div>
+
+      {/* 🗑️ Confirmació d’eliminació */}
+      <AlertDialog open={!!templateToDelete} onOpenChange={(isOpen) => !isOpen && setTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('deleteConfirmDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('cancelButton')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTemplate}
+              disabled={isDeleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {isDeleting ? t('deletingButton') : t('confirmDeleteButton')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }
+
 
 // =================== FILE: src/app/[locale]/(app)/comunicacio/templates/_components/TemplatesData.tsx ===================
 
@@ -13471,25 +13618,40 @@ export function ContactsClient({
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
             {/* CAPÇALERA */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <h1 className="text-3xl font-bold">{t('title')}</h1>
-                <div className="flex w-full sm:w-auto items-center gap-2">
-                    {/* ... (Cercador i Filtres) ... */}
-                    <div className="relative flex-grow">
+            {/* CAPÇALERA RESPONSIVE */}
+            <div className="flex flex-col gap-3 sm:gap-4 mb-6">
+                {/* Títol */}
+                <h1 className="text-2xl sm:text-3xl font-bold text-balance">{t('title')}</h1>
+
+                {/* Controls */}
+                <div className="flex flex-wrap gap-2 w-full items-center">
+                    {/* 🔍 Cercador */}
+                    <div className="relative flex-grow min-w-[160px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input placeholder={t('searchPlaceholder')} className="pl-9" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <Input
+                            placeholder={t('searchPlaceholder')}
+                            className="pl-9 w-full"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
 
+                    {/* 🔽 Ordenar */}
                     <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.sortBy')} /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                            <SelectValue placeholder={t('filters.sortBy')} />
+                        </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="newest">{t('filters.newest')}</SelectItem>
                             <SelectItem value="oldest">{t('filters.oldest')}</SelectItem>
                         </SelectContent>
                     </Select>
 
+                    {/* 📊 Estat */}
                     <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
-                        <SelectTrigger className="w-[180px]"><SelectValue placeholder={t('filters.status')} /></SelectTrigger>
+                        <SelectTrigger className="w-full sm:w-[160px]">
+                            <SelectValue placeholder={t('filters.status')} />
+                        </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">{t('filters.allStatuses')}</SelectItem>
                             {CONTACT_STATUS_MAP.map(status => (
@@ -13500,35 +13662,43 @@ export function ContactsClient({
                         </SelectContent>
                     </Select>
 
-                    {/* Botons de vista */}
-                    <div className="flex items-center gap-1 p-1 bg-muted rounded-lg">
-                        <Button variant={viewMode === 'cards' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleFilterChange('view', 'cards')}>
+                    {/* 👁️ Modes de vista (icones) */}
+                    <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                        <Button
+                            variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
+                            size="icon"
+                            onClick={() => handleFilterChange('view', 'cards')}
+                        >
                             <LayoutGrid className="w-4 h-4" />
                         </Button>
-                        <Button variant={viewMode === 'list' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleFilterChange('view', 'list')}>
+                        <Button
+                            variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                            size="icon"
+                            onClick={() => handleFilterChange('view', 'list')}
+                        >
                             <List className="w-4 h-4" />
                         </Button>
                     </div>
 
+                    {/* 🧾 Excel Dropdown */}
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
-                        disabled={isExporting} // Deshabilitat si ja s'està exportant
+                        disabled={isExporting}
                     />
 
-                    {/* ✅ 8. Botó de "Nou Contacte" amb Tooltip de límit */}
+                    {/* ➕ Nou contacte (amb límit) */}
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                {/* Afegim un 'span' per al correcte funcionament del Tooltip quan el botó està deshabilitat */}
                                 <span tabIndex={isLimitReached ? 0 : -1}>
                                     <ContactDialog
                                         trigger={
-                                            <Button className="flex-shrink-0" disabled={isLimitReached}>
+                                            <Button className="flex-shrink-0 w-full sm:w-auto" disabled={isLimitReached}>
                                                 {isLimitReached ? (
-                                                    <Lock className="w-4 h-4 md:mr-2" />
+                                                    <Lock className="w-4 h-4 mr-1" />
                                                 ) : (
-                                                    <Plus className="w-4 h-4 md:mr-2" />
+                                                    <Plus className="w-4 h-4 mr-1" />
                                                 )}
                                                 <span className="hidden md:inline">{t('newContactButton')}</span>
                                             </Button>
@@ -13538,53 +13708,35 @@ export function ContactsClient({
                                                 { ...(newContact as Contact), opportunities: [] },
                                                 ...prev
                                             ]);
-                                            // Refresquem per si hem assolit el límit
                                             router.refresh();
                                         }}
-                                        // Passem l'estat del límit al diàleg
                                         isLimitReached={isLimitReached}
                                         limitError={limitStatus.error}
                                     />
                                 </span>
                             </TooltipTrigger>
 
-                            {/* ============================================================
-                                ✅ INICI DE LA MILLORA DE DISSENY DEL TOOLTIP
-                                ============================================================
-                                */}
                             {isLimitReached && (
                                 <TooltipContent className="max-w-xs p-3 shadow-lg rounded-lg border-2 border-yellow-400 bg-yellow-50">
-                                    <div className="flex flex-col gap-3">
-
-                                        {/* Títol */}
+                                    <div className="flex flex-col gap-2">
                                         <div className="flex items-center gap-2">
-                                            <span className="p-1.5  rounded-full">
-                                                <Lock className="w-4 h-4 text-yellow-900" />
-                                            </span>
-                                            <h3 className="font-semibold text-muted-foreground text-lg">
-                                                {t_billing('limitReachedTitle')}
-                                            </h3>
+                                            <Lock className="w-4 h-4 text-yellow-900" />
+                                            <h3 className="font-semibold">{t_billing('limitReachedTitle')}</h3>
                                         </div>
-
-                                        {/* Descripció (El motiu) */}
-                                        <p className="text-lg text-muted-foreground leading-snug">
+                                        <p className="text-sm text-muted-foreground">
                                             {limitStatus.error || t_billing('limitReachedDefault')}
                                         </p>
-
-                                        {/* Acció */}
-                                        <Button asChild size="lg" className="mt-1 w-full">
+                                        <Button asChild size="sm" className="mt-1 w-full">
                                             <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
                                         </Button>
                                     </div>
                                 </TooltipContent>
                             )}
-                           
-
                         </Tooltip>
                     </TooltipProvider>
-
                 </div>
             </div>
+
 
             {/* LLISTA DE CONTACTES */}
             <div className="flex-1 overflow-y-auto -mr-4 pr-4">
@@ -15146,7 +15298,7 @@ export default function PipelinePage() {
 
 // =================== FILE: src/app/[locale]/(app)/crm/pipeline/pipeline-client.tsx ===================
 
-// /app/[locale]/(app)/crm/pipeline/pipeline-client.tsx (Refactoritzat)
+// /app/[locale]/(app)/crm/pipeline/pipeline-client.tsx (Refactoritzat i CORREGIT)
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -15160,33 +15312,36 @@ import { Button } from '@/components/ui/button';
 import { type Database } from '@/types/supabase';
 type FullContact = Database['public']['Tables']['contacts']['Row'];
 
-// ✅ 2. Importem els altres tipus, però JA NO importem el 'Contact' que creava conflicte
+// ✅ 2. Importem els altres tipus
 import { type Stage, type OpportunityWithContact } from './_components/PipelineData';
 import { usePipeline } from './_hooks/usePipeline';
 import { OpportunityDialog } from './_components/OpportunityDialog';
 import { ColumnsView } from './_components/ColumnsView';
 import { RowsView } from './_components/RowsView';
 
+// ➕ AFEGIT: Importem el hook per detectar la mida de la pantalla
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+
 interface PipelineClientProps {
     initialStages: Stage[];
     // ✅ 3. 'initialContacts' ara utilitza el tipus complet
-    initialContacts: FullContact[]; 
+    initialContacts: FullContact[];
     initialOpportunities: OpportunityWithContact[];
 }
 
 export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
     const t = useTranslations('PipelinePage');
-    
+
     const [opportunities, setOpportunities] = useState(initialOpportunities);
 
     useEffect(() => {
         setOpportunities(initialOpportunities);
     }, [initialOpportunities]);
-    
+
     const {
         isPending,
         opportunitiesByStage,
-        viewMode,
+        viewMode, // Aquesta és la vista seleccionada per l'usuari (default: 'columns')
         setViewMode,
         isDialogOpen,
         setIsDialogOpen,
@@ -15200,14 +15355,20 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
         setOpportunities
     });
 
+    // ➕ AFEGIT: Detectem si és mòbil (breakpoint 'md' de Tailwind = 768px)
+    // Utilitzem 767px per ser < md
+    const isMobile = useMediaQuery("(max-width: 767px)");
+
+    // ❗ CORREGIT: Decidim quina vista mostrar
+    // Si és mòbil, forcem 'rows'. Si no, respectem la selecció de l'usuari.
+    const effectiveViewMode = isMobile ? 'rows' : viewMode;
+
     return (
         <>
             <OpportunityDialog
                 open={isDialogOpen}
                 onOpenChange={setIsDialogOpen}
                 // ✅ 4. Aquesta línia ara és vàlida.
-                // Passem 'FullContact[]' al component 'OpportunityDialog',
-                // que també espera 'FullContact[]' (com vam arreglar abans).
                 contacts={initialContacts}
                 stages={initialStages}
                 onSuccess={handleSuccess}
@@ -15217,21 +15378,26 @@ export function PipelineClient({ initialStages, initialContacts, initialOpportun
                 <div className="flex justify-between items-center mb-6 flex-shrink-0">
                     <h1 className="text-3xl font-bold">{t('title')}</h1>
                     <div className="flex items-center gap-2">
-                        <div className="bg-muted p-1 rounded-lg">
+
+                        {/* ❗ CORREGIT: Afegim 'hidden md:flex' per ocultar en mòbil */}
+                        <div className="bg-muted p-1 rounded-lg hidden md:flex">
                             <Button variant={viewMode === 'columns' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('columns')} aria-label={t('columnViewLabel')} disabled={isPending}><LayoutGrid className="w-4 h-4" /></Button>
                             <Button variant={viewMode === 'rows' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('rows')} aria-label={t('rowViewLabel')} disabled={isPending}><Rows className="w-4 h-4" /></Button>
                         </div>
+
                         <Button onClick={() => handleOpenDialog()} disabled={isPending}>
-                            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Plus className="w-4 h-4 mr-2" />}
+                            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
                             {t('addOpportunity')}
                         </Button>
                     </div>
                 </div>
 
                 <DragDropContext onDragEnd={onDragEnd}>
-                    {viewMode === 'columns' ? (
+
+                    {/* ❗ CORREGIT: Usem 'effectiveViewMode' per decidir el render */}
+                    {effectiveViewMode === 'columns' ? (
                         <ColumnsView
-                        
+
                             stages={initialStages}
                             opportunitiesByStage={opportunitiesByStage}
                             onEditOpportunity={(op) => handleOpenDialog(op)}
@@ -16034,7 +16200,17 @@ import { useTranslations } from "next-intl";
 import Link from 'next/link';
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { BarChart2, Activity, ListChecks, Radar as RadarIcon, Plus, Calendar, Quote, Mail } from "lucide-react";
+import {
+  BarChart2,
+  Activity,
+  ListChecks,
+  Radar as RadarIcon,
+  Plus,
+  Calendar,
+  Quote,
+  Mail,
+  MoreVertical // ➕ AFEGIT: Icona per al menú mòbil
+} from "lucide-react";
 
 import { ModuleCard } from "@/components/shared/ModuleCard";
 import { SalesPerformance } from "./_components/SalesPerformance";
@@ -16052,6 +16228,16 @@ import { Label } from "@/components/ui/label";
 import { ServerActivityItem } from "@/lib/data/dashboard";
 import { RecentQuotes, EnrichedQuote } from "./_components/RecentQuotes";
 import { RecentEmails, EnrichedEmail } from "./_components/RecentEmails";
+
+// ➕ AFEGIT: Imports per al DropdownMenu
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const MONTHLY_GOAL = 50_000;
 
@@ -16128,30 +16314,25 @@ export function DashboardClient({
       setIsDialogOpen(false);
     }
   }, [router]);
-  
-  // ✅ ÚNIC CANVI: Aquesta funció ara conté la lògica correcta
+
   const handleToggleTask = useCallback((task: EnrichedTask) => {
     const previousTasks = tasks;
     let updateData: Partial<Tables<'tasks'>> = {};
     let successMessage = "";
 
-    // Lògica del flux: Pendent -> Assignada -> Completada
     if (task.is_completed) {
-      // Si està completada, la reobrim i torna a 'Assignada' (mantenint l'usuari)
-      updateData = { 
-        is_completed: false, 
-        finish_date: null 
+      updateData = {
+        is_completed: false,
+        finish_date: null
       };
       successMessage = "Tasca reoberta.";
     } else if (task.user_asign_id) {
-      // Si ja està assignada (però no completa), la completem
-      updateData = { 
-        is_completed: true, 
-        finish_date: new Date().toISOString() 
+      updateData = {
+        is_completed: true,
+        finish_date: new Date().toISOString()
       };
       successMessage = "Tasca completada!";
     } else {
-      // Si no està assignada (Pendent), l'assignem a l'usuari actual
       updateData = {
         user_asign_id: userId,
         asigned_date: new Date().toISOString()
@@ -16159,24 +16340,21 @@ export function DashboardClient({
       successMessage = `T'has assignat la tasca.`;
     }
 
-    // Actualització optimista de la UI
     setTasks(prev =>
       prev.map(t =>
         t.id === task.id
-          ? { ...t, ...updateData } as EnrichedTask // Ensure the result is typed as EnrichedTask
+          ? { ...t, ...updateData } as EnrichedTask
           : t
       )
     );
 
-    // Cridem a la Server Action
     startTransition(async () => {
       const { error } = await updateSimpleTask(task.id, updateData);
       if (error) {
         toast.error("No s'ha pogut actualitzar l'estat de la tasca.");
-        setTasks(previousTasks); // Revertim en cas d'error
+        setTasks(previousTasks);
       } else {
         toast.success(successMessage);
-        // Refresquem les dades del servidor sense tancar cap diàleg
         handleTaskMutation({ closeDialog: false });
       }
     });
@@ -16222,12 +16400,13 @@ export function DashboardClient({
     setIsDialogOpen(true);
   };
 
-  const midaCardsSuperiors = "h-96";
+  {/* ❗ CORREGIT: L'alçada ara és automàtica en mòbil (h-auto) i fixa en escriptori (md:h-96) */ }
+  const midaCardsSuperiors = "h-auto md:h-96";
 
   return (
     <div className="relative w-full ">
       <div className="absolute inset-0 -z-10 bg-background bg-[radial-gradient(theme(colors.gray.300)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.slate.800)_1px,transparent_1px)] [background-size:16px_16px]" />
-      
+
       <motion.div
         className="flex flex-col gap-6"
         initial={{ opacity: 0, y: 20 }}
@@ -16270,19 +16449,57 @@ export function DashboardClient({
               variant="agenda"
               className=""
               actions={
-                <div className="flex items-center space-x-4">
-                  <Button asChild variant="outline" size="icon" className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
-                    <Link href="/crm/calendari" aria-label={"Calendar"}> <Calendar className="h-5 w-5" /> </Link>
-                  </Button>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="show-all-tasks" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
-                    <Label htmlFor="show-all-tasks" className="text-xm font-normal cursor-pointer text-primary-foreground">{t('agenda.viewAll')}</Label>
+                // ❗ --- INICI CORRECCIÓ MOBIL ---
+                <>
+                  {/* Vista Escriptori (md i amunt) */}
+                  <div className="hidden md:flex items-center space-x-4">
+                    <Button asChild variant="outline" size="icon" className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                      <Link href="/crm/calendari" aria-label={"Calendar"}> <Calendar className="h-5 w-5" /> </Link>
+                    </Button>
+                    <div className="flex items-center space-x-2">
+                      {/* IDs únics per a accessibilitat */}
+                      <Switch id="show-all-tasks-desktop" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
+                      <Label htmlFor="show-all-tasks-desktop" className="text-xm font-normal cursor-pointer text-primary-foreground">{t('agenda.viewAll')}</Label>
+                    </div>
+                    <Button variant="ghost" onClick={openNewTaskDialog} className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                      <Plus className="w-4 h-4" />
+                      {t('agenda.newTask')}
+                    </Button>
                   </div>
-                  <Button variant="ghost" onClick={openNewTaskDialog} className="flex-shrink-0 bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
-                    <Plus className="w-4 h-4" />
-                    {t('agenda.newTask')}
-                  </Button>
-                </div>
+
+                  {/* Vista Mòbil (sota md) */}
+                  <div className="flex md:hidden items-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="bg-primary-foreground/20 hover:bg-primary-foreground/70 border-primary/10">
+                          <MoreVertical className="h-5 w-5" />
+                          <span className="sr-only">Obrir menú d'accions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>{t('agenda.title')}</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={openNewTaskDialog}>
+                          <Plus className="mr-2 h-4 w-4" />
+                          <span>{t('agenda.newTask')}</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/crm/calendari">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            <span>Anar al Calendari</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-1.5 text-sm">
+                          <div className="flex items-center justify-between space-x-2">
+                            <Label htmlFor="show-all-tasks-mobile" className="font-normal cursor-pointer text-foreground">{t('agenda.viewAll')}</Label>
+                            <Switch id="show-all-tasks-mobile" checked={showAllTeamTasks} onCheckedChange={setShowAllTeamTasks} aria-label={t('agenda.viewAll')} />
+                          </div>
+                        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </>
+                // ❗ --- FI CORRECCIÓ MOBIL ---
               }
             >
               <Agenda
@@ -16385,8 +16602,7 @@ interface AgendaProps {
   onDepartmentFilterChange: (filter: number | 'all') => void;
   searchTerm: string;
   onSearchChange: (term: string) => void;
-  // ✅ CORRECCIÓ: Actualitzem la signatura per reflectir el canvi a TaskCard
-  onToggleTask: (task: EnrichedTask) => void; 
+  onToggleTask: (task: EnrichedTask) => void;
   onTaskMutation: () => void;
 }
 
@@ -16430,39 +16646,66 @@ export function Agenda(props: AgendaProps) {
     <div className="flex flex-col h-full max-h-[70vh]">
       {/* --- SECCIÓ DE FILTRES I CERCA (Contingut fix) --- */}
       <div className="flex-shrink-0 space-y-4">
+        {/* Aquesta estructura flex-col sm:flex-row és perfectament responsive */}
         <div className="flex flex-col sm:flex-row gap-2">
 
-          <div className="grid grid-cols-3 gap-1 bg-green-300/10 rounded-lg flex-grow border border-green-500/20">
-            {filterOptions.map(option => (
-              <Button
-                key={option.value}
-                variant={activeFilter === option.value ? 'default' : 'ghost'}
-                onClick={() => onFilterChange(option.value)}
-                className={cn(
-                  "w-full justify-center transition-all duration-200",
-                  activeFilter === option.value
-                    ? 'bg-green-600 text-white shadow hover:bg-green-700'
-                    : 'text-green-800 hover:bg-green-500/20 dark:text-green-300'
-                )}
+          {/* FILTRE ESTAT — Responsive: icones o dropdown en mòbil */}
+          <div className="w-full sm:w-auto">
+            {/* Desktop */}
+            <div className="hidden sm:grid grid-cols-3 gap-1 bg-green-300/10 rounded-lg border border-green-500/20">
+              {filterOptions.map(option => (
+                <Button
+                  key={option.value}
+                  variant={activeFilter === option.value ? 'default' : 'ghost'}
+                  onClick={() => onFilterChange(option.value)}
+                  className={cn(
+                    "w-full justify-center transition-all duration-200",
+                    activeFilter === option.value
+                      ? 'bg-green-600 text-white shadow hover:bg-green-700'
+                      : 'text-green-800 hover:bg-green-500/20 dark:text-green-300'
+                  )}
+                >
+                  {t(option.labelKey)}
+                  <span className={cn(
+                    "ml-2 text-xs font-semibold rounded-full px-2 py-0.5",
+                    activeFilter === option.value
+                      ? "bg-white/20 text-white"
+                      : "bg-green-600/10 text-green-700 dark:bg-green-300/10 dark:text-green-300"
+                  )}>
+                    {option.count(props)}
+                  </span>
+                </Button>
+              ))}
+            </div>
+
+            {/* Mòbil */}
+            <div className="sm:hidden">
+              <Select
+                value={activeFilter}
+                onValueChange={(value: TaskFilterStatus) => onFilterChange(value)}
               >
-                {t(option.labelKey)}
-                <span className={cn(
-                  "ml-2 text-xs font-semibold rounded-full px-2 py-0.5",
-                  activeFilter === option.value
-                    ? "bg-white/20 text-white"
-                    : "bg-green-600/10 text-green-700 dark:bg-green-300/10 dark:text-green-300"
-                )}>
-                  {option.count(props)}
-                </span>
-              </Button>
-            ))}
+                <SelectTrigger className="w-full bg-green-300/10 border-green-500/20">
+                  <SelectValue placeholder={t('filter.statusPlaceholder')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filterOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {t(option.labelKey)} ({option.count(props)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
+
 
           <Select
             value={String(departmentFilter)}
             onValueChange={(value) => onDepartmentFilterChange(value === 'all' ? 'all' : Number(value))}
           >
+            {/* Aquestes classes w-full sm:w-[180px] són correctes per responsive */}
             <SelectTrigger className="w-full sm:w-[180px] bg-green-300/10 border-green-500/20 focus:ring-green-500">
+              {/* Amagar la icona en mòbil (hidden sm:block) és una bona pràctica */}
               <LayoutGrid className="w-4 h-4 mr-2 text-muted-foreground hidden sm:block" />
               <SelectValue placeholder={t('filter.departmentPlaceholder')} />
             </SelectTrigger>
@@ -16486,6 +16729,7 @@ export function Agenda(props: AgendaProps) {
         </div>
       </div>
 
+      {/* Aquest contenidor de scroll és clau i funciona perfectament */}
       <div className="flex-1 overflow-y-auto pr-2 -mr-2 mt-4 min-h-0 space-y-3">
         <AnimatePresence>
           {tasks.length > 0 ? (
@@ -19694,12 +19938,12 @@ export function useExpenseDetail({ initialData, isNew }: UseExpenseDetailProps) 
 
 // =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpenseFilters.tsx ===================
 
-// src/app/[locale]/(app)/finances/expenses/_components/ExpenseFilters.tsx
 'use client';
 
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslations } from 'next-intl';
+import { Search } from "lucide-react";
 
 export interface ExpensePageFilters {
   category: string;
@@ -19725,55 +19969,62 @@ export function ExpenseFilters({
   const statuses = ['pending', 'paid', 'overdue', 'cancelled'];
 
   return (
-    // ✅ Canviem a flex (sense wrap per defecte) i ajustem el gap
-    <div className="flex items-center gap-2"> {/* Abans: mb-4 flex flex-wrap items-center gap-4 */}
-      <Input
-        placeholder={t('filter.searchPlaceholder') || "Busca..."}
-        value={searchTerm}
-        onChange={(e) => onSearchChange(e.target.value)}
-        // ✅ Afegim fons i vora
-        className="max-w-xs h-9 bg-card border border-input" />
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 w-full mb-2">
+      {/* 🔹 Filtres d'estat i categoria */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 sm:overflow-visible">
+        {/* Estat */}
+        <Select
+          value={filters.status}
+          onValueChange={(value) => onFilterChange('status', value)}
+        >
+          <SelectTrigger className="min-w-[120px] sm:w-[150px] h-9 bg-card border border-input text-sm">
+            <SelectValue placeholder={t('filter.allStatuses')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('filter.allStatuses')}</SelectItem>
+            {statuses.map(s => (
+              <SelectItem key={s} value={s}>{t(`status.${s}`)}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-      {/* Filtre d'Estat */}
-      <Select
-        value={filters.status}
-        onValueChange={(value) => onFilterChange('status', value)}
-      >
-        {/* ✅ Afegim fons i vora al trigger */}
-        <SelectTrigger className="w-[160px] h-9 bg-card border border-input">
-          <SelectValue placeholder={t('filter.allStatuses')} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{t('filter.allStatuses')}</SelectItem>
-          {statuses.map(s => (
-            <SelectItem key={s} value={s}>{t(`status.${s}`)}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        {/* Categoria */}
+        <Select
+          value={filters.category}
+          onValueChange={(value) => onFilterChange('category', value)}
+        >
+          <SelectTrigger className="min-w-[120px] sm:w-[150px] h-9 bg-card border border-input text-sm">
+            <SelectValue placeholder={t('filter.allCategories')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('filter.allCategories')}</SelectItem>
+            {categories.map(c => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-      {/* Filtre de Categoria */}
-      <Select
-        value={filters.category}
-        onValueChange={(value) => onFilterChange('category', value)}
-      >
-        {/* ✅ Afegim fons i vora al trigger */}
-        <SelectTrigger className="w-[160px] h-9 bg-card border border-input">
-          <SelectValue placeholder={t('filter.allCategories')} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{t('filter.allCategories')}</SelectItem>
-          {categories.map(c => (
-            <SelectItem key={c} value={c}>{c}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {/* 🔹 Buscador a sota (en mòbil) o al costat (en desktop) */}
+      <div className="relative w-full sm:max-w-xs">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder={t('filter.searchPlaceholder') || "Busca..."}
+          value={searchTerm}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="
+            pl-9 w-full h-9 text-sm bg-card border border-input 
+            focus-visible:ring-green-500 focus-visible:ring-1
+          "
+        />
+      </div>
     </div>
   );
 }
 
+
 // =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpensesClient.tsx ===================
 
-// src/app/[locale]/(app)/finances/expenses/_components/ExpensesClient.tsx
 "use client";
 
 import { useMemo } from 'react';
@@ -19785,40 +20036,26 @@ import { useLocale, useTranslations } from 'next-intl';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 import { formatCurrency, formatLocalizedDate } from '@/lib/utils/formatters';
-import { deleteExpense } from '../[expenseId]/actions'; // Assegura't que deleteExpense està importat
-// Pas 1: Importar el nou hook genèric i els tipus
+import { deleteExpense } from '../[expenseId]/actions';
 import {
   usePaginatedResource,
   type PaginatedResponse,
   type PaginatedActionParams
 } from '@/hooks/usePaginateResource';
-import { PageHeader } from '@/components/shared/PageHeader'; // <-- Importa PageHeader
-import { ExpenseFilters } from './ExpenseFilters'; // <-- Importa ExpenseFilters
-// Pas 2: Importar les Server Actions específiques
-import { fetchPaginatedExpenses} from '../actions';
-// Importa els tipus des del fitxer de tipus principal d'expenses
+import { PageHeader } from '@/components/shared/PageHeader';
+import { ExpenseFilters } from './ExpenseFilters';
+import { fetchPaginatedExpenses } from '../actions';
 import type { ExpenseWithContact } from '@/types/finances/expenses';
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
-
-
-// ✅ NOU: Importem ActionResult per a la funció adaptadora
 import { type ActionResult } from '@/types/shared/actionResult';
 
-// ✅ ======================================
-// ✅ PROP INTERFACE ACTUALITZADA
-// ✅ ======================================
 interface ExpensesClientProps {
   initialData: PaginatedExpensesResponse;
-  filterOptions: {
-    categories: string[];
-  };
+  filterOptions: { categories: string[] };
 }
-// Definim el tipus de resposta per a claredat
-type PaginatedExpensesResponse = PaginatedResponse<ExpenseWithContact>;
-// Definim el tipus dels paràmetres de la nostra 'fetchAction'
-type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 
-// ✅ Definim les opcions de files per pàgina que volem
+type PaginatedExpensesResponse = PaginatedResponse<ExpenseWithContact>;
+type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 const EXPENSE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
 export function ExpensesClient({ initialData, filterOptions }: ExpensesClientProps) {
@@ -19826,20 +20063,18 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
   const t = useTranslations('ExpensesPage');
   const tShared = useTranslations('Shared');
 
-  // La definició de columnes no canvia
   const allColumns = useMemo<ColumnDef<ExpenseWithContact>[]>(() => [
     {
       accessorKey: "invoice_number",
       header: t('table.number'),
       enableSorting: true,
-      // ✅ Fem que la cel·la sigui un enllaç
       cell: (row) => {
         const displayNumber = row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`;
         return (
           <Link
             href={`/${locale}/finances/expenses/${row.id}`}
-            className="text-green-600 hover:underline font-medium" // Estil opcional
-            title={`${tShared('actions.view')}: ${displayNumber}`} // Tooltip millorat
+            className="text-green-600 hover:underline font-medium"
+            title={`${tShared('actions.view')}: ${displayNumber}`}
           >
             {displayNumber}
           </Link>
@@ -19850,20 +20085,19 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
       accessorKey: "suppliers.nom",
       header: t('table.supplier'),
       enableSorting: true,
-      // ✅ Fem que la cel·la sigui un enllaç condicional
       cell: (row) => {
         if (row.suppliers) {
           return (
             <Link
               href={`/${locale}/finances/suppliers/${row.suppliers.id}`}
-              className="text-primary hover:underline font-medium" // Estil opcional
-              title={`${tShared('actions.view')}: ${row.suppliers.nom}`} // Tooltip millorat
+              className="text-primary hover:underline font-medium"
+              title={`${tShared('actions.view')}: ${row.suppliers.nom}`}
             >
               {row.suppliers.nom}
             </Link>
           );
         }
-        return <span className="text-muted-foreground italic">{t('noSupplier')}</span>; // Estil per diferenciar-lo
+        return <span className="text-muted-foreground italic">{t('noSupplier')}</span>;
       },
     },
     {
@@ -19895,12 +20129,15 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
       header: t('table.status'),
       enableSorting: true,
       cell: (row) => (
-        <Badge variant={row.status === 'paid' ? 'success' :
-          row.status === 'overdue' ? 'destructive' :
-            'secondary'} className={undefined}>
+        <Badge
+          variant={row.status === 'paid'
+            ? 'success'
+            : row.status === 'overdue'
+              ? 'destructive'
+              : 'secondary'} className={undefined}        >
           {t(`status.${row.status}`)}
         </Badge>
-      )
+      ),
     },
     {
       accessorKey: "actions_edit",
@@ -19908,12 +20145,14 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
       enableSorting: false,
       cell: (row) => (
         <Link href={`/${locale}/finances/expenses/${row.id}`} title={tShared('actions.edit')}>
-          <Button variant="ghost" size="icon"><Edit className="w-4 h-4" /></Button>
+          <Button variant="ghost" size="icon">
+            <Edit className="w-4 h-4" />
+          </Button>
         </Link>
       ),
-    }
+    },
   ], [locale, t, tShared]);
-  // Pas 4: Cridar el hook genèric amb la configuració de 'Despeses'
+
   const {
     isPending,
     data: expenses,
@@ -19932,35 +20171,25 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
     page,
     totalPages,
     handlePageChange,
-    // ✅ Rebem els nous valors del hook
     rowsPerPage,
     handleRowsPerPageChange,
-    // rowsPerPageOptions, // Podem obtenir-lo del hook o definir-lo aquí
   } = usePaginatedResource<ExpenseWithContact, ExpensePageFilters>({
     initialData,
     initialFilters: { category: 'all', status: 'all' },
     initialSort: { column: 'expense_date', order: 'desc' },
     allColumns,
     fetchAction: fetchPaginatedExpenses as (params: FetchExpensesParams) => Promise<PaginatedExpensesResponse>,
-    // ✅ CORRECCIÓ DE L'ERROR ts(2355):
     deleteAction: async (id: string | number): Promise<ActionResult> => {
       if (typeof id !== 'number') {
-        const errorMessage = tShared('errors.invalidId') || "Error: L'ID per eliminar no és vàlid.";
-        console.error(errorMessage, { id });
-        // 👇 Faltava aquest return
-        return { success: false, message: errorMessage };
+        return { success: false, message: tShared('errors.invalidId') };
       }
-      // Si id és un número, cridem la funció original
       return deleteExpense(id);
-    },    // ✅ Passem el valor inicial desitjat i les opcions
-    initialRowsPerPage: EXPENSE_ROWS_PER_PAGE_OPTIONS[0], // Comencem amb 10
+    },
+    initialRowsPerPage: EXPENSE_ROWS_PER_PAGE_OPTIONS[0],
     rowsPerPageOptions: EXPENSE_ROWS_PER_PAGE_OPTIONS,
-    toastMessages: {
-      deleteSuccess: t('toast.deleteSuccess'),
-    }
+    toastMessages: { deleteSuccess: t('toast.deleteSuccess') },
   });
 
-  // La lògica de 'visibleColumns' i 'deleteDescription' no canvia
   const visibleColumns = useMemo(
     () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
     [allColumns, columnVisibility]
@@ -19968,38 +20197,29 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
 
   const deleteDescription = (
     <>
-      {tShared('deleteDialog.description1')} <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
+      {tShared('deleteDialog.description1')}{' '}
+      <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
       <br />
       {tShared('deleteDialog.description2')}
     </>
   );
-  // ✅ Log 8: Verifiquem les filterOptions rebudes com a prop
-  console.log("ExpensesClient: Received filterOptions prop:", filterOptions);
-
-  // Extraiem les categories per claredat (opcional)
-  const categoriesForFilter = filterOptions?.categories || [];
-
-  // ✅ Log 9: Verifiquem l'array de categories que es passarà a ExpenseFilters
-  console.log("ExpensesClient: Categories extracted for filter component:", categoriesForFilter);
 
   return (
-<div className="h-full flex flex-col gap-4"> {/* Afegit gap-4 */}
+    <div className="h-full flex flex-col gap-3 md:gap-4">
 
-      {/* ✅ Substituïm la capçalera manual per PageHeader */}
-      <PageHeader title={t('title')}>
-         {/* El botó "Nova Despesa" va com a 'children' */}
-         <Button asChild>
-           <Link href={`/${locale}/finances/expenses/new`}>
-             <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
-           </Link>
-         </Button>
-      </PageHeader>
+      {/* 🧾 Header compacte i responsive */}
+      <div className="sticky top-0 z-10 bg-background border-b shadow-sm py-3 px-4 sm:px-0">
+        <PageHeader title={t('title')}>
+          <Button asChild className="w-full sm:w-auto">
+            <Link href={`/${locale}/finances/expenses/new`}>
+              <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
+            </Link>
+          </Button>
+        </PageHeader>
+      </div>
 
-      {/* ✅ ====================================== */}
-      {/* ✅ PASSEM LES CATEGORIES AL FILTRE       */}
-      {/* ✅ ====================================== */}
-      {/* ✅ Contenidor per a filtres i botó de columnes */}
-      <div className="flex justify-between items-center"> {/* Marge inferior per separar de la taula */}
+      {/* 🔍 Filtres i columnes responsive */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 px-2 sm:px-0">
         <ExpenseFilters
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}
@@ -20014,35 +20234,33 @@ export function ExpensesClient({ initialData, filterOptions }: ExpensesClientPro
         />
       </div>
 
-      {/* ✅ Passem les noves props a GenericDataTable */}
-      <GenericDataTable
-        className="flex-grow overflow-hidden"
-        data={expenses}
-        columns={visibleColumns}
-        onSort={handleSort}
-        currentSortColumn={currentSortColumn}
-        currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
-        isPending={isPending}
-        onDelete={handleDelete}
-        deleteItem={expenseToDelete}
-        setDeleteItem={setExpenseToDelete}
-        deleteTitleKey='ExpensesPage.deleteDialog.title'
-        deleteDescription={deleteDescription}
-        emptyStateMessage={t('emptyState')}
-
-        // Propietats de paginació
-        page={page}
-        totalPages={totalPages}
-        onPageChange={handlePageChange}
-
-        // ✅ Noves props
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={handleRowsPerPageChange}
-        rowsPerPageOptions={EXPENSE_ROWS_PER_PAGE_OPTIONS} // Passem les opcions definides
-      />
+      {/* 📊 Taula amb scroll suau */}
+      <div className="flex-grow overflow-x-auto">
+        <GenericDataTable
+          data={expenses}
+          columns={visibleColumns}
+          onSort={handleSort}
+          currentSortColumn={currentSortColumn}
+          currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
+          isPending={isPending}
+          onDelete={handleDelete}
+          deleteItem={expenseToDelete}
+          setDeleteItem={setExpenseToDelete}
+          deleteTitleKey="ExpensesPage.deleteDialog.title"
+          deleteDescription={deleteDescription}
+          emptyStateMessage={t('emptyState')}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleRowsPerPageChange}
+          rowsPerPageOptions={EXPENSE_ROWS_PER_PAGE_OPTIONS}
+        />
+      </div>
     </div>
   );
 }
+
 
 // =================== FILE: src/app/[locale]/(app)/finances/expenses/_components/ExpensesData.tsx ===================
 
@@ -20553,39 +20771,62 @@ export function InvoiceDetailHeader({
   isFinalizing,
 }: InvoiceDetailHeaderProps) {
   return (
-    <div className="flex justify-between items-center gap-4 sticky top-[--header-height] bg-background  z-10 border-b px-4 md:px-0 -mx-4 md:-mx-0 sm:-mx-6 ">
-      {/* Part Esquerra */}
-      <div className="flex items-center gap-3">
+    <header
+      className="
+      sticky top-[--header-height] z-30 border-b bg-background/90 backdrop-blur-sm 
+      px-3 sm:px-6 py-2 sm:py-3 shadow-sm
+      flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+    "
+    >
+      {/* --- Esquerra: Títol + Back --- */}
+      <div className="flex items-center gap-2 sm:gap-3">
         <Button
           type="button"
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={handleBack}
           aria-label={t('button.goBack')}
+          className="shrink-0"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
+
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold leading-tight">{title}</h1>
-          {description && <p className="text-sm text-muted-foreground hidden md:block">{description}</p>}
+          <h1 className="text-lg sm:text-xl font-semibold leading-tight">
+            {title}
+          </h1>
+          {description && (
+            <p className="text-xs sm:text-sm text-muted-foreground">
+              {description}
+            </p>
+          )}
         </div>
       </div>
-      {/* Part Dreta */}
-      <div className="flex items-center gap-2">
+
+      {/* --- Dreta: Accions --- */}
+      <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+        {/* ⚙️ Configuració */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" disabled={formIsDisabled}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={formIsDisabled}
+              className="flex items-center gap-1"
+            >
               <Settings2 className="h-4 w-4" />
-              <span className="sr-only">{t('button.options')}</span>
+              <span className="hidden sm:inline">{t('button.options')}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-60 p-4 space-y-4">
+          <PopoverContent className="w-64 p-4 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="currency">{t('field.currency')}</Label>
               <Input
                 id="currency"
                 value={formData.currency || 'EUR'}
-                onChange={(e) => handleFieldChange('currency', e.target.value.toUpperCase())}
+                onChange={(e) =>
+                  handleFieldChange('currency', e.target.value.toUpperCase())
+                }
                 disabled={formIsDisabled}
                 maxLength={3}
               />
@@ -20603,11 +20844,18 @@ export function InvoiceDetailHeader({
           </PopoverContent>
         </Popover>
 
+        {/* 👁️ Previsualització */}
         <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" disabled={isSaving}>
-              <Eye className="w-4 h-4 mr-2" />
-              {t('button.preview')}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isSaving}
+              className="flex items-center gap-1"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="hidden sm:inline">{t('button.preview')}</span>
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
@@ -20619,23 +20867,39 @@ export function InvoiceDetailHeader({
             </ScrollArea>
             <DialogFooter className="mt-4">
               <DialogClose asChild>
-                <Button type="button" variant="outline">{t('button.close')}</Button>
+                <Button type="button" variant="outline">
+                  {t('button.close')}
+                </Button>
               </DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* ⬇️ Descarregar PDF */}
         {formData.status !== 'Draft' && initialData && company && contact && (
           <InvoiceDownloadButton
             invoice={initialData}
             company={company}
             contact={contact}
-          />)}
+          />
+        )}
 
+        {/* 💾 Desa / 🧾 Emissió */}
         {!isLocked && (
-          <Button type="submit" disabled={isSaving}>
-            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-            {isPending ? t('button.saving') : t('button.saveDraft')}
+          <Button
+            type="submit"
+            disabled={isSaving}
+            size="sm"
+            className="flex items-center gap-1 min-w-[100px]"
+          >
+            {isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isPending ? t('button.saving') : t('button.saveDraft')}
+            </span>
           </Button>
         )}
 
@@ -20645,20 +20909,32 @@ export function InvoiceDetailHeader({
             variant="default"
             onClick={handleFinalize}
             disabled={isSaving}
+            size="sm"
+            className="flex items-center gap-1 min-w-[110px]"
           >
-            {isFinalizing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
-            {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+            {isFinalizing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+            </span>
           </Button>
         )}
 
+        {/* 🔒 Estat enviat */}
         {isLocked && (
-          <Badge variant="outline" className="text-muted-foreground border-green-500 text-green-500">
-            <Lock className="w-4 h-4 mr-2" />
+          <Badge
+            variant="outline"
+            className="text-muted-foreground border-green-500 text-green-600"
+          >
+            <Lock className="w-4 h-4 mr-1" />
             {t('status.Sent')}
           </Badge>
         )}
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -23246,7 +23522,7 @@ import { type PaginatedActionParams } from '@/hooks/usePaginateResource';
 
 // ✅ 1. Importem el NOU servei
 import * as productService from '@/lib/services/finances/products/products.service';
-
+import { redirect } from 'next/navigation'; // 👈 1. Importar redirect
 // ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
 import type { 
   ProductPageFilters, 
@@ -23300,20 +23576,39 @@ export async function createProduct(
   return result;
 }
 
-export async function deleteProduct(id: number): Promise<FormState> {
+/**
+ * ACCIÓ: Elimina un producte.
+ * Aquesta és la versió corregida.
+ */
+export async function deleteProduct(productId: number): Promise<FormState> {
   const session = await validateUserSession();
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
+  
+  // 1. Obtenim el client 'supabase' autenticat.
+  // No necessitem 'activeTeamId' per a la crida.
   const { supabase } = session;
 
-  const result = await productService.deleteProduct(supabase, id);
+  // 2. ✅ CRIDA CORREGIDA: Cridem al servei només amb (supabase, id)
+  const result = await productService.deleteProduct(supabase, productId);
 
   if (result.success) {
-    revalidatePath('/crm/products');
+    // 3. Si té èxit, revalidem la memòria cau de la PÀGINA DE LLISTA.
+    revalidatePath('/finances/products'); 
+    
+    // 4. Important: NO revalidem la pàgina de detall [productId]
+    //    perquè ja no existeix.
+
+  } else {
+    // Si el servei retorna un error, el passem al client
+    return { success: false, message: result.message };
   }
 
-  return result;
+  // 5. REDIRECCIÓ DES DEL SERVIDOR:
+  // Un cop eliminat i revalidat, redirigim l'usuari a la llista.
+  // Això evita la "cursa" (race condition) i el 404.
+  redirect(`/finances/products`);
 }
 
 // =================== FILE: src/app/[locale]/(app)/finances/products/page.tsx ===================
@@ -23709,34 +24004,46 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
 // =================== FILE: src/app/[locale]/(app)/finances/products/[productId]/_components/ProductDetailData.tsx ===================
 
-// src/app/[locale]/(app)/crm/products/[productId]/_components/ProductDetailData.tsx
-import { fetchProductDetail } from '../actions'; // Acció del directori [productId]
-import { ProductDetailClient } from './ProductDetailClient'; // Component client que crearem
-import { getTranslations } from 'next-intl/server'; // Per a missatges d'error
+// /app/[locale]/(app)/finances/products/[productId]/_components/ProductDetailData.tsx (CORREGIT)
+
+import { notFound } from 'next/navigation'; // 👈 1. Importar notFound
+import { fetchProductDetail } from '../actions';
+import { ProductDetailClient } from './ProductDetailClient';
 
 interface ProductDetailDataProps {
   productId: number;
 }
 
 export async function ProductDetailData({ productId }: ProductDetailDataProps) {
-  const t = await getTranslations('ProductsPage'); // O un namespace específic
+  // Nota: Si 'fetchProductDetail' necessita 't', hauràs de crear-lo abans
+  // const t = await getTranslations('ProductsPage');
 
+  let product;
   try {
-    // Cridem l'acció per obtenir el producte.
-    // fetchProductDetail ja gestiona el 'notFound()' internament.
-    const product = await fetchProductDetail(productId);
+    // 2. Cridem l'acció per obtenir les dades
+    product = await fetchProductDetail(productId);
 
-    // Passem les dades al component client
-    return <ProductDetailClient product={product} />;
-
-  } catch (error) {
-    // Si fetchProductDetail llança un altre error (p.ex., error de BD)
-    console.error("Error loading product data:", error);
-    // Mostrem un missatge d'error genèric
-    // (L'error 404 ja s'hauria gestionat amb notFound())
-    // Podries llançar l'error perquè Error Boundary el capturi
-    throw new Error(t('errors.loadSingleFailed') || "No s'ha pogut carregar el detall del producte.");
+  } catch (error: unknown) {
+    // 3. Si l'acció llança un error (ex: error de base de dades),
+    // el capturem i mostrem la pàgina 404.
+    if (error instanceof Error) {
+      console.error(`[ProductDetailData] Error en carregar el producte ${productId}:`, error.message);
+    } else {
+      console.error(`[ProductDetailData] Error en carregar el producte ${productId}:`, error);
+    }
+    return notFound(); 
   }
+
+  // 4. Comprovació addicional per si l'acció retorna 'null' en lloc de llançar un error
+  if (!product) {
+    // Si el producte no es troba (null o undefined), mostrem 404
+    return notFound();
+  }
+
+  // 5. Si tot va bé, renderitzem el component client amb les dades
+  return (
+    <ProductDetailClient product={product} />
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/finances/products/[productId]/_components/ProductDetailView.tsx ===================
@@ -24952,7 +25259,6 @@ export function QuotePdfDocument({
       <Page size="A4" style={styles.page}>
         {/* --- CAPÇALERA --- */}
         <View style={styles.header}>
-          {/* ✅ CORRECCIÓ LOGO: Simplificat per a més fiabilitat */}
           {company?.logo_url ? (
             <Image
               src={company.logo_url} // Passem la URL pública directament
@@ -25048,8 +25354,9 @@ export function QuotePdfDocument({
               </Text>
               {showQuantity && (
                 <>
+                  {/* ✅ CORRECCIÓ 1: Convertim a String */}
                   <Text style={[styles.tableCell, styles.colQty]}>
-                    {item.quantity}
+                    {String(item.quantity ?? 1)}
                   </Text>
                   <Text style={[styles.tableCell, styles.colPrice]}>
                     {formatCurrency(item.unit_price ?? 0)}
@@ -25079,7 +25386,8 @@ export function QuotePdfDocument({
 
             {quote.discount && quote.discount > 0 && (
               <View style={styles.totalsRowGreen}>
-                <Text>Descompte ({quote.discount}%)</Text>
+                {/* ✅ CORRECCIÓ 2: Convertim a String */}
+                <Text>Descompte ({String(quote.discount)}%)</Text>
                 <Text>-{formatCurrency(discountAmount)}</Text>
               </View>
             )}
@@ -25090,7 +25398,10 @@ export function QuotePdfDocument({
             </View>
 
             <View style={styles.totalsRow}>
-              <Text style={styles.textGray}>IVA ({quote.tax_percent ?? 21}%)</Text>
+              {/* ✅ CORRECCIÓ 3: Convertim a String */}
+              <Text style={styles.textGray}>
+                IVA ({String(quote.tax_percent ?? 21)}%)
+              </Text>
               <Text>{formatCurrency(tax)}</Text>
             </View>
 
@@ -25227,18 +25538,21 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
 
             <div className="flex flex-col h-full">
                 {/* ------------------------------------------------------------- */}
-                {/* ✅ NOU DISSENY DE LA CAPÇALERA AMB L'ESTAT A L'ESQUERRA */}
+                {/* ✅ NOVA CAPÇALERA RESPONSIVE PER A MÒBIL I ESCRIPTORI */}
                 {/* ------------------------------------------------------------- */}
-                <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <div className="flex items-center gap-4">
-                        <Button variant="outline" onClick={handleBack}>
-                            <ArrowLeft className="w-4 h-4 mr-2" />{t('quoteEditor.backButton')}
+                <header className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6 flex-shrink-0">
+                    {/* Esquerra: botó enrere + estat */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button variant="outline" onClick={handleBack} className="flex-shrink-0">
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            {t('quoteEditor.backButton')}
                         </Button>
-                        <SentStatusCard /> {/* ✅ Estat d'enviament al costat del botó de tornada */}
+                        <SentStatusCard />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* ✅ 3. Substituïm el botó de descàrrega */}
+                    {/* Dreta: accions */}
+                    <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 w-full sm:w-auto">
+                        {/* Descàrrega PDF */}
                         {typeof quote.id === 'number' ? (
                             <QuoteDownloadButton
                                 quote={quote}
@@ -25248,7 +25562,6 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 t={t}
                             />
                         ) : (
-                            // Si el pressupost és 'new', mostrem el botó desactivat
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -25264,20 +25577,48 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 </Tooltip>
                             </TooltipProvider>
                         )}
-                        <Button variant="ghost" size="icon" onClick={() => setIsProfileDialogOpen(true)} title={t('quoteEditor.companyDataTooltip')}>
+
+                        {/* Dades empresa */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setIsProfileDialogOpen(true)}
+                            title={t('quoteEditor.companyDataTooltip')}
+                        >
                             <Building className="w-4 h-4" />
                         </Button>
-                        {quote.id !== 'new' &&
-                            <Button variant="outline" size="icon" onClick={() => setIsDeleteDialogOpen(true)} title={t('quoteEditor.deleteTooltip')}>
+
+                        {/* Eliminar (si no és nou) */}
+                        {quote.id !== 'new' && (
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsDeleteDialogOpen(true)}
+                                title={t('quoteEditor.deleteTooltip')}
+                            >
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
-                        }
-                        <Button onClick={handleSave} disabled={isSaving || isSending} className="min-w-[100px]">
+                        )}
+
+                        {/* Guardar */}
+                        <Button
+                            onClick={handleSave}
+                            disabled={isSaving || isSending}
+                            className="min-w-[110px] w-full sm:w-auto"
+                        >
                             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            {quote.id === 'new' ? t('quoteEditor.createButton') : t('quoteEditor.saveButton')}
+                            {quote.id === 'new'
+                                ? t('quoteEditor.createButton')
+                                : t('quoteEditor.saveButton')}
                         </Button>
+
+                        {/* Enviar */}
                         {quote.id !== 'new' && (
-                            <Button onClick={handleSend} disabled={isSaving || isSending} className="min-w-[120px]">
+                            <Button
+                                onClick={handleSend}
+                                disabled={isSaving || isSending}
+                                className="min-w-[120px] w-full sm:w-auto"
+                            >
                                 {isSending ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -25288,7 +25629,9 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 ) : (
                                     <>
                                         <Send className="mr-2 h-4 w-4" />
-                                        {quote.sent_at ? t('quoteEditor.resendButton') : t('quoteEditor.sendButton')}
+                                        {quote.sent_at
+                                            ? t('quoteEditor.resendButton')
+                                            : t('quoteEditor.sendButton')}
                                     </>
                                 )}
                             </Button>
@@ -25403,153 +25746,178 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
 
 // =================== FILE: src/app/[locale]/(app)/finances/quotes/[id]/_components/QuoteEditorData.tsx ===================
 
-// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorData.tsx (MODIFICAT)
+// /app/[locale]/(app)/crm/quotes/[id]/_components/QuoteEditorData.tsx (CORREGIT)
 
-import { redirect } from 'next/navigation';
-import { QuoteEditorClient } from './QuoteEditorClient';
-import { validatePageSession } from "@/lib/supabase/session";
-import type { Database } from '@/types/supabase';
+import { redirect } from 'next/navigation'
+import { QuoteEditorClient } from './QuoteEditorClient'
+import { validatePageSession } from '@/lib/supabase/session'
+import type { Database } from '@/types/supabase'
+import crypto from 'crypto' // Per al randomUUID del newQuote
 
-// --- Tipus Derivats (sense canvis) ---
-type Quote = Database['public']['Tables']['quotes']['Row'];
-type QuoteItem = Database['public']['Tables']['quote_items']['Row'];
-type Opportunity = Database['public']['Tables']['opportunities']['Row'];
-type Team = Database['public']['Tables']['teams']['Row']; // <-- El tipus que ara farem servir
+// --- Tipus Derivats ---
+type Quote = Database['public']['Tables']['quotes']['Row']
+type QuoteItem = Database['public']['Tables']['quote_items']['Row']
+type Opportunity = Database['public']['Tables']['opportunities']['Row']
+type Team = Database['public']['Tables']['teams']['Row']
 type QuoteDetailsResponse = {
-    quote: Quote & { items: QuoteItem[] };
-    opportunities: Opportunity[];
+  quote: Quote & { items: QuoteItem[] }
+  opportunities: Opportunity[]
 }
 
 interface QuoteEditorDataProps {
-    quoteId: string;
-    locale: string;
+  quoteId: string
+  locale: string
 }
 
-// Tipus per a un nou pressupost que encara no té ID a la BD
-type NewQuote = Omit<Quote, 'id'> & { id: 'new'; items: Partial<QuoteItem>[] };
-// Define a union type for initialQuote to accept both new and existing quotes
-type InitialQuoteType = (Quote & { items: QuoteItem[] }) | NewQuote;
+type NewQuote = Omit<Quote, 'id' | 'created_at'> & {
+  id: 'new'
+  items: Partial<QuoteItem>[]
+  created_at: string
+}
+type InitialQuoteType = (Quote & { items: QuoteItem[] }) | NewQuote
 
-export async function QuoteEditorData({ quoteId, locale }: QuoteEditorDataProps) {
-    const { supabase, user, activeTeamId } = await validatePageSession();
+export async function QuoteEditorData({
+  quoteId,
+  locale,
+}: QuoteEditorDataProps) {
+  const { supabase, user, activeTeamId } = await validatePageSession()
 
-    // --- LÒGICA PER A UN PRESSUPOST NOU (sense canvis a la lògica principal) ---
-    if (quoteId === 'new') {
-        const [contactsRes, productsRes, teamRes, lastQuoteRes] = await Promise.all([
-            supabase.from('contacts').select('*'),
-            supabase.from('products').select('*').eq('is_active', true),
-            supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-            supabase.from('quotes')
-                .select('sequence_number')
-                .eq('team_id', activeTeamId)
-                .order('sequence_number', { ascending: false })
-                .limit(1)
-                .maybeSingle()
-        ]);
+  // --- LÒGICA PER A UN PRESSUPOST NOU ---
+  if (quoteId === 'new') {
+    const [contactsRes, productsRes, teamRes, lastQuoteRes] = await Promise.all([
+      supabase.from('contacts').select('*').eq('team_id', activeTeamId), // Afegit filtre team_id
+      supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .eq('team_id', activeTeamId),
+      supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+      supabase
+        .from('quotes')
+        .select('sequence_number')
+        .eq('team_id', activeTeamId)
+        .order('sequence_number', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
 
-        // ... (gestió d'errors i càlcul de número de pressupost igual que abans) ...
-        if (contactsRes.error || productsRes.error || teamRes.error || lastQuoteRes.error) {
-            console.error("Error en carregar les dades per a un nou pressupost:", { /* ... errors ... */ });
-            return <div>Error en carregar les dades de l'editor.</div>;
-        }
-        const lastSequence = lastQuoteRes.data?.sequence_number || 0;
-        const nextSequence = lastSequence + 1;
-        const year = new Date().getFullYear();
-        const formattedQuoteNumber = `PRE-${year}-${String(nextSequence).padStart(4, '0')}`;
-        // ... (construcció de 'initialQuote: NewQuote' igual que abans) ...
-        const initialQuote: NewQuote = {
-            id: 'new',
-            team_id: activeTeamId,
-            user_id: user.id,
-            contact_id: null,
-            opportunity_id: null,
-            quote_number: formattedQuoteNumber,
-            sequence_number: nextSequence,
-            issue_date: new Date().toISOString().slice(0, 10),
-            expiry_date: null,
-            status: 'Draft',
-            notes: 'Gràcies pel vostre interès en els nostres serveis.',
-            subtotal: 0,
-            discount: 0,
-            tax: 0,
-            tax_percent: 21,
-            total: 0,
-            show_quantity: true,
-            created_at: new Date().toISOString(),
-            sent_at: null,
-            rejection_reason: null,
-            send_at: null, // Assegura't que 'send_at' existeix al teu tipus Quote o elimina'l si no
-            theme_color: null,
-            secure_id: crypto.randomUUID(),
-            items: [{ /* ... item inicial ... */ }]
-        };
-
-
-        // Passem null com a pdfUrl per a nous pressupostos
-        return (
-            <QuoteEditorClient
-                initialQuote={initialQuote as InitialQuoteType} // Cast necessari per la unió
-                contacts={contactsRes.data || []}
-                products={productsRes.data || []}
-                companyProfile={teamRes.data as Team | null}
-                initialOpportunities={[]}
-                userId={user.id}
-                locale={locale}
-                pdfUrl={null} // 👈 Nou pressupost, no hi ha PDF encara
-            />
-        );
+    if (
+      contactsRes.error ||
+      productsRes.error ||
+      teamRes.error ||
+      lastQuoteRes.error
+    ) {
+      console.error('Error en carregar les dades per a un nou pressupost:', {
+        contacts: contactsRes.error,
+        products: productsRes.error,
+        team: teamRes.error,
+        lastQuote: lastQuoteRes.error,
+      })
+      return <div>Error en carregar les dades de l'editor.</div>
     }
 
-    // --- LÒGICA PER A EDITAR UN PRESSUPOST EXISTENT ---
-    const [contactsRes, productsRes, teamRes, quoteDetailsRes] = await Promise.all([
-        supabase.from('contacts').select('*'),
-        supabase.from('products').select('*').eq('is_active', true),
-        supabase.from('teams').select('*').eq('id', activeTeamId).single(),
-        supabase.rpc('get_quote_details', { p_quote_id: Number(quoteId) }).single<QuoteDetailsResponse>()
-    ]);
+    const lastSequence = lastQuoteRes.data?.sequence_number || 0
+    const nextSequence = lastSequence + 1
+    const year = new Date().getFullYear()
+    const formattedQuoteNumber = `PRE-${year}-${String(
+      nextSequence
+    ).padStart(4, '0')}`
 
-    if (contactsRes.error || productsRes.error || teamRes.error || quoteDetailsRes.error) {
-        console.error("Error en carregar les dades d'un pressupost existent:", { /* ... errors ... */ });
-        return <div>Error en carregar les dades de l'editor.</div>;
+    const initialQuote: NewQuote = {
+      id: 'new',
+      team_id: activeTeamId,
+      user_id: user.id,
+      contact_id: null,
+      opportunity_id: null,
+      quote_number: formattedQuoteNumber,
+      sequence_number: nextSequence,
+      issue_date: new Date().toISOString().slice(0, 10),
+      expiry_date: null,
+      status: 'Draft',
+      notes: 'Gràcies pel vostre interès en els nostres serveis.',
+      subtotal: 0,
+      discount: 0,
+      tax: 0,
+      tax_percent: 21,
+      total: 0,
+      show_quantity: true,
+      created_at: new Date().toISOString(),
+      sent_at: null,
+      rejection_reason: null,
+      send_at: null,
+      theme_color: null,
+      secure_id: crypto.randomUUID(),
+      items: [
+        {
+          description: '',
+          quantity: 1,
+          unit_price: 0,
+          total: 0,
+        },
+      ],
     }
-
-    const quoteDetails = quoteDetailsRes.data;
-
-    if (!quoteDetails?.quote) {
-        redirect(`/${locale}/crm/quotes`);
-    }
-
-    // ✅ <<< INICI: Lògica per generar la URL signada del PDF >>>
-    let pdfUrl: string | null = null;
-    const filePath = `quotes/${activeTeamId}/${quoteId}.pdf`; // Construïm el path PRIVAT
-
-    const { data: signedUrlData, error: signedUrlError } = await supabase
-        .storage
-        .from('fitxers-privats') // Apuntem al bucket PRIVAT
-        .createSignedUrl(filePath, 60 * 5); // Generem URL per 5 minuts (ajusta segons necessitis)
-
-    if (signedUrlError) {
-        // Important: NO llencem un error aquí si el PDF no existeix.
-        // Podria ser que encara no s'hagi generat o enviat.
-        console.warn(`No s'ha pogut generar la URL signada per a ${filePath}: ${signedUrlError.message}`);
-        // pdfUrl romandrà null, i el client ho gestionarà (ex: desactivant el botó)
-    } else {
-        pdfUrl = signedUrlData.signedUrl;
-    }
-    // ✅ <<< FI: Lògica per generar la URL signada del PDF >>>
 
     return (
-        <QuoteEditorClient
-            initialQuote={quoteDetails.quote}
-            contacts={contactsRes.data || []}
-            products={productsRes.data || []}
-            companyProfile={teamRes.data as Team | null}
-            initialOpportunities={quoteDetails.opportunities || []}
-            userId={user.id}
-            locale={locale}
-            pdfUrl={pdfUrl} // 👈 Passem la URL signada (o null si hi ha error/no existeix)
-        />
-    );
+      <QuoteEditorClient
+        initialQuote={initialQuote as InitialQuoteType}
+        contacts={contactsRes.data || []}
+        products={productsRes.data || []}
+        companyProfile={teamRes.data as Team | null}
+        initialOpportunities={[]}
+        userId={user.id}
+        locale={locale}
+        // ❌ Prop 'pdfUrl' eliminada. Ja no és necessària.
+      />
+    )
+  }
+
+  // --- LÒGICA PER A EDITAR UN PRESSUPOST EXISTENT ---
+  const [contactsRes, productsRes, teamRes, quoteDetailsRes] = await Promise.all([
+    supabase.from('contacts').select('*').eq('team_id', activeTeamId), // Afegit filtre
+    supabase
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .eq('team_id', activeTeamId),
+    supabase.from('teams').select('*').eq('id', activeTeamId).single(),
+    supabase
+      .rpc('get_quote_details', { p_quote_id: Number(quoteId) })
+      .single<QuoteDetailsResponse>(),
+  ])
+
+  if (
+    contactsRes.error ||
+    productsRes.error ||
+    teamRes.error ||
+    quoteDetailsRes.error
+  ) {
+    console.error("Error en carregar les dades d'un pressupost existent:", {
+      /* ... errors ... */
+    })
+    return <div>Error en carregar les dades de l'editor.</div>
+  }
+
+  const quoteDetails = quoteDetailsRes.data
+
+  if (!quoteDetails?.quote) {
+    redirect(`/${locale}/finances/quotes`) // Canviat de 'crm/quotes' a 'finances/quotes'
+  }
+
+  // ❌ LÒGICA ELIMINADA: Ja no busquem 'createSignedUrl'.
+  // El PDF es genera al client.
+
+  return (
+    <QuoteEditorClient
+      initialQuote={quoteDetails.quote}
+      contacts={contactsRes.data || []}
+      products={productsRes.data || []}
+      companyProfile={teamRes.data as Team | null}
+      initialOpportunities={quoteDetails.opportunities || []}
+      userId={user.id}
+      locale={locale}
+      // ❌ Prop 'pdfUrl' eliminada. Ja no és necessària.
+    />
+  )
 }
 
 // =================== FILE: src/app/[locale]/(app)/finances/quotes/[id]/_components/QuoteEditorSkeleton.tsx ===================
@@ -26124,82 +26492,6 @@ export const QuoteTotals: React.FC<QuoteTotalsProps> = ({
         </div>
     );
 };
-
-// =================== FILE: src/app/[locale]/(app)/finances/quotes/[id]/_components/StatCardsGrid.tsx ===================
-
-// /app/[locale]/(app)/dashboard/_components/StatCardsGrid.tsx (Refactoritzat i Complet)
-"use client";
-
-import React, { memo } from "react";
-import { useTranslations } from "next-intl";
-import { StatCard } from "@/components/shared/StatCard";
-import { Users, Target, Euro, BadgePercent } from "lucide-react";
-
-/**
- * @file StatCardsGrid.tsx
- * @description Mostra la graella de targetes de KPI principals del Dashboard.
- */
-
-// ✅ 1. Definim una interfície clara per a les mètriques que aquest component espera.
-// Aquesta estructura és explícita i fàcil de verificar a l'hora de passar les props.
-interface DashboardStats {
-    totalContacts: number;
-    opportunities: number;
-    invoiced: number;
-    pending: number;
-}
-
-interface StatCardsGridProps {
-    stats: DashboardStats;
-}
-
-/**
- * ✅ Component memoitzat per evitar re-render innecessaris.
- * S’encarrega només de representar les targetes de mètriques principals.
- */
-export const StatCardsGrid = memo(({ stats }: StatCardsGridProps) => {
-    const t = useTranslations("DashboardClient");
-
-    return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-            <StatCard
-                href="/crm/contactes"
-                icon={Users}
-                title={t("totalContacts")}
-                value={stats.totalContacts.toLocaleString()}
-                color="bg-[#2d7ef7]"
-                openText={t("openLink")}
-            />
-            <StatCard
-                href="/crm/pipeline"
-                icon={Target}
-                title={t("activeOpportunities")}
-                value={stats.opportunities.toLocaleString()}
-                color="bg-[#12a150]"
-                openText={t("openLink")}
-            />
-            <StatCard
-                href="/finances/facturacio"
-                icon={Euro}
-                title={t("monthlyInvoicing")}
-                value={`€${stats.invoiced.toLocaleString()}`}
-                color="bg-[#8a3ffc]"
-                openText={t("openLink")}
-            />
-            <StatCard
-                href="/finances/facturacio"
-                icon={BadgePercent}
-                title={t("pendingVAT")}
-                value={`€${stats.pending.toLocaleString()}`}
-                color="bg-[#f27917]"
-                openText={t("openLink")}
-            />
-        </div>
-    );
-});
-
-// ✅ 2. Afegim un displayName per a una millor depuració amb les React DevTools.
-StatCardsGrid.displayName = "StatCardsGrid";
 
 // =================== FILE: src/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor.ts ===================
 
@@ -27623,15 +27915,16 @@ export function SupplierDetailClient({
 // =================== FILE: src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/SupplierDetailData.tsx ===================
 
 // /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/SupplierDetailData.tsx (FITXER CORREGIT)
-// ✅ CORRECCIÓ: Importem l'acció local de detall
 import { fetchSupplierDetail } from '../actions';
 import { SupplierDetailClient } from './SupplierDetailClient';
-// ✅ Imports correctes per a dades relacionades
 import { fetchContactsForSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
 import { fetchExpensesForSupplier } from '@/app/[locale]/(app)/finances/expenses/actions';
 import { fetchTicketsForSupplierContacts } from '@/app/[locale]/(app)/comunicacio/inbox/actions';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { getTranslations } from 'next-intl/server';
+
+// ✅ 1. Importem el tipus que falta
+import { type TicketForSupplier } from '@/types/db';
 
 interface SupplierDetailDataProps {
   supplierId: string;
@@ -27663,18 +27956,32 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
     );
   }
 
-  // Càrrega de dades en paral·lel
+  // 1. Càrrega de dades principals en paral·lel
   const [
     supplierData,
     contactsData,
-    expensesData,
-    ticketsData
+    expensesData
   ] = await Promise.all([
-    fetchSupplierDetail(supplierId), // ✅ Crida a l'acció local
+    fetchSupplierDetail(supplierId),
     fetchContactsForSupplier(supplierId),
-    fetchExpensesForSupplier(supplierId),
-    fetchTicketsForSupplierContacts(supplierId)
+    fetchExpensesForSupplier(supplierId)
   ]);
+
+  // 2. Càrrega de dades dependents (Tiquets)
+  
+  // ✅ 2. Donem el tipus explícit a la variable
+  let ticketsData: TicketForSupplier[] = []; // Inicialitzem a buit
+  
+  if (contactsData && contactsData.length > 0) {
+    try {
+      // Només busquem tiquets si el proveïdor té contactes
+      ticketsData = await fetchTicketsForSupplierContacts(supplierId);
+    } catch (error) {
+      console.error("Error en fetchTicketsForSupplierContacts (SupplierDetailData):", error);
+      // No aturem la càrrega de la pàgina, simplement no hi haurà tiquets.
+      ticketsData = []; 
+    }
+  }
 
   // 'fetchSupplierDetail' ja llança notFound() si no troba dades
   // (Ho hem definit al servei)
@@ -27691,7 +27998,7 @@ export async function SupplierDetailData({ supplierId }: SupplierDetailDataProps
         supplierId={supplierId}
         contacts={contactsData || []}
         expenses={expensesData || []}
-        tickets={ticketsData || []}
+        tickets={ticketsData || []} // Passem les dades (plenes o buides)
       />
     </div>
   );
@@ -27763,9 +28070,10 @@ export function SupplierForm({
 
 // =================== FILE: src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ContactsTabContent.tsx ===================
 
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ContactsTabContent.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
-import { useState, useTransition } from 'react'; // ✅ Afegim useTransition
+import { useState, useTransition } from 'react'; 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -27773,7 +28081,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   PlusCircle, Users, Mail, Phone, Link2,
-  Trash2, Loader2 // ✅ Afegim icones
+  Trash2, Loader2 
 } from 'lucide-react';
 import { unlinkContactFromSupplier } from '@/app/[locale]/(app)/crm/contactes/actions';
 import { LinkContactDialog } from '../LinkContactDialog';
@@ -27788,13 +28096,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // ✅ Importem Alert Dialog
+} from "@/components/ui/alert-dialog"; 
 import { toast } from 'sonner';
 
 interface ContactsTabContentProps {
   contacts: ContactForSupplier[];
   supplierId: string;
-  t: (key: string) => string;
+  t: (key: string, values?: Record<string, unknown>) => string; 
 }
 
 export function ContactsTabContent({ contacts: initialContactsProp, supplierId, t }: ContactsTabContentProps) {
@@ -27817,10 +28125,8 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
     ]);
   };
 
-  // ✅ 4. 'contactId' ara és un NÚMERO
   const handleUnlink = (contactId: number) => {
     startUnlinkTransition(async () => {
-      // L'acció 'unlinkContactFromSupplier' espera un 'string', així que el convertim
       const result = await unlinkContactFromSupplier(String(contactId), supplierId);
       if (result.success) {
         toast.success(result.message);
@@ -27834,16 +28140,19 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* ✅ MILLORA MÒBIL: Capçalera apilable */}
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" />{t('contactsCard.title')}</CardTitle>
             <CardDescription>{t('contactsCard.description')}</CardDescription>
           </div>
-          <div className="flex gap-2">
+           {/* ✅ MILLORA MÒBIL: Botons apilables i amplada completa en mòbil */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsLinkDialogOpen(true)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <Link2 className="h-4 w-4 mr-2" />
               {t('contactsCard.linkButton')}
@@ -27853,6 +28162,7 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
               variant="default"
               size="sm"
               onClick={() => router.push(`/crm/contactes/new?supplierId=${supplierId}`)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               {t('contactsCard.newButton')}
@@ -27865,8 +28175,10 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
               <TableHeader>
                 <TableRow>
                   <TableHead>{t('contactsCard.table.name')}</TableHead>
-                  <TableHead>{t('contactsCard.table.email')}</TableHead>
-                  <TableHead>{t('contactsCard.table.phone')}</TableHead>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Email en pantalles mitjanes/petites */}
+                  <TableHead className="hidden md:table-cell">{t('contactsCard.table.email')}</TableHead>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Telèfon en pantalles petites */}
+                  <TableHead className="hidden sm:table-cell">{t('contactsCard.table.phone')}</TableHead>
                   <TableHead className="w-[50px]">
                     <span className="sr-only">Accions</span>
                   </TableHead>
@@ -27876,7 +28188,6 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                 {contacts.map((contact) => (
                   <TableRow key={contact.id}>
                     <TableCell>
-                      {/* ✅ MILLORA NAVEGACIÓ: Afegim el paràmetre 'from' */}
                       <Link
                         href={`/crm/contactes/${contact.id}?from=/finances/suppliers/${supplierId}`}
                         className="font-medium text-blue-600 hover:underline"
@@ -27884,10 +28195,11 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                         {contact.nom}
                       </Link>
                     </TableCell>
-                    <TableCell>{contact.email ? (<a href={`mailto:${contact.email}`} className="flex items-center gap-2 hover:underline"><Mail className="h-3 w-3" /> {contact.email}</a>) : '-'}</TableCell>
-                    <TableCell>{contact.telefon ? (<a href={`tel:${contact.telefon}`} className="flex items-center gap-2 hover:underline"><Phone className="h-3 w-3" /> {contact.telefon}</a>) : '-'}</TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Email */}
+                    <TableCell className="hidden md:table-cell">{contact.email ? (<a href={`mailto:${contact.email}`} className="flex items-center gap-2 hover:underline"><Mail className="h-3 w-3" /> {contact.email}</a>) : '-'}</TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Telèfon */}
+                    <TableCell className="hidden sm:table-cell">{contact.telefon ? (<a href={`tel:${contact.telefon}`} className="flex items-center gap-2 hover:underline"><Phone className="h-3 w-3" /> {contact.telefon}</a>) : '-'}</TableCell>
 
-                    {/* ✅ NOU: Cel·la d'accions (Desvincular) */}
                     <TableCell>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -27905,8 +28217,7 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('contactsCard.unlinkDialog.title')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {/* 👇 AQUESTA ÉS LA LÍNIA CLAU 👇 */}
-                              {t('contactsCard.unlinkDialog.description')}
+                              {t('contactsCard.unlinkDialog.description', { contactName: contact.nom })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -27946,30 +28257,29 @@ export function ContactsTabContent({ contacts: initialContactsProp, supplierId, 
 
 // =================== FILE: src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ExpensesTabContent.tsx ===================
 
-// src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ExpensesTabContent.tsx
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/ExpensesTabContent.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
-import { useState, useTransition } from 'react'; // ✅ Afegim useState i useTransition
+import { useState, useTransition } from 'react'; 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Expense } from '@/types/finances';
+import { type Expense } from '@/types/finances';
 import {
-  PlusCircle, CreditCard, Link2 as LinkIcon, // ✅ Canviem nom Link2
-  Trash2, Loader2 // ✅ Afegim icones
+  PlusCircle, CreditCard, Link2 as LinkIcon, 
+  Trash2, Loader2 
 } from 'lucide-react';
 import {
   type ExpenseForSupplier,
-  unlinkExpenseFromSupplier, // ✅ Importem unlink
-  // Si has creat el tipus Expense complet, importa'l també
+  unlinkExpenseFromSupplier, 
 
 } from '@/app/[locale]/(app)/finances/expenses/actions';
 
 import { formatDate, formatCurrency } from '@/lib/utils/formatters';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { LinkExpenseDialog } from '../LinkExpenseDialog'; // ✅ Importem el nou diàleg
+import { LinkExpenseDialog } from '../LinkExpenseDialog'; 
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27980,7 +28290,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"; // ✅ Importem Alert Dialog
+} from "@/components/ui/alert-dialog"; 
 import { toast } from 'sonner';
 
 interface ExpensesTabContentProps {
@@ -27992,14 +28302,11 @@ interface ExpensesTabContentProps {
 export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, t }: ExpensesTabContentProps) {
   const router = useRouter();
 
-  // ✅ Gestionem l'estat localment
   const [expenses, setExpenses] = useState(initialExpensesProp || []);
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [isUnlinking, startUnlinkTransition] = useTransition();
 
-  // ✅ Funció per afegir una despesa vinculada a l'estat
   const handleLinkSuccess = (newlyLinkedExpense: Expense) => {
-    // Adaptem el tipus complet 'Expense' al tipus 'ExpenseForSupplier' necessari per la taula
     setExpenses(prevExpenses => [
       ...prevExpenses,
       {
@@ -28007,12 +28314,11 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
         expense_date: newlyLinkedExpense.expense_date,
         description: newlyLinkedExpense.description,
         total_amount: newlyLinkedExpense.total_amount,
-        status: newlyLinkedExpense.status, // Assegura't que 'status' existeix a 'Expense'
+        status: newlyLinkedExpense.status, 
       } as ExpenseForSupplier
-    ].sort((a, b) => new Date(b.expense_date || 0).getTime() - new Date(a.expense_date || 0).getTime())); // Reordenem per data
+    ].sort((a, b) => new Date(b.expense_date || 0).getTime() - new Date(a.expense_date || 0).getTime())); 
   };
 
-  // ✅ Funció per gestionar la desvinculació
   const handleUnlink = (expenseId: number) => {
     startUnlinkTransition(async () => {
       const result = await unlinkExpenseFromSupplier(expenseId, supplierId);
@@ -28028,27 +28334,29 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* ✅ MILLORA MÒBIL: Capçalera apilable */}
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />{t('expensesCard.title')}</CardTitle>
             <CardDescription>{t('expensesCard.description')}</CardDescription>
           </div>
-          <div className="flex gap-2">
-            {/* ✅ Botó per VINCULAR existent */}
+          {/* ✅ MILLORA MÒBIL: Botons apilables i amplada completa en mòbil */}
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsLinkDialogOpen(true)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <LinkIcon className="h-4 w-4 mr-2" />
               {t('expensesCard.linkButton')}
             </Button>
 
-            {/* Botó per CREAR nou */}
             <Button
               variant="default"
               size="sm"
               onClick={() => router.push(`/finances/expenses/new?supplierId=${supplierId}`)}
+              className="w-full sm:w-auto" // Amplada adaptativa
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               {t('expensesCard.newButton')}
@@ -28060,11 +28368,13 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>{t('expensesCard.table.date')}</TableHead>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Data en pantalles petites */}
+                  <TableHead className="hidden md:table-cell">{t('expensesCard.table.date')}</TableHead>
                   <TableHead>{t('expensesCard.table.description')}</TableHead>
                   <TableHead className="text-right">{t('expensesCard.table.amount')}</TableHead>
-                  <TableHead>{t('expensesCard.table.status')}</TableHead>
-                  <TableHead className="w-[50px]"> {/* Columna Accions */}
+                  {/* ✅ MILLORA MÒBIL: Amaguem Estat en pantalles petites */}
+                  <TableHead className="hidden sm:table-cell">{t('expensesCard.table.status')}</TableHead>
+                  <TableHead className="w-[50px]"> 
                     <span className="sr-only">Accions</span>
                   </TableHead>
                 </TableRow>
@@ -28072,9 +28382,9 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
               <TableBody>
                 {expenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell>{formatDate(expense.expense_date ?? "")}</TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Data en pantalles petites */}
+                    <TableCell className="hidden md:table-cell">{formatDate(expense.expense_date ?? "")}</TableCell>
                     <TableCell>
-                      {/* ✅ MILLORA NAVEGACIÓ: Afegim el paràmetre 'from' */}
                       <Link
                         href={`/finances/expenses/${expense.id}?from=/finances/suppliers/${supplierId}`}
                         className="hover:underline"
@@ -28083,9 +28393,9 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
                       </Link>
                     </TableCell>
                     <TableCell className="text-right">{formatCurrency(expense.total_amount)}</TableCell>
-                    <TableCell><StatusBadge status={expense.status} /></TableCell>
+                    {/* ✅ MILLORA MÒBIL: Amaguem Estat en pantalles petites */}
+                    <TableCell className="hidden sm:table-cell"><StatusBadge status={expense.status} /></TableCell>
 
-                    {/* ✅ NOU: Cel·la d'accions (Desvincular) */}
                     <TableCell>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -28103,7 +28413,6 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
                           <AlertDialogHeader>
                             <AlertDialogTitle>{t('expensesCard.unlinkDialog.title')}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              {/* ✅ SOLUCIÓ: Passem la variable 'expenseDesc' a t() */}
                               {t('expensesCard.unlinkDialog.description') + ' ' + (expense.description || `Despesa #${expense.id}`)}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
@@ -28131,7 +28440,6 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
         </CardContent>
       </Card>
 
-      {/* ✅ Afegim el component de diàleg (controlat) */}
       <LinkExpenseDialog
         supplierId={supplierId}
         isOpen={isLinkDialogOpen}
@@ -28145,6 +28453,7 @@ export function ExpensesTabContent({ expenses: initialExpensesProp, supplierId, 
 
 // =================== FILE: src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/RelateDataTabs.tsx ===================
 
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/RelateDataTabs.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28166,7 +28475,7 @@ interface RelatedDataTabsProps {
   tickets: TicketForSupplier[];
   supplierId: string | null; // ID per als botons "Nou"
   supplierEmail: string | null | undefined; // Email per al botó "Cercar Inbox"
-  t: (key: string) => string; // Tipus de la funció de traducció (ajusta'l segons next-intl)
+  t: (key: string) => string; 
 }
 
 export function RelatedDataTabs({
@@ -28183,15 +28492,34 @@ export function RelatedDataTabs({
 
   return (
     <Tabs defaultValue="contacts" className="w-full">
+      
+      {/* ✅ SOLUCIÓ: 
+        Mantenim el teu 'grid-cols-3' perquè les pestanyes ocupin tot l'ample,
+        però fem que el contingut s'adapti.
+      */}
       <TabsList className="grid w-full grid-cols-3 mb-4">
+        
         <TabsTrigger value="contacts">
-          <Users className="h-4 w-4 mr-2"/> {t('contactsCard.title')} ({contacts.length})
+          {/* L'icona sempre és visible. El marge dret (mr-2) només s'aplica en 'sm' (desktop) */}
+          <Users className="h-4 w-4 sm:mr-2"/> 
+          {/* El text s'amaga per defecte (mòbil) i es mostra com 'inline' a partir de 'sm' (desktop) */}
+          <span className="hidden sm:inline">
+            {t('contactsCard.title')} ({contacts.length})
+          </span>
         </TabsTrigger>
+        
         <TabsTrigger value="expenses">
-          <CreditCard className="h-4 w-4 mr-2"/> {t('expensesCard.title')} ({expenses.length})
+          <CreditCard className="h-4 w-4 sm:mr-2"/> 
+          <span className="hidden sm:inline">
+            {t('expensesCard.title')} ({expenses.length})
+          </span>
         </TabsTrigger>
+        
         <TabsTrigger value="tickets">
-          <Inbox className="h-4 w-4 mr-2"/> {t('ticketsCard.title')} ({tickets.length})
+          <Inbox className="h-4 w-4 sm:mr-2"/> 
+          <span className="hidden sm:inline">
+            {t('ticketsCard.title')} ({tickets.length})
+          </span>
         </TabsTrigger>
       </TabsList>
 
@@ -28224,6 +28552,7 @@ export function RelatedDataTabs({
 
 // =================== FILE: src/app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/TicketsTabContent.tsx ===================
 
+// /app/[locale]/(app)/finances/suppliers/[supplierId]/_components/tabs/TicketsTabContent.tsx (MILLORAT PER A MÒBIL)
 "use client";
 
 import { useRouter } from 'next/navigation';
@@ -28246,7 +28575,8 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      {/* ✅ MILLORA MÒBIL: Capçalera apilable */}
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
         <div>
           <CardTitle className="flex items-center gap-2"><Inbox className="h-5 w-5" />{t('ticketsCard.title')}</CardTitle>
           <CardDescription>{t('ticketsCard.description')}</CardDescription>
@@ -28256,6 +28586,7 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
             variant="outline" 
             size="sm" 
             onClick={() => router.push(`/comunicacio/inbox?search=${encodeURIComponent(supplierEmail)}`)}
+            className="w-full sm:w-auto" // Amplada adaptativa
           >
             <Search className="h-4 w-4 mr-2" />
             {t('ticketsCard.searchInboxButton')}
@@ -28268,7 +28599,8 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
             <TableHeader>
               <TableRow>
                 <TableHead>{t('ticketsCard.table.subject')}</TableHead>
-                <TableHead>{t('ticketsCard.table.lastActivity')}</TableHead>
+                {/* ✅ MILLORA MÒBIL: Amaguem Última Activitat */}
+                <TableHead className="hidden sm:table-cell">{t('ticketsCard.table.lastActivity')}</TableHead>
                 <TableHead>{t('ticketsCard.table.status')}</TableHead>
               </TableRow>
             </TableHeader>
@@ -28278,8 +28610,8 @@ export function TicketsTabContent({ tickets, supplierEmail, t }: TicketsTabConte
                   <TableCell>
                     {ticket.subject || t('ticketsCard.noSubject')}
                   </TableCell>
-                  {/* ✅ CORRECCIÓ: Utilitzem 'sent_at' i mantenim el control de nuls. */}
-                  <TableCell>
+                  {/* ✅ MILLORA MÒBIL: Amaguem Última Activitat */}
+                  <TableCell className="hidden sm:table-cell">
                     {ticket.sent_at 
                       ? formatDate(ticket.sent_at, "true") 
                       : 'N/A'}
@@ -34220,174 +34552,258 @@ export function TeamClient({ user, userTeams, activeTeamData, invalidTeamState, 
 
 // =================== FILE: src/app/[locale]/(app)/settings/team/_components/TeamDashboard.tsx ===================
 
-// /app/[locale]/settings/team/_components/TeamDashboard.tsx
 "use client";
 
-import type { User } from '@supabase/supabase-js';
-import type { ActiveTeamData } from '../page';
-import { useTeamManagement } from '../_hooks/useTeamManagement';
+import type { User } from "@supabase/supabase-js";
+import type { ActiveTeamData } from "../page";
+import { useTeamManagement } from "../_hooks/useTeamManagement";
+import {
+  Button,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Badge,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/index";
+import { Loader2, UserPlus, Trash2, LogOut, Eye, EyeOff } from "lucide-react";
 
-// Imports de UI (de shadcn/ui o el teu sistema de components)
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent,CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, UserPlus, Trash2, LogOut, Eye, EyeOff } from 'lucide-react';
+export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeamData: ActiveTeamData }) {
+  const {
+    isPending,
+    inviteFormRef,
+    handleClearTeam,
+    handleInvite,
+    handleRemoveMember,
+    handleRoleChange,
+    handleRevokeInvite,
+    handleTogglePermission,
+  } = useTeamManagement();
 
-interface TeamDashboardProps {
-    user: User;
-    activeTeamData: ActiveTeamData;
-}
+  const { team, teamMembers, pendingInvitations, currentUserRole, inboxPermissions } = activeTeamData;
+  const canManage = currentUserRole === "owner" || currentUserRole === "admin";
 
-export function TeamDashboard({ user, activeTeamData }: TeamDashboardProps) {
-    // 1. Tota la lògica complexa s'obté amb una sola línia!
-    const {
-        isPending,
-        inviteFormRef,
-        handleClearTeam,
-        handleInvite,
-        handleRemoveMember,
-        handleRoleChange,
-        handleRevokeInvite,
-        handleTogglePermission,
-    } = useTeamManagement();
+  const getInitials = (name?: string | null) => (name ? name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase() : "??");
 
-    // 2. Les dades i variables per a la vista es preparen aquí
-    const { team, teamMembers, pendingInvitations, currentUserRole, inboxPermissions } = activeTeamData;
-    const canManage = currentUserRole === 'owner' || currentUserRole === 'admin';
+  return (
+    <div className="space-y-6 max-w-4xl mx-auto px-3 sm:px-6 pb-8">
+      {/* 🔹 Header responsive */}
+      <div className="flex flex-col sm:flex-row justify-between gap-3 sm:items-center">
+        <h1 className="text-2xl sm:text-3xl font-bold">{team.name}</h1>
+        <Button
+          variant="outline"
+          onClick={handleClearTeam}
+          disabled={isPending}
+          className="w-full sm:w-auto"
+        >
+          <LogOut className="w-4 h-4 mr-2" /> Canviar d'equip
+        </Button>
+      </div>
 
-    const getInitials = (name: string | null | undefined) => {
-        if (!name) return '??';
-        return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-    };
+      {/* 🔹 Formulari d'invitació */}
+      {canManage && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Convida nous membres</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form
+              ref={inviteFormRef}
+              action={handleInvite}
+              className="flex flex-col sm:flex-row gap-3"
+            >
+              <Input
+                name="email"
+                type="email"
+                placeholder="correu@exemple.com"
+                required
+                disabled={isPending}
+                className="flex-grow"
+              />
+              <Select name="role" defaultValue="member" required>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="member">Membre</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="w-full sm:w-auto"
+              >
+                {isPending ? (
+                  <Loader2 className="animate-spin w-4 h-4" />
+                ) : (
+                  <UserPlus className="w-4 h-4" />
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-    // 3. El return és gairebé 100% JSX. Molt fàcil de llegir.
-    return (
-        <div className="space-y-8 max-w-4xl mx-auto">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold">{team.name}</h1>
-                <Button variant="outline" onClick={handleClearTeam} disabled={isPending}>
-                    <LogOut className="w-4 h-4 mr-2" /> Canviar d'equip
+      {/* 🔹 Invitacions pendents */}
+      {canManage && pendingInvitations.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invitacions Pendents</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendingInvitations.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border rounded-lg p-3"
+              >
+                <div>
+                  <p className="font-medium">{invite.email}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{invite.role}</p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={isPending}
+                  onClick={() => handleRevokeInvite(invite.id)}
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
-            </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
-            {canManage && (
-                <Card>
-                    <CardHeader><CardTitle>Convida nous membres</CardTitle></CardHeader>
-                    <CardContent>
-                        <form ref={inviteFormRef} action={handleInvite} className="flex flex-col sm:flex-row gap-2">
-                            <Input name="email" type="email" placeholder="correu@exemple.com" required disabled={isPending} className="flex-grow" />
-                            <Select name="role" defaultValue="member" required>
-                                <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="member">Membre</SelectItem>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Button type="submit" disabled={isPending} className="sm:w-auto">
-                                {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                            </Button>
-                        </form>
-                    </CardContent>
-                </Card>
-            )}
+      {/* 🔹 Membres */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="divide-y">
+          {teamMembers.map((member) => {
+            if (!member.profiles) return null;
+            const isOwner = member.role === "owner";
+            const isSelf = user.id === member.profiles.id;
+            const hasPermission =
+              Array.isArray(inboxPermissions) &&
+              inboxPermissions.some(
+                (p) =>
+                  p.grantee_user_id === user.id &&
+                  p.target_user_id === member.profiles!.id
+              );
 
-            {canManage && pendingInvitations.length > 0 && (
-                <Card>
-                    <CardHeader><CardTitle>Invitacions Pendents</CardTitle></CardHeader>
-                    <CardContent className="divide-y">
-                        {pendingInvitations.map(invite => (
-                            <div key={invite.id} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                                <div>
-                                    <p className="font-medium">{invite.email}</p>
-                                    <p className="text-sm text-muted-foreground capitalize">{invite.role}</p>
-                                </div>
-                                <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={() => handleRevokeInvite(invite.id)}>
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            )}
+            return (
+              <div
+                key={member.profiles.id}
+                className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                {/* Info usuari */}
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarImage src={member.profiles.avatar_url ?? undefined} />
+                    <AvatarFallback>{getInitials(member.profiles.full_name)}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-semibold">{member.profiles.full_name || "Usuari sense nom"}</p>
+                    <p className="text-sm text-muted-foreground">{member.profiles.email}</p>
+                  </div>
+                </div>
 
-            <Card>
-                <CardHeader><CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle></CardHeader>
-                <CardContent className="divide-y">
-                    {teamMembers.map(member => {
-                         if (!member.profiles) return null;
-                         const isOwner = member.role === 'owner';
-                         const isSelf = user.id === member.profiles.id;
-                         const hasPermission = Array.isArray(inboxPermissions) && inboxPermissions.some(
-                             p => p.grantee_user_id === user.id && p.target_user_id === member.profiles!.id
-                         );
+                {/* Accions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isOwner ? (
+                    <Badge variant="default" className="capitalize">
+                      {member.role}
+                    </Badge>
+                  ) : (
+                    <Select
+                      value={member.role}
+                      onValueChange={(newRole: "admin" | "member") =>
+                        handleRoleChange(member.profiles!.id, newRole)
+                      }
+                      disabled={!canManage || isSelf || isPending}
+                    >
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="member">Membre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
 
-                        return (
-                            <div key={member.profiles.id} className="flex items-center justify-between py-4 first:pt-0 last:pb-0">
-                                <div className="flex items-center gap-4">
-                                    <Avatar>
-                                        <AvatarImage src={member.profiles.avatar_url ?? undefined} />
-                                        <AvatarFallback>{getInitials(member.profiles.full_name)}</AvatarFallback>
-                                    </Avatar>
-                                    <div>
-                                        <p className="font-semibold">{member.profiles.full_name || 'Usuari sense nom'}</p>
-                                        <p className="text-sm text-muted-foreground">{member.profiles.email}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 sm:gap-4">
-                                     {isOwner ? (
-                                        <Badge variant="default" className="capitalize">{member.role}</Badge>
-                                     ) : (
-                                        <Select
-                                            value={member.role}
-                                            onValueChange={(newRole) => handleRoleChange(member.profiles!.id, newRole as 'admin' | 'member')}
-                                            disabled={!canManage || isSelf || isPending}
-                                        >
-                                            <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="admin">Admin</SelectItem>
-                                                <SelectItem value="member">Membre</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                     )}
-                                     {currentUserRole === 'owner' && !isSelf && (
-                                         <TooltipProvider>
-                                             <Tooltip>
-                                                 <TooltipTrigger asChild>
-                                                     <Button variant="ghost" size="icon" onClick={() => handleTogglePermission(member.profiles!.id)} disabled={isPending}>
-                                                         {hasPermission ? <Eye className="w-4 h-4 text-primary" /> : <EyeOff className="w-4 h-4 text-muted-foreground" />}
-                                                     </Button>
-                                                 </TooltipTrigger>
-                                                 <TooltipContent>
-                                                     <p>{hasPermission ? `Deixar de veure la bústia` : `Veure la bústia`}</p>
-                                                 </TooltipContent>
-                                             </Tooltip>
-                                         </TooltipProvider>
-                                     )}
-                                     {canManage && !isSelf && (
-                                         <TooltipProvider>
-                                             <Tooltip>
-                                                 <TooltipTrigger asChild>
-                                                     <Button variant="ghost" size="icon" disabled={isPending} onClick={() => handleRemoveMember(member.profiles!.id)}>
-                                                         <Trash2 className="w-4 h-4 text-destructive" />
-                                                     </Button>
-                                                 </TooltipTrigger>
-                                                 <TooltipContent><p>Eliminar membre</p></TooltipContent>
-                                             </Tooltip>
-                                         </TooltipProvider>
-                                     )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </CardContent>
-            </Card>
-        </div>
-    );
+                  {currentUserRole === "owner" && !isSelf && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleTogglePermission(member.profiles!.id)}
+                            disabled={isPending}
+                          >
+                            {hasPermission ? (
+                              <Eye className="w-4 h-4 text-primary" />
+                            ) : (
+                              <EyeOff className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {hasPermission
+                              ? "Deixar de veure la bústia"
+                              : "Veure la bústia"}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+
+                  {canManage && !isSelf && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={isPending}
+                            onClick={() => handleRemoveMember(member.profiles!.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Eliminar membre</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
+
 
 // =================== FILE: src/app/[locale]/(app)/settings/team/_components/TeamData.tsx ===================
 
@@ -38835,8 +39251,7 @@ import { redirect } from "next/navigation";
 
 // ✅ 1. Importem el NOU servei i els seus tipus
 import * as onboardingService from '@/lib/services/onboarding/onboarding.service';
-import type { OnboardingFormData } from '@/lib/services/onboarding/onboarding.service';
-
+import type { OnboardingFormData } from '@/lib/services/onboarding/schema';
 
 export async function submitOnboardingAction(formData: OnboardingFormData) {
     // --- PAS 1: INICIALITZACIÓ I AUTENTICACIÓ ---
@@ -39603,7 +40018,7 @@ import { usePublicQuote } from "../_hooks/usePublicQuote";
 import { RejectionDialog } from "./RejectionDialog";
 import { QuoteStatusScreen } from "./QuoteStatusScreeen";
 import { PublicQuoteView } from "./PublicQuoteView";
-import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte    
 
 export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: QuoteDataFromServer; }) {
     // Tota la lògica complexa ara prové d'aquest hook.
@@ -39646,7 +40061,7 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
 
 // Al teu fitxer de servidor (p.ex. /quote/[secureId]/page.tsx)
 import { createClient } from '@/lib/supabase/server'; 
-import type { QuoteDataFromServer } from "@/types/crm"; 
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; 
 // Importem els tipus de la base de dades (assegura't que la ruta és correcta)
 import { type Database } from '@/types/supabase'; 
 
@@ -39708,7 +40123,7 @@ export async function getQuoteDataBySecureId(secureId: string): Promise<QuoteDat
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { QuotePreview } from "@/app/[locale]/(app)/finances/quotes/[id]/_components/QuotePreview";
-import { type QuoteDataFromServer } from "@/types/crm";
+import { type QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte
 // ✅ 1. Importem els tipus que 'QuotePreview' realment espera.
 import { type EditableQuote } from "@/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor";
 import { type Database } from "@/types/supabase";
@@ -39772,7 +40187,7 @@ export function PublicQuoteView({ quoteData, onAccept, onReject, isPending }: Pu
 "use client";
 
 import { CheckCircle, XCircle } from "lucide-react";
-import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte    
 
 interface QuoteStatusScreenProps {
     status: 'accepted' | 'declined';
@@ -39864,7 +40279,7 @@ export function RejectionDialog({ isOpen, onOpenChange, onSubmit, isPending }: R
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { acceptQuoteAction, rejectQuoteAction } from '../actions';
-import type { QuoteDataFromServer } from "@/types/crm"; // ✅ Importem el tipus correcte    
+import type { QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte    
 
 /**
  * Hook que encapsula tota la lògica per a la pàgina pública d'un pressupost.
@@ -43072,7 +43487,6 @@ export function PageHeader({
 
 // =================== FILE: src/components/shared/PaginationBar.tsx ===================
 
-// src/components/shared/PaginationBar.tsx
 "use client";
 
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -43080,97 +43494,101 @@ import { Button } from '@/components/ui/button';
 import { useTranslations } from 'next-intl';
 
 interface PaginationBarProps {
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-    totalItems: number;
-    itemsPerPage: number;
-    isLoading: boolean;
-    resourceName: string; // Nom del recurs (e.g., 'despeses', 'factures')
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+  totalItems: number;
+  itemsPerPage: number;
+  isLoading: boolean;
+  resourceName: string; // Nom del recurs (e.g., 'despeses', 'factures')
 }
 
-/**
- * Component reutilitzable per a la barra de paginació.
- * ✅ El Per Què: Encapsula la lògica de navegació i visualització de rang,
- * mantenint la consistència a tota l'aplicació (Quotes, Expenses, Invoices).
- */
 export function PaginationBar({
-    currentPage,
-    totalPages,
-    onPageChange,
-    totalItems,
-    itemsPerPage,
-    isLoading,
-    resourceName
+  currentPage,
+  totalPages,
+  onPageChange,
+  totalItems,
+  itemsPerPage,
+  isLoading,
+  resourceName
 }: PaginationBarProps) {
-    const t = useTranslations('Shared.Pagination'); // Assumint una clau d'i18n
+  const t = useTranslations('Shared.Pagination');
 
-    const startItem = (currentPage - 1) * itemsPerPage + 1;
-    const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
 
-    return (
-        <div className="flex items-center justify-between space-x-6 text-sm text-muted-foreground p-2">
-            {/* Informació de Rang */}
-            <div className="flex items-center gap-2">
-                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-                <span>
-                    {t('showing')} {startItem}-{endItem} {t('of')} {totalItems} {resourceName}
-                </span>
-            </div>
+  return (
+    <div
+      className="
+        flex flex-col sm:flex-row sm:items-center sm:justify-between 
+        gap-2 sm:gap-4 p-3 border-t text-sm text-muted-foreground
+      "
+    >
+      {/* 📊 Informació del rang */}
+      <div className="flex items-center justify-center sm:justify-start gap-2 text-center sm:text-left">
+        {isLoading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+        <span className="truncate text-xs sm:text-sm">
+          {t('showing')} {startItem}-{endItem} {t('of')} {totalItems} {resourceName}
+        </span>
+      </div>
 
-            {/* Controls de Navegació */}
-            <div className="flex items-center space-x-2">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={currentPage <= 1 || isLoading}
-                >
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                
-                <span className="font-medium text-foreground">
-                    {currentPage} / {totalPages}
-                </span>
-                
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={currentPage >= totalPages || isLoading}
-                >
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-    );
+      {/* 🔁 Controls de navegació */}
+      <div className="flex items-center justify-center gap-1 sm:gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage <= 1 || isLoading}
+          className="h-8 w-8 sm:h-9 sm:w-9"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+
+        <span className="font-medium text-foreground text-xs sm:text-sm min-w-[60px] text-center">
+          {currentPage} / {totalPages}
+        </span>
+
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages || isLoading}
+          className="h-8 w-8 sm:h-9 sm:w-9"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
 }
+
 
 // =================== FILE: src/components/shared/ProductSelector.tsx ===================
 
-// /src/components/shared/ProductSelector.tsx (REFACTORITZAT)
+// /src/components/shared/ProductSelector.tsx (COMPLET I CORREGIT)
 "use client";
 
-// ✅ Importem 'useActionState' (el nou 'useFormState' a React 19)
-// Si fas servir una versió anterior de Next/React, importa 'useFormState'
-import React, { useState, useEffect } from 'react';
-import { useActionState } from 'react'; 
+// ✅ Importem 'useRef' per al fix del bucle i 'Textarea' per a la millora
+import React, { useState, useEffect, useRef } from 'react';
+import { useActionState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea'; // 👈 Importat!
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, BookPlus, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { type Database } from '@/types/supabase';
 
-// ✅✅✅
 // L'IMPORT CORREGIT A L'ACCIÓ QUE HAS PROPORCIONAT
-// Ajusta la ruta si no és exactament aquesta (ex: treure [locale])
-import { 
-    createProduct, 
-    type FormState as ProductFormState // Importem l'acció i el seu tipus de retorn
-} from '@/app/[locale]/(app)/finances/products/actions'; 
-// ✅✅✅
+import { createProduct } from '@/app/[locale]/(app)/finances/products/actions';
+// ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
+import type {
+
+    FormState,
+
+
+} from '@/lib/services/finances/products/products.service';
 
 type Product = Database['public']['Tables']['products']['Row'];
 
@@ -43185,11 +43603,28 @@ interface ProductSelectorProps {
 }
 
 // Estat inicial per useActionState
-const initialState: ProductFormState = {
+const initialState: FormState = {
     success: false,
     message: '',
     errors: {},
 };
+
+// ✅ 2. Hook personalitzat per obtenir el valor anterior (CORREGIT)
+function usePrevious<T>(value: T): T | undefined {
+    // ✅ CORRECCIÓ: Inicialitzem el ref amb 'undefined'
+    const ref = useRef<T | undefined>(undefined);
+
+    // Guardem el valor actual (que és el previ abans de l'actualització de l'efecte)
+    const previous = ref.current;
+
+    useEffect(() => {
+        // Actualitzem el ref amb el nou valor *després* del render
+        ref.current = value;
+    }, [value]);
+
+    // Retornem el valor que teníem abans de l'actualització de l'efecte
+    return previous;
+}
 
 export const ProductSelector: React.FC<ProductSelectorProps> = ({
     products,
@@ -43201,32 +43636,39 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
     const [isCreating, setIsCreating] = useState(false);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-    // ✅ Nou hook per gestionar l'estat del formulari
-    // El 'isPending' ens diu si l'acció s'està executant
+    // Nou hook per gestionar l'estat del formulari
     const [formState, formAction, isPending] = useActionState(createProduct, initialState);
 
-    // ✅ useEffect per reaccionar al resultat de l'acció
+    // ✅ 3. Obtenim l'estat anterior (aquesta lògica és correcta)
+    const prevFormState = usePrevious(formState);
+
+    // ✅ 4. useEffect modificat (aquesta lògica és correcta)
     useEffect(() => {
-        // Quan el formulari es processa amb èxit...
+        // Si l'estat actual és el mateix que l'anterior, sortim d'hora.
+        if (prevFormState === formState) {
+            return;
+        }
+
+        // La lògica només s'executa quan formState REALMENT canvia
         if (formState.success && formState.data) {
             toast.success(t('toast.productCreated'), { description: formState.message });
-            
+
             // 1. Cridem el callback del pare amb el nou producte
             onProductSelect(formState.data as Product);
-            
+
             // 2. Resetejem l'estat i tanquem el popover
             setIsCreating(false);
             setIsPopoverOpen(false);
-            // L'estat 'formState' es resetejarà sol en la propera crida
 
         } else if (!formState.success && (formState.message || formState.errors) && formState.message !== '') {
             // Si hi ha un error de validació o de servidor
-            const description = formState.errors 
-                ? Object.values(formState.errors).flat().join(' ') 
+            const description = formState.errors
+                ? Object.values(formState.errors).flat().join(' ')
                 : t('toast.genericError');
             toast.error(formState.message || "Error", { description });
         }
-    }, [formState, onProductSelect, t]); // Reaccionem als canvis de formState
+
+    }, [formState, prevFormState, onProductSelect, t]); // Dependències completes
 
 
     const handleManualItemClick = () => {
@@ -43261,48 +43703,53 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
             </PopoverTrigger>
             <PopoverContent className="w-[500px] p-0">
                 {isCreating ? (
-                    // ✅ Convertit a un <form> que crida la Server Action
+                    // Convertit a un <form> que crida la Server Action
                     <form action={formAction}>
                         <div className="p-4 space-y-2">
                             <p className="font-medium text-sm">{t('newProductTitle')}</p>
-                            
-                            {/* ✅ Els camps ara tenen 'name' per a FormData.
-                                Aquests 'name' han de coincidir amb els del 'productSchema'
-                            */}
+
+                            {/* Camp Nom (obligatori) */}
                             <div>
-                                <Input 
-                                    name="name" // ✅ Coincideix amb el schema
-                                    placeholder={t('newProductNamePlaceholder')} 
-                                    required 
+                                <Input
+                                    name="name" // Coincideix amb el schema
+                                    placeholder={t('newProductNamePlaceholder')}
+                                    required
                                 />
                                 {formState.errors?.name && (
                                     <p className="text-xs text-destructive pt-1">{formState.errors.name.join(', ')}</p>
                                 )}
                             </div>
 
+                            {/* ✅ MILLORA: Camp Descripció (opcional) */}
                             <div>
-                                <Input 
-                                    name="price" // ✅ Coincideix amb el schema
-                                    type="number" 
-                                    placeholder={t('newProductPricePlaceholder')} 
+                                <Textarea
+                                    name="description" // Coincideix amb el schema (opcional)
+                                    placeholder={t('newProductDescPlaceholder')} // Hauràs d'afegir aquesta traducció!
+                                    rows={3}
+                                    className="text-sm"
+                                />
+                                {formState.errors?.description && (
+                                    <p className="text-xs text-destructive pt-1">{formState.errors.description.join(', ')}</p>
+                                )}
+                            </div>
+                            {/* ✅ FI DE LA MILLORA */}
+
+                            {/* Camp Preu (obligatori) */}
+                            <div>
+                                <Input
+                                    name="price" // Coincideix amb el schema
+                                    type="number"
+                                    placeholder={t('newProductPricePlaceholder')}
                                     step="0.01"
-                                    required 
+                                    required
                                 />
                                 {formState.errors?.price && (
                                     <p className="text-xs text-destructive pt-1">{formState.errors.price.join(', ')}</p>
                                 )}
                             </div>
-                            
-                            {/* ❗ Important: La teva acció 'createProduct' valida 'is_active'.
-                                L'afegim com a camp ocult, assumint que un producte 
-                                creat des d'aquí sempre ha d'estar actiu.
-                            */}
+
+                            {/* Camp ocult 'is_active' */}
                             <input type="hidden" name="is_active" value="on" />
-                            
-                            {/* ⚠️ ATENCIÓ: Si el teu 'productSchema' té altres camps obligatoris
-                                (com 'description', 'category', etc.), has d'afegir-los aquí
-                                o la validació de Zod fallarà. Si són opcionals, no cal.
-                            */}
 
                             <div className="flex justify-end gap-2 pt-2">
                                 <Button variant="ghost" size="sm" type="button" onClick={() => setIsCreating(false)}>{t('cancelButton')}</Button>
@@ -43313,35 +43760,30 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                 ) : (
                     <Command>
                         <CommandInput placeholder={t('searchPlaceholder')} />
-                       {/* ✅ Aquí comencen els canvis */}
                         <CommandList>
                             <CommandEmpty>{t('emptySearch')}</CommandEmpty>
-                            
+
                             {/* GRUP 1: ACCIONS */}
                             <CommandGroup>
-                                <CommandItem 
+                                <CommandItem
                                     onSelect={handleManualItemClick}
-
-                                    className="bg-gray-600 text-card" // ✅ AFEGIT: mateix estil
+                                    className="bg-gray-600 text-card"
                                 >
                                     <Plus className="mr-2 h-4 w-4" />
                                     <span>{t('addManualItem')}</span>
                                 </CommandItem>
                                 <p className="py-1"></p>
-                                <CommandItem 
+                                <CommandItem
                                     onSelect={() => setIsCreating(true)}
-                                    className="bg-gray-600 text-card" // ✅ AFEGIT: mateix estil
+                                    className="bg-gray-600 text-card"
                                 >
                                     <Save className="mr-2 h-4 w-4" />
                                     <span>{t('createNewItem')}</span>
                                 </CommandItem>
                             </CommandGroup>
-                            
+
                             {/* GRUP 2: LLISTA DE PRODUCTES */}
-                            {/* Afegim un títol al grup si hi ha productes */}
-                            <CommandGroup 
-                        
-                            >
+                            <CommandGroup>
                                 {products.map((product) => (
                                     <CommandItem key={product.id} value={product.name} onSelect={() => handleProductSelectClick(product)}>
                                         <div className="flex justify-between w-full">
@@ -45304,6 +45746,25 @@ export {
   FormMessage,
   FormField,
 };
+
+
+// =================== FILE: src/components/ui/index.tsx ===================
+
+export * from "./button";
+export * from "./input";
+export * from "./card";
+export * from "./select";
+export * from "./avatar";
+export * from "./badge";
+export * from "./tooltip";
+export * from "./checkbox";
+export * from "./tabs";
+export * from "./alert-dialog";
+export * from "./separator";
+export * from "./dialog";
+export * from "./scroll-area";
+export * from "./popover";
+export * from "./switch";
 
 
 // =================== FILE: src/components/ui/input.tsx ===================
@@ -48817,19 +49278,19 @@ export async function getTicketById(
 }
 
 /**
-* SERVEI: Obté els tickets dels contactes associats a un proveïdor.
+ * SERVEI: Obté els tickets dels contactes associats a un proveïdor.
  */
 export async function fetchTicketsForSupplierContacts(
   supabase: SupabaseClient<Database>,
   supplierId: string,
   teamId: string
 ): Promise<TicketForSupplier[]> {
-  // 1. Obté els IDs dels contactes directament associats a aquest proveïdor i equip
+  // 1. Obté els IDs dels contactes (aquesta part estava bé)
   const { data: contacts, error: contactsError } = await supabase
     .from('contacts')
     .select('id')
     .eq('supplier_id', supplierId)
-    .eq('team_id', teamId) // Correcte
+    .eq('team_id', teamId)
 
   if (contactsError) {
     console.error(
@@ -48845,27 +49306,28 @@ export async function fetchTicketsForSupplierContacts(
 
   const contactIds = contacts.map((c) => c.id)
 
-  // 2. Obté els tickets per a aquests contactes, assegurant que també pertanyin a l'equip
+  // 2. Obté els tickets per a aquests contactes
   const { data: tickets, error: ticketsError } = await supabase
     .from('tickets')
     .select(
       `
       *, 
-      contacts (
+      contacts!inner (  /* ✅ 1. Canviem a !inner per assegurar el join */
         id, 
-        full_name,  /* <-- CORRECCIÓ 3: 'full_name' en lloc de 'nom' */
+        full_name,
         email
       )
-    `
+      `
     )
     .in('contact_id', contactIds)
-    .eq('team_id', teamId) /* <-- CORRECCIÓ 2: Filtre de 'team_id' RE-AFEGIT */
-    .order(
-      'last_reply_at',
-      { ascending: false }
-    ) /* <-- CORRECCIÓ 1: 'last_reply_at' */
+    .eq('team_id', teamId)
+    // ✅✅✅ LÍNIA CLAU DE LA SOLUCIÓ ✅✅✅
+    .eq('contacts.team_id', teamId) /* 2. Afegim filtre RLS a la taula annidada */
+    // ✅✅✅ FI DE LA SOLUCIÓ ✅✅✅
+    .order('last_reply_at', { ascending: false })
 
   if (ticketsError) {
+    // Ara aquest error ja no hauria de ser {}, sinó un error real si n'hi hagués
     console.error(
       'Error fetching tickets for supplier contacts (service):',
       ticketsError
@@ -54176,56 +54638,33 @@ export async function createJobPosting(
 
 // =================== FILE: src/lib/services/onboarding/onboarding.service.ts ===================
 
-// src/lib/services/onboarding.service.ts (FITXER REFACTORITZAT)
 "use server";
 
-import { z } from 'zod';
 import { type SupabaseClient, type User } from '@supabase/supabase-js';
 import { type Database } from '@/types/supabase';
-// ❌ Ja no necessitem 'createAdminClient' aquí
+import { OnboardingSchema, type OnboardingFormData } from './schema';
 
-// ---
-// 1. ESQUEMA I TIPUS (Es mantenen igual)
-// ---
-export const OnboardingSchema = z.object({
-  full_name: z.string().min(3, "El nom complet és obligatori."),
-  company_name: z.string().min(2, "El nom de l'empresa és obligatori."),
-  tax_id: z.string().optional(),
-  website: z.string().url("Introdueix una URL vàlida.").optional().or(z.literal('')),
-  summary: z.string().optional(),
-  sector: z.string().optional(),
-  services: z.array(z.string()).min(1, "Has de seleccionar almenys un servei."),
-  phone: z.string().optional(),
-  street: z.string().min(1, "El carrer és obligatori."),
-  city: z.string().min(1, "La ciutat és obligatòria."),
-  postal_code: z.string().min(1, "El codi postal és obligatori."),
-  region: z.string().min(1, "La regió és obligatòria."),
-  country: z.string().min(1, "El país és obligatori."),
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
-});
-export type OnboardingFormData = z.infer<typeof OnboardingSchema>;
-// ... (els tipus OnboardingData i FormState es mantenen igual)
+// 🔹 Tipus auxiliars
 type AvailableService = { id: number; name: string };
+
 export type OnboardingData = {
   onboardingCompleted: boolean;
   availableServices: AvailableService[];
   initialFullName: string;
 };
+
 export type FormState = {
   success: boolean;
   message: string;
 };
 
 // ---
-// 2. FUNCIÓ DE LECTURA DE DADES (Lògica de 'OnboardingData.tsx')
+// 1️⃣ FUNCIÓ DE LECTURA DE DADES
 // ---
-
 export async function getOnboardingData(
   supabase: SupabaseClient<Database>,
   user: User
 ): Promise<OnboardingData> {
-  
   const [profileRes, servicesRes] = await Promise.all([
     supabase.from('profiles').select('onboarding_completed').eq('id', user.id).single(),
     supabase.from('services').select('id, name').order('name')
@@ -54243,27 +54682,27 @@ export async function getOnboardingData(
 }
 
 // ---
-// 3. FUNCIÓ DE MUTACIÓ (REFACTORITZADA A RPC)
+// 2️⃣ FUNCIÓ DE MUTACIÓ (RPC)
 // ---
 export async function submitOnboarding(
   supabase: SupabaseClient<Database>,
   user: User,
   formData: OnboardingFormData
 ): Promise<FormState> {
-  
-  // 1. Validació de dades amb Zod
+
+  // Validació amb Zod
   const validationResult = OnboardingSchema.safeParse(formData);
   if (!validationResult.success) {
     return { success: false, message: validationResult.error.issues[0].message };
   }
-  
+
   const validData = validationResult.data;
 
-  // 2. Preparació dels paràmetres per a la RPC
+  // Paràmetres per a la RPC
   const rpcParams = {
     p_user_id: user.id,
     p_full_name: validData.full_name,
-    p_email: user.email!, // L'usuari ha d'existir, per tant l'email també
+    p_email: user.email!,
     p_company_name: validData.company_name,
     p_tax_id: validData.tax_id ?? '',
     p_website: validData.website ?? '',
@@ -54277,24 +54716,46 @@ export async function submitOnboarding(
     p_region: validData.region,
     p_country: validData.country,
     p_latitude: validData.latitude !== undefined ? validData.latitude : undefined,
-    p_longitude: validData.longitude !== undefined ? validData.longitude : undefined
+    p_longitude: validData.longitude !== undefined ? validData.longitude : undefined,
   };
 
   try {
-    // 3. ✅ CRIDA ÚNICA I TRANSACCIONAL A LA BBDD
     const { error } = await supabase.rpc('handle_onboarding', rpcParams);
+    if (error) throw error;
 
-    if (error) throw error; // Si la RPC falla, llançarà una excepció
-
-    // 4. Èxit
     return { success: true, message: "Onboarding completat!" };
-
   } catch (error) {
     const message = error instanceof Error ? error.message : "Hi ha hagut un error desconegut.";
     console.error("Error durant la RPC d'Onboarding:", message);
     return { success: false, message: "No s'ha pogut completar el registre. Intenta-ho de nou." };
   }
 }
+
+
+// =================== FILE: src/lib/services/onboarding/schema.ts ===================
+
+import { z } from 'zod';
+
+export const OnboardingSchema = z.object({
+  full_name: z.string().min(3, "El nom complet és obligatori."),
+  company_name: z.string().min(2, "El nom de l'empresa és obligatori."),
+  tax_id: z.string().optional(),
+  website: z.string().url("Introdueix una URL vàlida.").optional().or(z.literal('')),
+  summary: z.string().optional(),
+  sector: z.string().optional(),
+  services: z.array(z.string()).min(1, "Has de seleccionar almenys un servei."),
+  phone: z.string().optional(),
+  street: z.string().min(1, "El carrer és obligatori."),
+  city: z.string().min(1, "La ciutat és obligatòria."),
+  postal_code: z.string().min(1, "El codi postal és obligatori."),
+  region: z.string().min(1, "La regió és obligatòria."),
+  country: z.string().min(1, "El país és obligatori."),
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
+});
+
+export type OnboardingFormData = z.infer<typeof OnboardingSchema>;
+
 
 // =================== FILE: src/lib/services/publicQuote/public-quote.service.ts ===================
 
@@ -54303,7 +54764,7 @@ export async function submitOnboarding(
 
 import { createAdminClient } from "@/lib/supabase/server";
 import { z } from 'zod';
-import type { QuoteDataFromServer } from '@/types/finances';
+import type { QuoteDataFromServer } from '@/types/finances/quotes';
 import { type Database } from '@/types/supabase';
 
 // --- Tipus de Retorn ---
@@ -57156,7 +57617,8 @@ export type FormState = {
  */
 
 // Importem tipus d'altres mòduls a través del fitxer 'index.ts' per evitar errors de dependència circular.
-import type { Activity, Quote, Opportunity, Invoice, Task , CrmNotification} from './index';
+import type { Activity, Opportunity, Task , CrmNotification} from './index';
+import type { Invoice , Quote} from '@/types/db';
 import type { ContactStatusCode } from '@/config/contacts';
 // --- MAPA I TIPUS D'ESTAT DE CONTACTE ---
 
@@ -57334,7 +57796,6 @@ export * from '../comunicacio/inbox';
 export * from './general';
 export * from '../finances/products';
 export * from './deals';
-export * from '../finances/quotes';
 export * from '../shared/notification';
 export * from './calendar';
 
@@ -57611,7 +58072,7 @@ export * from './expenses';
 export * from './scheams';
 export * from './suppliers';
 export * from './products';
-export * from './quotes';
+
 
 // =================== FILE: src/types/finances/invoices.ts ===================
 
