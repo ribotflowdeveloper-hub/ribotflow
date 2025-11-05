@@ -28,7 +28,7 @@ import {
     updateMemberRoleAction
 } from '../actions';
 import type { User } from '@supabase/supabase-js';
-import type { UserTeam, ActiveTeamData } from '../page';
+import type { UserTeam, ActiveTeamData } from '@/lib/services/settings/team/team.service';
 
 type ActionResult = { success: boolean; message?: string; } | void;
 

@@ -1,32 +1,41 @@
 "use client";
 
 import type { User } from "@supabase/supabase-js";
-import type { ActiveTeamData } from "../page";
+// ✅ Importem els tipus des del servei
+import type { ActiveTeamData, TeamMember } from '@/lib/services/settings/team/team.service';
+import type { UsageCheckResult } from '@/lib/subscription/subscription';
+import type { Role } from '@/lib/permissions/permissions'; 
 import { useTeamManagement } from "../_hooks/useTeamManagement";
-import {
-  Button,
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Badge,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/index";
-import { Loader2, UserPlus, Trash2, LogOut, Eye, EyeOff } from "lucide-react";
+import Link from 'next/link';
 
-export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeamData: ActiveTeamData }) {
+// Imports de UI
+import {
+  Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
+  Avatar, AvatarFallback, AvatarImage, Badge,
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+  Alert, AlertDescription, AlertTitle
+} from "@/components/ui/index";
+import { Loader2, UserPlus, Trash2, LogOut, Eye, EyeOff, Terminal, Info } from "lucide-react";
+
+// Definim les props que rebem del Server Component (ActiveTeamManagerData.tsx)
+interface TeamDashboardProps {
+  user: User;
+  activeTeamData: ActiveTeamData;
+  permissions: {
+    canManageTeam: boolean; // Basat en RBAC (owner/admin)
+    isOwner: boolean;       // Basat en RBAC (owner)
+  };
+  limits: {
+    teamMembers: UsageCheckResult; // Límit de quantitat
+  };
+  features: {
+    canManageRoles: boolean; // Feature Flag del Pla
+  };
+}
+
+export function TeamDashboard({ user, activeTeamData, permissions, limits, features }: TeamDashboardProps) {
+  // Hook que gestiona 'isPending' i les crides a Server Actions
   const {
     isPending,
     inviteFormRef,
@@ -38,10 +47,33 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
     handleTogglePermission,
   } = useTeamManagement();
 
-  const { team, teamMembers, pendingInvitations, currentUserRole, inboxPermissions } = activeTeamData;
-  const canManage = currentUserRole === "owner" || currentUserRole === "admin";
+  const { team, teamMembers, pendingInvitations, inboxPermissions } = activeTeamData;
+
+  // Obtenim els valors de les props per a més claredat
+  const { canManageTeam, isOwner } = permissions;
+  const { teamMembers: teamLimit } = limits;
+  const { canManageRoles } = features;
 
   const getInitials = (name?: string | null) => (name ? name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase() : "??");
+
+  // ✅ LÒGICA DE FILTRAT VISUAL DE MEMBRES
+  let visibleMembers: TeamMember[] = [];
+  const limitExceeded = !teamLimit.allowed && teamLimit.current > teamLimit.max;
+
+  if (!limitExceeded) {
+    visibleMembers = teamMembers; // Tot bé, els mostrem tots
+  } else {
+    // Límit superat. Mostrem només el propietari i l'usuari actual.
+    const owner = teamMembers.find(m => m.role === 'owner');
+    const self = teamMembers.find(m => m.profiles?.id === user.id);
+    
+    // Fem servir un Map per assegurar que no hi hagi duplicats si l'usuari ÉS el propietari
+    const memberMap = new Map<string, TeamMember>();
+    if (owner && owner.profiles) memberMap.set(owner.profiles.id, owner);
+    if (self && self.profiles) memberMap.set(self.profiles.id, self);
+    
+    visibleMembers = Array.from(memberMap.values());
+  }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto px-3 sm:px-6 pb-8">
@@ -58,53 +90,63 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
         </Button>
       </div>
 
-      {/* 🔹 Formulari d'invitació */}
-      {canManage && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Convida nous membres</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form
-              ref={inviteFormRef}
-              action={handleInvite}
-              className="flex flex-col sm:flex-row gap-3"
-            >
-              <Input
-                name="email"
-                type="email"
-                placeholder="correu@exemple.com"
-                required
-                disabled={isPending}
-                className="flex-grow"
-              />
-              <Select name="role" defaultValue="member" required>
-                <SelectTrigger className="w-full sm:w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="member">Membre</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="submit"
-                disabled={isPending}
-                className="w-full sm:w-auto"
-              >
-                {isPending ? (
-                  <Loader2 className="animate-spin w-4 h-4" />
-                ) : (
-                  <UserPlus className="w-4 h-4" />
-                )}
+      {/* 🔹 Formulari d'invitació (Controlat per RBAC i Límit) */}
+      {canManageTeam && (
+        !teamLimit.allowed ? (
+          // UI de Límit Aconseguit
+          <Alert variant="default" className="border-primary">
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Límit de membres assolit ({teamLimit.current}/{teamLimit.max})</AlertTitle>
+            <AlertDescription className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <span>
+                {limitExceeded
+                  ? `El teu pla actual només permet ${teamLimit.max} membres. Actualitza el pla per gestionar tots els ${teamLimit.current} membres.`
+                  : `Has assolit el límit de ${teamLimit.max} membres per al teu pla.`
+                }
+              </span>
+              <Button asChild size="sm" className="flex-shrink-0 w-full sm:w-auto">
+                <Link href="/settings/billing">Actualitzar Pla</Link>
               </Button>
-            </form>
-          </CardContent>
-        </Card>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          // UI d'Invitació Normal
+          <Card>
+            <CardHeader>
+              <CardTitle>Convida nous membres</CardTitle>
+              {teamLimit.max !== Infinity && (
+                <CardDescription>
+                  Pots convidar {teamLimit.max - teamLimit.current} membres més.
+                </CardDescription>
+              )}
+            </CardHeader>
+            <CardContent>
+              <form ref={inviteFormRef} action={handleInvite} className="flex flex-col sm:flex-row gap-3">
+                <Input name="email" type="email" placeholder="correu@exemple.com" required disabled={isPending} className="flex-grow" />
+                <Select name="role" defaultValue="member" required>
+                  <SelectTrigger className="w-full sm:w-[150px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="member">Membre</SelectItem>
+                    {/* ✅ Controlat pel Feature Flag del Pla */}
+                    <SelectItem value="admin" disabled={!canManageRoles}>
+                      Admin {!canManageRoles ? '(Pla Pro+)' : ''}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button type="submit" disabled={isPending} className="w-full sm:w-auto px-5">
+                  {isPending ? <Loader2 className="animate-spin w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
+                  <span className="sm:hidden ml-2">Convidar</span>
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )
       )}
 
-      {/* 🔹 Invitacions pendents */}
-      {canManage && pendingInvitations.length > 0 && (
+      {/* 🔹 Invitacions pendents (Controlat per RBAC) */}
+      {canManageTeam && pendingInvitations.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Invitacions Pendents</CardTitle>
@@ -125,8 +167,10 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
                   size="sm"
                   disabled={isPending}
                   onClick={() => handleRevokeInvite(invite.id)}
+                  className="w-full sm:w-auto"
                 >
                   <Trash2 className="w-4 h-4 text-destructive" />
+                  <span className="sm:hidden ml-2">Revocar invitació</span>
                 </Button>
               </div>
             ))}
@@ -134,17 +178,28 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
         </Card>
       )}
 
-      {/* 🔹 Membres */}
+      {/* 🔹 Membres (Controlat per RBAC i Feature Flag) */}
       <Card>
         <CardHeader>
-          <CardTitle>Membres de l'equip ({teamMembers.length})</CardTitle>
+          <CardTitle>
+            Membres de l'equip ({teamMembers.length}
+            {teamLimit.max !== Infinity ? ` / ${teamLimit.max}` : ''})
+          </CardTitle>
+          {/* ✅ Mostrem una descripció si la llista està filtrada */}
+          {limitExceeded && (
+            <CardDescription className="text-warning-foreground">
+              Límit del pla superat. Només es mostren el propietari i el teu usuari.
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="divide-y">
-          {teamMembers.map((member) => {
+          {/* ✅ UTILITZEM LA LLISTA FILTRADA 'visibleMembers' */}
+          {visibleMembers.map((member) => {
             if (!member.profiles) return null;
-            const isOwner = member.role === "owner";
+            const isOwnerRole = member.role === "owner"; 
             const isSelf = user.id === member.profiles.id;
-            const hasPermission =
+            
+            const hasInboxPermission =
               Array.isArray(inboxPermissions) &&
               inboxPermissions.some(
                 (p) =>
@@ -171,17 +226,17 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
 
                 {/* Accions */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  {isOwner ? (
+                  {isOwnerRole ? (
                     <Badge variant="default" className="capitalize">
                       {member.role}
                     </Badge>
                   ) : (
+                    // ✅ Select de Rol (Controlat per RBAC, Feature Flag i Límit)
                     <Select
                       value={member.role}
-                      onValueChange={(newRole: "admin" | "member") =>
-                        handleRoleChange(member.profiles!.id, newRole)
-                      }
-                      disabled={!canManage || isSelf || isPending}
+                      onValueChange={(newRole) => handleRoleChange(member.profiles!.id, newRole as Role)}
+                      // Desactivat si no es pot gestionar, és ell mateix, o el límit està superat
+                      disabled={!canManageTeam || !canManageRoles || isSelf || isPending || limitExceeded}
                     >
                       <SelectTrigger className="w-[120px]">
                         <SelectValue />
@@ -192,8 +247,28 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
                       </SelectContent>
                     </Select>
                   )}
+                  
+                  {/* Tooltip per explicar per què està desactivat */}
+                  {canManageTeam && !isOwnerRole && (limitExceeded || !canManageRoles) && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                           <Info className="w-4 h-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            {limitExceeded
+                              ? "Actualitza el pla per gestionar rols."
+                              : "La gestió de rols requereix un pla Pro."
+                            }
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
 
-                  {currentUserRole === "owner" && !isSelf && (
+                  {/* Permís d'Inbox (Controlat per RBAC 'isOwner') */}
+                  {isOwner && !isSelf && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -203,7 +278,7 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
                             onClick={() => handleTogglePermission(member.profiles!.id)}
                             disabled={isPending}
                           >
-                            {hasPermission ? (
+                            {hasInboxPermission ? (
                               <Eye className="w-4 h-4 text-primary" />
                             ) : (
                               <EyeOff className="w-4 h-4 text-muted-foreground" />
@@ -212,7 +287,7 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>
-                            {hasPermission
+                            {hasInboxPermission
                               ? "Deixar de veure la bústia"
                               : "Veure la bústia"}
                           </p>
@@ -221,7 +296,9 @@ export function TeamDashboard({ user, activeTeamData }: { user: User; activeTeam
                     </TooltipProvider>
                   )}
 
-                  {canManage && !isSelf && (
+                  {/* Eliminar Membre (Controlat per RBAC 'canManageTeam') */}
+                  {/* ✅ Només es mostra si el límit NO està superat */}
+                  {canManageTeam && !isOwnerRole && !isSelf && !limitExceeded && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

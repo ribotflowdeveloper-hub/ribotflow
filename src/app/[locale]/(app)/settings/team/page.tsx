@@ -1,42 +1,30 @@
-// /src/app/[locale]/(app)/settings/team/page.tsx
-
+// /src/app/[locale]/(app)/settings/team/page.tsx (FITXER COMPLET - CORREGIT)
 import { validatePageSession } from '@/lib/supabase/session';
 import { TeamSelectorData } from './_components/TeamSelectorData';
 import { ActiveTeamManagerData } from './_components/ActiveTeamManagerData';
 
-// Mantenim l'ordre a Next.js per assegurar el renderitzat dinàmic
 export const dynamic = 'force-dynamic';
 
-// Podem mantenir els tipus aquí o moure'ls a un fitxer types.ts si prefereixes
-export type Team = { id: string; name: string; };
-export type Invitation = { id: string; email: string; role: string; };
-export type UserTeam = { role: string; teams: Team | null; };
-export type PersonalInvitation = { id: string; team_name: string; inviter_name: string };
-export type ProfileInfo = { id: string; full_name: string | null; email: string | null; avatar_url: string | null; };
-export type TeamMember = { role: string; profiles: ProfileInfo | null; };
-export type ActiveTeamData = {
-    team: Team;
-    teamMembers: TeamMember[];
-    pendingInvitations: Invitation[];
-    currentUserRole: string;
-    inboxPermissions: { grantee_user_id: string; target_user_id: string; }[];
-};
-// ✅ CORRECCIÓ CLAU: Definim searchParams com una Promise que conté el tipus esperat.
+// ✅ CORRECCIÓ 1: Definim searchParams com una Promise
 interface TeamSettingsPageProps {
-    searchParams: Promise<{ view?: string }>;
+  searchParams: Promise<{ view?: string }>;
 }
+
 export default async function TeamSettingsPage({ searchParams }: TeamSettingsPageProps) {
-    // La validació de sessió (que inclou la redirecció si no hi ha usuari/equip actiu)
-    const { user, activeTeamId } = await validatePageSession();
+  // La validació de sessió (que inclou la redirecció si no hi ha usuari/equip actiu)
+  const { user, activeTeamId } = await validatePageSession();
 
-    // ✅ Aquest 'await' és ara semànticament correcte i tipificat.
-    const { view } = await searchParams;
+  // ✅ CORRECCIÓ 2: Fem 'await' dels searchParams
+  const { view } = await searchParams;
 
-    if (view === 'select' || !activeTeamId) {
-        // La vista de selecció d'equip/lobby es crida si no hi ha equip actiu o si el paràmetre 'view=select' està present.
-        return <TeamSelectorData userId={user.id} />;
-    }
+  if (view === 'select' || !activeTeamId) {
+    // La vista de selecció d'equip/lobby es crida si no hi ha equip actiu 
+    // o si el paràmetre 'view=select' està present.
+    
+    // ✅ CORRECCIÓ 3: Passem 'user.id' (string) com espera el teu 'TeamSelectorData.tsx'
+    return <TeamSelectorData userId={user.id} />;
+  }
 
-    // Si hi ha un equip actiu, mostrem el panell de gestió.
-    return <ActiveTeamManagerData user={user} activeTeamId={activeTeamId} />;
+  // Si hi ha un equip actiu, mostrem el panell de gestió.
+  return <ActiveTeamManagerData user={user} activeTeamId={activeTeamId} />;
 }
