@@ -13,3 +13,5 @@ export * from "./dialog";
 export * from "./scroll-area";
 export * from "./popover";
 export * from "./switch";
+export * from "./alert";
+export * from "./dropdown-menu";

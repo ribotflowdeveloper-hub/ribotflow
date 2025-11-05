@@ -12,15 +12,15 @@ import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
+import type { Contact } from '@/types/db'; // ✅ Afegeix aquesta línia
 
-// Props que el nostre diàleg acceptarà
 interface ContactDialogProps {
     trigger: React.ReactNode; 
     initialData?: {
         nom?: string | null;
         email?: string | null;
     };
-    onContactSaved?: (newContact: unknown) => void;
+    onContactSaved?: (newContact: Partial<Contact>) => void; // ✅ Canviat tipus 'unknown' → 'Partial<Contact>'
     isLimitReached?: boolean;
     limitError?: string;
 }

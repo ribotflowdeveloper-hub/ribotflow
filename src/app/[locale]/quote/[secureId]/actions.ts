@@ -17,7 +17,7 @@ export async function acceptQuoteAction(secureId: string): Promise<FormState> {
 
   // 2. Efectes (revalidació)
   if (result.success) {
-    revalidatePath('/crm/quotes');
+    revalidatePath('/finances/quotes');
     revalidatePath('/finances/facturacio');
   }
 
@@ -33,7 +33,7 @@ export async function rejectQuoteAction(secureId: string, reason: string): Promi
 
   // 2. Efectes (revalidació)
   if (result.success) {
-    revalidatePath('/crm/quotes');
+    revalidatePath('/finances/quotes');
     revalidatePath('/crm/activitats'); // Revalidem també activitats
   }
 
