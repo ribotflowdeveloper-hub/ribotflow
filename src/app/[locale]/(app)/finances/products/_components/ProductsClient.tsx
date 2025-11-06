@@ -1,29 +1,42 @@
-// /app/[locale]/(app)/crm/products/_components/ProductsClient.tsx
 "use client";
 
-import { useMemo } from 'react'; // Keep useState for creation dialog
+// ✅ 1. Importem 'useState', 'useRouter' i components necessaris
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { Plus, Edit } from 'lucide-react'; // Keep Edit for link, Plus for button
+import { Plus, Edit, TriangleAlert } from 'lucide-react'; // ✅ Importem 'TriangleAlert'
+import { useRouter } from 'next/navigation'; // ✅ Importem 'useRouter'
 
 // Tipus i Accions
 import { type Product } from "./ProductsData";
 import { type ActionResult } from '@/types/shared/actionResult';
 import { fetchPaginatedProducts, deleteProduct} from '../actions';
-// createProduct/updateProduct actions are used within ProductForm
 import type { ProductPageFilters } from '@/lib/services/finances/products/products.service';
+import { type UsageCheckResult } from '@/lib/subscription/subscription'; // ✅ Importem tipus de límit
 
 // Components Compartits
 import { Button } from "@/components/ui/button";
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 import { PageHeader } from '@/components/shared/PageHeader';
+// ✅ 2. Importem els components d'Alerta i Modal
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Components Específics
 import { ProductsFilters } from './ProductsFilters';
 
 // Hook Genèric
-import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; // Corrected path
+import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; 
 
 // Utilitats
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -33,96 +46,103 @@ type PaginatedProductsResponse = PaginatedResponse<Product>;
 type FetchProductsParams = PaginatedActionParams<ProductPageFilters>;
 const PRODUCT_ROWS_PER_PAGE_OPTIONS = [15, 30, 50];
 
-// Props del Component
+// ✅ 3. Actualitzem les Props
 interface ProductsClientProps {
   initialData: PaginatedProductsResponse;
   categoriesForFilter: string[];
+  productLimitStatus: UsageCheckResult | null; // <-- NOVA PROP
 }
 
-export function ProductsClient({ initialData, categoriesForFilter }: ProductsClientProps) {
+export function ProductsClient({ 
+  initialData, 
+  categoriesForFilter,
+  productLimitStatus // ✅ 4. Rebem la prop
+}: ProductsClientProps) {
   const t = useTranslations('ProductsPage');
   const tShared = useTranslations('Shared');
+  const t_billing = useTranslations('Shared.limits'); // Per als missatges
   const locale = useLocale();
+  const router = useRouter(); // Per al modal i el botó
 
+  // ✅ 5. Estat per al modal i comprovació del límit
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const isLimitExceeded = productLimitStatus && !productLimitStatus.allowed;
 
-
-  // --- Column Definitions ---
+  // --- Column Definitions (Sense canvis) ---
   const allColumns = useMemo<ColumnDef<Product>[]>(() => [
+    // ... (El teu codi de columnes és correcte)
     {
-      accessorKey: 'name',
-      header: t('table.name'),
-      enableSorting: true,
-      cell: (product) => (
-        <Link
-          // ✅ Corrected Route: crm/products/
-          href={`/${locale}/finances/products/${product.id}`}
-          className="font-medium cursor-pointer hover:underline"
-          title={`${tShared('actions.view')}: ${product.name}`}
-        >
-          {product.name}
-        </Link>
-      ),
-    },
-    {
-      accessorKey: 'category',
-      header: t('table.category'),
-
-      enableSorting: true,
-      cell: (product) => product.category || '-',
-
-    },
-    {
-      accessorKey: 'price',
-      header: t('table.price'),
-      enableSorting: true,
-      cell: (product) => formatCurrency(product.price ?? 0),
-    },
-    {
-      accessorKey: 'iva',
-      header: t('table.vat'),
-      enableSorting: false,
-      cell: (product) => (product.iva !== null ? `${product.iva}%` : '-'),
-    },
-    {
-      accessorKey: 'unit',
-      header: t('table.unit'),
-      enableSorting: false,
-      cell: (product) => product.unit || '-',
-    },
-    {
-      accessorKey: 'is_active',
-      header: t('table.active'),
-      enableSorting: true,
-      cell: (product) => (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product.is_active
-          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-          }`}>
-          {product.is_active ? t('active') : t('inactive')}
-        </span>
-      ),
-    },
-    // Action column now only links to detail view (where edit/delete happens)
-    {
-      accessorKey: "actions_view_edit", // Renamed for clarity
-      header: "", // Could add tShared('table.actions') if desired
-      enableSorting: false,
-      cell: (product) => (
-        <Link
-          // ✅ Corrected Route: crm/products/
-          href={`/${locale}/finances/products/${product.id}`}
-          title={tShared('actions.edit')} // Or view/edit
-        >
-          <Button variant="ghost" size="icon">
-            <Edit className="w-4 h-4" />
-          </Button>
-        </Link>
-      ),
-      cellClassName: "text-right",
-    }
+       accessorKey: 'name',
+       header: t('table.name'),
+       enableSorting: true,
+       cell: (product) => (
+         <Link
+           // ✅ Compte! La ruta és /finances/products/[id]
+           href={`/${locale}/finances/products/${product.id}`}
+           className="font-medium cursor-pointer hover:underline"
+           title={`${tShared('actions.view')}: ${product.name}`}
+         >
+           {product.name}
+         </Link>
+       ),
+     },
+     {
+       accessorKey: 'category',
+       header: t('table.category'),
+       enableSorting: true,
+       cell: (product) => product.category || '-',
+     },
+     {
+       accessorKey: 'price',
+       header: t('table.price'),
+       enableSorting: true,
+       cell: (product) => formatCurrency(product.price ?? 0),
+     },
+     {
+       accessorKey: 'iva',
+       header: t('table.vat'),
+       enableSorting: false,
+       cell: (product) => (product.iva !== null ? `${product.iva}%` : '-'),
+     },
+     {
+       accessorKey: 'unit',
+       header: t('table.unit'),
+       enableSorting: false,
+       cell: (product) => product.unit || '-',
+     },
+     {
+       accessorKey: 'is_active',
+       header: t('table.active'),
+       enableSorting: true,
+       cell: (product) => (
+         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product.is_active
+           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+           : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+           }`}>
+           {product.is_active ? t('active') : t('inactive')}
+         </span>
+       ),
+     },
+     {
+       accessorKey: "actions_view_edit",
+       header: "",
+       enableSorting: false,
+       cell: (product) => (
+         <Link
+           // ✅ Compte! La ruta és /finances/products/[id]
+           href={`/${locale}/finances/products/${product.id}`}
+           title={tShared('actions.edit')}
+         >
+           <Button variant="ghost" size="icon">
+             <Edit className="w-4 h-4" />
+           </Button>
+         </Link>
+       ),
+       cellClassName: "text-right",
+     }
   ], [t, tShared, locale]);
 
-  // --- Generic Hook ---
+  // --- Generic Hook (Sense canvis) ---
   const {
     isPending,
     data: products,
@@ -143,22 +163,17 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     handlePageChange,
     rowsPerPage,
     handleRowsPerPageChange,
-    // Add forceRefetch if implemented in the hook
-    // forceRefetch,
   } = usePaginatedResource<Product, ProductPageFilters>({
     initialData,
     initialFilters: { category: 'all' },
     initialSort: { column: 'name', order: 'asc' },
     allColumns,
     fetchAction: fetchPaginatedProducts as (params: FetchProductsParams) => Promise<PaginatedProductsResponse>,
-    // ✅ Adapter for deleteProduct (Product ID is number)
     deleteAction: async (id: string | number): Promise<ActionResult> => {
       if (typeof id !== 'number') {
         const msg = tShared('errors.invalidId') + " (expected number)";
-        console.error(msg, { id });
         return { success: false, message: msg };
       }
-      // Assuming deleteProduct expects number and returns ActionResult
       return deleteProduct(id);
     },
     initialRowsPerPage: PRODUCT_ROWS_PER_PAGE_OPTIONS[0],
@@ -168,9 +183,7 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     }
   });
 
-
-
-  // --- Visible Columns & Delete Description ---
+  // --- Visible Columns & Delete Description (Sense canvis) ---
   const visibleColumns = useMemo(
     () => allColumns.filter(col => {
       const key = ('id' in col && col.id)
@@ -180,7 +193,6 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     }),
     [allColumns, columnVisibility]
   );
-
   const deleteDescription = (
     <>
       {tShared('deleteDialog.description1')}{' '}
@@ -190,22 +202,44 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
     </>
   );
 
+  // ✅ 6. Gestor pel botó "Nou Producte"
+  const handleNewProductClick = () => {
+    if (isLimitExceeded) {
+      setShowLimitModal(true); // Mostra el modal si se supera el límit
+    } else {
+      router.push(`/${locale}/finances/products/new`); // Navega si tot està bé
+    }
+  };
+
   // --- Rendering ---
   return (
     <div className="h-full flex flex-col gap-4">
-      {/* Page Header with Create Button triggering Dialog */}
-      {/* Capçalera i Botons */}
-      {/* ✅ Substituïm la capçalera manual per PageHeader */}
       <PageHeader title={t('title')}>
-        {/* El botó "Nou Producte" va com a 'children' */}
-        <Button asChild>
-          <Link href={`/${locale}/finances/products/new`}>
-            <Plus className="w-4 h-4 mr-1" /> {t('newProductButton')}
-          </Link>
+        
+        {/* ✅ 7. Alerta de límit (només si se supera) */}
+        {isLimitExceeded && (
+            <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
+              <TriangleAlert className="h-4 w-4 text-yellow-900" />
+              <AlertTitle className="font-semibold text-xs mb-0">
+                {t_billing('modalTitle', { default: 'Límit assolit' })}
+              </AlertTitle>
+              <AlertDescription className="text-xs">
+                {/* Assegura't que 'products' existeix a 'Shared.limits' */}
+                {productLimitStatus.error || t_billing('products', { current: productLimitStatus.current, max: productLimitStatus.max })}
+                <Button asChild variant="link" size="sm" className="p-0 h-auto ml-1 text-yellow-900 font-semibold underline">
+                  <Link href={`/${locale}/settings/billing`}>{t_billing('upgradeButton')}</Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+        {/* ✅ 8. Botó ara utilitza el gestor onClick */}
+        <Button onClick={handleNewProductClick}>
+          <Plus className="w-4 h-4 mr-1" /> {t('newProductButton')}
         </Button>
       </PageHeader>
 
-      {/* Filters Bar */}
+      {/* Filters Bar (Sense canvis) */}
       <div className="flex justify-between items-center">
         <ProductsFilters
           searchTerm={searchTerm}
@@ -221,7 +255,7 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         />
       </div>
 
-      {/* Data Table */}
+      {/* Data Table (Sense canvis) */}
       <GenericDataTable<Product>
         className="flex-grow overflow-hidden"
         columns={visibleColumns}
@@ -238,11 +272,37 @@ export function ProductsClient({ initialData, categoriesForFilter }: ProductsCli
         rowsPerPageOptions={PRODUCT_ROWS_PER_PAGE_OPTIONS}
         deleteItem={productToDelete}
         setDeleteItem={setProductToDelete}
-        onDelete={handleDelete} // Delete confirmation handled by GenericDataTable
-        deleteTitleKey="deleteDialog.title" // Use shared key
+        onDelete={handleDelete}
+        deleteTitleKey="deleteDialog.title" 
         deleteDescription={deleteDescription}
         emptyStateMessage={t('noProductsFound')}
       />
+
+      {/* ✅ 9. Modal de bloqueig (si l'usuari clica el botó) */}
+      <AlertDialog open={showLimitModal} onOpenChange={setShowLimitModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="text-destructive" />
+              {t_billing('modalTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t_billing('products', { 
+                current: productLimitStatus?.current ?? 0, 
+                max: productLimitStatus?.max ?? 0 
+              })}
+              <br />
+              {t_billing('upgradePlan')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tShared('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push(`/${locale}/settings/billing`)}>
+              {t_billing('upgradeButton')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

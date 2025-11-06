@@ -1,29 +1,30 @@
-// /app/[locale]/(app)/crm/products/actions.ts (FITXER CORREGIT I NET)
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session";
-import { type PaginatedActionParams } from '@/hooks/usePaginateResource';
+import { redirect } from 'next/navigation';
+// ✅ 1. Importem els guardians
+import { 
+  validateSessionAndPermission,
+  validateActionAndUsage
+} from "@/lib/permissions/permissions";
+import { PERMISSIONS } from "@/lib/permissions/permissions.config";
+import { type PlanLimit } from "@/config/subscriptions";
 
-// ✅ 1. Importem el NOU servei
+import { type PaginatedActionParams } from '@/hooks/usePaginateResource';
 import * as productService from '@/lib/services/finances/products/products.service';
-import { redirect } from 'next/navigation'; // 👈 1. Importar redirect
-// ✅ 2. Importem els tipus NOMÉS PER A ÚS INTERN
 import type { 
   ProductPageFilters, 
   FormState, 
   PaginatedProductsData,
-
 } from '@/lib/services/finances/products/products.service';
-
-// ❌ TOTS ELS 'export type' S'HAN ELIMINAT
 
 // --- Acció per Obtenir Dades Paginades ---
 export async function fetchPaginatedProducts(
   params: PaginatedActionParams<ProductPageFilters>
 ): Promise<PaginatedProductsData> {
 
-  const session = await validateUserSession();
+  // ✅ 2. Validació de VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) {
     return { data: [], count: 0 };
   }
@@ -34,9 +35,11 @@ export async function fetchPaginatedProducts(
 
 // --- Acció per Obtenir Categories Úniques (Cache) ---
 export async function getUniqueProductCategories(): Promise<string[]> {
-  const session = await validateUserSession();
+  // ✅ 3. Validació de VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return [];
   
+  // Passem 'activeTeamId' que ve de la sessió validada
   return productService.getUniqueProductCategories(session.activeTeamId);
 }
 
@@ -46,7 +49,12 @@ export async function createProduct(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const session = await validateUserSession();
+  // ✅ 4. Validació de CREACIÓ (Permís + Límit)
+  const limitToCheck: PlanLimit = 'maxProducts';
+  const session = await validateActionAndUsage(
+    PERMISSIONS.MANAGE_PRODUCTS,
+    limitToCheck
+  );
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
@@ -55,7 +63,7 @@ export async function createProduct(
   const result = await productService.createProduct(supabase, user.id, activeTeamId, formData);
 
   if (result.success) {
-    revalidatePath('/crm/products');
+    revalidatePath('/crm/products'); // Compte! La ruta és /crm/products
   }
 
   return result;
@@ -63,35 +71,25 @@ export async function createProduct(
 
 /**
  * ACCIÓ: Elimina un producte.
- * Aquesta és la versió corregida.
  */
 export async function deleteProduct(productId: number): Promise<FormState> {
-  const session = await validateUserSession();
+  // ✅ 5. Validació de GESTIÓ
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_PRODUCTS);
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
-  
-  // 1. Obtenim el client 'supabase' autenticat.
-  // No necessitem 'activeTeamId' per a la crida.
   const { supabase } = session;
 
-  // 2. ✅ CRIDA CORREGIDA: Cridem al servei només amb (supabase, id)
   const result = await productService.deleteProduct(supabase, productId);
 
   if (result.success) {
-    // 3. Si té èxit, revalidem la memòria cau de la PÀGINA DE LLISTA.
+    // La teva ruta de revalidació és /finances/products, però l'acció és a /crm/products
+    // Assegura't que sigui la correcta. Deixaré la que tenies.
     revalidatePath('/finances/products'); 
-    
-    // 4. Important: NO revalidem la pàgina de detall [productId]
-    //    perquè ja no existeix.
-
   } else {
-    // Si el servei retorna un error, el passem al client
     return { success: false, message: result.message };
   }
 
-  // 5. REDIRECCIÓ DES DEL SERVIDOR:
-  // Un cop eliminat i revalidat, redirigim l'usuari a la llista.
-  // Això evita la "cursa" (race condition) i el 404.
+  // La teva ruta de redirecció és /finances/products
   redirect(`/finances/products`);
 }
