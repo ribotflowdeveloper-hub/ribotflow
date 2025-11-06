@@ -4,24 +4,27 @@ import { StageColumn } from './StageColumn';
 
 interface ColumnsViewProps {
   stages: Stage[];
-  opportunitiesByStage: Record<string, OpportunityWithContact[]>;
+  // ✅ CORRECCIÓ: L'objecte s'indexa per 'number' (stage.id)
+  opportunitiesByStage: Record<number, OpportunityWithContact[]>;
   onEditOpportunity: (opportunity: OpportunityWithContact) => void;
-  onAddClick: (stageName: string) => void;
+  // ✅ CORRECCIÓ: Aquesta funció ara rep un 'number' (stage.id)
+  onAddClick: (stageId: number) => void;
 }
 
 export const ColumnsView: React.FC<ColumnsViewProps> = ({ stages, opportunitiesByStage, onEditOpportunity, onAddClick }) => {
-    return (
-        //console.log("Renderitzant ColumnsView amb etapes:", stages),
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-h-0">
-            {stages.map(stage => (
-                <StageColumn
-                    key={stage.id}
-                    stage={stage}
-                    opportunities={opportunitiesByStage[stage.name] || []}
-                    onEditOpportunity={onEditOpportunity}
-                    onAddClick={() => onAddClick(stage.name)}
-                />
-            ))}
-        </div>
-    );
+  return (
+    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 min-h-0">
+      {stages.map(stage => (
+        <StageColumn
+          key={stage.id}
+          stage={stage}
+          // ✅ CORRECCIÓ: Accedim per ID
+          opportunities={opportunitiesByStage[stage.id] || []}
+          onEditOpportunity={onEditOpportunity}
+          // ✅ CORRECCIÓ: Passem l'ID
+          onAddClick={() => onAddClick(stage.id)}
+        />
+      ))}
+    </div>
+  );
 };

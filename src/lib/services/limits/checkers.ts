@@ -16,7 +16,6 @@ import {
 } from "@/lib/services/limits/team.limits";
 import {
   checkContactsLimit,
-  checkQuotesPerMonthLimit,
   checkTasksLimit,
 } from "@/lib/services/limits/crm.limits";
 import {
@@ -30,6 +29,8 @@ import {
 import {
   checkExpensesPerMonthLimit,
   checkInvoicesPerMonthLimit,
+  checkProductsLimit,
+  checkQuotesPerMonthLimit,
   checkSuppliersLimit,
 } from "@/lib/services/limits/finances.limits";
 import { checkAIActionsLimit } from "@/lib/services/limits/ai.limits"; // ✅ 2. Importem el d'IA
@@ -44,9 +45,8 @@ export const limitCheckers: Record<PlanLimit, LimitCheckFunction> = {
   // Límits de CRM
   maxContacts: checkContactsLimit,
   maxTasks: checkTasksLimit,
-  maxQuotesPerMonth: checkQuotesPerMonthLimit,
+
   maxPipelines: notImplemented, // TODO
-  maxProducts: notImplemented, // TODO
   maxCalendarAccounts: notImplemented, // TODO
 
   // Límits de Comunicació
@@ -61,7 +61,9 @@ export const limitCheckers: Record<PlanLimit, LimitCheckFunction> = {
   maxInvoicesPerMonth: checkInvoicesPerMonthLimit,
   maxExpensesPerMonth: checkExpensesPerMonthLimit, // TODO
   maxSuppliers: checkSuppliersLimit, // <-- Substituïm 'notImplemented'
-  
+  maxProducts: checkProductsLimit, // TODO
+  maxQuotesPerMonth: checkQuotesPerMonthLimit,
+
   // Límits d'IA
   maxAIActionsPerMonth: checkAIActionsLimit,
 };

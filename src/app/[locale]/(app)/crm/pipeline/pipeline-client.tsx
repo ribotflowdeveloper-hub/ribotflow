@@ -1,4 +1,3 @@
-// /app/[locale]/(app)/crm/pipeline/pipeline-client.tsx (Refactoritzat i CORREGIT)
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -7,112 +6,171 @@ import { DragDropContext } from '@hello-pangea/dnd';
 import { useTranslations } from 'next-intl';
 import { Plus, LayoutGrid, Rows, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { useRouter, usePathname } from 'next/navigation';
 
-// ✅ 1. Importem el tipus 'Row' complet de la base de dades
+// ✅ Imports de Tipus i Components
 import { type Database } from '@/types/supabase';
-type FullContact = Database['public']['Tables']['contacts']['Row'];
-
-// ✅ 2. Importem els altres tipus
+import type { Pipeline } from '@/types/db'; 
 import { type Stage, type OpportunityWithContact } from './_components/PipelineData';
 import { usePipeline } from './_hooks/usePipeline';
 import { OpportunityDialog } from './_components/OpportunityDialog';
 import { ColumnsView } from './_components/ColumnsView';
 import { RowsView } from './_components/RowsView';
 
-// ➕ AFEGIT: Importem el hook per detectar la mida de la pantalla
-import { useMediaQuery } from '@/hooks/useMediaQuery';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+// ✅ AFEGIT: Importem el Separator
+import { Separator } from '@/components/ui/separator'; 
+
+type FullContact = Database['public']['Tables']['contacts']['Row'];
 
 interface PipelineClientProps {
-    initialStages: Stage[];
-    // ✅ 3. 'initialContacts' ara utilitza el tipus complet
-    initialContacts: FullContact[];
-    initialOpportunities: OpportunityWithContact[];
+  initialPipelines: Pipeline[]; 
+  activePipelineId: number | null; 
+  initialStages: Stage[];
+  initialContacts: FullContact[];
+  initialOpportunities: OpportunityWithContact[];
 }
 
-export function PipelineClient({ initialStages, initialContacts, initialOpportunities }: PipelineClientProps) {
-    const t = useTranslations('PipelinePage');
+export function PipelineClient({
+  initialPipelines,
+  activePipelineId,
+  initialStages,
+  initialContacts,
+  initialOpportunities
+}: PipelineClientProps) {
 
-    const [opportunities, setOpportunities] = useState(initialOpportunities);
+  const t = useTranslations('PipelinePage');
+  const tSettings = useTranslations('SettingsPage.SettingsPipelines'); // Per al nou botó
+  const router = useRouter();
+  const pathname = usePathname();
 
-    useEffect(() => {
-        setOpportunities(initialOpportunities);
-    }, [initialOpportunities]);
+  const [opportunities, setOpportunities] = useState(initialOpportunities);
 
-    const {
-        isPending,
-        opportunitiesByStage,
-        viewMode, // Aquesta és la vista seleccionada per l'usuari (default: 'columns')
-        setViewMode,
-        isDialogOpen,
-        setIsDialogOpen,
-        editingOpportunity,
-        onDragEnd,
-        handleOpenDialog,
-        handleSuccess,
-    } = usePipeline({
-        initialStages,
-        opportunities,
-        setOpportunities
-    });
+  useEffect(() => {
+    setOpportunities(initialOpportunities);
+  }, [initialOpportunities]);
 
-    // ➕ AFEGIT: Detectem si és mòbil (breakpoint 'md' de Tailwind = 768px)
-    // Utilitzem 767px per ser < md
-    const isMobile = useMediaQuery("(max-width: 767px)");
+  const {
+    isPending,
+    opportunitiesByStage,
+    viewMode,
+    setViewMode,
+    isDialogOpen,
+    setIsDialogOpen,
+    editingOpportunity,
+    onDragEnd,
+    handleOpenDialog,
+    handleSuccess,
+  } = usePipeline({
+    initialStages,
+    opportunities,
+    setOpportunities
+  });
 
-    // ❗ CORREGIT: Decidim quina vista mostrar
-    // Si és mòbil, forcem 'rows'. Si no, respectem la selecció de l'usuari.
-    const effectiveViewMode = isMobile ? 'rows' : viewMode;
+  const isMobile = useMediaQuery("(max-width: 767px)");
+  const effectiveViewMode = isMobile ? 'rows' : viewMode;
 
-    return (
-        <>
-            <OpportunityDialog
-                open={isDialogOpen}
-                onOpenChange={setIsDialogOpen}
-                // ✅ 4. Aquesta línia ara és vàlida.
-                contacts={initialContacts}
-                stages={initialStages}
-                onSuccess={handleSuccess}
-                opportunityToEdit={editingOpportunity}
-            />
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
-                <div className="flex justify-between items-center mb-6 flex-shrink-0">
-                    <h1 className="text-3xl font-bold">{t('title')}</h1>
-                    <div className="flex items-center gap-2">
+  const handlePipelineChange = (pipelineId: string) => {
+    // Si l'usuari clica "crear nou", el 'onSelect' de l'item ho gestionarà abans
+    if (pipelineId === '--create-new--') return;
+    router.push(`${pathname}?pipeline=${pipelineId}`);
+  };
 
-                        {/* ❗ CORREGIT: Afegim 'hidden md:flex' per ocultar en mòbil */}
-                        <div className="bg-muted p-1 rounded-lg hidden md:flex">
-                            <Button variant={viewMode === 'columns' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('columns')} aria-label={t('columnViewLabel')} disabled={isPending}><LayoutGrid className="w-4 h-4" /></Button>
-                            <Button variant={viewMode === 'rows' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('rows')} aria-label={t('rowViewLabel')} disabled={isPending}><Rows className="w-4 h-4" /></Button>
-                        </div>
+  const activePipelineName = initialPipelines.find(p => p.id === activePipelineId)?.name || t('selectPipeline');
 
-                        <Button onClick={() => handleOpenDialog()} disabled={isPending}>
-                            {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
-                            {t('addOpportunity')}
-                        </Button>
+  return (
+    <>
+      <OpportunityDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        contacts={initialContacts}
+        stages={initialStages}
+        onSuccess={handleSuccess}
+        opportunityToEdit={editingOpportunity}
+      />
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
+        <div className="flex justify-between items-center mb-6 flex-shrink-0">
+
+          <div className="flex-1 min-w-0">
+            {initialPipelines.length > 0 && activePipelineId ? (
+              <Select onValueChange={handlePipelineChange} defaultValue={activePipelineId.toString()}>
+                <SelectTrigger className="w-auto max-w-xs md:w-[280px] bg-background text-lg md:text-3xl font-bold h-auto p-0 border-0 shadow-none data-[state=open]:ring-0 focus:ring-0">
+                  <SelectValue asChild>
+                    <span className="truncate">{activePipelineName}</span>
+                  </SelectValue>
+                </SelectTrigger>
+                
+                {/* ✅ CONTINGUT DEL SELECTOR ACTUALITZAT */}
+                <SelectContent>
+                  {initialPipelines.map(pipeline => (
+                    <SelectItem key={pipeline.id} value={pipeline.id.toString()}>
+                      {pipeline.name}
+                    </SelectItem>
+                  ))}
+                  
+                  {/* --- AFEGIT: Botó per anar a la configuració --- */}
+                  <Separator className="my-1" />
+                  <SelectItem
+                    value="--create-new--" // Un valor dummy
+                    className="text-primary focus:text-primary"
+                    // Aquest 'onSelect' s'activa abans que 'onValueChange'
+                    onSelect={(e) => {
+                      e.preventDefault(); // Evitem que el select es tanqui o canviï de valor
+                      router.push('/settings/pipelines'); // Naveguem a la pàgina
+                    }}
+                  >
+                    <div className="flex items-center">
+                      <Plus className="mr-2 h-4 w-4" />
+                      {tSettings('managePipelines')}
                     </div>
-                </div>
+                  </SelectItem>
+                  {/* --- FI DE L'AFEGIT --- */}
 
-                <DragDropContext onDragEnd={onDragEnd}>
+                </SelectContent>
+              </Select>
+            ) : (
+              <h1 className="text-3xl font-bold truncate">{activePipelineName || t('title')}</h1>
+            )}
+          </div>
 
-                    {/* ❗ CORREGIT: Usem 'effectiveViewMode' per decidir el render */}
-                    {effectiveViewMode === 'columns' ? (
-                        <ColumnsView
+          <div className="flex items-center gap-2">
+            <div className="bg-muted p-1 rounded-lg hidden md:flex">
+              <Button variant={viewMode === 'columns' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('columns')} aria-label={t('columnViewLabel')} disabled={isPending}><LayoutGrid className="w-4 h-4" /></Button>
+              <Button variant={viewMode === 'rows' ? 'secondary' : 'ghost'} size="icon" onClick={() => setViewMode('rows')} aria-label={t('rowViewLabel')} disabled={isPending}><Rows className="w-4 h-4" /></Button>
+            </div>
 
-                            stages={initialStages}
-                            opportunitiesByStage={opportunitiesByStage}
-                            onEditOpportunity={(op) => handleOpenDialog(op)}
-                            onAddClick={(stage) => handleOpenDialog(undefined, stage)}
-                        />
-                    ) : (
-                        <RowsView
-                            stages={initialStages}
-                            opportunitiesByStage={opportunitiesByStage}
-                            onEditOpportunity={(op) => handleOpenDialog(op)}
-                            onAddClick={(stage) => handleOpenDialog(undefined, stage)}
-                        />
-                    )}
-                </DragDropContext>
-            </motion.div>
-        </>
-    );
+            <Button onClick={() => handleOpenDialog()} disabled={isPending}>
+              {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              {t('addOpportunity')}
+            </Button>
+          </div>
+        </div>
+
+        <DragDropContext onDragEnd={onDragEnd}>
+          {effectiveViewMode === 'columns' ? (
+            <ColumnsView
+              stages={initialStages}
+              opportunitiesByStage={opportunitiesByStage}
+              onEditOpportunity={(op) => handleOpenDialog(op)}
+              onAddClick={(stageId) => handleOpenDialog(undefined, stageId)}
+            />
+          ) : (
+            <RowsView
+              stages={initialStages}
+              opportunitiesByStage={opportunitiesByStage}
+              onEditOpportunity={(op) => handleOpenDialog(op)}
+              onAddClick={(stageId) => handleOpenDialog(undefined, stageId)}
+            />
+          )}
+        </DragDropContext>
+      </motion.div>
+    </>
+  );
 }

@@ -107,6 +107,38 @@ export type Database = {
           },
         ]
       }
+      ai_usage_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: number
+          team_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: number
+          team_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: number
+          team_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_usage_log_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audio_jobs: {
         Row: {
           created_at: string
@@ -1281,32 +1313,80 @@ export type Database = {
       }
       pipeline_stages: {
         Row: {
+          color: string
           created_at: string | null
           id: number
           name: string
+          pipeline_id: number
           position: number
+          stage_type: string | null
           team_id: string | null
           user_id: string
         }
         Insert: {
+          color?: string
           created_at?: string | null
           id?: number
           name: string
+          pipeline_id: number
           position: number
+          stage_type?: string | null
           team_id?: string | null
           user_id: string
         }
         Update: {
+          color?: string
           created_at?: string | null
           id?: number
           name?: string
+          pipeline_id?: number
           position?: number
+          stage_type?: string | null
           team_id?: string | null
           user_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "pipeline_stages_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pipeline_stages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipelines: {
+        Row: {
+          created_at: string
+          id: number
+          name: string
+          position: number
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          name: string
+          position?: number
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          name?: string
+          position?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipelines_team_id_fkey"
             columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
@@ -2084,6 +2164,7 @@ export type Database = {
           city: string | null
           country: string | null
           created_at: string | null
+          default_pipeline_id: number | null
           email: string | null
           id: string
           latitude: number | null
@@ -2106,6 +2187,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string | null
+          default_pipeline_id?: number | null
           email?: string | null
           id?: string
           latitude?: number | null
@@ -2128,6 +2210,7 @@ export type Database = {
           city?: string | null
           country?: string | null
           created_at?: string | null
+          default_pipeline_id?: number | null
           email?: string | null
           id?: string
           latitude?: number | null
@@ -2145,7 +2228,15 @@ export type Database = {
           tax_id?: string | null
           website?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "teams_default_pipeline_id_fkey"
+            columns: ["default_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_assignments: {
         Row: {
@@ -2701,36 +2792,16 @@ export type Database = {
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_active_team_id: { Args: never; Returns: string }
       get_active_team_role: { Args: never; Returns: string }
-      get_column_valid_values:
-        | {
-            Args: { p_ref_table_name: string }
-            Returns: {
-              value: string
-            }[]
-          }
-        | {
-            Args: { p_column_name: string; p_ref_table_name: string }
-            Returns: {
-              value: string
-            }[]
-          }
+      get_column_valid_values: {
+        Args: { p_ref_table_name: string }
+        Returns: {
+          value: string
+        }[]
+      }
       get_crm_dashboard_data: { Args: never; Returns: Json }
       get_crm_overview: { Args: never; Returns: Json }
       get_current_jwt_claims: { Args: never; Returns: string }
       get_current_team_id: { Args: never; Returns: string }
-      get_dashboard_stats: {
-        Args: never
-        Returns: {
-          active_clients: number
-          expenses_current_month: number
-          expenses_previous_month: number
-          invoiced_current_month: number
-          invoiced_previous_month: number
-          opportunities: number
-          pending_total: number
-          total_contacts: number
-        }[]
-      }
       get_dashboard_stats_for_team: {
         Args: { p_team_id: string }
         Returns: {
@@ -2767,18 +2838,16 @@ export type Database = {
           p_limit: number
           p_offset: number
           p_search_term: string
-          p_team_id: string
-          p_user_id: string
           p_visible_user_ids: string[]
         }
         Returns: {
           attachments: Json
           body: string
           contact_email: string
-          contact_id: number
+          contact_id: string
           contact_nom: string
           created_at: string
-          id: number
+          id: string
           preview: string
           profile_avatar_url: string
           profile_full_name: string
@@ -2802,7 +2871,6 @@ export type Database = {
       }
       get_marketing_page_data: { Args: { p_team_id: string }; Returns: Json }
       get_my_team_id: { Args: never; Returns: string }
-      get_my_team_ids: { Args: never; Returns: string[] }
       get_my_teams: {
         Args: never
         Returns: {
@@ -2842,6 +2910,14 @@ export type Database = {
           data_type: string
         }[]
       }
+      get_table_columns_with_types: {
+        Args: { p_table_name: string }
+        Returns: {
+          column_name: string
+          data_type: string
+        }[]
+      }
+      get_team_dashboard_data: { Args: never; Returns: Json }
       get_team_ticket_count: { Args: { p_team_id: string }; Returns: number }
       get_user_id_by_email: {
         Args: { email_to_check: string }
@@ -2851,6 +2927,7 @@ export type Database = {
         Args: { p_team_id: string; p_user_id: string }
         Returns: Json
       }
+      get_user_team_id: { Args: never; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
       handle_onboarding:
         | {
@@ -2911,10 +2988,15 @@ export type Database = {
         Args: { team_id_to_check: string }
         Returns: boolean
       }
-      log_task_activity: {
-        Args: { new_status_input: boolean; task_id_input: number }
-        Returns: undefined
-      }
+      log_task_activity:
+        | {
+            Args: { new_status_input: boolean; task_id_input: string }
+            Returns: undefined
+          }
+        | {
+            Args: { new_status_input: boolean; task_id_input: number }
+            Returns: undefined
+          }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_documents: {
         Args: {
@@ -2924,7 +3006,7 @@ export type Database = {
         }
         Returns: {
           content: string
-          id: number
+          id: string
           metadata: Json
           similarity: number
         }[]
@@ -2969,89 +3051,54 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
-      reject_quote_with_reason: {
-        Args: { p_reason: string; p_secure_id: string }
-        Returns: undefined
+      reject_quote_with_reason:
+        | {
+            Args: { p_reason: string; p_secure_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: { p_reason: string; p_secure_id: string }
+            Returns: undefined
+          }
+      save_expense_with_items: {
+        Args: {
+          expense_data: Json
+          items_data: Json
+          p_expense_id_to_update: number
+          p_team_id: string
+          p_user_id: string
+        }
+        Returns: {
+          category: string | null
+          created_at: string
+          description: string
+          discount_amount: number | null
+          expense_date: string
+          extra_data: Json | null
+          id: number
+          invoice_number: string | null
+          is_billable: boolean
+          is_reimbursable: boolean
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["expense_status"]
+          subtotal: number | null
+          supplier_id: string | null
+          tax_amount: number | null
+          tax_rate: number | null
+          team_id: string | null
+          total_amount: number
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "expenses"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      save_expense_with_items:
-        | {
-            Args: {
-              expense_data: Json
-              items_data: Json
-              p_expense_id_to_update: number
-              p_team_id: string
-              p_user_id: string
-            }
-            Returns: {
-              category: string | null
-              created_at: string
-              description: string
-              discount_amount: number | null
-              expense_date: string
-              extra_data: Json | null
-              id: number
-              invoice_number: string | null
-              is_billable: boolean
-              is_reimbursable: boolean
-              notes: string | null
-              payment_date: string | null
-              payment_method: string | null
-              project_id: string | null
-              status: Database["public"]["Enums"]["expense_status"]
-              subtotal: number | null
-              supplier_id: string | null
-              tax_amount: number | null
-              tax_rate: number | null
-              team_id: string | null
-              total_amount: number
-              user_id: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "expenses"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
-        | {
-            Args: {
-              expense_data: Json
-              items_data: Json
-              p_expense_id_to_update?: number
-              p_team_id: string
-              p_user_id: string
-            }
-            Returns: {
-              category: string | null
-              created_at: string
-              description: string
-              discount_amount: number | null
-              expense_date: string
-              extra_data: Json | null
-              id: number
-              invoice_number: string | null
-              is_billable: boolean
-              is_reimbursable: boolean
-              notes: string | null
-              payment_date: string | null
-              payment_method: string | null
-              project_id: string | null
-              status: Database["public"]["Enums"]["expense_status"]
-              subtotal: number | null
-              supplier_id: string | null
-              tax_amount: number | null
-              tax_rate: number | null
-              team_id: string | null
-              total_amount: number
-              user_id: string
-            }[]
-            SetofOptions: {
-              from: "*"
-              to: "expenses"
-              isOneToOne: false
-              isSetofReturn: true
-            }
-          }
       save_refresh_token: {
         Args: { provider_name: string; refresh_token_value: string }
         Returns: undefined
@@ -3082,10 +3129,10 @@ export type Database = {
           notes: string
           payment_date: string
           payment_method: string
-          project_id: number
+          project_id: string
           status: Database["public"]["Enums"]["expense_status"]
           subtotal: number
-          supplier_id: number
+          supplier_id: string
           supplier_nom: string
           tax_amount: number
           tax_rate: number
@@ -3096,11 +3143,11 @@ export type Database = {
       }
       search_invoices: {
         Args: {
-          page_limit: number
-          page_offset: number
-          search_term: string
-          sort_direction: string
-          sort_field: string
+          page_limit?: number
+          page_offset?: number
+          search_term?: string
+          sort_direction?: string
+          sort_field?: string
           status_filter?: string
         }
         Returns: {
@@ -3122,13 +3169,13 @@ export type Database = {
       }
       search_paginated_invoices: {
         Args: {
-          contact_id_param: number
-          limit_param: number
-          offset_param: number
-          search_term_param: string
-          sort_by_param: string
-          sort_order_param: string
-          status_param: string
+          contact_id_param?: number
+          limit_param?: number
+          offset_param?: number
+          search_term_param?: string
+          sort_by_param?: string
+          sort_order_param?: string
+          status_param?: string
           team_id_param: string
         }
         Returns: {
@@ -3151,37 +3198,19 @@ export type Database = {
           search_term_param?: string
           sort_by_param?: string
           sort_order_param?: string
-          status_param?: Database["public"]["Enums"]["quote_status"]
+          status_param?: string
           team_id_param: string
         }
-        Returns: {
-          contact_empresa: string
-          contact_id: number
-          contact_nom: string
-          created_at: string
-          discount: number
-          expiry_date: string
-          id: number
-          issue_date: string
-          notes: string
-          opportunity_id: number
-          quote_number: string
-          rejection_reason: string
-          secure_id: string
-          send_at: string
-          sent_at: string
-          sequence_number: number
-          show_quantity: boolean
-          status: Database["public"]["Enums"]["quote_status"]
-          subtotal: number
-          tax: number
-          tax_percent: number
-          team_id: string
-          theme_color: string
-          total: number
-          total_count: number
-          user_id: string
-        }[]
+        Returns: Record<string, unknown>[]
+      }
+      set_pipeline_stage_type: {
+        Args: {
+          p_pipeline_id: number
+          p_stage_id: number
+          p_stage_type: string
+          p_team_id: string
+        }
+        Returns: undefined
       }
       st_3dclosestpoint: {
         Args: { geom1: unknown; geom2: unknown }
@@ -3766,7 +3795,7 @@ export type Database = {
       }
       unlockrows: { Args: { "": string }; Returns: number }
       update_contact_last_interaction: {
-        Args: { contact_id_to_update: number }
+        Args: { contact_id_to_update: string }
         Returns: undefined
       }
       updategeometrysrid: {
@@ -3788,23 +3817,35 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
-          category: string
+          category: string | null
           created_at: string
           description: string
-          discount_amount: number
+          discount_amount: number | null
           expense_date: string
-          extra_data: Json
+          extra_data: Json | null
           id: number
-          invoice_number: string
-          notes: string
-          subtotal: number
-          supplier_id: string
-          tax_amount: number
-          tax_rate: number
-          team_id: string
+          invoice_number: string | null
+          is_billable: boolean
+          is_reimbursable: boolean
+          notes: string | null
+          payment_date: string | null
+          payment_method: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["expense_status"]
+          subtotal: number | null
+          supplier_id: string | null
+          tax_amount: number | null
+          tax_rate: number | null
+          team_id: string | null
           total_amount: number
           user_id: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "expenses"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       upsert_invoice_with_items: {
         Args: {
@@ -3814,7 +3855,7 @@ export type Database = {
           user_id: string
         }
         Returns: {
-          generated_invoice_id: number
+          saved_invoice_id: number
         }[]
       }
       upsert_quote_with_items: { Args: { quote_payload: Json }; Returns: Json }

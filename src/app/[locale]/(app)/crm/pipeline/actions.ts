@@ -1,66 +1,58 @@
-// /app/[locale]/(app)/crm/pipeline/actions.ts
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { validateUserSession } from "@/lib/supabase/session";
-
-// ✅ 1. Importem el servei d'oportunitats
 import * as opportunityService from "@/lib/services/crm/pipeline/opportunities.service";
 
 /**
  * ACCIÓ: Desa (crea o actualitza) una oportunitat.
+ * (Aquesta acció no canvia, ja que el servei 'saveOpportunity' és qui processa el FormData)
  */
 export async function saveOpportunityAction(formData: FormData) {
-    // 1. Validació de sessió
-    const session = await validateUserSession();
-    if ('error' in session) return { error: session.error };
-    const { supabase, user, activeTeamId } = session;
+  const session = await validateUserSession();
+  if ('error' in session) return { error: session.error };
+  const { supabase, user, activeTeamId } = session;
 
-    try {
-        // 2. Cridem al servei
-        await opportunityService.saveOpportunity(
-            supabase,
-            formData,
-            user.id,
-            activeTeamId
-        );
+  try {
+    await opportunityService.saveOpportunity(
+      supabase,
+      formData,
+      user.id,
+      activeTeamId
+    );
+    
+    revalidatePath("/crm/pipeline");
+    return { success: true };
 
-        // 3. Efecte secundari
-        revalidatePath("/crm/pipeline");
-        return { success: true };
-
-    } catch (error: unknown) {
-        // 4. Gestió d'errors
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { error: { message } };
-    }
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut";
+    return { error: { message } };
+  }
 }
- 
+
 /**
  * ACCIÓ: Actualitza l'etapa d'una oportunitat (per Drag-n-Drop).
+ * ✅ CORRECCIÓ: 'newStageId' és ara un 'number'.
  */
-export async function updateOpportunityStageAction(opportunityId: number, newStage: string) {
-    // 1. Validació de sessió
-    const session = await validateUserSession();
-    if ('error' in session) return { error: session.error };
-    const { supabase, activeTeamId } = session;
- 
-    try {
-        // 2. Cridem al servei
-        await opportunityService.updateOpportunityStage(
-            supabase,
-            opportunityId,
-            newStage,
-            activeTeamId
-        );
- 
-        // 3. Efecte secundari
-        revalidatePath("/crm/pipeline");
-        return { success: true };
+export async function updateOpportunityStageAction(opportunityId: number, newStageId: number) {
+  const session = await validateUserSession();
+  if ('error' in session) return { error: session.error };
+  const { supabase, activeTeamId } = session;
 
-    } catch (error: unknown) {
-        // 4. Gestió d'errors
-        const message = error instanceof Error ? error.message : "Error desconegut";
-        return { error: { message } };
-    }
+  try {
+    // Passem l'ID numèric al servei
+    await opportunityService.updateOpportunityStage(
+      supabase,
+      opportunityId,
+      newStageId, // ✅ ID numèric
+      activeTeamId
+    );
+
+    revalidatePath("/crm/pipeline");
+    return { success: true };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut";
+    return { error: { message } };
+  }
 }

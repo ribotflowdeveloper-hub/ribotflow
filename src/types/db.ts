@@ -30,6 +30,8 @@ export type Quote = DbTableRow<'quotes'>;
 export type Template = DbTableRow<'email_templates'>;
 export type Activity = DbTableRow<'activities'>;
 export type Task = DbTableRow<'tasks'>; // ✅ Canviat 'Tables' per 'Task' per claredat
+export type Pipeline = DbTableRow<'pipelines'>; // ✅ AFEGIT
+export type PipelineStage = DbTableRow<'pipeline_stages'>;
 
 // --- TIPUS ESPECÍFICS PER A L'INBOX ---
 export type EnrichedTicket = DbTableRow<'enriched_tickets'>;

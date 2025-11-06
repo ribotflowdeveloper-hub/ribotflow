@@ -67,3 +67,47 @@ export const checkSuppliersLimit: LimitCheckFunction = async (
     errorMessage: "Has assolit el límit de proveïdors.",
   };
 };
+
+/**
+ * Comprova el límit de maxQuotesPerMonth
+ * Aquest SÍ que utilitza la data d'inici del cicle.
+ */
+export const checkQuotesPerMonthLimit: LimitCheckFunction = async (
+  supabase,
+  teamId,
+  _userId,
+  startDate, // La data d'inici del cicle
+) => {
+  const { count, error } = await supabase
+    .from('quotes')
+    .select('*', { count: 'exact', head: true })
+    .eq('team_id', teamId)
+    .gte('created_at', startDate);
+    
+  if (error) throw new Error(error.message);
+  return {
+    current: count || 0,
+    errorMessage: "Has assolit el límit de pressupostos mensuals.",
+  };
+};
+
+/**
+ * ✅ NOU: Comprova el límit de maxProducts
+ * (Aquest és un recompte total, ignora 'startDate')
+ */
+export const checkProductsLimit: LimitCheckFunction = async (
+  supabase,
+  teamId,
+
+) => {
+  const { count, error } = await supabase
+    .from('products') // Taula 'products'
+    .select('*', { count: 'exact', head: true })
+    .eq('team_id', teamId);
+    
+  if (error) throw new Error(error.message);
+  return {
+    current: count || 0,
+    errorMessage: "Has assolit el límit de productes.",
+  };
+};

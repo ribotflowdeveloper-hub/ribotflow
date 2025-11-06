@@ -40,27 +40,5 @@ export const checkTasksLimit: LimitCheckFunction = async (
   };
 };
 
-/**
- * Comprova el límit de maxQuotesPerMonth
- * Aquest SÍ que utilitza la data d'inici del cicle.
- */
-export const checkQuotesPerMonthLimit: LimitCheckFunction = async (
-  supabase,
-  teamId,
-  _userId,
-  startDate, // La data d'inici del cicle
-) => {
-  const { count, error } = await supabase
-    .from('quotes')
-    .select('*', { count: 'exact', head: true })
-    .eq('team_id', teamId)
-    .gte('created_at', startDate);
-    
-  if (error) throw new Error(error.message);
-  return {
-    current: count || 0,
-    errorMessage: "Has assolit el límit de pressupostos mensuals.",
-  };
-};
 
 // ... Aquí afegiries checkPipelinesLimit, etc.

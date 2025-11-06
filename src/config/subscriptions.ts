@@ -31,7 +31,7 @@ const baseLimits = {
   maxEmailTemplates: 3,
   maxSocialAccounts: 1,
   maxSocialPostsPerMonth: 2,
-  maxMarketingCampaignsPerMonth: 1,
+  maxMarketingCampaignsPerMonth: 5,
   // Finances
   maxInvoicesPerMonth: 1,
   maxExpensesPerMonth: 1,

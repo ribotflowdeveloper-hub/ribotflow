@@ -7,16 +7,21 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
 // Importem els nous components
-import { PipelineData } from './_components/PipelineData'; 
+import { PipelineData } from './_components/PipelineData';
 import { PipelineSkeleton } from './_components/PipelineSkeleton';
+// ✅ SOLUCIÓ: Forcem la pàgina a ser dinàmica
+export const dynamic = 'force-dynamic';
+
 
 export const metadata: Metadata = {
   title: 'Pipeline | Ribot',
 };
 // IMPORTANT: La pàgina principal JA NO ÉS 'async'
-export default function PipelinePage() {
-  // Aquest component ara es renderitza a l'instant!
-  // No espera cap dada.
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
 
   return (
     <Suspense fallback={<PipelineSkeleton stages={[]} viewMode="columns" />}>
@@ -25,7 +30,7 @@ export default function PipelinePage() {
         Mentre està suspès, mostrarà el 'fallback' (el teu Skeleton).
         Quan les dades de PipelineData estiguin llestes, el substituirà.
       */}
-      <PipelineData />
-    </Suspense>
+      <PipelineData searchParams={searchParams} />    
+      </Suspense>
   );
 }

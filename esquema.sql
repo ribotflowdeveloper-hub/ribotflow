@@ -228,43 +228,61 @@ ALTER FUNCTION "public"."accept_invitation_and_set_active_team"("invite_token" "
 
 CREATE OR REPLACE FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
-declare
-  invitation_data record;
-  subscription_data record;
-  user_metadata jsonb;
-  requesting_user_id uuid := auth.uid();
-begin
-  -- 1. Validar la invitació i que pertany a l'usuari que fa la petició.
-  select * into invitation_data from public.invitations
-  where id = invitation_id and user_id = requesting_user_id and status = 'pending';
+DECLARE
+  invitation_data RECORD;
+  subscription_data RECORD;
+  user_metadata JSONB;
+  requesting_user_id UUID := auth.uid();
+BEGIN
+  -- 1️⃣ Validem que la invitació existeixi i pertanyi a l'usuari actual
+  SELECT *
+  INTO invitation_data
+  FROM public.invitations
+  WHERE id = invitation_id
+    AND user_id = requesting_user_id
+    AND status = 'pending';
 
-  if not found then
-    raise exception 'INVALID_INVITATION';
-  end if;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'INVALID_INVITATION';
+  END IF;
 
-  -- 2. Afegir l'usuari a l'equip (si ja hi és, no fa res).
-  insert into public.team_members (team_id, user_id, role)
-  values (invitation_data.team_id, requesting_user_id, invitation_data.role)
-  on conflict (team_id, user_id) do nothing;
+  -- 2️⃣ Afegim l'usuari a l'equip (si ja hi és, no passa res)
+  INSERT INTO public.team_members (team_id, user_id, role)
+  VALUES (invitation_data.team_id, requesting_user_id, invitation_data.role)
+  ON CONFLICT (team_id, user_id) DO NOTHING;
 
-  -- 3. Obtenir el pla de l'equip.
-  select plan_id, status into subscription_data from public.subscriptions
-  where team_id = invitation_data.team_id;
-  
-  -- 4. Actualitzar les metadades de l'usuari.
-  select raw_app_meta_data from auth.users where id = requesting_user_id into user_metadata;
-  
-  update auth.users set raw_app_meta_data = user_metadata || jsonb_build_object(
-      'active_team_id', invitation_data.team_id,
-      'active_team_plan', case when subscription_data.status = 'active' then subscription_data.plan_id else 'free' end
-  ) where id = requesting_user_id;
+  -- 3️⃣ Obtenim el pla de l'equip (si n'hi ha)
+  SELECT plan_id, status
+  INTO subscription_data
+  FROM public.subscriptions
+  WHERE team_id = invitation_data.team_id
+  LIMIT 1;
 
-  -- 5. Esborrar la invitació.
-  delete from public.invitations where id = invitation_data.id;
+  -- 4️⃣ Actualitzem les metadades de l'usuari a `auth.users`
+  SELECT raw_app_meta_data
+  INTO user_metadata
+  FROM auth.users
+  WHERE id = requesting_user_id;
 
-  return json_build_object('success', true);
-end;
+  UPDATE auth.users
+  SET raw_app_meta_data = user_metadata || jsonb_build_object(
+    'active_team_id', invitation_data.team_id,
+    'active_team_plan',
+      CASE
+        WHEN subscription_data.status = 'active' THEN subscription_data.plan_id
+        ELSE 'free'
+      END
+  )
+  WHERE id = requesting_user_id;
+
+  -- 5️⃣ Eliminem la invitació (ja acceptada)
+  DELETE FROM public.invitations
+  WHERE id = invitation_data.id;
+
+  RETURN json_build_object('success', true);
+END;
 $$;
 
 
@@ -273,11 +291,11 @@ ALTER FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") OWN
 
 CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_quote public.quotes%ROWTYPE; 
-  v_new_invoice_id bigint; 
+  v_quote public.quotes%ROWTYPE;
+  v_new_invoice_id bigint;
+  v_target_stage_id bigint; -- Canvi de nom de variable
 BEGIN
   -- Pas 1: Actualitzar el pressupost
   UPDATE public.quotes
@@ -289,14 +307,33 @@ BEGIN
     RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
   END IF;
 
-  -- Pas 2: Actualitzar l'oportunitat
+  -- -----------------------------------------------------------------
+  -- PAS 2: ACTUALITZAR L'OPORTUNITAT (LÒGICA DE FLUX DEFINITIVA)
+  -- -----------------------------------------------------------------
   IF v_quote.opportunity_id IS NOT NULL THEN
-    UPDATE public.opportunities
-    SET stage_name = 'Guanyat'
-    WHERE id = v_quote.opportunity_id;
+    BEGIN
+      -- Troba l'ID de l'etapa marcada com 'WON' 
+      -- dins del mateix pipeline de l'oportunitat.
+      SELECT ps_target.id
+      INTO v_target_stage_id
+      FROM public.opportunities o
+      JOIN public.pipeline_stages ps_current ON o.pipeline_stage_id = ps_current.id
+      JOIN public.pipeline_stages ps_target ON ps_current.pipeline_id = ps_target.pipeline_id
+      WHERE o.id = v_quote.opportunity_id
+        AND ps_target.stage_type = 'WON'; -- ✅ AQUEST ÉS EL CANVI CLAU
+
+      IF v_target_stage_id IS NOT NULL THEN
+        UPDATE public.opportunities
+        SET pipeline_stage_id = v_target_stage_id
+        WHERE id = v_quote.opportunity_id;
+      END IF;
+    
+    EXCEPTION 
+      WHEN NO_DATA_FOUND THEN NULL; -- Ignorem si l'oportunitat no té etapa
+    END;
   END IF;
 
-  -- Pas 3: Crear la capçalera de la factura
+  -- Pas 3: Crear la factura (sense canvis)
   INSERT INTO public.invoices (
     user_id, team_id, contact_id, quote_id, status, 
     total_amount, subtotal, tax_amount, discount_amount,
@@ -308,26 +345,19 @@ BEGIN
     CURRENT_DATE + INTERVAL '30 days'
   ) RETURNING id INTO v_new_invoice_id; 
 
-  -- Pas 4: Copiar els conceptes del pressupost
+  -- Pas 4: Copiar els conceptes (sense canvis)
   INSERT INTO public.invoice_items (
     invoice_id, product_id, description, quantity, unit_price, 
-    tax_rate, 
-    total, 
-    user_id, team_id
+    tax_rate, total, user_id, team_id
   )
   SELECT
     v_new_invoice_id, 
-    item.product_id,
-    item.description,
-    item.quantity,
-    item.unit_price,
-    COALESCE(p.iva, 0),
-    item.total,
-    v_quote.user_id,
-    v_quote.team_id
+    item.product_id, item.description, item.quantity, item.unit_price,
+    COALESCE(p.iva, 0), item.total, v_quote.user_id, v_quote.team_id
   FROM public.quote_items AS item
   LEFT JOIN public.products AS p ON item.product_id = p.id
   WHERE item.quote_id = v_quote.id;
+  
 END;
 $$;
 
@@ -356,21 +386,27 @@ ALTER FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") OWNER TO "p
 
 CREATE OR REPLACE FUNCTION "public"."create_new_organization"("org_name" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   new_org_id UUID;
-  user_id UUID := auth.uid();
+  current_user_id UUID := auth.uid();
 BEGIN
-  -- Creem la nova organització
+  -- ✅ 1. Crear la nova organització
   INSERT INTO public.organizations (name, owner_id)
-  VALUES (org_name, user_id)
+  VALUES (org_name, current_user_id)
   RETURNING id INTO new_org_id;
 
-  -- Afegim l'usuari creador com a 'owner' a la taula de membres
+  -- ✅ 2. Afegir el creador com a "owner" a la taula de membres
   INSERT INTO public.members (organization_id, user_id, role)
-  VALUES (new_org_id, user_id, 'owner');
+  VALUES (new_org_id, current_user_id, 'owner');
 
+  -- ✅ 3. Retornar l'ID de la nova organització
   RETURN new_org_id;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error en create_new_organization per usuari %: %', current_user_id, SQLERRM;
 END;
 $$;
 
@@ -419,33 +455,38 @@ ALTER FUNCTION "public"."create_public_profile_for_user"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."create_team_with_defaults"("team_name" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
-declare
-  new_team_id uuid;
-  -- auth.uid() obté automàticament l'ID de l'usuari que fa la petició.
-  requesting_user_id uuid := auth.uid();
-begin
-  -- 1. Creem l'equip
-  insert into public.teams (name, owner_id)
-  values (team_name, requesting_user_id)
-  returning id into new_team_id;
+DECLARE
+  new_team_id UUID;
+  requesting_user_id UUID := auth.uid();
+BEGIN
+  -- 1️⃣ Crear el nou equip
+  INSERT INTO public.teams (name, owner_id)
+  VALUES (team_name, requesting_user_id)
+  RETURNING id INTO new_team_id;
 
-  -- 2. Afegim el propietari com a membre
-  insert into public.team_members (team_id, user_id, role)
-  values (new_team_id, requesting_user_id, 'owner');
+  -- 2️⃣ Afegir el propietari com a membre
+  INSERT INTO public.team_members (team_id, user_id, role)
+  VALUES (new_team_id, requesting_user_id, 'owner');
 
-  -- 3. Afegim les etapes del pipeline per defecte
-  insert into public.pipeline_stages (name, position, team_id, user_id)
-  values
+  -- 3️⃣ Afegir etapes del pipeline per defecte
+  INSERT INTO public.pipeline_stages (name, position, team_id, user_id)
+  VALUES
     ('Prospecte', 1, new_team_id, requesting_user_id),
     ('Contactat', 2, new_team_id, requesting_user_id),
     ('Proposta Enviada', 3, new_team_id, requesting_user_id),
     ('Negociació', 4, new_team_id, requesting_user_id),
     ('Guanyat', 5, new_team_id, requesting_user_id),
     ('Perdut', 6, new_team_id, requesting_user_id);
-    
-  return new_team_id;
-end;
+
+  -- 4️⃣ Retornar l'ID de l'equip
+  RETURN new_team_id;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error en crear l''equip per a l''usuari %: %', requesting_user_id, SQLERRM;
+END;
 $$;
 
 
@@ -649,27 +690,47 @@ ALTER FUNCTION "public"."get_crm_dashboard_data"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_crm_overview"() RETURNS "jsonb"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-    seven_days_ago DATE;
+  seven_days_ago DATE := current_date - INTERVAL '7 days';
+  current_user_id UUID := auth.uid();
+  result jsonb;
 BEGIN
-    seven_days_ago := current_date - interval '7 days';
+  -- ✅ Construcció de l’objecte JSON amb subconsultes segures
+  SELECT jsonb_build_object(
+    'totalContacts', (
+      SELECT COUNT(*) FROM public.contacts WHERE user_id = current_user_id
+    ),
+    'activeClients', (
+      SELECT COUNT(*) FROM public.contacts
+      WHERE user_id = current_user_id AND estat = 'Client'
+    ),
+    'opportunities', (
+      SELECT COUNT(*) FROM public.contacts
+      WHERE user_id = current_user_id AND (estat = 'Lead' OR estat = 'Actiu') AND valor > 0
+    ),
+    'pipelineValue', (
+      SELECT COALESCE(SUM(valor), 0)
+      FROM public.contacts
+      WHERE user_id = current_user_id AND (estat = 'Lead' OR estat = 'Actiu') AND valor > 0
+    ),
+    'activeQuotes', (
+      SELECT COUNT(*) FROM public.quotes
+      WHERE user_id = current_user_id AND status IN ('Sent', 'Draft')
+    ),
+    'attentionCount', (
+      SELECT COUNT(*) FROM public.contacts
+      WHERE user_id = current_user_id AND last_interaction_at < seven_days_ago
+    )
+  ) INTO result;
 
-    RETURN (
-        SELECT jsonb_build_object(
-            'totalContacts', (SELECT count(*) FROM public.contacts WHERE user_id = auth.uid()),
-            'activeClients', (SELECT count(*) FROM public.contacts WHERE user_id = auth.uid() AND estat = 'Client'),
-            -- Oportunitats: Leads/Actius amb un valor assignat > 0
-            'opportunities', (SELECT count(*) FROM public.contacts WHERE user_id = auth.uid() AND (estat = 'Lead' OR estat = 'Actiu') AND valor > 0),
-            -- Valor del Pipeline: Suma del valor d'aquestes oportunitats
-            'pipelineValue', (SELECT COALESCE(sum(valor), 0) FROM public.contacts WHERE user_id = auth.uid() AND (estat = 'Lead' OR estat = 'Actiu') AND valor > 0),
-            -- Pressupostos actius (Enviats o Esborranys)
-            'activeQuotes', (SELECT count(*) FROM public.quotes WHERE user_id = auth.uid() AND (status = 'Sent' OR status = 'Draft')),
-            -- Contactes que necessiten atenció
-            'attentionCount', (SELECT count(*) FROM public.contacts WHERE user_id = auth.uid() AND last_interaction_at < seven_days_ago)
-        )
-    );
+  RETURN result;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error en get_crm_overview(): %', SQLERRM;
 END;
 $$;
 
@@ -700,14 +761,19 @@ ALTER FUNCTION "public"."get_current_jwt_claims"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."get_current_team_id"() RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public'
     AS $$
 DECLARE
   team_id_val UUID;
 BEGIN
-  SELECT team_id INTO team_id_val
+  -- 🔍 Obté el primer equip associat a l'usuari actual
+  SELECT team_id
+  INTO team_id_val
   FROM public.team_members
   WHERE user_id = auth.uid()
   LIMIT 1;
+
+  -- 🔁 Retorna l'ID (pot ser NULL si no pertany a cap equip)
   RETURN team_id_val;
 END;
 $$;
@@ -825,17 +891,18 @@ $$;
 ALTER FUNCTION "public"."get_financial_summary"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_inbox_received_count"("p_visible_user_ids" "uuid"[]) RETURNS integer
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."get_inbox_received_count"("p_visible_user_ids" "uuid"[]) RETURNS bigint
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public'
     AS $$
 BEGIN
-    RETURN (
-        SELECT COUNT(*)
-        FROM public.tickets
-        WHERE
-            tickets.user_id = ANY(p_visible_user_ids) AND
-            (tickets.type = 'rebut' OR tickets.type IS NULL)
-    );
+  RETURN (
+    SELECT COUNT(*)
+    FROM public.tickets
+    WHERE
+      tickets.user_id = ANY(p_visible_user_ids)
+      AND (tickets.type = 'rebut' OR tickets.type IS NULL)
+  );
 END;
 $$;
 
@@ -858,13 +925,12 @@ $$;
 ALTER FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") RETURNS TABLE("id" bigint, "created_at" timestamp with time zone, "user_id" "uuid", "contact_id" bigint, "provider" "text", "provider_message_id" "text", "subject" "text", "body" "text", "sender_name" "text", "sender_email" "text", "sent_at" timestamp with time zone, "status" "text", "attachments" "jsonb", "preview" "text", "type" "text", "contact_nom" "text", "contact_email" "text", "profile_full_name" "text", "profile_avatar_url" "text")
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" "uuid", "created_at" timestamp with time zone, "user_id" "uuid", "contact_id" "uuid", "provider" "text", "provider_message_id" "text", "subject" "text", "body" "text", "sender_name" "text", "sender_email" "text", "sent_at" timestamp with time zone, "status" "text", "attachments" "jsonb", "preview" "text", "type" "text", "contact_nom" "text", "contact_email" "text", "profile_full_name" "text", "profile_avatar_url" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
     RETURN QUERY
-    -- ✨ CORRECCIÓ CLAU: Llistem explícitament cada columna en l'ordre correcte.
-    -- Això assegura que la sortida de la consulta coincideixi amb la definició de RETURNS TABLE.
     SELECT
         et.id,
         et.created_at,
@@ -886,9 +952,9 @@ BEGIN
         et.profile_full_name,
         et.profile_avatar_url
     FROM
-        public.enriched_tickets as et
+        public.enriched_tickets AS et
     WHERE 
-        et.user_id = ANY(p_visible_user_ids::uuid[])
+        et.user_id = ANY(p_visible_user_ids)
         AND (
             p_search_term IS NULL OR p_search_term = '' OR
             et.subject ILIKE '%' || p_search_term || '%' OR
@@ -897,10 +963,10 @@ BEGIN
             et.preview ILIKE '%' || p_search_term || '%'
         )
         AND (
-            (p_active_filter = 'tots') OR
-            (p_active_filter = 'rebuts' AND (et.type = 'rebut' OR et.type IS NULL)) OR
-            (p_active_filter = 'enviats' AND et.type = 'enviat') OR
-            (p_active_filter = 'noLlegits' AND (et.type = 'rebut' OR et.type IS NULL) AND et.status <> 'Llegit')
+            p_active_filter = 'tots'
+            OR (p_active_filter = 'rebuts' AND (et.type = 'rebut' OR et.type IS NULL))
+            OR (p_active_filter = 'enviats' AND et.type = 'enviat')
+            OR (p_active_filter = 'noLlegits' AND (et.type = 'rebut' OR et.type IS NULL) AND et.status <> 'Llegit')
         )
     ORDER BY et.sent_at DESC
     LIMIT p_limit
@@ -909,41 +975,45 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_marketing_kpis"() RETURNS TABLE("total_leads" bigint, "conversion_rate" numeric)
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public'
     AS $$
 DECLARE
-    start_of_current_month DATE;
-    total_leads_this_month BIGINT;
-    opportunities_from_leads BIGINT;
+  start_of_current_month DATE;
+  total_leads_this_month BIGINT;
+  opportunities_from_leads BIGINT;
 BEGIN
-    start_of_current_month := date_trunc('month', current_date);
+  -- 📅 Primer dia del mes actual
+  start_of_current_month := date_trunc('month', current_date);
 
-    -- Leads = nous contactes creats aquest mes
-    SELECT count(*)
-    INTO total_leads_this_month
-    FROM public.contacts
-    WHERE user_id = auth.uid() AND created_at >= start_of_current_month;
+  -- 👥 Total de leads creats aquest mes
+  SELECT COUNT(*)
+  INTO total_leads_this_month
+  FROM public.contacts
+  WHERE user_id = auth.uid()
+    AND created_at >= start_of_current_month;
 
-    -- Oportunitats = quants d'aquests leads s'han convertit en clients o oportunitats actives
-    SELECT count(*)
-    INTO opportunities_from_leads
-    FROM public.contacts
-    WHERE user_id = auth.uid()
-      AND created_at >= start_of_current_month
-      AND (estat = 'Lead' OR estat = 'Actiu' OR estat = 'Client');
+  -- 🎯 Leads convertits en oportunitats o clients
+  SELECT COUNT(*)
+  INTO opportunities_from_leads
+  FROM public.contacts
+  WHERE user_id = auth.uid()
+    AND created_at >= start_of_current_month
+    AND (estat = 'Lead' OR estat = 'Actiu' OR estat = 'Client');
 
-    RETURN QUERY
-    SELECT
-        total_leads_this_month AS total_leads,
-        -- Calculem la taxa de conversió
-        CASE
-            WHEN total_leads_this_month > 0 THEN (opportunities_from_leads::NUMERIC / total_leads_this_month::NUMERIC) * 100
-            ELSE 0
-        END AS conversion_rate;
+  -- 📊 Retorn dels resultats
+  RETURN QUERY
+  SELECT
+    total_leads_this_month AS total_leads,
+    CASE
+      WHEN total_leads_this_month > 0
+        THEN (opportunities_from_leads::NUMERIC / total_leads_this_month::NUMERIC) * 100
+      ELSE 0
+    END AS conversion_rate;
 END;
 $$;
 
@@ -952,34 +1022,30 @@ ALTER FUNCTION "public"."get_marketing_kpis"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_marketing_page_data"("p_team_id" "uuid") RETURNS json
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
 BEGIN
-    RETURN (
+  RETURN (
+    SELECT json_build_object(
+      'kpis', (
         SELECT json_build_object(
-            -- Clau 'kpis': conté un objecte amb les mètriques
-            'kpis', (
-                SELECT json_build_object(
-                    -- Calculem el total de contactes de l'equip
-                    'totalLeads', COALESCE(count(*), 0),
-                    -- Calculem la taxa de conversió (exemple)
-                    'conversionRate', COALESCE((count(*) FILTER (WHERE estat = 'Client') * 100.0 / NULLIF(count(*), 0)), 0)
-                )
-                FROM public.contacts
-                WHERE team_id = p_team_id -- ✅ Filtrem per l'ID de l'equip rebut
-            ),
-            -- Clau 'campaigns': conté un array amb les campanyes
-            'campaigns', (
-                SELECT COALESCE(json_agg(c), '[]'::json)
-                FROM (
-                    SELECT id, name, type, status, campaign_date, goal, target_audience, content
-                    FROM public.campaigns
-                    WHERE team_id = p_team_id -- ✅ Filtrem per l'ID de l'equip rebut
-                    ORDER BY campaign_date DESC
-                ) c
-            )
+          'totalLeads', COALESCE(count(*), 0),
+          'conversionRate', COALESCE((count(*) FILTER (WHERE estat = 'Client') * 100.0 / NULLIF(count(*), 0)), 0)
         )
-    );
+        FROM public.contacts
+        WHERE team_id = p_team_id
+      ),
+      'campaigns', (
+        SELECT COALESCE(json_agg(c), '[]'::json)
+        FROM (
+          SELECT id, name, type, status, campaign_date, goal, target_audience, content
+          FROM public.campaigns
+          WHERE team_id = p_team_id
+          ORDER BY campaign_date DESC
+        ) c
+      )
+    )
+  );
 END;
 $$;
 
@@ -989,33 +1055,23 @@ ALTER FUNCTION "public"."get_marketing_page_data"("p_team_id" "uuid") OWNER TO "
 
 CREATE OR REPLACE FUNCTION "public"."get_my_team_id"() RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
-  team_id_val UUID;
+  team_id_val uuid;
 BEGIN
-  SELECT team_id INTO team_id_val
+  SELECT team_id
+  INTO team_id_val
   FROM public.team_members
   WHERE user_id = auth.uid()
   LIMIT 1;
+
   RETURN team_id_val;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."get_my_team_id"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_my_team_ids"() RETURNS SETOF "uuid"
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO 'public'
-    AS $$
-  SELECT team_id
-  FROM public.team_members
-  WHERE user_id = auth.uid();
-$$;
-
-
-ALTER FUNCTION "public"."get_my_team_ids"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_my_teams"() RETURNS TABLE("team_id" "uuid")
@@ -1092,13 +1148,14 @@ ALTER FUNCTION "public"."get_quote_details"("p_quote_id" bigint) OWNER TO "postg
 
 
 CREATE OR REPLACE FUNCTION "public"."get_table_columns"("table_name_param" "text") RETURNS TABLE("column_name" "text")
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
   RETURN QUERY
-  SELECT information_schema.columns.column_name
-  FROM information_schema.columns
-  WHERE information_schema.columns.table_name = table_name_param;
+  SELECT c.column_name::text
+  FROM information_schema.columns c
+  WHERE c.table_name = table_name_param;
 END;
 $$;
 
@@ -1107,16 +1164,15 @@ ALTER FUNCTION "public"."get_table_columns"("table_name_param" "text") OWNER TO 
 
 
 CREATE OR REPLACE FUNCTION "public"."get_table_columns_excluding_security"("p_table_name" "text") RETURNS TABLE("column_name" "text")
-    LANGUAGE "plpgsql" STABLE
-    SET "search_path" TO 'public'
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
   RETURN QUERY 
   SELECT c.column_name::text
   FROM information_schema.columns c
-  WHERE c.table_name = p_table_name 
+  WHERE c.table_name = p_table_name
     AND c.table_schema = 'public'
-    -- La teva lògica d'exclusió (correcta)
     AND c.column_name NOT IN ('id', 'user_id', 'team_id');
 END;
 $$;
@@ -1126,23 +1182,47 @@ ALTER FUNCTION "public"."get_table_columns_excluding_security"("p_table_name" "t
 
 
 CREATE OR REPLACE FUNCTION "public"."get_table_columns_info"("p_table_name" "text") RETURNS TABLE("column_name" "text", "data_type" "text")
-    LANGUAGE "plpgsql" STABLE
-    AS $$BEGIN
-    RETURN QUERY 
-    SELECT 
-        c.column_name::text, 
-        c.data_type::text -- 👈 CORRECCIÓ: Afegeix el data_type
-    FROM 
-        information_schema.columns c
-    WHERE 
-        c.table_name = p_table_name 
-        AND c.table_schema = 'public'
-        -- Exclusió de columnes del sistema/internes
-        AND c.column_name NOT IN ('id', 'user_id', 'team_id'); 
-END;$$;
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  RETURN QUERY 
+  SELECT 
+      c.column_name::text, 
+      c.data_type::text
+  FROM 
+      information_schema.columns AS c
+  WHERE 
+      c.table_name = p_table_name
+      AND c.table_schema = 'public'
+      AND c.column_name NOT IN ('id', 'user_id', 'team_id'); -- Exclou columnes internes
+END;
+$$;
 
 
 ALTER FUNCTION "public"."get_table_columns_info"("p_table_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_table_columns_with_types"("p_table_name" "text") RETURNS TABLE("column_name" "text", "data_type" "text")
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  RETURN QUERY 
+  SELECT 
+      c.column_name::text, 
+      c.data_type::text
+  FROM 
+      information_schema.columns c
+  WHERE 
+      c.table_name = p_table_name
+      AND c.table_schema = 'public'
+      AND c.column_name NOT IN ('id', 'user_id', 'team_id');
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_table_columns_with_types"("p_table_name" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_team_dashboard_data"() RETURNS json
@@ -1299,13 +1379,18 @@ ALTER FUNCTION "public"."get_team_ticket_count"("p_team_id" "uuid") OWNER TO "po
 
 CREATE OR REPLACE FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
-declare
+DECLARE
   user_id uuid;
-begin
-  select id from auth.users into user_id where email = email_to_check;
-  return user_id;
-end;
+BEGIN
+  SELECT id
+  INTO user_id
+  FROM auth.users
+  WHERE email = email_to_check;
+
+  RETURN user_id;
+END;
 $$;
 
 
@@ -1314,55 +1399,49 @@ ALTER FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") OWNER TO
 
 CREATE OR REPLACE FUNCTION "public"."get_user_team_context"("p_user_id" "uuid", "p_team_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-    result json;
-    v_role text;
-    v_plan_id text;
-    v_team_name text;
+  result JSON;
+  v_role TEXT;
+  v_plan_id TEXT;
+  v_team_name TEXT;
 BEGIN
-    -- 1. Obtenir el rol de l'usuari
-    SELECT
-        role
-    INTO
-        v_role
-    FROM
-        public.team_members
-    WHERE
-        user_id = p_user_id AND team_id = p_team_id;
+  -- 1️⃣ Obtenir el rol de l'usuari dins de l'equip
+  SELECT tm.role
+  INTO v_role
+  FROM public.team_members tm
+  WHERE tm.user_id = p_user_id
+    AND tm.team_id = p_team_id;
 
-    -- 2. Obtenir el pla actiu de l'equip
-    SELECT
-        plan_id
-    INTO
-        v_plan_id
-    FROM
-        public.subscriptions
-    WHERE
-        team_id = p_team_id
-        AND status IN ('active', 'trialing')
-    LIMIT 1; -- Assegurem que només en torni un
+  -- 2️⃣ Obtenir el pla actiu (actiu o en prova)
+  SELECT s.plan_id
+  INTO v_plan_id
+  FROM public.subscriptions s
+  WHERE s.team_id = p_team_id
+    AND s.status IN ('active', 'trialing')
+  LIMIT 1;
 
-    -- 3. Obtenir el nom de l'equip (opcional, però útil)
-    SELECT
-        name
-    INTO
-        v_team_name
-    FROM
-        public.teams
-    WHERE
-        id = p_team_id;
+  -- 3️⃣ Obtenir el nom de l'equip
+  SELECT t.name
+  INTO v_team_name
+  FROM public.teams t
+  WHERE t.id = p_team_id;
 
-    -- 4. Construir el JSON de resposta
-    SELECT
-        json_build_object(
-            'role', v_role, -- Serà null si no es troba
-            'plan_id', v_plan_id, -- Serà null si no es troba
-            'team_name', v_team_name -- Serà null si no es troba
-        )
-    INTO result;
+  -- 4️⃣ Construir el JSON final
+  SELECT json_build_object(
+    'role', v_role,
+    'plan_id', v_plan_id,
+    'team_name', v_team_name
+  )
+  INTO result;
 
-    RETURN result;
+  RETURN result;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error in get_user_team_context(%): %', p_team_id, SQLERRM
+      USING ERRCODE = 'P0001';
 END;
 $$;
 
@@ -1384,21 +1463,31 @@ ALTER FUNCTION "public"."get_user_team_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_lost_opportunity"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   stage_id_lost BIGINT;
 BEGIN
-  -- If the quote is declined or expires, mark the opportunity as lost
-  IF (NEW.status = 'Declined' AND OLD.status != 'Declined') OR (NEW.expiry_date < NOW() AND OLD.expiry_date >= NOW()) THEN
-    SELECT id INTO stage_id_lost FROM public.pipeline_stages WHERE name = 'Perdut' LIMIT 1;
-    
+  -- 💡 Si el pressupost es rebutja o ha expirat, marquem l'oportunitat com a perduda
+  IF (
+    (NEW.status = 'Declined' AND (OLD.status IS DISTINCT FROM 'Declined'))
+    OR (NEW.expiry_date < NOW() AND (OLD.expiry_date IS NULL OR OLD.expiry_date >= NOW()))
+  ) THEN
+    SELECT id INTO stage_id_lost
+    FROM public.pipeline_stages
+    WHERE name = 'Perdut'
+    LIMIT 1;
+
     IF stage_id_lost IS NOT NULL AND NEW.opportunity_id IS NOT NULL THEN
       UPDATE public.opportunities
-      SET pipeline_stage_id = stage_id_lost, status = 'Lost'
+      SET
+        pipeline_stage_id = stage_id_lost,
+        status = 'Lost'
       WHERE id = NEW.opportunity_id;
     END IF;
   END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -1553,31 +1642,52 @@ ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "t
 
 CREATE OR REPLACE FUNCTION "public"."handle_quote_status_change"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE 
   stage_id_won BIGINT;
   stage_id_lost BIGINT;
 BEGIN
-  -- Si s'accepta
+  -- 🟢 Quan el pressupost és acceptat
   IF NEW.status = 'Accepted' AND OLD.status != 'Accepted' THEN
-    SELECT id INTO stage_id_won FROM public.pipeline_stages WHERE name = 'Guanyat' LIMIT 1;
+    SELECT id INTO stage_id_won
+    FROM public.pipeline_stages
+    WHERE name = 'Guanyat'
+    LIMIT 1;
+
     IF stage_id_won IS NOT NULL AND NEW.opportunity_id IS NOT NULL THEN
-      UPDATE public.opportunities SET pipeline_stage_id = stage_id_won, status = 'Won' WHERE id = NEW.opportunity_id;
-      -- Opcional: Crear esborrany de factura
+      UPDATE public.opportunities
+      SET pipeline_stage_id = stage_id_won,
+          status = 'Won'
+      WHERE id = NEW.opportunity_id;
+
+      -- 🧾 Crear automàticament una factura en esborrany
       INSERT INTO public.invoices (user_id, contact_id, quote_id, total_amount, status)
       VALUES (NEW.user_id, NEW.contact_id, NEW.id, NEW.total, 'Draft');
     END IF;
   END IF;
-  
-  -- Si es declina o expira
-  IF (NEW.status = 'Declined' AND OLD.status != 'Declined') OR (NEW.expiry_date < NOW() AND (OLD.expiry_date IS NULL OR OLD.expiry_date >= NOW())) THEN
-    SELECT id INTO stage_id_lost FROM public.pipeline_stages WHERE name = 'Perdut' LIMIT 1;
+
+  -- 🔴 Quan el pressupost es declina o expira
+  IF (NEW.status = 'Declined' AND OLD.status != 'Declined')
+     OR (NEW.expiry_date < NOW() AND (OLD.expiry_date IS NULL OR OLD.expiry_date >= NOW())) THEN
+    SELECT id INTO stage_id_lost
+    FROM public.pipeline_stages
+    WHERE name = 'Perdut'
+    LIMIT 1;
+
     IF stage_id_lost IS NOT NULL AND NEW.opportunity_id IS NOT NULL THEN
-      UPDATE public.opportunities SET pipeline_stage_id = stage_id_lost, status = 'Lost' WHERE id = NEW.opportunity_id;
+      UPDATE public.opportunities
+      SET pipeline_stage_id = stage_id_lost,
+          status = 'Lost'
+      WHERE id = NEW.opportunity_id;
     END IF;
   END IF;
 
   RETURN NEW;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error in handle_quote_status_change: %', SQLERRM;
 END;
 $$;
 
@@ -1746,37 +1856,43 @@ $$;
 ALTER FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) RETURNS TABLE("id" bigint, "content" "text", "metadata" "jsonb", "similarity" double precision)
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) RETURNS TABLE("id" "uuid", "content" "text", "metadata" "jsonb", "similarity" double precision)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
-begin
-  return query
-  select
+BEGIN
+  RETURN QUERY
+  SELECT
     d.id,
     d.content,
     d.metadata,
-    1 - (d.embedding <=> query_embedding) as similarity
-  from documents d
-  where 1 - (d.embedding <=> query_embedding) > match_threshold
-  order by similarity desc
-  limit match_count;
-end;
+    1 - (d.embedding <=> query_embedding) AS similarity
+  FROM
+    public.documents d
+  WHERE
+    1 - (d.embedding <=> query_embedding) > match_threshold
+  ORDER BY
+    similarity DESC
+  LIMIT match_count;
+END;
 $$;
 
 
 ALTER FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_quote record;
+  v_quote public.quotes%ROWTYPE;
+  v_perdut_stage_id BIGINT;
 BEGIN
-  -- Pas 1: Actualitzar el pressupost amb el motiu
+  -- ✅ PAS 1: Actualitzar el pressupost
   UPDATE public.quotes
-  SET status = 'Declined', rejection_reason = p_reason
+  SET status = 'Declined',
+      rejection_reason = p_reason
   WHERE secure_id = p_secure_id
   RETURNING * INTO v_quote;
 
@@ -1784,25 +1900,84 @@ BEGIN
     RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
   END IF;
 
-  -- Pas 2: Actualitzar l'oportunitat (si existeix)
+  -- ✅ PAS 2: Actualitzar oportunitat associada
   IF v_quote.opportunity_id IS NOT NULL THEN
-    UPDATE public.opportunities
-    SET stage_name = 'Negociació' -- O l'etapa que consideris
-    WHERE id = v_quote.opportunity_id;
-  END IF;
+    BEGIN
+      SELECT ps_target.id
+      INTO v_perdut_stage_id
+      FROM public.opportunities o
+      JOIN public.pipeline_stages ps_current ON o.pipeline_stage_id = ps_current.id
+      JOIN public.pipeline_stages ps_target ON ps_current.pipeline_id = ps_target.pipeline_id
+      WHERE o.id = v_quote.opportunity_id
+        AND ps_target.name = 'Perdut'
+      LIMIT 1;
 
-  -- Pas 3: Crear l'activitat de rebuig
-  INSERT INTO public.activities (
-    user_id, team_id, contact_id, quote_id, opportunity_id,
-    type, content, is_read
-  ) VALUES (
-    v_quote.user_id, v_quote.team_id, v_quote.contact_id, v_quote.id, v_quote.opportunity_id,
-    'Rebuig de Pressupost', p_reason, FALSE
-  );
+      IF v_perdut_stage_id IS NOT NULL THEN
+        UPDATE public.opportunities
+        SET pipeline_stage_id = v_perdut_stage_id
+        WHERE id = v_quote.opportunity_id;
+      END IF;
+
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        -- Si no hi ha pipeline vàlid, simplement no fem res
+        NULL;
+    END;
+  END IF;
 
 EXCEPTION
   WHEN OTHERS THEN
-    RAISE EXCEPTION 'Error a reject_quote_with_reason: %', SQLERRM;
+    RAISE EXCEPTION 'Error a reject_quote_with_reason (%): %', p_secure_id, SQLERRM;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$
+DECLARE
+  v_quote public.quotes%ROWTYPE;
+  v_target_stage_id bigint;
+BEGIN
+  -- Pas 1: Actualitzar el pressupost
+  UPDATE public.quotes
+  SET status = 'Declined',
+      rejection_reason = p_reason
+  WHERE secure_id = p_secure_id
+  RETURNING * INTO v_quote;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
+  END IF;
+
+  -- -----------------------------------------------------------------
+  -- PAS 2: ACTUALITZAR L'OPORTUNITAT (LÒGICA DE FLUX DEFINITIVA)
+  -- -----------------------------------------------------------------
+  IF v_quote.opportunity_id IS NOT NULL THEN
+    BEGIN
+      -- Troba l'ID de l'etapa marcada com 'LOST'
+      SELECT ps_target.id
+      INTO v_target_stage_id
+      FROM public.opportunities o
+      JOIN public.pipeline_stages ps_current ON o.pipeline_stage_id = ps_current.id
+      JOIN public.pipeline_stages ps_target ON ps_current.pipeline_id = ps_target.pipeline_id
+      WHERE o.id = v_quote.opportunity_id
+        AND ps_target.stage_type = 'LOST'; -- ✅ AQUEST ÉS EL CANVI CLAU
+
+      IF v_target_stage_id IS NOT NULL THEN
+        UPDATE public.opportunities
+        SET pipeline_stage_id = v_target_stage_id
+        WHERE id = v_quote.opportunity_id;
+      END IF;
+      
+    EXCEPTION 
+      WHEN NO_DATA_FOUND THEN NULL; -- Ignorem si l'oportunitat no té etapa
+    END;
+  END IF;
+
 END;
 $$;
 
@@ -1923,12 +2098,14 @@ ALTER FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigin
 
 CREATE OR REPLACE FUNCTION "public"."save_refresh_token"("provider_name" "text", "refresh_token_value" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public'
     AS $$
 BEGIN
-    INSERT INTO public.user_credentials (user_id, provider, refresh_token)
-    VALUES (auth.uid(), provider_name, refresh_token_value)
-    ON CONFLICT (user_id, provider)
-    DO UPDATE SET refresh_token = EXCLUDED.refresh_token;
+  INSERT INTO public.user_credentials (user_id, provider, refresh_token)
+  VALUES (auth.uid(), provider_name, refresh_token_value)
+  ON CONFLICT (user_id, provider)
+  DO UPDATE
+  SET refresh_token = EXCLUDED.refresh_token;
 END;
 $$;
 
@@ -1936,7 +2113,7 @@ $$;
 ALTER FUNCTION "public"."save_refresh_token"("provider_name" "text", "refresh_token_value" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "category" "text", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" bigint, "subtotal" numeric, "discount_amount" numeric, "notes" "text", "tax_rate" numeric, "team_id" "uuid", "status" "public"."expense_status", "payment_date" "date", "payment_method" "text", "is_billable" boolean, "project_id" bigint, "is_reimbursable" boolean, "supplier_nom" "text", "full_count" bigint)
+CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "category" "text", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" "uuid", "subtotal" numeric, "discount_amount" numeric, "notes" "text", "tax_rate" numeric, "team_id" "uuid", "status" "public"."expense_status", "payment_date" "date", "payment_method" "text", "is_billable" boolean, "project_id" "uuid", "is_reimbursable" boolean, "supplier_nom" "text", "full_count" bigint)
     LANGUAGE "plpgsql"
     SET "search_path" TO 'public'
     AS $$
@@ -1965,9 +2142,11 @@ BEGIN
     SELECT
         ce.id, ce.user_id, ce.description, ce.total_amount, ce.expense_date,
         ce.category, ce.created_at, ce.invoice_number, ce.tax_amount, ce.extra_data,
-        ce.supplier_id, ce.subtotal, ce.discount_amount, ce.notes, ce.tax_rate,
+        ce.supplier_id, -- Aquesta columna ara és 'uuid' i coincideix
+        ce.subtotal, ce.discount_amount, ce.notes, ce.tax_rate,
         ce.team_id, ce.status, ce.payment_date, ce.payment_method, ce.is_billable,
-        ce.project_id, ce.is_reimbursable,
+        ce.project_id, -- Aquesta columna ara és 'uuid' i coincideix
+        ce.is_reimbursable,
         ce.supplier_nom,
         ce.full_count
     FROM counted_expenses ce
@@ -1986,193 +2165,254 @@ $$;
 ALTER FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text" DEFAULT NULL::"text") RETURNS TABLE("id" bigint, "created_at" timestamp with time zone, "user_id" "uuid", "team_id" "uuid", "contact_id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "notes" "text", "secure_id" "uuid", "client_name" "text", "total_count" bigint)
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."search_invoices"("search_term" "text" DEFAULT NULL::"text", "status_filter" "text" DEFAULT NULL::"text", "sort_field" "text" DEFAULT 'created_at'::"text", "sort_direction" "text" DEFAULT 'desc'::"text", "page_limit" integer DEFAULT 50, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "created_at" timestamp with time zone, "user_id" "uuid", "team_id" "uuid", "contact_id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "notes" "text", "secure_id" "text", "client_name" "text", "total_count" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $_$
+DECLARE
+  trimmed_search TEXT := BTRIM(search_term);
+  trimmed_status TEXT := BTRIM(status_filter);
 BEGIN
-    -- Neteja i preparació dels paràmetres
-    search_term := BTRIM(search_term);
-    status_filter := BTRIM(status_filter);
-
-    RETURN QUERY
-    WITH filtered_invoices AS (
-        SELECT
-            i.id, i.created_at, i.user_id, i.team_id, i.contact_id,
-            i.invoice_number, i.issue_date, i.due_date, i.total_amount,
-            i.status, i.notes, i.verifactu_uuid AS secure_id, c.nom AS client_name
-        FROM
-            public.invoices i
-        LEFT JOIN
-            public.contacts c ON i.contact_id = c.id
-        WHERE
-            -- ✅ LÒGICA DE CERCA CORREGIDA
-            (
-                search_term IS NULL OR search_term = '' OR
-                -- Permet cercar per ID exacte si el terme és només un número
-                (search_term ~ '^[0-9]+$' AND i.id = search_term::BIGINT) OR
-                -- Cerca per text en número de factura o nom de client
-                i.invoice_number ILIKE '%' || search_term || '%' OR
-                c.nom ILIKE '%' || search_term || '%'
-            )
-            AND
-            -- ✅ LÒGICA DE FILTRE D'ESTAT CORREGIDA
-            (
-                status_filter IS NULL OR status_filter = 'all' OR
-                -- Comparació exacta (case-sensitive) amb el valor de la BD
-                i.status = status_filter
-            )
-    ),
-    counted_invoices AS (
-        SELECT *, COUNT(*) OVER() as full_count FROM filtered_invoices
-    )
+  RETURN QUERY
+  WITH filtered_invoices AS (
     SELECT
-        ci.id, ci.created_at, ci.user_id, ci.team_id, ci.contact_id,
-        ci.invoice_number::TEXT, ci.issue_date, ci.due_date, ci.total_amount,
-        ci.status::TEXT, ci.notes, ci.secure_id, ci.client_name::TEXT,
-        ci.full_count AS total_count
-    FROM counted_invoices ci
-    -- ✅ LÒGICA D'ORDENACIÓ CORREGIDA
-    ORDER BY
-        CASE WHEN sort_field = 'issue_date' AND sort_direction = 'asc' THEN ci.issue_date END ASC,
-        CASE WHEN sort_field = 'issue_date' AND sort_direction = 'desc' THEN ci.issue_date END DESC,
-        CASE WHEN sort_field = 'client_name' AND sort_direction = 'asc' THEN ci.client_name END ASC,
-        CASE WHEN sort_field = 'client_name' AND sort_direction = 'desc' THEN ci.client_name END DESC,
-        CASE WHEN sort_field = 'total_amount' AND sort_direction = 'asc' THEN ci.total_amount END ASC,
-        CASE WHEN sort_field = 'total_amount' AND sort_direction = 'desc' THEN ci.total_amount END DESC,
-        CASE WHEN sort_field = 'status' AND sort_direction = 'asc' THEN ci.status END ASC,
-        CASE WHEN sort_field = 'status' AND sort_direction = 'desc' THEN ci.status END DESC,
-        ci.created_at DESC
-    LIMIT page_limit
-    OFFSET page_offset;
+      i.id,
+      i.created_at,
+      i.user_id,
+      i.team_id,
+      i.contact_id,
+      i.invoice_number,
+      i.issue_date,
+      i.due_date,
+      i.total_amount,
+      i.status,
+      i.notes,
+      i.verifactu_uuid AS secure_id,
+      c.nom AS client_name
+    FROM public.invoices i
+    LEFT JOIN public.contacts c ON i.contact_id = c.id
+    WHERE
+      (
+        trimmed_search IS NULL OR trimmed_search = '' OR
+        (trimmed_search ~ '^[0-9]+$' AND i.id = trimmed_search::BIGINT) OR
+        i.invoice_number ILIKE '%' || trimmed_search || '%' OR
+        c.nom ILIKE '%' || trimmed_search || '%'
+      )
+      AND (
+        trimmed_status IS NULL OR trimmed_status = 'all' OR
+        i.status = trimmed_status
+      )
+  ),
+  counted_invoices AS (
+    SELECT fi.*, COUNT(*) OVER() AS full_count
+    FROM filtered_invoices fi
+  )
+  SELECT
+    ci.id,
+    ci.created_at,
+    ci.user_id,
+    ci.team_id,
+    ci.contact_id,
+    ci.invoice_number::TEXT,
+    ci.issue_date,
+    ci.due_date,
+    ci.total_amount,
+    ci.status::TEXT,
+    ci.notes,
+    ci.secure_id,
+    ci.client_name::TEXT,
+    ci.full_count AS total_count
+  FROM counted_invoices ci
+  ORDER BY
+    CASE WHEN sort_field = 'issue_date' AND sort_direction = 'asc' THEN ci.issue_date END ASC NULLS LAST,
+    CASE WHEN sort_field = 'issue_date' AND sort_direction = 'desc' THEN ci.issue_date END DESC NULLS LAST,
+    CASE WHEN sort_field = 'client_name' AND sort_direction = 'asc' THEN ci.client_name END ASC NULLS LAST,
+    CASE WHEN sort_field = 'client_name' AND sort_direction = 'desc' THEN ci.client_name END DESC NULLS LAST,
+    CASE WHEN sort_field = 'total_amount' AND sort_direction = 'asc' THEN ci.total_amount END ASC NULLS LAST,
+    CASE WHEN sort_field = 'total_amount' AND sort_direction = 'desc' THEN ci.total_amount END DESC NULLS LAST,
+    CASE WHEN sort_field = 'status' AND sort_direction = 'asc' THEN ci.status END ASC NULLS LAST,
+    CASE WHEN sort_field = 'status' AND sort_direction = 'desc' THEN ci.status END DESC NULLS LAST,
+    ci.created_at DESC
+  LIMIT page_limit
+  OFFSET page_offset;
 END;
 $_$;
 
 
-ALTER FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."search_invoices"("search_term" "text", "status_filter" "text", "sort_field" "text", "sort_direction" "text", "page_limit" integer, "page_offset" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) RETURNS TABLE("id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "client_name" "text", "contact_id" bigint, "contact_nom" "text", "total_count" bigint)
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text" DEFAULT NULL::"text", "contact_id_param" bigint DEFAULT NULL::bigint, "search_term_param" "text" DEFAULT NULL::"text", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 50, "offset_param" integer DEFAULT 0) RETURNS TABLE("id" bigint, "invoice_number" "text", "issue_date" "date", "due_date" "date", "total_amount" numeric, "status" "text", "client_name" "text", "contact_id" bigint, "contact_nom" "text", "total_count" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
-    RETURN QUERY
-    WITH filtered_invoices AS (
-        SELECT
-            i.id,
-            COALESCE(i.invoice_number, i.id::text) AS invoice_number,
-            i.issue_date,
-            i.due_date,
-            i.total_amount,
-            i.status,
-            i.client_name,
-            i.contact_id,
-            c.nom AS contact_nom
-        FROM
-            public.invoices i
-        LEFT JOIN
-            public.contacts c ON i.contact_id = c.id
-        WHERE
-            i.team_id = team_id_param
-            AND (
-                status_param IS NULL
-                OR status_param = 'all'
-                OR i.status = status_param
-            )
-            AND (
-                contact_id_param IS NULL
-                OR contact_id_param = 0
-                OR i.contact_id = contact_id_param
-            )
-            AND (
-                search_term_param IS NULL OR btrim(search_term_param) = ''
-                OR COALESCE(i.invoice_number, i.id::text) ILIKE '%' || btrim(search_term_param) || '%'
-                OR i.client_name ILIKE '%' || btrim(search_term_param) || '%'
-                OR c.nom ILIKE '%' || btrim(search_term_param) || '%'
-                OR CAST(i.id AS text) ILIKE '%' || btrim(search_term_param) || '%'
-            )
-    ),
-    counted_invoices AS (
-        SELECT *, COUNT(*) OVER() AS total_count
-        FROM filtered_invoices
-    )
+  RETURN QUERY
+  WITH filtered_invoices AS (
     SELECT
-        ci.id,
-        ci.invoice_number,
-        ci.issue_date,
-        ci.due_date,
-        ci.total_amount,
-        ci.status,
-        ci.client_name,
-        ci.contact_id,
-        ci.contact_nom,
-        ci.total_count
-    FROM counted_invoices ci
-    ORDER BY
-        CASE WHEN sort_by_param = 'invoice_number' AND sort_order_param = 'asc' THEN ci.invoice_number END ASC,
-        CASE WHEN sort_by_param = 'invoice_number' AND sort_order_param = 'desc' THEN ci.invoice_number END DESC,
-        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN ci.contact_nom END ASC,
-        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN ci.contact_nom END DESC,
-        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN ci.issue_date END ASC,
-        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN ci.issue_date END DESC NULLS LAST,
-        CASE WHEN sort_by_param = 'due_date' AND sort_order_param = 'asc' THEN ci.due_date END ASC,
-        CASE WHEN sort_by_param = 'due_date' AND sort_order_param = 'desc' THEN ci.due_date END DESC NULLS LAST,
-        CASE WHEN sort_by_param = 'total_amount' AND sort_order_param = 'asc' THEN ci.total_amount END ASC,
-        CASE WHEN sort_by_param = 'total_amount' AND sort_order_param = 'desc' THEN ci.total_amount END DESC,
-        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN ci.status END ASC,
-        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN ci.status END DESC
-    LIMIT limit_param
-    OFFSET offset_param;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text" DEFAULT NULL::"text", "status_param" "public"."quote_status" DEFAULT NULL::"public"."quote_status", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 10, "offset_param" integer DEFAULT 0) RETURNS TABLE("id" bigint, "sequence_number" integer, "user_id" "uuid", "contact_id" bigint, "team_id" "uuid", "tax_percent" numeric, "show_quantity" boolean, "status" "public"."quote_status", "issue_date" "date", "expiry_date" "date", "subtotal" numeric, "discount" numeric, "tax" numeric, "total" numeric, "created_at" timestamp with time zone, "opportunity_id" bigint, "send_at" timestamp with time zone, "secure_id" "uuid", "sent_at" timestamp with time zone, "quote_number" "text", "notes" "text", "rejection_reason" "text", "theme_color" "text", "contact_nom" "text", "contact_empresa" "text", "total_count" bigint)
-    LANGUAGE "plpgsql"
-    AS $$
-BEGIN
-    RETURN QUERY
-    SELECT
-        -- ✅ Selecciona NOMÉS les columnes existents de 'quotes'
-        q.id, q.sequence_number, q.user_id, q.contact_id, q.team_id, q.tax_percent, q.show_quantity, q.status, q.issue_date, q.expiry_date, q.subtotal, q.discount, q.tax, q.total, q.created_at, q.opportunity_id, q.send_at, q.secure_id, q.sent_at, q.quote_number, q.notes, q.rejection_reason, q.theme_color,
-        -- Camps de 'contacts'
-        c.nom AS contact_nom, c.empresa AS contact_empresa,
-        -- Recompte
-        count(*) OVER() AS total_count
-    FROM
-        public.quotes q
-    LEFT JOIN
-        public.contacts c ON q.contact_id = c.id
+      i.id,
+      COALESCE(i.invoice_number, i.id::text) AS invoice_number,
+      i.issue_date,
+      i.due_date,
+      i.total_amount,
+      i.status,
+      i.client_name,
+      i.contact_id,
+      c.nom AS contact_nom
+    FROM public.invoices i
+    LEFT JOIN public.contacts c ON i.contact_id = c.id
     WHERE
-        q.team_id = team_id_param
-        AND (status_param IS NULL OR q.status = status_param)
-        AND (
-            search_term_param IS NULL OR
-            q.quote_number ILIKE '%' || search_term_param || '%' OR
-            c.nom ILIKE '%' || search_term_param || '%'
-        )
-    ORDER BY
-        -- ✅ ORDER BY només amb columnes existents o del JOIN
-        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN q.issue_date END ASC NULLS LAST,
-        CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN q.issue_date END DESC NULLS LAST,
-        CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'asc' THEN q.quote_number END ASC NULLS LAST,
-        CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'desc' THEN q.quote_number END DESC NULLS LAST,
-        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN c.nom END ASC NULLS LAST, -- Ordena per nom de contacte
-        CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN c.nom END DESC NULLS LAST,
-        CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN q.total END ASC NULLS LAST,
-        CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN q.total END DESC NULLS LAST,
-        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN q.status::text END ASC NULLS LAST,
-        CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN q.status::text END DESC NULLS LAST
-    LIMIT limit_param
-    OFFSET offset_param;
+      i.team_id = team_id_param
+      AND (
+        status_param IS NULL
+        OR status_param = 'all'
+        OR i.status = status_param
+      )
+      AND (
+        contact_id_param IS NULL
+        OR contact_id_param = 0
+        OR i.contact_id = contact_id_param
+      )
+      AND (
+        search_term_param IS NULL OR btrim(search_term_param) = ''
+        OR COALESCE(i.invoice_number, i.id::text) ILIKE '%' || btrim(search_term_param) || '%'
+        OR i.client_name ILIKE '%' || btrim(search_term_param) || '%'
+        OR c.nom ILIKE '%' || btrim(search_term_param) || '%'
+        OR CAST(i.id AS text) ILIKE '%' || btrim(search_term_param) || '%'
+      )
+  ),
+  counted_invoices AS (
+    SELECT *, COUNT(*) OVER() AS total_count
+    FROM filtered_invoices
+  )
+  SELECT
+    ci.id,
+    ci.invoice_number,
+    ci.issue_date,
+    ci.due_date,
+    ci.total_amount,
+    ci.status,
+    ci.client_name,
+    ci.contact_id,
+    ci.contact_nom,
+    ci.total_count
+  FROM counted_invoices ci
+  ORDER BY
+    CASE WHEN sort_by_param = 'invoice_number' AND sort_order_param = 'asc' THEN ci.invoice_number END ASC,
+    CASE WHEN sort_by_param = 'invoice_number' AND sort_order_param = 'desc' THEN ci.invoice_number END DESC,
+    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN ci.contact_nom END ASC,
+    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN ci.contact_nom END DESC,
+    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN ci.issue_date END ASC,
+    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN ci.issue_date END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'due_date' AND sort_order_param = 'asc' THEN ci.due_date END ASC,
+    CASE WHEN sort_by_param = 'due_date' AND sort_order_param = 'desc' THEN ci.due_date END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'total_amount' AND sort_order_param = 'asc' THEN ci.total_amount END ASC,
+    CASE WHEN sort_by_param = 'total_amount' AND sort_order_param = 'desc' THEN ci.total_amount END DESC,
+    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN ci.status END ASC,
+    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN ci.status END DESC
+  LIMIT limit_param
+  OFFSET offset_param;
 
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error in search_paginated_invoices: %', SQLERRM;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text", "contact_id_param" bigint, "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text" DEFAULT NULL::"text", "search_term_param" "text" DEFAULT NULL::"text", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 20, "offset_param" integer DEFAULT 0) RETURNS SETOF "record"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    -- Quotes
+    q.id,
+    q.sequence_number,
+    q.user_id,
+    q.contact_id,
+    q.team_id,
+    q.tax_percent,
+    q.show_quantity,
+    q.status,
+    q.issue_date,
+    q.expiry_date,
+    q.subtotal,
+    q.discount,
+    q.tax,
+    q.total,
+    q.created_at,
+    q.opportunity_id,
+    q.send_at,
+    q.secure_id,
+    q.sent_at,
+    q.quote_number,
+    q.notes,
+    q.rejection_reason,
+    q.theme_color,
+    -- Contactes
+    c.nom AS contact_nom,
+    c.empresa AS contact_empresa,
+    -- Total
+    COUNT(*) OVER() AS total_count
+  FROM public.quotes q
+  LEFT JOIN public.contacts c ON q.contact_id = c.id
+  WHERE
+    q.team_id = team_id_param
+    AND (status_param IS NULL OR q.status = status_param)
+    AND (
+      search_term_param IS NULL
+      OR q.quote_number ILIKE '%' || search_term_param || '%'
+      OR c.nom ILIKE '%' || search_term_param || '%'
+    )
+  ORDER BY
+    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN q.issue_date END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN q.issue_date END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'asc' THEN q.quote_number END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'desc' THEN q.quote_number END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN c.nom END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN c.nom END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN q.total END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN q.total END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN q.status::text END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN q.status::text END DESC NULLS LAST
+  LIMIT limit_param
+  OFFSET offset_param;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  -- 1. Neteja qualsevol altra etapa que tingués aquest tipus
+  -- dins d'aquest pipeline.
+  UPDATE public.pipeline_stages
+  SET stage_type = NULL
+  WHERE pipeline_id = p_pipeline_id
+    AND team_id = p_team_id
+    AND stage_type = p_stage_type
+    AND id != p_stage_id;
+
+  -- 2. Assigna el nou tipus a l'etapa seleccionada
+  UPDATE public.pipeline_stages
+  SET stage_type = p_stage_type
+  WHERE id = p_stage_id
+    AND pipeline_id = p_pipeline_id
+    AND team_id = p_team_id;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_proposal_stage_on_activity"() RETURNS "trigger"
@@ -2206,8 +2446,9 @@ $$;
 ALTER FUNCTION "public"."set_proposal_stage_on_activity"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) RETURNS "void"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'pg_catalog', 'public'
     AS $$
 BEGIN
   UPDATE public.contacts
@@ -2217,7 +2458,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_expense_with_items"("p_expense_id" bigint, "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_details" "jsonb", "p_expense_items" "jsonb") RETURNS SETOF "public"."expenses"
@@ -2305,68 +2546,85 @@ $$;
 ALTER FUNCTION "public"."upsert_expense_with_items"("p_expense_id" bigint, "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_details" "jsonb", "p_expense_items" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."upsert_invoice_with_items"("invoice_data" "jsonb", "items_data" "jsonb", "user_id" "uuid", "team_id" "uuid") RETURNS TABLE("generated_invoice_id" bigint)
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."upsert_invoice_with_items"("invoice_data" "jsonb", "items_data" "jsonb", "user_id" "uuid", "team_id" "uuid") RETURNS TABLE("saved_invoice_id" bigint)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-    saved_invoice_id bigint;
-    invoice_contact_id bigint;
+  invoice_contact_id BIGINT;
 BEGIN
-    invoice_contact_id := (invoice_data->>'contact_id')::bigint;
+  -- 🧩 Obtenim l'ID del contacte associat
+  invoice_contact_id := (invoice_data->>'contact_id')::BIGINT;
 
-    INSERT INTO public.invoices (id, contact_id, issue_date, due_date, status, subtotal, tax_amount, total_amount, notes, user_id, team_id)
-    VALUES (
-        (invoice_data->>'id')::bigint,
-        invoice_contact_id,
-        (invoice_data->>'issue_date')::timestamptz,
-        (invoice_data->>'due_date')::timestamptz,
-        'Draft',
-        (invoice_data->>'subtotal')::numeric,
-        (invoice_data->>'tax_amount')::numeric,
-        (invoice_data->>'total_amount')::numeric,
-        invoice_data->>'notes',
+  -- 💾 Inserim o actualitzem la factura
+  INSERT INTO public.invoices (
+      id, contact_id, issue_date, due_date, status,
+      subtotal, tax_amount, total_amount, notes, user_id, team_id
+  )
+  VALUES (
+      (invoice_data->>'id')::BIGINT,
+      invoice_contact_id,
+      (invoice_data->>'issue_date')::timestamptz,
+      (invoice_data->>'due_date')::timestamptz,
+      'Draft',
+      (invoice_data->>'subtotal')::NUMERIC,
+      (invoice_data->>'tax_amount')::NUMERIC,
+      (invoice_data->>'total_amount')::NUMERIC,
+      invoice_data->>'notes',
+      user_id,
+      team_id
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET contact_id = EXCLUDED.contact_id,
+      issue_date = EXCLUDED.issue_date,
+      due_date = EXCLUDED.due_date,
+      subtotal = EXCLUDED.subtotal,
+      tax_amount = EXCLUDED.tax_amount,
+      total_amount = EXCLUDED.total_amount,
+      notes = EXCLUDED.notes
+  RETURNING public.invoices.id INTO saved_invoice_id;
+
+  -- 🧭 Si no s’ha trobat ID, fem fallback
+  IF saved_invoice_id IS NULL THEN
+    saved_invoice_id := (invoice_data->>'id')::BIGINT;
+    IF saved_invoice_id IS NULL THEN
+      SELECT i.id INTO saved_invoice_id
+      FROM public.invoices i
+      WHERE i.user_id = user_id AND i.team_id = team_id
+      ORDER BY i.created_at DESC LIMIT 1;
+    END IF;
+  END IF;
+
+  -- 🗑️ Eliminem items antics
+  DELETE FROM public.invoice_items WHERE invoice_id = saved_invoice_id;
+
+  -- 🧾 Inserim els items nous
+  IF jsonb_array_length(items_data) > 0 THEN
+    INSERT INTO public.invoice_items (
+        invoice_id, product_id, description, quantity, unit_price, tax_rate, user_id, team_id
+    )
+    SELECT
+        saved_invoice_id,
+        (item->>'product_id')::BIGINT,
+        item->>'description',
+        (item->>'quantity')::NUMERIC,
+        (item->>'unit_price')::NUMERIC,
+        (item->>'tax_rate')::NUMERIC,
         user_id,
         team_id
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        contact_id = EXCLUDED.contact_id,
-        issue_date = EXCLUDED.issue_date,
-        due_date = EXCLUDED.due_date,
-        subtotal = EXCLUDED.subtotal,
-        tax_amount = EXCLUDED.tax_amount,
-        total_amount = EXCLUDED.total_amount,
-        notes = EXCLUDED.notes -- <-- ✅ HEM ELIMINAT EL PUNT I COMA D'AQUÍ
-    RETURNING public.invoices.id INTO saved_invoice_id;
-    
-    IF saved_invoice_id IS NULL THEN
-        saved_invoice_id := (invoice_data->>'id')::bigint;
-        IF saved_invoice_id IS NULL THEN
-            SELECT i.id INTO saved_invoice_id 
-            FROM public.invoices i
-            WHERE i.user_id = user_id AND i.team_id = team_id
-            ORDER BY created_at DESC LIMIT 1;
-        END IF;
-    END IF;
+    FROM jsonb_to_recordset(items_data) AS item(
+        product_id TEXT,
+        description TEXT,
+        quantity TEXT,
+        unit_price TEXT,
+        tax_rate TEXT
+    );
+  END IF;
 
-    DELETE FROM public.invoice_items WHERE invoice_id = saved_invoice_id;
-
-    IF jsonb_array_length(items_data) > 0 THEN
-        INSERT INTO public.invoice_items (invoice_id, product_id, description, quantity, unit_price, tax_rate, user_id, team_id)
-        SELECT
-            saved_invoice_id,
-            (item->>'product_id')::bigint,
-            item->>'description',
-            (item->>'quantity')::numeric,
-            (item->>'unit_price')::numeric,
-            (item->>'tax_rate')::numeric,
-            user_id,
-            team_id
-        FROM jsonb_to_recordset(items_data) AS item(
-            product_id text, description text, quantity text, unit_price text, tax_rate text
-        );
-    END IF;
-
-    RETURN QUERY SELECT saved_invoice_id;
+  RETURN QUERY SELECT saved_invoice_id;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error en upsert_invoice_with_items: %', SQLERRM;
 END;
 $$;
 
@@ -2458,6 +2716,29 @@ ALTER TABLE "public"."activities" OWNER TO "postgres";
 
 ALTER TABLE "public"."activities" ALTER COLUMN "id" ADD GENERATED ALWAYS AS IDENTITY (
     SEQUENCE NAME "public"."activities_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."ai_usage_log" (
+    "id" bigint NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "user_id" "uuid",
+    "action_type" "text" NOT NULL
+);
+
+
+ALTER TABLE "public"."ai_usage_log" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."ai_usage_log" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."ai_usage_log_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -3071,7 +3352,11 @@ CREATE TABLE IF NOT EXISTS "public"."pipeline_stages" (
     "name" "text" NOT NULL,
     "position" integer NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
-    "team_id" "uuid"
+    "team_id" "uuid",
+    "pipeline_id" bigint NOT NULL,
+    "color" "text" DEFAULT '#808080'::"text" NOT NULL,
+    "stage_type" "text",
+    CONSTRAINT "chk_stage_type" CHECK ((("stage_type" IS NULL) OR ("stage_type" = ANY (ARRAY['WON'::"text", 'LOST'::"text"]))))
 );
 
 
@@ -3080,6 +3365,29 @@ ALTER TABLE "public"."pipeline_stages" OWNER TO "postgres";
 
 ALTER TABLE "public"."pipeline_stages" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
     SEQUENCE NAME "public"."pipeline_stages_id_seq"
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."pipelines" (
+    "id" bigint NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "position" smallint DEFAULT 0 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."pipelines" OWNER TO "postgres";
+
+
+ALTER TABLE "public"."pipelines" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME "public"."pipelines_id_seq"
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -3474,7 +3782,8 @@ CREATE TABLE IF NOT EXISTS "public"."teams" (
     "sector" "text",
     "services" "jsonb",
     "latitude" numeric,
-    "longitude" numeric
+    "longitude" numeric,
+    "default_pipeline_id" bigint
 );
 
 
@@ -3560,6 +3869,11 @@ ALTER TABLE ONLY "public"."tickets" ALTER COLUMN "id" SET DEFAULT "nextval"('"pu
 
 ALTER TABLE ONLY "public"."activities"
     ADD CONSTRAINT "activities_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."ai_usage_log"
+    ADD CONSTRAINT "ai_usage_log_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3695,6 +4009,11 @@ ALTER TABLE ONLY "public"."opportunities"
 
 ALTER TABLE ONLY "public"."pipeline_stages"
     ADD CONSTRAINT "pipeline_stages_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."pipelines"
+    ADD CONSTRAINT "pipelines_pkey" PRIMARY KEY ("id");
 
 
 
@@ -3904,7 +4223,19 @@ CREATE INDEX "idx_opportunities_user_id_stage_name" ON "public"."opportunities" 
 
 
 
+CREATE INDEX "idx_pipeline_stages_pipeline_id" ON "public"."pipeline_stages" USING "btree" ("pipeline_id");
+
+
+
+CREATE INDEX "idx_pipeline_stages_type" ON "public"."pipeline_stages" USING "btree" ("pipeline_id", "stage_type") WHERE ("stage_type" IS NOT NULL);
+
+
+
 CREATE INDEX "idx_pipeline_stages_user_id" ON "public"."pipeline_stages" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "idx_pipelines_team_id" ON "public"."pipelines" USING "btree" ("team_id");
 
 
 
@@ -3962,6 +4293,16 @@ ALTER TABLE ONLY "public"."activities"
 
 ALTER TABLE ONLY "public"."activities"
     ADD CONSTRAINT "activities_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."ai_usage_log"
+    ADD CONSTRAINT "ai_usage_log_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."ai_usage_log"
+    ADD CONSTRAINT "ai_usage_log_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
 
 
@@ -4201,12 +4542,22 @@ ALTER TABLE ONLY "public"."opportunities"
 
 
 ALTER TABLE ONLY "public"."pipeline_stages"
+    ADD CONSTRAINT "pipeline_stages_pipeline_id_fkey" FOREIGN KEY ("pipeline_id") REFERENCES "public"."pipelines"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pipeline_stages"
     ADD CONSTRAINT "pipeline_stages_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."pipeline_stages"
     ADD CONSTRAINT "pipeline_stages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."pipelines"
+    ADD CONSTRAINT "pipelines_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4361,6 +4712,11 @@ ALTER TABLE ONLY "public"."team_members"
 
 
 ALTER TABLE ONLY "public"."teams"
+    ADD CONSTRAINT "teams_default_pipeline_id_fkey" FOREIGN KEY ("default_pipeline_id") REFERENCES "public"."pipelines"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."teams"
     ADD CONSTRAINT "teams_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "auth"."users"("id");
 
 
@@ -4404,11 +4760,37 @@ CREATE POLICY "Allow individual access" ON "public"."user_credentials" USING (("
 
 
 
+CREATE POLICY "Allow team members read access" ON "public"."ai_usage_log" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."team_id" = "ai_usage_log"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
+
+
+
+CREATE POLICY "Allow team members to create pipelines" ON "public"."pipelines" FOR INSERT WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
+
+
+
 CREATE POLICY "Allow team members to manage audio jobs" ON "public"."audio_jobs" TO "authenticated" USING (("auth"."uid"() IN ( SELECT "team_members"."user_id"
    FROM "public"."team_members"
   WHERE ("team_members"."team_id" = "audio_jobs"."team_id")))) WITH CHECK (("auth"."uid"() IN ( SELECT "team_members"."user_id"
    FROM "public"."team_members"
   WHERE ("team_members"."team_id" = "audio_jobs"."team_id"))));
+
+
+
+CREATE POLICY "Allow team members to read pipelines" ON "public"."pipelines" FOR SELECT USING (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
+
+
+
+CREATE POLICY "Allow team members to update/delete pipelines" ON "public"."pipelines" USING (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"())))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
 
 
 
@@ -4624,6 +5006,12 @@ CREATE POLICY "Permetre lectura anònima de pressupostos públics (secure_id)" O
 
 
 
+CREATE POLICY "Team members can update/insert opportunities" ON "public"."opportunities" USING (("team_id" = "auth"."uid"())) WITH CHECK ((("team_id" = "auth"."uid"()) AND (("pipeline_stage_id" IS NULL) OR (EXISTS ( SELECT 1
+   FROM "public"."pipeline_stages" "ps"
+  WHERE (("ps"."id" = "opportunities"."pipeline_stage_id") AND ("ps"."team_id" = "auth"."uid"())))))));
+
+
+
 CREATE POLICY "Team members can view, and admins/owners can manage team creden" ON "public"."team_credentials" USING (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE ("team_members"."user_id" = "auth"."uid"())))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
@@ -4661,6 +5049,9 @@ CREATE POLICY "Users on Plus plans or higher can manage social posts." ON "publi
 
 
 ALTER TABLE "public"."activities" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."ai_usage_log" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."audio_jobs" ENABLE ROW LEVEL SECURITY;
@@ -4735,6 +5126,9 @@ ALTER TABLE "public"."opportunities" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."pipeline_stages" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."pipelines" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."prices" ENABLE ROW LEVEL SECURITY;
@@ -4932,9 +5326,9 @@ GRANT ALL ON FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid
 
 
 
-GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_user_id" "text", "p_team_id" "text", "p_visible_user_ids" "text"[], "p_limit" integer, "p_offset" integer, "p_search_term" "text", "p_active_filter" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
@@ -4953,12 +5347,6 @@ GRANT ALL ON FUNCTION "public"."get_marketing_page_data"("p_team_id" "uuid") TO 
 GRANT ALL ON FUNCTION "public"."get_my_team_id"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_team_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_team_id"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_my_team_ids"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_my_team_ids"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_my_team_ids"() TO "service_role";
 
 
 
@@ -4995,6 +5383,12 @@ GRANT ALL ON FUNCTION "public"."get_table_columns_excluding_security"("p_table_n
 GRANT ALL ON FUNCTION "public"."get_table_columns_info"("p_table_name" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_table_columns_info"("p_table_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_table_columns_info"("p_table_name" "text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_table_columns_with_types"("p_table_name" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_table_columns_with_types"("p_table_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_table_columns_with_types"("p_table_name" "text") TO "service_role";
 
 
 
@@ -5112,6 +5506,12 @@ GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions".
 
 
 
+GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "service_role";
@@ -5142,21 +5542,27 @@ GRANT ALL ON FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_t
 
 
 
-GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "page_limit" integer, "page_offset" integer, "sort_field" "text", "sort_direction" "text", "status_filter" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "status_filter" "text", "sort_field" "text", "sort_direction" "text", "page_limit" integer, "page_offset" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "status_filter" "text", "sort_field" "text", "sort_direction" "text", "page_limit" integer, "page_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_invoices"("search_term" "text", "status_filter" "text", "sort_field" "text", "sort_direction" "text", "page_limit" integer, "page_offset" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "search_term_param" "text", "status_param" "text", "contact_id_param" bigint, "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
+GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text", "contact_id_param" bigint, "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text", "contact_id_param" bigint, "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text", "contact_id_param" bigint, "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") TO "service_role";
 
 
 
@@ -5166,9 +5572,9 @@ GRANT ALL ON FUNCTION "public"."set_proposal_stage_on_activity"() TO "service_ro
 
 
 
-GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" "uuid") TO "service_role";
 
 
 
@@ -5199,6 +5605,18 @@ GRANT ALL ON TABLE "public"."activities" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."activities_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."activities_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."activities_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."ai_usage_log" TO "anon";
+GRANT ALL ON TABLE "public"."ai_usage_log" TO "authenticated";
+GRANT ALL ON TABLE "public"."ai_usage_log" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."ai_usage_log_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."ai_usage_log_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."ai_usage_log_id_seq" TO "service_role";
 
 
 
@@ -5421,6 +5839,18 @@ GRANT ALL ON TABLE "public"."pipeline_stages" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."pipeline_stages_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."pipeline_stages_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."pipeline_stages_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."pipelines" TO "anon";
+GRANT ALL ON TABLE "public"."pipelines" TO "authenticated";
+GRANT ALL ON TABLE "public"."pipelines" TO "service_role";
+
+
+
+GRANT ALL ON SEQUENCE "public"."pipelines_id_seq" TO "anon";
+GRANT ALL ON SEQUENCE "public"."pipelines_id_seq" TO "authenticated";
+GRANT ALL ON SEQUENCE "public"."pipelines_id_seq" TO "service_role";
 
 
 

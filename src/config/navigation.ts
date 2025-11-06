@@ -25,6 +25,7 @@ import {
   User,
   Users,
   Wrench,
+  
 } from "lucide-react";
 import type { NavItem } from "@/types/app/navigation";
 
@@ -261,6 +262,13 @@ export const bottomItems: NavItem[] = [
         labelKey: "permissions",
         icon: KeyRound,
         path: "/settings/permissions",
+        isSingle: true,
+      },
+      {
+        id: "pipelinesSettings",
+        labelKey: "pipelinesSettings",
+        icon: Columns,
+        path: "/settings/pipelines",
         isSingle: true,
       },
     ],
