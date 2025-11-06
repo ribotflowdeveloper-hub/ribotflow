@@ -1,105 +1,136 @@
-"use client";
+// Ubicació: src/app/[locale]/(app)/comunicacio/transcripcio/_components/KeyMomentsFlow.tsx (FITXER COMPLET I CORREGIT)
+'use client'
 
-import React from 'react';
-import type { AudioJob } from '@/types/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, CheckSquare, MessageSquareWarning } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { useTranslations } from 'next-intl';
+import React from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Check, List, Users } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { type Json } from '@/types/supabase' // ✅ 1. Importem Json
 
-// Definim el tipus basat en el que la Edge Function retorna
-type KeyMoment = {
-  topic: string;
-  details: string;
-  decisions: string[];
-  is_work_related: boolean;
+// Definim el tipus esperat (el que vam posar a la Edge Function)
+interface KeyMoment {
+  topic: string
+  summary: string
+  decisions: string[]
+  action_items: string[]
+  participants_involved: string[]
 }
 
 interface KeyMomentsFlowProps {
-  // Assegurem que key_moments pot ser 'any' (JSONB)
-  moments: AudioJob['key_moments']; 
+  moments: Json // ✅ 2. Acceptem 'Json'
 }
 
-// Icona per a cada tipus de moment
-const MomentIcon = ({ moment }: { moment: KeyMoment }) => {
-  if (moment.decisions && moment.decisions.length > 0) {
-    return <CheckSquare className="h-5 w-5 text-primary" />;
+// Funció de guàrdia de tipus per validar
+function isValidKeyMoments(data: unknown): data is KeyMoment[] {
+  if (!Array.isArray(data)) {
+    return false
   }
-  return <FileText className="h-5 w-5 text-muted-foreground" />;
+  if (data.length === 0) {
+    return true // Buit és vàlid
+  }
+  const firstItem = data[0]
+  return (
+    typeof firstItem === 'object' &&
+    firstItem !== null &&
+    'topic' in firstItem &&
+    'summary' in firstItem &&
+    'decisions' in firstItem &&
+    'action_items' in firstItem
+  )
 }
 
 export function KeyMomentsFlow({ moments }: KeyMomentsFlowProps) {
-  const t = useTranslations('Transcripcio');
-  
-  // 1. Validar i filtrar les dades
-  if (!moments || !Array.isArray(moments) || moments.length === 0) {
+  const t = useTranslations('Transcripcio.KeyMoments')
+
+  // ✅ 3. Validem les dades rebudes
+  if (!isValidKeyMoments(moments)) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>{t('keyMomentsTitle')}</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">{t('keyMomentsEmpty')}</p>
+          <p className="text-sm text-muted-foreground">{t('invalidData')}</p>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  // 2. Filtrem el soroll (el que no és 'is_work_related')
-  const workMoments = (moments as KeyMoment[]).filter(m => m.is_work_related);
+  const keyMoments = moments as KeyMoment[]
 
-  if (workMoments.length === 0) {
-     return (
+  if (keyMoments.length === 0) {
+    return (
       <Card>
         <CardHeader>
-          <CardTitle>{t('keyMomentsTitle')}</CardTitle>
+          <CardTitle>{t('title')}</CardTitle>
         </CardHeader>
-        <CardContent className="flex items-center gap-4 text-muted-foreground">
-          <MessageSquareWarning className="h-8 w-8" />
-          <p>{t('keyMomentsNoWork')}</p>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">{t('empty')}</p>
         </CardContent>
       </Card>
-    );
+    )
   }
 
-  // 3. Renderitzem el flux (timeline)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('keyMomentsTitle')}</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent>
-        {/* 'relative' és clau per a la línia de la timeline */}
-        <div className="relative space-y-8 pl-8">
-          {/* La línia vertical de la timeline */}
-          <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-border" />
-          
-          {workMoments.map((moment, index) => (
-            <div key={index} className="relative">
-              {/* El cercle de la timeline */}
-              <div className="absolute -left-8 top-1 flex h-8 w-8 items-center justify-center rounded-full bg-background border-2">
-                <MomentIcon moment={moment} />
-              </div>
-              
-              <div className="space-y-2">
-                <h4 className="font-semibold text-lg">{moment.topic}</h4>
-                <p className="text-muted-foreground">{moment.details}</p>
-                
-                {moment.decisions && moment.decisions.length > 0 && (
-                  <div className="space-y-1 pt-2">
-                    <h5 className="font-medium text-sm">{t('keyMomentsDecisions')}</h5>
-                    <ul className="list-disc list-inside space-y-1">
-                      {moment.decisions.map((decision, dIndex) => (
-                        <li key={dIndex} className="text-sm">{decision}</li>
+        <Accordion type="single" collapsible className="w-full" defaultValue="item-0">
+          {keyMoments.map((moment, index) => (
+            <AccordionItem value={`item-${index}`} key={index}>
+              <AccordionTrigger className="font-semibold text-left">
+                {moment.topic}
+              </AccordionTrigger>
+              <AccordionContent className="prose prose-sm dark:prose-invert max-w-none space-y-4">
+                <p>{moment.summary}</p>
+
+                {moment.decisions.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-medium">
+                      <Check className="h-4 w-4 text-green-500" />
+                      {t('decisions')}
+                    </h4>
+                    <ul className="list-disc pl-6">
+                      {moment.decisions.map((decision, i) => (
+                        <li key={i}>{decision}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-              </div>
-            </div>
+
+                {moment.action_items.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-medium">
+                      <List className="h-4 w-4 text-blue-500" />
+                      {t('actions')}
+                    </h4>
+                    <ul className="list-disc pl-6">
+                      {moment.action_items.map((action, i) => (
+                        <li key={i}>{action}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {moment.participants_involved.length > 0 && (
+                  <div>
+                    <h4 className="flex items-center gap-2 font-medium">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      {t('participants')}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {moment.participants_involved.join(', ')}
+                    </p>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </CardContent>
     </Card>
-  );
+  )
 }

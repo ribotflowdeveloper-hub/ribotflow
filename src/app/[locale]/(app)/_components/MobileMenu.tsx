@@ -39,6 +39,7 @@ export function MobileMenu({ onOpenSignOutDialog, onNotImplementedClick, handleN
                             <Button key={module.id} variant="ghost" className="w-full justify-start gap-3 px-4 text-base font-medium" onClick={createClickHandler(module)}>
                                 <module.icon className="w-5 h-5" /> {t(module.labelKey)}
                             </Button>
+                            
                         ) : (
                             <Accordion key={module.id} type="single" collapsible className="w-full">
                                 <AccordionItem value={module.id} className="border-b-0">

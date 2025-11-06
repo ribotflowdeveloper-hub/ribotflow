@@ -56,7 +56,8 @@
     "install": "Instal·lar Ribotflow",
     "permissions": "Permisos d'Aplicació",
     "brandNameMobile": "Ribotflow",
-    "transcription": "Transcripció d'Àudio"
+    "transcription": "Transcripció d'Àudio",
+    "pipelinesSettings": "Configuració de Pipelines"
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -124,7 +125,7 @@
     "blocking": "Bloquejant...",
     "addToBlacklist": "Afegeix remitent a la llista negra",
     "noTicketSelected": "Cap correu seleccionat",
-    "limitReached":" Has arribat al límit de correus per al teu pla.",
+    "limitReached": " Has arribat al límit de correus per al teu pla.",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament",
       "preparingMessage": "Preparant missatge...",
@@ -134,7 +135,7 @@
       "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
       "cancelButton": "Cancel·lar",
       "confirmDeleteButton": "Sí, elimina'l",
-      "deleteMultipleConfirm":"Estàs segur que vols eliminar els correus seleccionats? Aquesta acció no es pot desfer."
+      "deleteMultipleConfirm": "Estàs segur que vols eliminar els correus seleccionats? Aquesta acció no es pot desfer."
     },
     "editor": {
       "bold": "Negreta",
@@ -593,6 +594,7 @@
     "add": "Afegir",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
+    "selectPipeline": "Selecciona un canal",
     "toast": {
       "errorTitle": "Error",
       "successTitle": "Èxit!",
@@ -624,7 +626,16 @@
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Èxit!",
     "toastSuccessDescription": "L'oportunitat s'ha desat correctament.",
-    "noContact": "Sense contacte assignat"
+    "toastDeleteErrorTitle": "Error en eliminar",
+    "toastDeleteSuccessTitle": "Oportunitat Eliminada",
+    "confirmDeleteTitle": "Estàs segur que vols eliminar?",
+    "confirmDeleteDescription": "Aquesta acció no es pot desfer. S'eliminarà permanentment l'oportunitat \"{name}\".",
+    "noContact": "Sense contacte assignat",
+    "Common": {
+      "delete": "Eliminar",
+      "cancel": "Cancel·lar",
+      "deleteConfirmation": "Sí, eliminar"
+    }
   },
   "ProductsPage": {
     "title": "Conceptes",
@@ -1128,6 +1139,11 @@
         "description": "Concepte del servei o producte"
       },
       "emptyState": "No hi ha cap concepte afegit."
+    },
+    "errors": {
+      "loadDataFailed": "Error en carregar les dades de la despesa.",
+      "limitReachedTitle": "Límit de despeses assolit",
+      "limitReachedDescription": "Has arribat al límit de despeses per al teu pla actual. Actualitza el teu pla per afegir més despeses."
     }
   },
   "ExpenseDetail": {
@@ -1301,6 +1317,11 @@
       "itemDiscount": "Desc.",
       "itemTotal": "Total",
       "noItems": "Sense conceptes"
+    },
+    "errors": {
+      "loadDataFailed": "Error en carregar les factures.",
+      "limitReachedTitle": "Límit de factures assolit",
+      "limitReachedDescription": "Has arribat al límit de factures per al teu pla."
     }
   },
   "NetworkPage": {
@@ -1528,6 +1549,47 @@
         "languageTitle": "Idioma",
         "languageDescription": "Selecciona el teu idioma preferit."
       }
+    },
+    "SettingsPipelines": {
+      "title": "Configuració de Pipelines",
+      "pipelinesList": "Els Meus Pipelines",
+      "newPipelineName": "Nom del nou pipeline...",
+      "errorCreatingPipeline": "Error en crear el pipeline",
+      "pipelineCreated": "Pipeline creat amb èxit",
+      "errorUpdatingPipeline": "Error en actualitzar el pipeline",
+      "pipelineUpdated": "Pipeline actualitzat",
+      "errorDeletingPipeline": "Error en eliminar el pipeline",
+      "pipelineDeleted": "Pipeline eliminat",
+      "stagesFor": "Etapes per a",
+      "selectPipelinePrompt": "Selecciona un pipeline per veure les seves etapes.",
+      "newStageName": "Nom de la nova etapa...",
+      "errorCreatingStage": "Error en crear l'etapa",
+      "stageCreated": "Etapa creada amb èxit",
+      "errorUpdatingStage": "Error en actualitzar l'etapa",
+      "stageUpdated": "Etapa actualitzada",
+      "errorDeletingStage": "Error en eliminar l'etapa",
+      "stageDeleted": "Etapa eliminada",
+      "errorReordering": "Error en reordenar les etapes",
+      "orderUpdated": "Ordre del flux actualitzat",
+      "confirmDeletePipelineTitle": "Estàs segur que vols eliminar aquest pipeline?",
+      "confirmDeletePipelineDesc": "Aquesta acció no es pot desfer. S'eliminaran totes les etapes associades a \"{name}\". Les oportunitats dins d'aquestes etapes no s'eliminaran, però quedaran desassignades.",
+      "confirmDeleteStageTitle": "Estàs segur que vols eliminar aquesta etapa?",
+      "confirmDeleteStageDesc": "Aquesta acció no es pot desfer. Les oportunitats en aquesta etapa \"{name}\" quedaran desassignades.",
+      "cancel": "Cancel·lar",
+      "delete": "Eliminar",
+      "managePipelines": "Gestionar pipelines...",
+      "selectColor": "Selecciona un color",
+      "wonStageLabel": "Etapa 'Guanyada' del Flux",
+      "lostStageLabel": "Etapa 'Perduda' del Flux",
+      "selectStage": "Selecciona una etapa...",
+      "errorSettingStageType": "Error en desar el flux",
+      "stageTypeUpdated": "Flux d'automatització actualitzat",
+      "automationFlows": "Fluxos d'Automatització",
+      "prospectStageLabel": "Etapa de 'Prospecte' del Flux",
+      "leadStageLabel": "Etapa de 'Lead' del Flux",
+      "contactedStageLabel": "Etapa de 'Contactat' del Flux",
+      "proposalStageLabel": "Etapa de 'Proposta' del Flux",
+      "pipelineStages": "Etapes del Pipeline"
     }
   },
   "ThemeSwitcher": {
@@ -1839,6 +1901,19 @@
     }
   },
   "Shared": {
+    "limits": {
+      "modalTitle": "Límit de assolit",
+      "invoicesPerMonth": "Has assolit el límit de factures per mes al teu pla actual.",
+      "upgradePlan": "Actualitza el teu pla per augmentar aquest límit i desbloquejar funcions addicionals.",
+      "upgradeButton": "Actualitza el Pla",
+      "contacts": "Contactes",
+      "invoices": "Factures",
+      "expenses": "Despeses",
+      "suppliers": "Proveïdors",
+      "quotes": "Pressupostos",
+      "products": "Conceptes",
+      "expensesPerMonth": "Despeses per mes"
+    },
     "table": {
       "actions": "Accions",
       "view": "Vista",
@@ -1849,7 +1924,8 @@
       "delete": "Eliminar",
       "view": "Veure detall",
       "openMenu": "Obrir menú",
-      "title": "Accions"
+      "title": "Accions",
+      "cancel": "Cancel·lar"
     },
     "deleteDialog": {
       "title": "Estàs segur?",
@@ -2024,6 +2100,10 @@
       },
       "empty": "No s'han trobat comunicacions relacionades.",
       "noSubject": "(Sense Assumpte)"
+    },
+    "errors": {
+      "supplierNotFound": "Proveïdor no trobat.",
+      "limitReachedTitle": "Límit de proveïdors assolit"
     }
   },
   "LegalPages": {
@@ -2356,10 +2436,13 @@
     "no_invoices": "No s’han trobat factures.",
     "limitReachedTitle": "Límit del teu pla assolit",
     "limitReachedDefault": "Has arribat al límit de contactes permès en el teu pla actual. Actualitza’l per afegir-ne més.",
-    "upgradePlan": "Actualitza el Pla"
+    "upgradePlan": "Actualitza el Pla",
+    "accessDenied": "Accés Denegat",
+    "permissionDenied": "No tens permís per accedir a aquesta secció de facturació.",
+    "aiActionsUsed": "Accions d'IA Utilitzades",
+    "aiActionsLimit": "Límit d'Accions d'IA"
   },
   "Transcripcio": {
-    
     "listTitle": "Transcripcions d'Àudio",
     "listDescription": "Gestiona les teves gravacions i tasques extretes.",
     "listNewButton": "Nova Transcripció",
@@ -2423,8 +2506,36 @@
     "viewFullTranscriptionButton": "Veure transcripció completa",
     "automatedEmail": "Email generat automàticament",
     "backToListButton": "Tornar a la llista",
-    "errorUnknown": "Error desconegut"
-   
+    "errorUnknown": "Error desconegut",
+    "AssignedTasks": {
+      "title": "Tasques Assignades",
+      "WorkTopics": "Temes de Treball",
+      "DecisionsMade": "Decisions Preses"
+    },
+    "KeyMoments": {
+      "title": "Moments Clau",
+      "WorkTopics": "Temes de Treball",
+      "DecisionsMade": "Decisions Preses",
+      "decisions": "Moments destacats de la reunió",
+      "actions": "Accions a realitzar",
+      "participants": "Participants principals"
+    },
+    "Email": {
+      "sendSuccess": "L'email amb el resum de la reunió s'ha enviat correctament a {recipientCount} destinataris.",
+      "meetingTitle": "Reunió:",
+      "summaryTitle": "Resum general",
+      "keyMomentsTitle": "Moments clau de la reunió",
+      "keyMomentsDecisions": "Decisions", 
+      "keyMomentsActions": "Accions",
+      "assignedTasksTitle": "Tasques assignades",
+      "participantsTitle": "Participants principals",
+      "flowTitle": "Flux general",
+      "flowDiagnosi": "Diagnosi",
+      "flowAccions": "Accions",
+      "flowTasques": "Tasques",
+      "flowSeguiment": "Seguiment",
+      "footerText": "Generat automàticament des de RibotFlow"
+    }
   },
   "Global": {
     "loading": "Carregant...",

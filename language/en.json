@@ -56,7 +56,8 @@
     "install": "Install Ribotflow",
     "permissions": "Application Permissions",
     "brandNameMobile": "Ribotflow",
-    "transcription": "Audio Transcription"
+    "transcription": "Audio Transcription",
+    "pipelinesSettings": "Pipeline Settings"
   },
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
@@ -600,7 +601,7 @@
     "noContactFound": "No contact found.",
     "selectStagePlaceholder": "Select a stage",
     "valueLabel": "Value (€)",
-    "closeDateLabel": "Close Date",
+    "closeDateLabel": "Closing Date",
     "pickDate": "Pick a date",
     "descriptionPlaceholder": "Description and notes...",
     "cancelButton": "Cancel",
@@ -608,7 +609,16 @@
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
     "toastSuccessDescription": "The opportunity has been saved successfully.",
-    "noContact": "N/A"
+    "toastDeleteErrorTitle": "Error deleting",
+    "toastDeleteSuccessTitle": "Opportunity Deleted",
+    "confirmDeleteTitle": "Are you sure you want to delete?",
+    "confirmDeleteDescription": "This action cannot be undone. The opportunity \"{name}\" will be permanently deleted.",
+    "noContact": "No contact assigned",
+    "Common": {
+      "delete": "Delete",
+      "cancel": "Cancel",
+      "deleteConfirmation": "Yes, delete"
+    }
   },
   "QuotesPage": {
     "title": "Quotes",
@@ -1505,6 +1515,47 @@
         "languageTitle": "Language",
         "languageDescription": "Select your preferred language."
       }
+    },
+    "SettingsPipelines": {
+      "title": "Pipeline Settings",
+      "pipelinesList": "My Pipelines",
+      "newPipelineName": "New pipeline name...",
+      "errorCreatingPipeline": "Error creating pipeline",
+      "pipelineCreated": "Pipeline successfully created",
+      "errorUpdatingPipeline": "Error updating pipeline",
+      "pipelineUpdated": "Pipeline updated",
+      "errorDeletingPipeline": "Error deleting pipeline",
+      "pipelineDeleted": "Pipeline deleted",
+      "stagesFor": "Stages for",
+      "selectPipelinePrompt": "Select a pipeline to view its stages.",
+      "newStageName": "New stage name...",
+      "errorCreatingStage": "Error creating stage",
+      "stageCreated": "Stage successfully created",
+      "errorUpdatingStage": "Error updating stage",
+      "stageUpdated": "Stage updated",
+      "errorDeletingStage": "Error deleting stage",
+      "stageDeleted": "Stage deleted",
+      "errorReordering": "Error reordering stages",
+      "orderUpdated": "Stage order updated",
+      "confirmDeletePipelineTitle": "Are you sure you want to delete this pipeline?",
+      "confirmDeletePipelineDesc": "This action cannot be undone. All stages associated with \"{name}\" will be deleted. Opportunities in these stages will not be deleted but will be unassigned.",
+      "confirmDeleteStageTitle": "Are you sure you want to delete this stage?",
+      "confirmDeleteStageDesc": "This action cannot be undone. Opportunities in this stage \"{name}\" will be unassigned.",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "managePipelines": "Manage pipelines...",
+      "selectColor": "Select a color",
+      "wonStageLabel": "'Won' Stage of the Flow",
+      "lostStageLabel": "'Lost' Stage of the Flow",
+      "selectStage": "Select a stage...",
+      "errorSettingStageType": "Error saving flow",
+      "stageTypeUpdated": "Automation flow updated",
+      "automationFlows": "Automation Flows",
+      "prospectStageLabel": "'Prospect' Stage of the Flow",
+      "leadStageLabel": "'Lead' Stage of the Flow",
+      "contactedStageLabel": "'Contacted' Stage of the Flow",
+      "proposalStageLabel": "'Proposal' Stage of the Flow",
+      "pipelineStages": "Pipeline Stages"
     }
   },
   "ThemeSwitcher": {
@@ -2367,7 +2418,20 @@
     "viewFullTranscriptionButton": "View full transcription",
     "automatedEmail": "Automatically generated email",
     "backToListButton": "Back to Transcriptions",
-    "errorUnknown": "Unknown error"
+    "errorUnknown": "Unknown error",
+    "AssignedTasks": {
+      "title": "Assigned Tasks",
+      "WorkTopics": "Work Topics",
+      "DecisionsMade": "Decisions Made"
+    },
+    "KeyMoments": {
+      "title": "Key Moments",
+      "WorkTopics": "Work Topics",
+      "DecisionsMade": "Decisions Made",
+      "decisions": "Highlights of the meeting",
+      "actions": "Actions to take",
+      "participants": "Main participants"
+    }
   },
   "Global": {
     "loading": "Loading...",

@@ -1,22 +1,29 @@
-// Ubicació: /app/(app)/comunicacio/marketing/_components/AICampaignWizard.tsx
+// /app/[locale]/(app)/comunicacio/marketing/_components/AICampaignWizard.tsx (FITXER COMPLET I CORREGIT)
 
 "use client";
 
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AnimatePresence } from "framer-motion";
-import { useTranslations } from 'next-intl';
-import { Wand2 } from "lucide-react";
+import { useTranslations } from 'next-intl'; // ✅ 1. Importem useTranslations
+import { Wand2,TriangleAlert } from "lucide-react"; // ✅ 2. Importem icones
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Link from 'next/link';
 
 import { useAICampaignWizard } from "../_hooks/useAICampaignWizard";
 import { WizardStep1_Goal } from "./wizard/WizardStep1_Goal";
 import { WizardStep2_SelectStrategy } from "./wizard/WizardStep2_SelectStrategy";
 import { WizardStep3_Finalize } from "./wizard/WizardStep3_Finalize";
+import { type UsageCheckResult } from "@/lib/subscription/subscription"; // ✅ 3. Importem el tipus de límit
 
 interface AICampaignWizardProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onCampaignCreated: () => void;
+    // ✅ 4. Afegim les props que falten (aquesta era la causa de l'error)
+    campaignLimitStatus: UsageCheckResult;
+    aiActionsLimitStatus: UsageCheckResult;
 }
 
 const WizardProgressBar = ({ step }: { step: number }) => (
@@ -34,8 +41,16 @@ const WizardProgressBar = ({ step }: { step: number }) => (
     </div>
 );
 
-export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ open, onOpenChange, onCampaignCreated }) => {
+export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ 
+    open, 
+    onOpenChange, 
+    onCampaignCreated,
+    campaignLimitStatus, // ✅ 5. Rebem les props
+    aiActionsLimitStatus   // ✅ 5. Rebem les props
+}) => {
     const t = useTranslations('AICampaignWizard');
+    const t_billing = useTranslations('Billing'); // Per als missatges de límit
+
     const {
         step, goal, strategies, selectedStrategy, isPending, processingIndex,
         setStep, setGoal, setSelectedStrategy, resetWizard,
@@ -43,8 +58,23 @@ export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ open, onOpen
     } = useAICampaignWizard({
         onCampaignCreated,
         onClose: () => onOpenChange(false),
-        t
+        t,
+        // ✅ 6. Passem els límits al hook (el hook els necessitarà per als toasts)
+        campaignLimitStatus,
+        aiActionsLimitStatus
     });
+
+    // ✅ 7. Calculem l'estat dels límits per a la UI
+    const isCampaignLimitReached = !campaignLimitStatus.allowed;
+    const isAILimitReached = !aiActionsLimitStatus.allowed;
+    
+    // El Wizard es bloqueja si s'ha assolit QUALSEVOL dels dos límits
+    const isLimitReached = isCampaignLimitReached || isAILimitReached;
+    
+    // Determinem el missatge d'error correcte
+    const limitError = isCampaignLimitReached 
+      ? campaignLimitStatus.error 
+      : (isAILimitReached ? aiActionsLimitStatus.error : t_billing('limitReachedDefault'));
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) resetWizard(); onOpenChange(isOpen); }}>
@@ -56,13 +86,32 @@ export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ open, onOpen
                     <WizardProgressBar step={step} />
                 </DialogHeader>
 
+                {/* ✅ 8. ALARMA DE LÍMIT SUPERAT */}
+                {isLimitReached && (
+                  <div className="p-0">
+                    <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900">
+                      <TriangleAlert className="h-4 w-4 text-yellow-900" />
+                      <AlertTitle className="font-semibold">
+                        {t_billing('limitReachedTitle')}
+                      </AlertTitle>
+                      <AlertDescription className="text-xs">
+                        {limitError}
+                        <Button asChild variant="link" size="sm" className="px-1 h-auto py-0 text-yellow-900 font-semibold">
+                          <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                        </Button>
+                      </AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+
                 <AnimatePresence mode="wait">
                     {step === 1 && (
                         <WizardStep1_Goal
                             goal={goal}
                             setGoal={setGoal}
                             onGenerate={handleGenerateStrategies}
-                            isPending={isPending}
+                            // ✅ 9. Bloquegem si s'ha assolit el límit
+                            isPending={isPending || isLimitReached}
                             t={t}
                         />
                     )}
@@ -72,7 +121,8 @@ export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ open, onOpen
                             strategies={strategies}
                             onSelect={handleDraftContent}
                             onBack={() => setStep(1)}
-                            isPending={isPending}
+                            // ✅ 9. Bloquegem si s'ha assolit el límit
+                            isPending={isPending || isLimitReached}
                             processingIndex={processingIndex}
                             t={t}
                         />
@@ -81,12 +131,11 @@ export const AICampaignWizard: React.FC<AICampaignWizardProps> = ({ open, onOpen
                     {step === 3 && selectedStrategy && (
                         <WizardStep3_Finalize
                             strategy={selectedStrategy}
-                            // ✅ CORRECCIÓ: Passem directament la funció 'setSelectedStrategy'
-                            // que ve del hook 'useState'.
                             onStrategyChange={setSelectedStrategy}
                             onSave={handleSaveCampaign}
                             onBack={() => setStep(2)}
-                            isPending={isPending}
+                            // ✅ 9. Bloquegem si s'ha assolit el límit
+                            isPending={isPending || isLimitReached}
                             t={t}
                         />
                     )}

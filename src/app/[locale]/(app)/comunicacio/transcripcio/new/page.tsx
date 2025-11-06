@@ -1,24 +1,20 @@
-import { validatePageSession } from '@/lib/supabase/session'
+// Ubicació: src/app/[locale]/(app)/comunicacio/transcripcio/page.tsx (FITXER COMPLET I CORREGIT)
+import { Suspense } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { getTeamContactsList } from '@/app/[locale]/(app)/crm/contactes/actions'
-// ✅ El component ara està a la seva pròpia carpeta
-import { AudioJobUploader } from './_components/AudioJobUploader'
+import { TranscripcioData } from '../_components/TranscripcioData'
+import { TranscripcioSkeleton } from '../_components/TranscripcioSkeleton'
 
 export default async function AudioTranscriberPage() {
-  // ✅ validatePageSession retorna l'ID de l'equip
-  const { activeTeamId } = await validatePageSession()
-
-  const contacts = await getTeamContactsList()
-
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Nova Transcripció"
+        title="Transcripcions d'Àudio"
         description="Puja un àudio i selecciona els participants per extreure tasques."
       />
       <div className="flex-1 overflow-auto p-4 md:p-6">
-        {/* ✅ Passem el 'teamId' i els 'contacts' al client */}
-        <AudioJobUploader contacts={contacts} teamId={activeTeamId} />
+        <Suspense fallback={<TranscripcioSkeleton />}>
+          <TranscripcioData />
+        </Suspense>
       </div>
     </div>
   )

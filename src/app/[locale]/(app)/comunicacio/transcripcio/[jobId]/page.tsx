@@ -51,7 +51,7 @@ export default async function AudioJobPage(props: AudioJobPageProps) {
           </Button>
         </Link>
       </PageHeader>
-      <div className="flex-1 overflow-auto p-4 md:p-6">
+      <div >
         <AudioJobResult initialJob={initialJob} />
       </div>
     </div>

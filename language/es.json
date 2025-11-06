@@ -56,7 +56,8 @@
     "install": "Instalar Ribotflow",
     "permissions": "Permisos de la Aplicación",
     "brandNameMobile": "Ribotflow",
-    "transcription": "Transcripción de Audio"
+    "transcription": "Transcripción de Audio",
+    "pipelinesSettings": "Configuración de Pipelines"
   },
   "InboxPage": {
     "composeDialogTitle": "Escribir un Correo",
@@ -601,9 +602,18 @@
     "cancelButton": "Cancelar",
     "saveButton": "Guardar",
     "toastErrorTitle": "Error",
-    "toastSuccessTitle": "¡Éxito!",
+    "toastSuccessTitle": "Éxito!",
     "toastSuccessDescription": "La oportunidad se ha guardado correctamente.",
-    "noContact": "Sin contacto asignado"
+    "toastDeleteErrorTitle": "Error al eliminar",
+    "toastDeleteSuccessTitle": "Oportunidad Eliminada",
+    "confirmDeleteTitle": "¿Estás seguro de que quieres eliminar?",
+    "confirmDeleteDescription": "Esta acción no se puede deshacer. Se eliminará permanentemente la oportunidad \"{name}\".",
+    "noContact": "Sin contacto asignado",
+    "Common": {
+      "delete": "Eliminar",
+      "cancel": "Cancelar",
+      "deleteConfirmation": "Sí, eliminar"
+    }
   },
   "ProductsPage": {
     "title": "Conceptos",
@@ -1498,6 +1508,46 @@
         "languageTitle": "Idioma",
         "languageDescription": "Selecciona tu idioma preferido."
       }
+    },
+    "SettingsPipelines": {
+      "title": "Configuración de Pipelines",
+      "pipelinesList": "Mis Pipelines",
+      "newPipelineName": "Nombre del nuevo pipeline...",
+      "errorCreatingPipeline": "Error al crear el pipeline",
+      "pipelineCreated": "Pipeline creado con éxito",
+      "errorUpdatingPipeline": "Error al actualizar el pipeline",
+      "pipelineUpdated": "Pipeline actualizado",
+      "errorDeletingPipeline": "Error al eliminar el pipeline",
+      "pipelineDeleted": "Pipeline eliminado",
+      "stagesFor": "Etapas para",
+      "selectPipelinePrompt": "Selecciona un pipeline para ver sus etapas.",
+      "newStageName": "Nombre de la nueva etapa...",
+      "errorCreatingStage": "Error al crear la etapa",
+      "stageCreated": "Etapa creada con éxito",
+      "errorUpdatingStage": "Error al actualizar la etapa",
+      "stageUpdated": "Etapa actualizada",
+      "errorDeletingStage": "Error al eliminar la etapa",
+      "stageDeleted": "Etapa eliminada",
+      "errorReordering": "Error al reordenar las etapas",
+      "orderUpdated": "Orden del flujo actualizado",
+      "confirmDeletePipelineTitle": "¿Estás seguro de que deseas eliminar este pipeline?",
+      "confirmDeletePipelineDesc": "Esta acción no se puede deshacer. Se eliminarán todas las etapas asociadas a \"{name}\". Las oportunidades dentro de estas etapas no se eliminarán, pero quedarán sin asignar.",
+      "confirmDeleteStageTitle": "¿Estás seguro de que deseas eliminar esta etapa?",
+      "confirmDeleteStageDesc": "Esta acción no se puede deshacer. Las oportunidades en esta etapa \"{name}\" quedarán sin asignar.",
+      "cancel": "Cancelar",
+      "delete": "Eliminar",
+      "managePipelines": "Gestionar pipelines...",
+      "selectColor": "Selecciona un color",
+      "wonStageLabel": "Etapa 'Ganada' del Flujo",
+      "lostStageLabel": "Etapa 'Perdida' del Flujo",
+      "selectStage": "Selecciona una etapa...",
+      "errorSettingStageType": "Error al guardar el flujo",
+      "stageTypeUpdated": "Flujo de automatización actualizado",
+      "automationFlows": "Flujos de Automatización",
+      "prospectStageLabel": "Etapa de 'Prospecto' del Flujo",
+      "leadStageLabel": "Etapa de 'Lead' del Flujo",
+      "contactedStageLabel": "Etapa de 'Contactado' del Flujo",
+      "proposalStageLabel": "Etapa de 'Propuesta' del Flujo"
     }
   },
   "ThemeSwitcher": {
@@ -2360,7 +2410,20 @@
     "viewFullTranscriptionButton": "Ver transcripción completa",
     "automatedEmail": "Email generado automáticamente",
     "backToListButton": "Volver a la lista de transcripciones",
-    "errorUnknown": "Error desconocido"
+    "errorUnknown": "Error desconocido",
+    "AssignedTasks": {
+      "title": "Tareas Asignadas",
+      "WorkTopics": "Temas de Trabajo",
+      "DecisionsMade": "Decisiones Tomadas"
+    },
+    "KeyMoments": {
+      "title": "Momentos Clave",
+      "WorkTopics": "Temas de Trabajo",
+      "DecisionsMade": "Decisiones Tomadas",
+      "decisions": "Momentos destacados de la reunión",
+      "actions": "Acciones a realizar",
+      "participants": "Participantes principales"
+    }
   },
   "Global": {
     "loading": "Cargando...",

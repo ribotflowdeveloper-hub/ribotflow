@@ -2,12 +2,12 @@
 
 "use client";
 
-import React, { useState, ReactNode } from 'react';
+import React, { useState} from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
-
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
 // Hooks i Stores
 import { useAppNavigation } from '@/hooks/useAppNavigation';
 import { useNavigationStore } from '@/stores/navigationStore';
@@ -22,8 +22,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 // Accions
 import { logoutAction } from '@/app/[locale]/(auth)/auth/actions';
 
+// ✅ 2. DEFINIM LA INTERFÍCIE CORRECTA
+interface AppClientLayoutProps {
+  children: React.ReactNode;
+  locale: string;
+  aiLimitStatus: UsageCheckResult;
+}
 // Imatges i tipus
-export function AppClientLayout({ children }: { children: ReactNode, locale: string }) {
+export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProps) {
     const t = useTranslations('Navigation');
     const { isChatbotOpen } = useNavigationStore();
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
@@ -52,6 +58,7 @@ export function AppClientLayout({ children }: { children: ReactNode, locale: str
                 onModuleSelect={handleMainMenuClick}
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                 onNotImplemented={handleNotImplementedClick}
+                aiLimitStatus={aiLimitStatus} // La passem
             />
 
             <motion.div

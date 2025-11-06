@@ -1,45 +1,55 @@
-// src/app/[locale]/(app)/comunicacio/marketing/_components/MarketingData.tsx
+// /src/app/[locale]/(app)/comunicacio/marketing/_components/MarketingData.tsx (FITXER COMPLET I CORREGIT)
 
-import { validatePageSession } from '@/lib/supabase/session';
+import { validateSessionAndPermission, PERMISSIONS } from '@/lib/permissions/permissions'; // ✅ 1. Importem guardians
 import { MarketingClient } from './marketing-client';
+import { AccessDenied } from '@/components/shared/AccessDenied'; // Importem AccessDenied
+import { getUsageLimitStatus, type UsageCheckResult } from "@/lib/subscription/subscription"; // ✅ 2. Importem límits
 
-// ✅ 1. Importem el nostre servei
 import { marketingService } from '@/lib/services/comunicacio/marketing.service';
-
-// ✅ 2. Importem els tipus des de la nostra font de la veritat
 import type { Campaign, Kpis } from '@/types/comunicacio/marketing';
-
-// ✅ 3. Re-exportem els tipus per al Client Component (bona pràctica)
 export type { Campaign, Kpis };
 
-/**
- * @summary Component de servidor que obté les dades de màrqueting
- * utilitzant el servei centralitzat.
- */
+// Definim un estat de límit per defecte
+const defaultLimit: UsageCheckResult = { allowed: false, current: 0, max: 0, error: "Sessió no vàlida" };
+
 export async function MarketingData() {
-    const { supabase, activeTeamId } = await validatePageSession();
+    
+    // ✅ 3. Validació de ROL (RBAC) per veure la pàgina
+    const validation = await validateSessionAndPermission(PERMISSIONS.VIEW_MARKETING);
+    if ('error' in validation) {
+      return <AccessDenied message={validation.error.message} />;
+    }
+    const { supabase, activeTeamId } = validation;
 
-    // ✅ 4. Cridem al servei en lloc de l'RPC directament
-    const { data, error } = await marketingService.getMarketingPageData(
-      supabase,
-      activeTeamId 
-    );
+    // ✅ 4. Carreguem dades i AMBDÓS límits en paral·lel
+    const [
+      { data, error },
+      campaignLimit,
+      aiActionsLimit
+    ] = await Promise.all([
+        marketingService.getMarketingPageData(supabase, activeTeamId),
+        getUsageLimitStatus('maxMarketingCampaignsPerMonth'),
+        getUsageLimitStatus('maxAIActionsPerMonth')
+    ]);
 
-    // ✅ 5. La gestió d'errors és més senzilla
-    // El servei ja ens retorna un 'fallbackData' si 'data' és nul,
-    // així que 'data' sempre hauria de ser un objecte vàlid si no hi ha error.
-    if (error || !data) {
-        console.error("Error en obtenir les dades de màrqueting (MarketingData):", error);
-        // Retornem un estat buit en cas d'error
-        return <MarketingClient 
-            initialKpis={{ totalLeads: 0, conversionRate: 0 }} 
-            initialCampaigns={[]} 
-        />;
-    }
-    
-    // ✅ 6. Passem les dades netes del servei al client
-    return <MarketingClient 
-        initialKpis={data.kpis} 
-        initialCampaigns={data.campaigns} 
-    />;
+    if (error || !data) {
+        console.error("Error en obtenir les dades de màrqueting (MarketingData):", error);
+        return (
+          <MarketingClient 
+            initialKpis={{ totalLeads: 0, conversionRate: 0 }} 
+            initialCampaigns={[]} 
+            campaignLimitStatus={campaignLimit || defaultLimit} // Passem límits fins i tot si falla
+            aiActionsLimitStatus={aiActionsLimit || defaultLimit}
+          />
+        );
+    }
+    
+    return (
+      <MarketingClient 
+        initialKpis={data.kpis} 
+        initialCampaigns={data.campaigns} 
+        campaignLimitStatus={campaignLimit} // ✅ 5. Passem els dos límits al client
+        aiActionsLimitStatus={aiActionsLimit}
+      />
+    );
 }
