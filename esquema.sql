@@ -134,6 +134,7 @@ ALTER TYPE "public"."ticket_type" OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."accept_invitation"("invitation_token" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   invitation_record RECORD;
@@ -143,11 +144,11 @@ BEGIN
   -- Obtenir dades de l'usuari actual
   SELECT email INTO current_user_email FROM auth.users WHERE id = current_user_id;
 
-  -- 1. Trobar la invitació i bloquejar la fila per evitar 'race conditions'
+  -- 1. Trobar la invitació i bloquejar la fila
   SELECT * INTO invitation_record FROM public.invitations
   WHERE token = invitation_token FOR UPDATE;
 
-  -- 2. Validar que la invitació existeix i és per a l'usuari correcte
+  -- 2. Validar
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Invitació invàlida o caducada';
   END IF;
@@ -156,7 +157,7 @@ BEGIN
     RAISE EXCEPTION 'Aquesta invitació està destinada a un altre usuari';
   END IF;
 
-  -- 3. Inserir el nou membre (ignorant si ja existeix)
+  -- 3. Inserir el nou membre
   INSERT INTO public.team_members (team_id, user_id, role)
   VALUES (invitation_record.team_id, current_user_id, invitation_record.role)
   ON CONFLICT (team_id, user_id) DO NOTHING;
@@ -170,8 +171,9 @@ $$;
 ALTER FUNCTION "public"."accept_invitation"("invitation_token" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."accept_invitation_and_set_active_team"("invite_token" "text") RETURNS json
+CREATE OR REPLACE FUNCTION "public"."accept_invitation_and_set_active_team"("invite_token" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 declare
   invitation_data record;
@@ -180,7 +182,7 @@ declare
   requesting_user_id uuid := auth.uid();
   requesting_user_email text := auth.jwt()->>'email';
 begin
-  -- 1. Validar la invitació i que pertany a l'usuari actual.
+  -- 1. Validar la invitació
   select * into invitation_data from public.invitations
   where token = invite_token and status = 'pending';
 
@@ -189,30 +191,34 @@ begin
   end if;
   
   if invitation_data.email is not null and invitation_data.email != requesting_user_email then
-     raise exception 'INVITATION_FOR_DIFFERENT_USER';
+      raise exception 'INVITATION_FOR_DIFFERENT_USER';
   end if;
 
-  -- 2. Afegir l'usuari a l'equip. Si ja existeix, no facis res (evita l'error de duplicat).
+  -- 2. Afegir l'usuari a l'equip
   insert into public.team_members (team_id, user_id, role)
   values (invitation_data.team_id, requesting_user_id, invitation_data.role)
   on conflict (team_id, user_id) do nothing;
 
-  -- 3. Obtenir el pla de l'equip per afegir-lo al token de l'usuari.
+  -- 3. Obtenir el pla de l'equip
   select plan_id, status into subscription_data from public.subscriptions
   where team_id = invitation_data.team_id;
   
-  -- 4. Actualitzar les metadades (el token) de l'usuari.
+  -- 4. Actualitzar les metadades (el token) de l'usuari
   select raw_app_meta_data from auth.users where id = requesting_user_id into user_metadata;
   
   update auth.users set raw_app_meta_data = user_metadata || jsonb_build_object(
       'active_team_id', invitation_data.team_id,
+      
+      -- ✅ BUG CRÍTIC ARREGLAT (El que trencava la RLS de 'subscriptions')
+      'active_team_role', invitation_data.role, 
+      
       'active_team_plan', case when subscription_data.status = 'active' then subscription_data.plan_id else 'free' end
   ) where id = requesting_user_id;
 
-  -- 5. Esborrar la invitació un cop processada.
+  -- 5. Esborrar la invitació
   delete from public.invitations where id = invitation_data.id;
 
-  return json_build_object('success', true, 'team_id', invitation_data.team_id);
+  return json_build_object('success', true, 'team_id', invitation_data.team_id)::jsonb;
 end;
 $$;
 
@@ -270,10 +276,10 @@ CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_
     SET "search_path" TO 'public'
     AS $$
 DECLARE
-  v_quote record;
-  v_new_invoice_id uuid;
+  v_quote public.quotes%ROWTYPE; 
+  v_new_invoice_id bigint; 
 BEGIN
-  -- Pas 1: Actualitzar el pressupost i obtenir les dades
+  -- Pas 1: Actualitzar el pressupost
   UPDATE public.quotes
   SET status = 'Accepted'
   WHERE secure_id = p_secure_id
@@ -283,14 +289,14 @@ BEGIN
     RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
   END IF;
 
-  -- Pas 2: Actualitzar l'oportunitat associada
+  -- Pas 2: Actualitzar l'oportunitat
   IF v_quote.opportunity_id IS NOT NULL THEN
     UPDATE public.opportunities
     SET stage_name = 'Guanyat'
     WHERE id = v_quote.opportunity_id;
   END IF;
 
-  -- Pas 3: Crear la capçalera de la nova factura
+  -- Pas 3: Crear la capçalera de la factura
   INSERT INTO public.invoices (
     user_id, team_id, contact_id, quote_id, status, 
     total_amount, subtotal, tax_amount, discount_amount,
@@ -300,35 +306,52 @@ BEGIN
     v_quote.total, v_quote.subtotal, v_quote.tax, v_quote.discount,
     CURRENT_DATE,
     CURRENT_DATE + INTERVAL '30 days'
-  ) RETURNING id INTO v_new_invoice_id;
+  ) RETURNING id INTO v_new_invoice_id; 
 
-  -- Pas 4: Copiar els conceptes del pressupost a la nova factura
+  -- Pas 4: Copiar els conceptes del pressupost
   INSERT INTO public.invoice_items (
-    invoice_id, product_id, description, quantity, unit_price, tax_rate, total, user_id, team_id
+    invoice_id, product_id, description, quantity, unit_price, 
+    tax_rate, 
+    total, 
+    user_id, team_id
   )
   SELECT
-    v_new_invoice_id,
+    v_new_invoice_id, 
     item.product_id,
     item.description,
     item.quantity,
     item.unit_price,
-    item.tax_rate,
-    (item.quantity * item.unit_price), -- Calculem el total al servidor
+    COALESCE(p.iva, 0),
+    item.total,
     v_quote.user_id,
     v_quote.team_id
   FROM public.quote_items AS item
+  LEFT JOIN public.products AS p ON item.product_id = p.id
   WHERE item.quote_id = v_quote.id;
-
-  -- Si tot ha anat bé, la transacció fa COMMIT automàticament
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Si qualsevol pas falla, es fa ROLLBACK de tot
-    RAISE EXCEPTION 'Error a accept_quote_and_create_invoice: %', SQLERRM;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT
+    ("auth"."uid"() = ticket_user_id) OR 
+    (EXISTS (
+      SELECT 1
+      FROM "public"."inbox_permissions"
+      WHERE 
+        ("inbox_permissions"."grantee_user_id" = "auth"."uid"()) AND 
+        ("inbox_permissions"."target_user_id" = ticket_user_id)
+    ))
+$$;
+
+
+ALTER FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_new_organization"("org_name" "text") RETURNS "uuid"
@@ -431,10 +454,12 @@ ALTER FUNCTION "public"."create_team_with_defaults"("team_name" "text") OWNER TO
 
 CREATE OR REPLACE FUNCTION "public"."delete_user_credential"("provider_name" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
     DELETE FROM public.user_credentials
-    WHERE user_id = auth.uid() AND provider = provider_name;
+    WHERE user_id = auth.uid()
+      AND provider = provider_name;
 END;
 $$;
 
@@ -443,21 +468,38 @@ ALTER FUNCTION "public"."delete_user_credential"("provider_name" "text") OWNER T
 
 
 CREATE OR REPLACE FUNCTION "public"."get_active_team_id"() RETURNS "uuid"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
-  SELECT nullif(
-    current_setting('request.jwt.claims', true)::jsonb
-    ->'app_metadata'->>'active_team_id',
-    ''
-  )::uuid;
+  SELECT 
+    coalesce(
+      auth.jwt() -> 'app_metadata' ->> 'active_team_id',
+      '00000000-0000-0000-0000-000000000000' -- Un UUID nul per defecte
+    )::uuid
 $$;
 
 
 ALTER FUNCTION "public"."get_active_team_id"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text", "p_column_name" "text") RETURNS TABLE("value" "text")
+CREATE OR REPLACE FUNCTION "public"."get_active_team_role"() RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
+    AS $$
+  SELECT 
+    coalesce(
+      auth.jwt() -> 'app_metadata' ->> 'active_team_role',
+      'member' -- Valor per defecte segur
+    )::text
+$$;
+
+
+ALTER FUNCTION "public"."get_active_team_role"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text") RETURNS TABLE("value" "text")
     LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
     -- Exemple: Si és la taula 'customers', retorna els noms (assumint que el camp es diu 'name')
@@ -475,11 +517,12 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text", "p_column_name" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_crm_dashboard_data"() RETURNS json
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
     active_team_id UUID;
@@ -496,60 +539,106 @@ BEGIN
             SELECT json_build_object(
                 'totalContacts', COUNT(*),
                 'newContactsThisMonth', COUNT(*) FILTER (WHERE created_at >= date_trunc('month', now())),
-                'opportunities', (SELECT COUNT(*) FROM public.opportunities WHERE team_id = active_team_id AND stage_name NOT IN ('Guanyat', 'Perdut')),
-                'pipelineValue', (SELECT COALESCE(SUM(value), 0) FROM public.opportunities WHERE team_id = active_team_id AND stage_name NOT IN ('Guanyat', 'Perdut')),
-                'avgRevenuePerClient', (SELECT AVG(total_invoiced) FROM (SELECT SUM(total_amount) AS total_invoiced FROM public.invoices WHERE team_id = active_team_id GROUP BY contact_id) as client_totals),
-                'avgConversionTimeDays', (SELECT AVG(EXTRACT(DAY FROM (last_updated_at - created_at))) FROM public.opportunities WHERE team_id = active_team_id AND stage_name = 'Guanyat')
-            ) FROM public.contacts WHERE team_id = active_team_id
+                'opportunities', (
+                    SELECT COUNT(*) 
+                    FROM public.opportunities 
+                    WHERE team_id = active_team_id AND stage_name NOT IN ('Guanyat', 'Perdut')
+                ),
+                'pipelineValue', (
+                    SELECT COALESCE(SUM(value), 0) 
+                    FROM public.opportunities 
+                    WHERE team_id = active_team_id AND stage_name NOT IN ('Guanyat', 'Perdut')
+                ),
+                'avgRevenuePerClient', (
+                    SELECT AVG(total_invoiced)
+                    FROM (
+                        SELECT SUM(total_amount) AS total_invoiced
+                        FROM public.invoices 
+                        WHERE team_id = active_team_id
+                        GROUP BY contact_id
+                    ) AS client_totals
+                ),
+                'avgConversionTimeDays', (
+                    SELECT AVG(EXTRACT(DAY FROM (last_updated_at - created_at)))
+                    FROM public.opportunities 
+                    WHERE team_id = active_team_id AND stage_name = 'Guanyat'
+                )
+            )
+            FROM public.contacts 
+            WHERE team_id = active_team_id
         ),
         'funnel', (
             SELECT json_build_object(
                 'leads', COUNT(*) FILTER (WHERE estat = 'Lead'),
-                'quoted', (SELECT COUNT(DISTINCT contact_id) FROM public.quotes WHERE team_id = active_team_id),
-                'clients', (SELECT COUNT(DISTINCT contact_id) FROM public.invoices WHERE team_id = active_team_id)
-            ) FROM public.contacts WHERE team_id = active_team_id
+                'quoted', (
+                    SELECT COUNT(DISTINCT contact_id) 
+                    FROM public.quotes 
+                    WHERE team_id = active_team_id
+                ),
+                'clients', (
+                    SELECT COUNT(DISTINCT contact_id) 
+                    FROM public.invoices 
+                    WHERE team_id = active_team_id
+                )
+            )
+            FROM public.contacts 
+            WHERE team_id = active_team_id
         ),
-
-        -- ✅ CORRECCIÓ: Si json_agg és NULL, retorna un array buit '[]'
         'topClients', COALESCE((
-            SELECT json_agg(c.* ORDER BY c.total_invoiced DESC) FROM (
-                SELECT ct.id, ct.nom, SUM(i.total_amount) as total_invoiced
-                FROM public.invoices i JOIN public.contacts ct ON i.contact_id = ct.id
-                WHERE i.team_id = active_team_id GROUP BY ct.id, ct.nom
-                ORDER BY total_invoiced DESC LIMIT 5
-            ) as c
+            SELECT json_agg(c.* ORDER BY c.total_invoiced DESC)
+            FROM (
+                SELECT 
+                    ct.id, 
+                    ct.nom, 
+                    SUM(i.total_amount) AS total_invoiced
+                FROM public.invoices i
+                JOIN public.contacts ct ON i.contact_id = ct.id
+                WHERE i.team_id = active_team_id
+                GROUP BY ct.id, ct.nom
+                ORDER BY total_invoiced DESC
+                LIMIT 5
+            ) AS c
         ), '[]'::json),
-
-        -- ✅ CORRECCIÓ: Si json_agg és NULL, retorna un array buit '[]'
         'coldContacts', COALESCE((
-            SELECT json_agg(cc.*) FROM (
+            SELECT json_agg(cc.*)
+            FROM (
                 SELECT id, nom, last_interaction_at
                 FROM public.contacts
-                WHERE team_id = active_team_id AND last_interaction_at < (now() - interval '30 days')
-                ORDER BY last_interaction_at ASC LIMIT 5
-            ) as cc
+                WHERE team_id = active_team_id 
+                  AND last_interaction_at < (now() - interval '30 days')
+                ORDER BY last_interaction_at ASC
+                LIMIT 5
+            ) AS cc
         ), '[]'::json),
-
-        -- ✅ CORRECCIÓ: Si json_agg és NULL, retorna un array buit '[]'
         'unreadActivities', COALESCE((
-            SELECT json_agg(ua.*) FROM (
-                SELECT a.id, a.content, a.created_at, a.contact_id, c.nom as contact_name, c.email as contact_email
-                FROM public.activities a JOIN public.contacts c ON a.contact_id = c.id
-                WHERE a.team_id = active_team_id AND a.is_read = false
-                ORDER BY a.created_at DESC LIMIT 5
-            ) as ua
+            SELECT json_agg(ua.*)
+            FROM (
+                SELECT 
+                    a.id, a.content, a.created_at, a.contact_id, 
+                    c.nom AS contact_name, c.email AS contact_email
+                FROM public.activities a
+                JOIN public.contacts c ON a.contact_id = c.id
+                WHERE a.team_id = active_team_id 
+                  AND a.is_read = false
+                ORDER BY a.created_at DESC
+                LIMIT 5
+            ) AS ua
         ), '[]'::json),
-        
-        -- ✅ CORRECCIÓ: Si json_agg és NULL, retorna un array buit '[]'
         'bestMonths', COALESCE((
-            SELECT json_agg(bm.*) FROM (
-                SELECT to_char(date_trunc('month', issue_date), 'YYYY-MM') as month, SUM(total_amount) as total
+            SELECT json_agg(bm.*)
+            FROM (
+                SELECT 
+                    to_char(date_trunc('month', issue_date), 'YYYY-MM') AS month,
+                    SUM(total_amount) AS total
                 FROM public.invoices
                 WHERE team_id = active_team_id
-                GROUP BY month ORDER BY total DESC LIMIT 3
-            ) as bm
+                GROUP BY month
+                ORDER BY total DESC
+                LIMIT 3
+            ) AS bm
         ), '[]'::json)
-    ) INTO result;
+    )
+    INTO result;
 
     RETURN result;
 END;
@@ -589,17 +678,16 @@ ALTER FUNCTION "public"."get_crm_overview"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_current_jwt_claims"() RETURNS "text"
-    LANGUAGE "plpgsql" STABLE
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
   claims text;
 BEGIN
-  -- Intentem obtenir els claims del token
+  -- Intentem obtenir els claims del token JWT
   claims := current_setting('request.jwt.claims', true);
 
-  -- ✅ AFEGIM UN LOG A LA BASE DE DADES
-  -- Aquest missatge apareixerà als logs del teu projecte de Supabase
-  -- (Pots veure'ls a "Project Settings" > "Logs" > "Postgres Logs")
+  -- Log informatiu (visible als logs de Postgres)
   RAISE LOG '[DB_FUNC] get_current_jwt_claims cridada. Claims trobats: %', claims;
 
   RETURN claims;
@@ -628,60 +716,57 @@ $$;
 ALTER FUNCTION "public"."get_current_team_id"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"() RETURNS TABLE("total_contacts" bigint, "active_clients" bigint, "opportunities" bigint, "invoiced_current_month" numeric, "invoiced_previous_month" numeric, "pending_total" numeric, "expenses_current_month" numeric, "expenses_previous_month" numeric)
-    LANGUAGE "plpgsql"
-    AS $$
-DECLARE
-    active_team_id UUID; -- Variable per guardar l'ID de l'equip actiu
-BEGIN
-    -- Obtenim l'ID de l'equip actiu UNA SOLA VEGADA a l'inici de la funció
-    active_team_id := public.get_active_team_id();
-
-    -- Si no hi ha equip actiu, no podem calcular res.
-    IF active_team_id IS NULL THEN
-        RETURN;
-    END IF;
-
-    -- Retornem els resultats, afegint el filtre WHERE a cada consulta
-    RETURN QUERY
-    SELECT
-        (SELECT COUNT(*) FROM public.contacts WHERE team_id = active_team_id) AS total_contacts,
-        (SELECT COUNT(DISTINCT contact_id) FROM public.invoices WHERE team_id = active_team_id AND status = 'Paid') AS active_clients,
-        (SELECT COUNT(*) FROM public.opportunities WHERE team_id = active_team_id AND stage_name <> 'Guanyat' AND stage_name <> 'Perdut') AS opportunities,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM public.invoices WHERE team_id = active_team_id AND date_trunc('month', issue_date) = date_trunc('month', now())) AS invoiced_current_month,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM public.invoices WHERE team_id = active_team_id AND date_trunc('month', issue_date) = date_trunc('month', now() - interval '1 month')) AS invoiced_previous_month,
-        (SELECT COALESCE(SUM(total_amount), 0) FROM public.invoices WHERE team_id = active_team_id AND status IN ('Sent', 'Overdue')) AS pending_total,
-        -- Has d'adaptar les consultes d'expenses si tens una taula per a això
-        0::NUMERIC AS expenses_current_month,
-        0::NUMERIC AS expenses_previous_month;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."get_dashboard_stats"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") RETURNS TABLE("total_contacts" bigint, "active_clients" bigint, "opportunities" bigint, "total_value" numeric, "invoiced_current_month" numeric, "invoiced_previous_month" numeric, "pending_total" numeric, "expenses_current_month" numeric, "expenses_previous_month" numeric)
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
     start_of_current_month DATE;
     start_of_previous_month DATE;
 BEGIN
+    -- Definim inicis dels mesos actual i anterior
     start_of_current_month := date_trunc('month', current_date);
     start_of_previous_month := date_trunc('month', current_date - interval '1 month');
 
     RETURN QUERY
     SELECT
-        (SELECT count(*) FROM public.contacts WHERE team_id = p_team_id) AS total_contacts,
-        (SELECT count(*) FROM public.contacts WHERE team_id = p_team_id AND estat = 'Client') AS active_clients,
-        (SELECT count(*) FROM public.opportunities WHERE team_id = p_team_id AND stage_name <> 'Guanyada' AND stage_name <> 'Perduda') AS opportunities,
-        (SELECT COALESCE(sum(value), 0) FROM public.opportunities WHERE team_id = p_team_id) AS total_value,
-        (SELECT COALESCE(sum(total_amount), 0) FROM public.invoices WHERE team_id = p_team_id AND status = 'Paid' AND issue_date >= start_of_current_month) AS invoiced_current_month,
-        (SELECT COALESCE(sum(total_amount), 0) FROM public.invoices WHERE team_id = p_team_id AND status = 'Paid' AND issue_date >= start_of_previous_month AND issue_date < start_of_current_month) AS invoiced_previous_month,
-        (SELECT COALESCE(sum(total_amount), 0) FROM public.invoices WHERE team_id = p_team_id AND (status = 'Sent' OR status = 'Overdue')) AS pending_total,
-        (SELECT COALESCE(sum(total_amount), 0) FROM public.expenses WHERE team_id = p_team_id AND expense_date >= start_of_current_month) AS expenses_current_month,
-        (SELECT COALESCE(sum(total_amount), 0) FROM public.expenses WHERE team_id = p_team_id AND expense_date >= start_of_previous_month AND expense_date < start_of_current_month) AS expenses_previous_month;
+        -- 📊 Estadístiques bàsiques
+        (SELECT COUNT(*) FROM public.contacts WHERE team_id = p_team_id) AS total_contacts,
+        (SELECT COUNT(*) FROM public.contacts WHERE team_id = p_team_id AND estat = 'Client') AS active_clients,
+        (SELECT COUNT(*) FROM public.opportunities WHERE team_id = p_team_id AND stage_name NOT IN ('Guanyada', 'Perduda')) AS opportunities,
+        (SELECT COALESCE(SUM(value), 0) FROM public.opportunities WHERE team_id = p_team_id) AS total_value,
+
+        -- 💰 Facturació actual i anterior
+        (SELECT COALESCE(SUM(total_amount), 0)
+         FROM public.invoices
+         WHERE team_id = p_team_id
+           AND status = 'Paid'
+           AND issue_date >= start_of_current_month) AS invoiced_current_month,
+
+        (SELECT COALESCE(SUM(total_amount), 0)
+         FROM public.invoices
+         WHERE team_id = p_team_id
+           AND status = 'Paid'
+           AND issue_date >= start_of_previous_month
+           AND issue_date < start_of_current_month) AS invoiced_previous_month,
+
+        -- ⏳ Pendents
+        (SELECT COALESCE(SUM(total_amount), 0)
+         FROM public.invoices
+         WHERE team_id = p_team_id
+           AND status IN ('Sent', 'Overdue')) AS pending_total,
+
+        -- 💸 Despeses per mes
+        (SELECT COALESCE(SUM(total_amount), 0)
+         FROM public.expenses
+         WHERE team_id = p_team_id
+           AND expense_date >= start_of_current_month) AS expenses_current_month,
+
+        (SELECT COALESCE(SUM(total_amount), 0)
+         FROM public.expenses
+         WHERE team_id = p_team_id
+           AND expense_date >= start_of_previous_month
+           AND expense_date < start_of_current_month) AS expenses_previous_month;
 END;
 $$;
 
@@ -690,12 +775,13 @@ ALTER FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") OWNER
 
 
 CREATE OR REPLACE FUNCTION "public"."get_financial_summary"() RETURNS TABLE("facturat" numeric, "pendent" numeric, "despeses" numeric)
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
   RETURN QUERY
   WITH combined_transactions AS (
-    -- Seleccionem les factures
+    -- 💰 Factures
     SELECT
       'invoice' AS type,
       total_amount AS amount,
@@ -706,21 +792,32 @@ BEGIN
 
     UNION ALL
 
-    -- Seleccionem les despeses
+    -- 💸 Despeses
     SELECT
       'expense' AS type,
-      amount,
-      NULL AS status, -- Les despeses no tenen status
+      total_amount AS amount,  -- 👈 correcció: a expenses el camp s'anomena total_amount (no amount)
+      NULL AS status,
       expense_date AS issue_date
     FROM public.expenses
     WHERE user_id = auth.uid()
   )
-  -- Ara calculem els totals sobre les dades combinades
+  -- 📊 Càlcul del resum financer
   SELECT
-    COALESCE(SUM(CASE WHEN type = 'invoice' AND status = 'Paid' AND date_trunc('month', issue_date) = date_trunc('month', CURRENT_DATE) THEN amount ELSE 0 END), 0) AS facturat,
-    COALESCE(SUM(CASE WHEN type = 'invoice' AND (status = 'Sent' OR status = 'Overdue') THEN amount ELSE 0 END), 0) AS pendent,
-    COALESCE(SUM(CASE WHEN type = 'expense' AND date_trunc('month', issue_date) = date_trunc('month', CURRENT_DATE) THEN amount ELSE 0 END), 0) AS despeses
-  FROM combined_transactions;
+    COALESCE(SUM(CASE
+      WHEN type = 'invoice'
+       AND status = 'Paid'
+       AND date_trunc('month', issue_date) = date_trunc('month', CURRENT_DATE)
+      THEN amount ELSE 0 END), 0) AS facturat,
+
+    COALESCE(SUM(CASE
+      WHEN type = 'invoice'
+       AND status IN ('Sent', 'Overdue')
+      THEN amount ELSE 0 END), 0) AS pendent,
+
+    COALESCE(SUM(CASE
+      WHEN type = 'expense'
+       AND date_trunc('month', issue_date) = date_trunc('month', CURRENT_DATE)
+      THEN amount ELSE 0 END), 0) AS despeses;
 END;
 $$;
 
@@ -746,18 +843,15 @@ $$;
 ALTER FUNCTION "public"."get_inbox_received_count"("p_visible_user_ids" "uuid"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid"[]) RETURNS integer
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid"[]) RETURNS bigint
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
-BEGIN
-    RETURN (
-        SELECT COUNT(*)
-        FROM public.tickets
-        WHERE
-            tickets.user_id = ANY(p_visible_user_ids) AND
-            tickets.type = 'enviat'
-    );
-END;
+    SELECT COUNT(*)
+    FROM public.tickets
+    WHERE
+        tickets.user_id = ANY(p_visible_user_ids) AND
+        tickets.type = 'enviat'
 $$;
 
 
@@ -913,16 +1007,20 @@ ALTER FUNCTION "public"."get_my_team_id"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."get_my_team_ids"() RETURNS SETOF "uuid"
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
-  SELECT team_id FROM public.team_members WHERE user_id = auth.uid();
+  SELECT team_id
+  FROM public.team_members
+  WHERE user_id = auth.uid();
 $$;
 
 
 ALTER FUNCTION "public"."get_my_team_ids"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_my_teams"() RETURNS SETOF "uuid"
+CREATE OR REPLACE FUNCTION "public"."get_my_teams"() RETURNS TABLE("team_id" "uuid")
     LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT team_id
   FROM public.team_members
@@ -1008,8 +1106,9 @@ $$;
 ALTER FUNCTION "public"."get_table_columns"("table_name_param" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_table_columns_excluding_security"("p_table_name" "text") RETURNS SETOF "text"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."get_table_columns_excluding_security"("p_table_name" "text") RETURNS TABLE("column_name" "text")
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   RETURN QUERY 
@@ -1017,7 +1116,7 @@ BEGIN
   FROM information_schema.columns c
   WHERE c.table_name = p_table_name 
     AND c.table_schema = 'public'
-    -- AFEGIM LA CONDICIÓ D'EXCLUSIÓ AQUÍ:
+    -- La teva lògica d'exclusió (correcta)
     AND c.column_name NOT IN ('id', 'user_id', 'team_id');
 END;
 $$;
@@ -1044,6 +1143,158 @@ END;$$;
 
 
 ALTER FUNCTION "public"."get_table_columns_info"("p_table_name" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_team_dashboard_data"() RETURNS json
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+    active_team_id UUID;
+    result json;
+BEGIN
+    -- Obtenim l’equip actiu de l’usuari
+    active_team_id := public.get_active_team_id();
+
+    -- Si no hi ha equip actiu, retornem objecte buit
+    IF active_team_id IS NULL THEN
+        RETURN '{}'::json;
+    END IF;
+
+    -- Construïm l’objecte JSON amb totes les dades del dashboard
+    SELECT json_build_object(
+        'stats', (
+            SELECT json_build_object(
+                'totalContacts', COUNT(*),
+                'newContactsThisMonth', COUNT(*) FILTER (WHERE created_at >= date_trunc('month', now())),
+                'opportunities', (
+                    SELECT COUNT(*) 
+                    FROM public.opportunities 
+                    WHERE team_id = active_team_id AND stage_name NOT IN ('Guanyat', 'Perdut')
+                ),
+                'pipelineValue', (
+                    SELECT COALESCE(SUM(value), 0)
+                    FROM public.opportunities 
+                    WHERE team_id = active_team_id AND stage_name NOT IN ('Guanyat', 'Perdut')
+                ),
+                'avgRevenuePerClient', (
+                    SELECT AVG(total_invoiced)
+                    FROM (
+                        SELECT SUM(total_amount) AS total_invoiced
+                        FROM public.invoices
+                        WHERE team_id = active_team_id
+                        GROUP BY contact_id
+                    ) AS client_totals
+                ),
+                'avgConversionTimeDays', (
+                    SELECT AVG(EXTRACT(DAY FROM (last_updated_at - created_at)))
+                    FROM public.opportunities
+                    WHERE team_id = active_team_id AND stage_name = 'Guanyat'
+                )
+            )
+            FROM public.contacts
+            WHERE team_id = active_team_id
+        ),
+
+        'funnel', (
+            SELECT json_build_object(
+                'leads', COUNT(*) FILTER (WHERE estat = 'Lead'),
+                'quoted', (
+                    SELECT COUNT(DISTINCT contact_id)
+                    FROM public.quotes
+                    WHERE team_id = active_team_id
+                ),
+                'clients', (
+                    SELECT COUNT(DISTINCT contact_id)
+                    FROM public.invoices
+                    WHERE team_id = active_team_id
+                )
+            )
+            FROM public.contacts
+            WHERE team_id = active_team_id
+        ),
+
+        'topClients', COALESCE((
+            SELECT json_agg(c.* ORDER BY c.total_invoiced DESC)
+            FROM (
+                SELECT ct.id, ct.nom, SUM(i.total_amount) AS total_invoiced
+                FROM public.invoices i
+                JOIN public.contacts ct ON i.contact_id = ct.id
+                WHERE i.team_id = active_team_id
+                GROUP BY ct.id, ct.nom
+                ORDER BY total_invoiced DESC
+                LIMIT 5
+            ) AS c
+        ), '[]'::json),
+
+        'coldContacts', COALESCE((
+            SELECT json_agg(cc.*)
+            FROM (
+                SELECT id, nom, last_interaction_at
+                FROM public.contacts
+                WHERE team_id = active_team_id
+                  AND last_interaction_at < (now() - interval '30 days')
+                ORDER BY last_interaction_at ASC
+                LIMIT 5
+            ) AS cc
+        ), '[]'::json),
+
+        'unreadActivities', COALESCE((
+            SELECT json_agg(ua.*)
+            FROM (
+                SELECT a.id, a.content, a.created_at, a.contact_id,
+                       c.nom AS contact_name, c.email AS contact_email
+                FROM public.activities a
+                JOIN public.contacts c ON a.contact_id = c.id
+                WHERE a.team_id = active_team_id AND a.is_read = false
+                ORDER BY a.created_at DESC
+                LIMIT 5
+            ) AS ua
+        ), '[]'::json),
+
+        'bestMonths', COALESCE((
+            SELECT json_agg(bm.*)
+            FROM (
+                SELECT to_char(date_trunc('month', issue_date), 'YYYY-MM') AS month,
+                       SUM(total_amount) AS total
+                FROM public.invoices
+                WHERE team_id = active_team_id
+                GROUP BY month
+                ORDER BY total DESC
+                LIMIT 3
+            ) AS bm
+        ), '[]'::json)
+    )
+    INTO result;
+
+    RETURN result;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_team_dashboard_data"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_team_ticket_count"("p_team_id" "uuid") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  ticket_count integer;
+BEGIN
+  -- Compta els tiquets units a un usuari que pertany a l'equip
+  SELECT count(t.id)
+  INTO ticket_count
+  FROM public.tickets t
+  JOIN public.team_members tm ON t.user_id = tm.user_id
+  WHERE tm.team_id = p_team_id;
+  
+  RETURN ticket_count;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_team_ticket_count"("p_team_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") RETURNS "uuid"
@@ -1117,6 +1368,19 @@ $$;
 
 
 ALTER FUNCTION "public"."get_user_team_context"("p_user_id" "uuid", "p_team_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_user_team_id"() RETURNS "uuid"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+  SELECT team_id
+  FROM public.team_members
+  WHERE user_id = auth.uid();
+$$;
+
+
+ALTER FUNCTION "public"."get_user_team_id"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_lost_opportunity"() RETURNS "trigger"
@@ -1287,39 +1551,6 @@ $$;
 ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."handle_quote_acceptance"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  stage_id BIGINT;
-BEGIN
-  -- Només actuem si l'estat del pressupost canvia a 'Accepted'
-  -- i estava en un estat anterior diferent
-  IF NEW.status = 'Accepted' AND OLD.status != 'Accepted' THEN
-    -- Busquem l'ID de l'etapa 'Guanyat'
-    SELECT id INTO stage_id FROM public.pipeline_stages WHERE name = 'Guanyat' LIMIT 1;
-    
-    -- Actualitzem l'oportunitat associada a 'Guanyat'
-    IF stage_id IS NOT NULL AND NEW.opportunity_id IS NOT NULL THEN
-      UPDATE public.opportunities
-      SET pipeline_stage_id = stage_id, status = 'Won'
-      WHERE id = NEW.opportunity_id;
-    END IF;
-
-    -- BONUS: Creem un esborrany de factura automàticament
-    INSERT INTO public.invoices (user_id, contact_id, quote_id, total_amount, status)
-    VALUES (NEW.user_id, NEW.contact_id, NEW.id, NEW.total, 'Draft');
-
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."handle_quote_acceptance"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."handle_quote_status_change"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -1369,6 +1600,7 @@ ALTER FUNCTION "public"."handle_updated_at"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."increment_invoice_sequence"("p_user_id" "uuid", "p_series" "text") RETURNS integer
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
     next_num INT;
@@ -1404,7 +1636,8 @@ ALTER FUNCTION "public"."is_contact_on_public_quote"("contact_id_to_check" bigin
 
 
 CREATE OR REPLACE FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) RETURNS boolean
-    LANGUAGE "sql" SECURITY DEFINER
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT EXISTS (
     SELECT 1
@@ -1420,13 +1653,13 @@ ALTER FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) OWNER TO "
 
 CREATE OR REPLACE FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") RETURNS boolean
     LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
   SELECT EXISTS (
     SELECT 1
     FROM public.team_members
-    WHERE
-      team_members.user_id = auth.uid() AND
-      team_members.team_id = team_id_to_check
+    WHERE team_members.user_id = auth.uid()
+      AND team_members.team_id = team_id_to_check
   );
 $$;
 
@@ -1448,48 +1681,69 @@ ALTER FUNCTION "public"."is_team_on_public_quote"("team_id_to_check" "uuid") OWN
 
 
 CREATE OR REPLACE FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
-    -- Variable per guardar l'objecte JSON que afegirem
     new_log_entry jsonb;
-    -- Variable per guardar el text de l'acció
     action_text text;
-    -- Obtenim l'ID de l'usuari que fa l'acció
     current_user_id uuid := auth.uid();
 BEGIN
-    -- 1. Determinem el text de l'acció segons el nou estat
-    IF new_status_input = TRUE THEN
+    IF new_status_input THEN
         action_text := 'actiu';
     ELSE
         action_text := 'inactiu';
     END IF;
 
-    -- 2. Creem el nou objecte JSON que volem afegir a l'històric
     new_log_entry := jsonb_build_object(
-        'timestamp', now(),              -- Data i hora actuals
-        'action', action_text,           -- 'actiu' o 'inactiu'
-        'user_id', current_user_id       -- L'ID de l'usuari que ha fet el canvi
+        'timestamp', now(),
+        'action', action_text,
+        'user_id', current_user_id
     );
 
-    -- 3. Actualitzem la tasca amb la nova informació
     UPDATE public.tasks
     SET 
-        -- Canviem l'estat 'is_active'
         is_active = new_status_input,
-        
-        -- Afegim la nova entrada a l'històric JSONb
-        -- COALESCE s'assegura que si el camp és NULL, el tracti com un array buit '[]'
-        -- L'operador '||' afegeix el nou objecte al final de l'array
         time_tracking_log = COALESCE(time_tracking_log, '[]'::jsonb) || new_log_entry
-        
     WHERE id = task_id_input;
-
 END;
 $$;
 
 
 ALTER FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+    new_log_entry jsonb;
+    action_text text;
+    current_user_id uuid := auth.uid();
+BEGIN
+    IF new_status_input THEN
+        action_text := 'actiu';
+    ELSE
+        action_text := 'inactiu';
+    END IF;
+
+    new_log_entry := jsonb_build_object(
+        'timestamp', now(),
+        'action', action_text,
+        'user_id', current_user_id
+    );
+
+    UPDATE public.tasks
+    SET 
+        is_active = new_status_input,
+        time_tracking_log = COALESCE(time_tracking_log, '[]'::jsonb) || new_log_entry
+    WHERE id = task_id_input;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) RETURNS TABLE("id" bigint, "content" "text", "metadata" "jsonb", "similarity" double precision)
@@ -1589,8 +1843,9 @@ CREATE TABLE IF NOT EXISTS "public"."expenses" (
 ALTER TABLE "public"."expenses" OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."save_expense_with_items"("expense_data" "jsonb", "items_data" "jsonb", "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_id_to_update" bigint DEFAULT NULL::bigint) RETURNS SETOF "public"."expenses"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigint, "p_user_id" "uuid", "p_team_id" "uuid", "expense_data" "jsonb", "items_data" "jsonb") RETURNS SETOF "public"."expenses"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
     saved_expense_id bigint;
@@ -1643,7 +1898,6 @@ BEGIN
         DELETE FROM expense_items WHERE expense_id = saved_expense_id;
 
         -- Després, inserim els nous ítems des del JSON
-        -- 'jsonb_to_recordset' converteix un array de JSON en files que podem inserir directament
         INSERT INTO expense_items (
             expense_id, user_id, team_id, description, quantity, unit_price, total
         )
@@ -1664,7 +1918,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."save_expense_with_items"("expense_data" "jsonb", "items_data" "jsonb", "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_id_to_update" bigint) OWNER TO "postgres";
+ALTER FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigint, "p_user_id" "uuid", "p_team_id" "uuid", "expense_data" "jsonb", "items_data" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_refresh_token"("provider_name" "text", "refresh_token_value" "text") RETURNS "void"
@@ -1682,8 +1936,9 @@ $$;
 ALTER FUNCTION "public"."save_refresh_token"("provider_name" "text", "refresh_token_value" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "category" "text", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" "uuid", "subtotal" numeric, "discount_amount" numeric, "notes" "text", "tax_rate" numeric, "team_id" "uuid", "status" "public"."expense_status", "payment_date" "date", "payment_method" "text", "is_billable" boolean, "project_id" "uuid", "is_reimbursable" boolean, "supplier_nom" "text", "total_count" bigint)
+CREATE OR REPLACE FUNCTION "public"."search_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category" "text", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "category" "text", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" bigint, "subtotal" numeric, "discount_amount" numeric, "notes" "text", "tax_rate" numeric, "team_id" "uuid", "status" "public"."expense_status", "payment_date" "date", "payment_method" "text", "is_billable" boolean, "project_id" bigint, "is_reimbursable" boolean, "supplier_nom" "text", "full_count" bigint)
     LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
     RETURN QUERY
@@ -1695,40 +1950,33 @@ BEGIN
         LEFT JOIN public.suppliers s ON e.supplier_id = s.id
         WHERE
             e.team_id = p_team_id
-            -- ✅ CORRECCIÓ: Gestionar NULL per p_search_term
             AND (
-                p_search_term IS NULL OR BTRIM(p_search_term) = '' OR -- Si és NULL o buit, no filtra per text
+                p_search_term IS NULL OR BTRIM(p_search_term) = '' OR
                 e.description ILIKE ('%' || BTRIM(p_search_term) || '%') OR
                 s.nom ILIKE ('%' || BTRIM(p_search_term) || '%') OR
                 e.invoice_number ILIKE ('%' || BTRIM(p_search_term) || '%')
             )
-            -- ✅ CORRECCIÓ: Gestionar NULL o 'all' per p_category
             AND (p_category IS NULL OR p_category = 'all' OR e.category = p_category)
-            -- ✅ CORRECCIÓ: Gestionar NULL o 'all' per p_status
-            AND (p_status IS NULL OR p_status = 'all' OR e.status::text = p_status) -- Mantenim el cast per si e.status és enum
+            AND (p_status IS NULL OR p_status = 'all' OR e.status::text = p_status)
     ),
     counted_expenses AS (
-        -- Utilitzem bigint per al recompte
         SELECT *, COUNT(*) OVER()::bigint as full_count FROM filtered_expenses
     )
     SELECT
-        -- Selecciona explícitament les columnes definides a RETURNS TABLE
         ce.id, ce.user_id, ce.description, ce.total_amount, ce.expense_date,
         ce.category, ce.created_at, ce.invoice_number, ce.tax_amount, ce.extra_data,
         ce.supplier_id, ce.subtotal, ce.discount_amount, ce.notes, ce.tax_rate,
         ce.team_id, ce.status, ce.payment_date, ce.payment_method, ce.is_billable,
         ce.project_id, ce.is_reimbursable,
         ce.supplier_nom,
-        ce.full_count -- Aquest és el recompte total
+        ce.full_count
     FROM counted_expenses ce
     ORDER BY
-        -- La teva lògica d'ordenació (correcta)
         CASE WHEN p_sort_by = 'expense_date' AND p_sort_order = 'desc' THEN ce.expense_date END DESC NULLS LAST,
         CASE WHEN p_sort_by = 'expense_date' AND p_sort_order = 'asc' THEN ce.expense_date END ASC NULLS LAST,
         CASE WHEN p_sort_by = 'total_amount' AND p_sort_order = 'desc' THEN ce.total_amount END DESC NULLS LAST,
         CASE WHEN p_sort_by = 'total_amount' AND p_sort_order = 'asc' THEN ce.total_amount END ASC NULLS LAST,
-        -- Afegeix més camps si cal
-        ce.id DESC -- Ordenació de fallback
+        ce.id DESC
     LIMIT p_limit
     OFFSET p_offset;
 END;
@@ -1927,6 +2175,37 @@ $$;
 ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."set_proposal_stage_on_activity"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  stage_id BIGINT;
+BEGIN
+  -- Si hi ha una oportunitat associada a l'activitat
+  IF NEW.opportunity_id IS NOT NULL THEN
+    SELECT id
+    INTO stage_id
+    FROM public.pipeline_stages
+    WHERE name = 'Proposta Enviada'
+    LIMIT 1;
+
+    -- Si hem trobat l'etapa, actualitzem l'oportunitat
+    IF stage_id IS NOT NULL THEN
+      UPDATE public.opportunities
+      SET pipeline_stage_id = stage_id
+      WHERE id = NEW.opportunity_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."set_proposal_stage_on_activity"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) RETURNS "void"
     LANGUAGE "plpgsql"
     AS $$
@@ -1941,36 +2220,18 @@ $$;
 ALTER FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_pipeline_on_quote_creation"() RETURNS "trigger"
+CREATE OR REPLACE FUNCTION "public"."upsert_expense_with_items"("p_expense_id" bigint, "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_details" "jsonb", "p_expense_items" "jsonb") RETURNS SETOF "public"."expenses"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE stage_id BIGINT;
-BEGIN
-  IF NEW.opportunity_id IS NOT NULL THEN
-    SELECT id INTO stage_id FROM public.pipeline_stages WHERE name = 'Proposta Enviada' LIMIT 1;
-    IF stage_id IS NOT NULL THEN
-      UPDATE public.opportunities SET pipeline_stage_id = stage_id WHERE id = NEW.opportunity_id;
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."update_pipeline_on_quote_creation"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."upsert_expense_with_items"("p_expense_id" bigint, "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_details" "jsonb", "p_expense_items" "jsonb") RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "category" "text", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" "uuid", "subtotal" numeric, "discount_amount" numeric, "notes" "text", "tax_rate" numeric, "team_id" "uuid")
-    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
     v_saved_expense_id BIGINT;
     item JSONB;
 BEGIN
-    -- Comprovem si estem actualitzant o creant
+    -- 🧩 Comprovem si és actualització o creació
     IF p_expense_id IS NOT NULL THEN
-        -- ACTUALITZACIÓ
-        UPDATE expenses
+        -- 🔁 ACTUALITZACIÓ
+        UPDATE public.expenses
         SET
             description     = p_expense_details->>'description',
             total_amount    = (p_expense_details->>'total_amount')::NUMERIC,
@@ -1979,42 +2240,48 @@ BEGIN
             invoice_number  = p_expense_details->>'invoice_number',
             tax_amount      = (p_expense_details->>'tax_amount')::NUMERIC,
             extra_data      = (p_expense_details->>'extra_data')::JSONB,
-            -- Fem servir NULLIF per evitar errors si el camp ve buit enlloc de nul
             supplier_id     = NULLIF(p_expense_details->>'supplier_id', '')::UUID,
             subtotal        = (p_expense_details->>'subtotal')::NUMERIC,
             discount_amount = (p_expense_details->>'discount_amount')::NUMERIC,
             notes           = p_expense_details->>'notes',
             tax_rate        = (p_expense_details->>'tax_rate')::NUMERIC
-        WHERE expenses.id = p_expense_id AND expenses.team_id = p_team_id
+        WHERE expenses.id = p_expense_id
+          AND expenses.team_id = p_team_id
         RETURNING expenses.id INTO v_saved_expense_id;
     ELSE
-        -- CREACIÓ
-        INSERT INTO expenses (
+        -- ✳️ CREACIÓ
+        INSERT INTO public.expenses (
             team_id, user_id, description, total_amount, expense_date, category,
             invoice_number, tax_amount, extra_data, supplier_id, subtotal,
             discount_amount, notes, tax_rate
         )
         VALUES (
-            p_team_id, p_user_id, p_expense_details->>'description',
-            (p_expense_details->>'total_amount')::NUMERIC, (p_expense_details->>'expense_date')::DATE,
-            p_expense_details->>'category', p_expense_details->>'invoice_number',
-            (p_expense_details->>'tax_amount')::NUMERIC, (p_expense_details->>'extra_data')::JSONB,
-            NULLIF(p_expense_details->>'supplier_id', '')::UUID, (p_expense_details->>'subtotal')::NUMERIC,
-            (p_expense_details->>'discount_amount')::NUMERIC, p_expense_details->>'notes',
+            p_team_id, p_user_id,
+            p_expense_details->>'description',
+            (p_expense_details->>'total_amount')::NUMERIC,
+            (p_expense_details->>'expense_date')::DATE,
+            p_expense_details->>'category',
+            p_expense_details->>'invoice_number',
+            (p_expense_details->>'tax_amount')::NUMERIC,
+            (p_expense_details->>'extra_data')::JSONB,
+            NULLIF(p_expense_details->>'supplier_id', '')::UUID,
+            (p_expense_details->>'subtotal')::NUMERIC,
+            (p_expense_details->>'discount_amount')::NUMERIC,
+            p_expense_details->>'notes',
             (p_expense_details->>'tax_rate')::NUMERIC
         )
         RETURNING expenses.id INTO v_saved_expense_id;
     END IF;
 
-    -- Processem els ítems de la despesa
+    -- 🧾 Processem els ítems associats
     IF v_saved_expense_id IS NOT NULL AND p_expense_items IS NOT NULL THEN
-        -- Primer, esborrem tots els ítems antics associats
-        DELETE FROM expense_items WHERE expense_id = v_saved_expense_id;
+        -- Esborrem ítems antics
+        DELETE FROM public.expense_items WHERE expense_id = v_saved_expense_id;
 
-        -- Després, inserim els nous ítems recorrent l'array JSON
+        -- Inserim nous ítems recorrent l’array JSON
         FOR item IN SELECT * FROM jsonb_array_elements(p_expense_items)
         LOOP
-            INSERT INTO expense_items (
+            INSERT INTO public.expense_items (
                 expense_id, team_id, user_id, description, quantity, unit_price, total
             )
             VALUES (
@@ -2029,8 +2296,8 @@ BEGIN
         END LOOP;
     END IF;
 
-    -- Finalment, retornem la fila completa de la despesa que hem desat
-    RETURN QUERY SELECT * FROM expenses WHERE expenses.id = v_saved_expense_id;
+    -- 🔚 Retornem la despesa desada
+    RETURN QUERY SELECT * FROM public.expenses WHERE expenses.id = v_saved_expense_id;
 END;
 $$;
 
@@ -2108,15 +2375,20 @@ ALTER FUNCTION "public"."upsert_invoice_with_items"("invoice_data" "jsonb", "ite
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_quote_with_items"("quote_payload" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   final_quote_id bigint;
   user_id uuid := auth.uid();
-  v_team_id uuid := (SELECT raw_app_meta_data->>'active_team_id' FROM auth.users WHERE id = auth.uid())::uuid;
+  
+  -- ✅ 2. CORRECCIÓ DE RENDIMENT/SEGURETAT:
+  -- Canviem la consulta lenta a 'auth.users' per la nostra funció ràpida.
+  v_team_id uuid := public.get_active_team_id();
+  
   item_record jsonb;
 BEGIN
-  -- ... (Tota la primera part de la funció per a inserir/actualitzar el 'quote' principal no canvia) ...
+  -- (La resta del teu codi, que ara fa servir el v_team_id ràpid)
   IF (quote_payload->>'id') = 'new' THEN
     INSERT INTO public.quotes (contact_id, opportunity_id, quote_number, status, issue_date, expiry_date, notes, subtotal, discount, tax, total, tax_percent, show_quantity, user_id, team_id)
     VALUES (
@@ -2140,17 +2412,14 @@ BEGIN
     DELETE FROM public.quote_items WHERE quote_id = final_quote_id;
   END IF;
 
-  -- ✅ AQUESTA ÉS LA SECCIÓ CORREGIDA
   IF jsonb_typeof(quote_payload->'items') = 'array' AND jsonb_array_length(quote_payload->'items') > 0 THEN
     FOR item_record IN SELECT * FROM jsonb_array_elements(quote_payload->'items') LOOP
       INSERT INTO public.quote_items (
-        -- Afegim 'total' a la llista de columnes
         quote_id, product_id, description, quantity, unit_price, total, user_id, team_id
       )
       VALUES (
         final_quote_id, (item_record->>'product_id')::bigint, item_record->>'description',
         (item_record->>'quantity')::numeric, (item_record->>'unit_price')::numeric,
-        -- Calculem el total de la línia: quantitat * preu
         (item_record->>'quantity')::numeric * (item_record->>'unit_price')::numeric,
         user_id, v_team_id
       );
@@ -2502,7 +2771,7 @@ CREATE TABLE IF NOT EXISTS "public"."tickets" (
 ALTER TABLE "public"."tickets" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "public"."enriched_tickets" AS
+CREATE OR REPLACE VIEW "public"."enriched_tickets" WITH ("security_invoker"='true') AS
  SELECT "t"."id",
     "t"."user_id",
     "t"."subject",
@@ -2608,7 +2877,8 @@ CREATE TABLE IF NOT EXISTS "public"."invoice_attachments" (
     "file_path" "text" NOT NULL,
     "filename" "text" NOT NULL,
     "mime_type" "text",
-    "uploaded_at" timestamp with time zone DEFAULT "now"()
+    "uploaded_at" timestamp with time zone DEFAULT "now"(),
+    "team_id" "uuid"
 );
 
 
@@ -2629,7 +2899,7 @@ ALTER TABLE "public"."invoice_deliveries" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."invoice_items" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "invoice_id" bigint NOT NULL,
     "description" "text" NOT NULL,
     "quantity" numeric DEFAULT 1 NOT NULL,
@@ -3054,6 +3324,7 @@ CREATE TABLE IF NOT EXISTS "public"."subscriptions" (
     "stripe_subscription_id" "text",
     "current_period_end" timestamp with time zone,
     "created_at" timestamp with time zone DEFAULT "now"(),
+    "current_period_start" timestamp with time zone DEFAULT "now"() NOT NULL,
     CONSTRAINT "subscriptions_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'trialing'::"text", 'canceled'::"text"])))
 );
 
@@ -3169,7 +3440,7 @@ CREATE TABLE IF NOT EXISTS "public"."team_members" (
 ALTER TABLE "public"."team_members" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "public"."team_members_with_profiles" AS
+CREATE OR REPLACE VIEW "public"."team_members_with_profiles" WITH ("security_invoker"='true') AS
  SELECT "tm"."team_id",
     "tm"."role",
     "p"."id" AS "user_id",
@@ -3839,6 +4110,11 @@ ALTER TABLE ONLY "public"."invoice_attachments"
 
 
 
+ALTER TABLE ONLY "public"."invoice_attachments"
+    ADD CONSTRAINT "invoice_attachments_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."invoice_deliveries"
     ADD CONSTRAINT "invoice_deliveries_invoice_id_fkey" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE CASCADE;
 
@@ -4124,105 +4400,7 @@ ALTER TABLE ONLY "public"."user_credentials"
 
 
 
-CREATE POLICY "Allow access based on active team" ON "public"."invoice_items" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Allow access based on active team" ON "public"."products" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Allow anon read for public quote contacts" ON "public"."contacts" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."quotes" "q"
-  WHERE (("q"."contact_id" = "contacts"."id") AND ("q"."secure_id" IS NOT NULL)))));
-
-
-
-CREATE POLICY "Allow anon read for public quote items" ON "public"."quote_items" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."quotes" "q"
-  WHERE (("q"."id" = "quote_items"."quote_id") AND ("q"."secure_id" IS NOT NULL)))));
-
-
-
-CREATE POLICY "Allow anon read for public quote teams" ON "public"."teams" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."quotes" "q"
-  WHERE (("q"."team_id" = "teams"."id") AND ("q"."secure_id" IS NOT NULL)))));
-
-
-
-CREATE POLICY "Allow anon read for public quotes" ON "public"."quotes" FOR SELECT USING (("secure_id" IS NOT NULL));
-
-
-
-CREATE POLICY "Allow authenticated users to DELETE tasks of their teams" ON "public"."tasks" FOR DELETE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
-
-
-
-CREATE POLICY "Allow authenticated users to INSERT tasks for their teams" ON "public"."tasks" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
-
-
-
-CREATE POLICY "Allow authenticated users to SELECT tasks of their teams" ON "public"."tasks" FOR SELECT TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
-
-
-
-CREATE POLICY "Allow authenticated users to UPDATE tasks of their teams" ON "public"."tasks" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."team_id" = "tasks"."team_id") AND ("team_members"."user_id" = "auth"."uid"())))));
-
-
-
 CREATE POLICY "Allow individual access" ON "public"."user_credentials" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Allow members to read their own team" ON "public"."teams" FOR SELECT USING (("id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
-
-
-
-CREATE POLICY "Allow owner to update their team" ON "public"."teams" FOR UPDATE USING (("id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = 'owner'::"text")))));
-
-
-
-CREATE POLICY "Allow public read access to profiles" ON "public"."profiles" FOR SELECT TO "anon" USING (true);
-
-
-
-CREATE POLICY "Allow public read access to quote items" ON "public"."quote_items" FOR SELECT TO "anon" USING (true);
-
-
-
-CREATE POLICY "Allow public read on profiles" ON "public"."profiles" FOR SELECT TO "anon" USING (true);
-
-
-
-CREATE POLICY "Allow read access to job postings" ON "public"."job_postings" FOR SELECT TO "authenticated" USING ((("status" = 'open'::"public"."job_status") OR ("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"())))));
-
-
-
-CREATE POLICY "Allow team members to create job postings" ON "public"."job_postings" FOR INSERT TO "authenticated" WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
-
-
-
-CREATE POLICY "Allow team members to delete their job postings" ON "public"."job_postings" FOR DELETE TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
 
 
 
@@ -4234,35 +4412,27 @@ CREATE POLICY "Allow team members to manage audio jobs" ON "public"."audio_jobs"
 
 
 
-CREATE POLICY "Allow team members to see each other's profiles" ON "public"."profiles" FOR SELECT USING ((("auth"."uid"() = "id") OR (EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."team_id" IN ( SELECT "team_members_1"."team_id"
-           FROM "public"."team_members" "team_members_1"
-          WHERE ("team_members_1"."user_id" = "profiles"."id"))))))));
+CREATE POLICY "Els 'admins' poden ACTUALITZAR membres al seu equip actiu" ON "public"."team_members" FOR UPDATE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"])))) WITH CHECK ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
 
 
 
-CREATE POLICY "Allow team members to update their job postings" ON "public"."job_postings" FOR UPDATE TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"())))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
+CREATE POLICY "Els 'admins' poden CREAR invitacions de l'equip actiu" ON "public"."invitations" FOR INSERT TO "authenticated" WITH CHECK ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
 
 
 
-CREATE POLICY "Allow users full access to their own attachments" ON "public"."invoice_attachments" USING (("auth"."uid"() = ( SELECT "invoices"."user_id"
-   FROM "public"."invoices"
-  WHERE ("invoices"."id" = "invoice_attachments"."invoice_id"))));
+CREATE POLICY "Els 'admins' poden ESBORRAR invitacions de l'equip actiu" ON "public"."invitations" FOR DELETE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
 
 
 
-CREATE POLICY "Allow users full access to their own invoice items" ON "public"."invoice_items" USING (("auth"."uid"() = ( SELECT "invoices"."user_id"
-   FROM "public"."invoices"
-  WHERE ("invoices"."id" = "invoice_items"."invoice_id"))));
+CREATE POLICY "Els 'admins' poden ESBORRAR membres al seu equip actiu" ON "public"."team_members" FOR DELETE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
 
 
 
-CREATE POLICY "Authenticated users can view teams." ON "public"."teams" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+CREATE POLICY "Els 'admins' poden INSERTAR membres al seu equip actiu" ON "public"."team_members" FOR INSERT TO "authenticated" WITH CHECK ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
+
+
+
+CREATE POLICY "Els 'owners' poden ACTUALITZAR el seu equip actiu" ON "public"."teams" FOR UPDATE TO "authenticated" USING ((("id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = 'owner'::"text"))) WITH CHECK ((("id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = 'owner'::"text")));
 
 
 
@@ -4270,91 +4440,145 @@ CREATE POLICY "Els membres d'un equip poden crear invitacions" ON "public"."invi
 
 
 
-CREATE POLICY "Els membres d'un equip poden gestionar les assignacions" ON "public"."ticket_assignments" USING ((EXISTS ( SELECT 1
+CREATE POLICY "Els membres gestionen els adjunts de despesa del seu equip acti" ON "public"."expense_attachments" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els adjunts de factura del seu equip acti" ON "public"."invoice_attachments" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els contactes del seu equip actiu" ON "public"."contacts" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els departaments del seu equip actiu" ON "public"."departments" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els items de despesa del seu equip actiu" ON "public"."expense_items" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els items de factura del seu equip actiu" ON "public"."invoice_items" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els items de pressupost del seu equip act" ON "public"."quote_items" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els pressupostos del seu equip actiu" ON "public"."quotes" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els productes del seu equip actiu" ON "public"."products" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els projectes del seu equip actiu" ON "public"."projects" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els proveïdors del seu equip actiu" ON "public"."suppliers" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen els tags de contacte del seu equip actiu" ON "public"."contact_tags" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen la blacklist del seu equip actiu" ON "public"."blacklist_rules" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les activitats del seu equip actiu" ON "public"."activities" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les assignacions de tiquets de l'equip ac" ON "public"."ticket_assignments" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les campanyes del seu equip actiu" ON "public"."campaigns" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les despeses del seu equip actiu" ON "public"."expenses" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les etapes del seu equip actiu" ON "public"."pipeline_stages" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les ofertes de feina del seu equip actiu" ON "public"."job_postings" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les oportunitats del seu equip actiu" ON "public"."opportunities" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les plantilles d'email del seu equip acti" ON "public"."email_templates" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres gestionen les tasques del seu equip actiu" ON "public"."tasks" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres poden ACTUALITZAR factures en 'Draft' del seu equip" ON "public"."invoices" FOR UPDATE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("status" = 'Draft'::"text"))) WITH CHECK ((("team_id" = "public"."get_active_team_id"()) AND ("status" = 'Draft'::"text")));
+
+
+
+CREATE POLICY "Els membres poden CREAR factures pel seu equip actiu" ON "public"."invoices" FOR INSERT TO "authenticated" WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els membres poden ESBORRAR factures en 'Draft' del seu equip" ON "public"."invoices" FOR DELETE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("status" = 'Draft'::"text")));
+
+
+
+CREATE POLICY "Els membres poden VEURE els equips als que pertanyen" ON "public"."teams" FOR SELECT TO "authenticated" USING (("id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
-  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."team_id" = "ticket_assignments"."team_id")))));
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
 
 
 
-CREATE POLICY "Els membres d'un equip poden veure les assignacions" ON "public"."ticket_assignments" FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM "public"."team_members"
-  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."team_id" = "ticket_assignments"."team_id")))));
+CREATE POLICY "Els membres poden VEURE les factures del seu equip actiu" ON "public"."invoices" FOR SELECT TO "authenticated" USING (("team_id" = "public"."get_active_team_id"()));
 
 
 
-CREATE POLICY "Els membres de l'equip gestionen la seva blacklist" ON "public"."blacklist_rules" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris autenticats poden LLEGIR les subscripcions" ON "public"."team_members" FOR SELECT TO "authenticated" USING (true);
 
 
 
-CREATE POLICY "Els usuaris gestionen els adjunts de despesa del seu equip" ON "public"."expense_attachments" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris poden ACTUALITZAR el seu propi perfil" ON "public"."profiles" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id"));
 
 
 
-CREATE POLICY "Els usuaris gestionen els productes del seu equip actiu" ON "public"."products" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris poden ACTUALITZAR els seus tiquets o els delegats" ON "public"."tickets" FOR UPDATE TO "authenticated" USING ("public"."can_access_ticket"("user_id")) WITH CHECK ("public"."can_access_ticket"("user_id"));
 
 
 
-CREATE POLICY "Els usuaris gestionen els projectes del seu equip actiu" ON "public"."projects" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris poden CREAR el seu propi perfil" ON "public"."profiles" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "id"));
 
 
 
-CREATE POLICY "Els usuaris gestionen els proveïdors del seu equip" ON "public"."suppliers" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris poden CREAR els seus propis tiquets" ON "public"."tickets" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
 
 
 
-CREATE POLICY "Els usuaris gestionen els ítems de despesa del seu equip" ON "public"."expense_items" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris poden ESBORRAR els seus tiquets o els delegats" ON "public"."tickets" FOR DELETE TO "authenticated" USING ("public"."can_access_ticket"("user_id"));
 
 
 
-CREATE POLICY "Els usuaris gestionen les activitats del seu equip actiu" ON "public"."activities" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Els usuaris poden VEURE el seu propi perfil" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
 
 
 
-CREATE POLICY "Els usuaris gestionen les despeses del seu equip" ON "public"."expenses" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Els usuaris gestionen les etapes del seu equip actiu" ON "public"."pipeline_stages" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Els usuaris gestionen les factures del seu equip actiu" ON "public"."invoices" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Els usuaris gestionen les oportunitats del seu equip actiu" ON "public"."opportunities" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Els usuaris gestionen les tasques del seu equip actiu" ON "public"."tasks" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Els usuaris nomes poden esborrar factures en esborrany" ON "public"."invoices" FOR DELETE TO "authenticated" USING ((("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))) AND ("status" = 'Draft'::"text")));
-
-
-
-CREATE POLICY "Els usuaris nomes poden modificar factures en esborrany" ON "public"."invoices" FOR UPDATE TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"())))) WITH CHECK ((("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))) AND ("status" = 'Draft'::"text")));
-
-
-
-CREATE POLICY "Els usuaris només poden veure els seus propis tiquets." ON "public"."tickets" FOR SELECT USING (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Els usuaris poden actualitzar el seu propi perfil" ON "public"."profiles" FOR UPDATE USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Els usuaris poden actualitzar els seus tiquets i els permesos" ON "public"."tickets" FOR UPDATE TO "authenticated" USING ((("auth"."uid"() = "user_id") OR (EXISTS ( SELECT 1
-   FROM "public"."inbox_permissions"
-  WHERE (("inbox_permissions"."grantee_user_id" = "auth"."uid"()) AND ("inbox_permissions"."target_user_id" = "tickets"."user_id"))))));
+CREATE POLICY "Els usuaris poden VEURE els seus tiquets o els delegats" ON "public"."tickets" FOR SELECT TO "authenticated" USING ("public"."can_access_ticket"("user_id"));
 
 
 
@@ -4362,57 +4586,7 @@ CREATE POLICY "Els usuaris poden crear els seus propis equips" ON "public"."team
 
 
 
-CREATE POLICY "Els usuaris poden crear els seus propis tiquets" ON "public"."tickets" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Els usuaris poden crear factures al seu equip" ON "public"."invoices" FOR INSERT TO "authenticated" WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
-
-
-
-CREATE POLICY "Els usuaris poden eliminar les seves pròpies plantilles" ON "public"."email_templates" FOR DELETE USING (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Els usuaris poden esborrar els seus tiquets i els permesos" ON "public"."tickets" FOR DELETE TO "authenticated" USING ((("auth"."uid"() = "user_id") OR (EXISTS ( SELECT 1
-   FROM "public"."inbox_permissions"
-  WHERE (("inbox_permissions"."grantee_user_id" = "auth"."uid"()) AND ("inbox_permissions"."target_user_id" = "tickets"."user_id"))))));
-
-
-
-CREATE POLICY "Els usuaris poden gestionar els contactes del seu equip actiu" ON "public"."contacts" USING (("team_id" = (((("auth"."jwt"() ->> 'app_metadata'::"text"))::"jsonb" ->> 'active_team_id'::"text"))::"uuid")) WITH CHECK (("team_id" = (((("auth"."jwt"() ->> 'app_metadata'::"text"))::"jsonb" ->> 'active_team_id'::"text"))::"uuid"));
-
-
-
-CREATE POLICY "Els usuaris poden gestionar les línies dels seus pressupostos" ON "public"."quote_items" USING ((( SELECT "quotes"."user_id"
-   FROM "public"."quotes"
-  WHERE ("quotes"."id" = "quote_items"."quote_id")) = "auth"."uid"()));
-
-
-
-CREATE POLICY "Els usuaris poden veure el seu propi perfil" ON "public"."profiles" FOR SELECT USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Els usuaris poden veure els contactes del seu equip actiu" ON "public"."contacts" FOR SELECT USING (("team_id" = (((("auth"."jwt"() ->> 'app_metadata'::"text"))::"jsonb" ->> 'active_team_id'::"text"))::"uuid"));
-
-
-
-CREATE POLICY "Els usuaris poden veure els seus tiquets i els permesos" ON "public"."tickets" FOR SELECT TO "authenticated" USING ((("auth"."uid"() = "user_id") OR (EXISTS ( SELECT 1
-   FROM "public"."inbox_permissions"
-  WHERE (("inbox_permissions"."grantee_user_id" = "auth"."uid"()) AND ("inbox_permissions"."target_user_id" = "tickets"."user_id"))))));
-
-
-
-CREATE POLICY "Els usuaris poden veure les factures del seu equip" ON "public"."invoices" FOR SELECT TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
-
-
-
-CREATE POLICY "Els usuaris poden veure les seves pròpies invitacions" ON "public"."invitations" FOR SELECT USING (("auth"."uid"() = "user_id"));
+CREATE POLICY "Els usuaris poden veure les seves pròpies invitacions" ON "public"."invitations" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -4420,27 +4594,33 @@ CREATE POLICY "La llista de serveis és pública i visible per a tothom" ON "pub
 
 
 
-CREATE POLICY "Owners and admins can manage inbox permissions." ON "public"."inbox_permissions" USING (("team_id" IN ( SELECT "team_members"."team_id"
+CREATE POLICY "Owners and admins can manage inbox permissions." ON "public"."inbox_permissions" TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])))))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"]))))));
 
 
 
-CREATE POLICY "Permetre als usuaris accés complet als seus propis fitxers adj" ON "public"."expense_attachments" USING (("auth"."uid"() = ( SELECT "expenses"."user_id"
-   FROM "public"."expenses"
-  WHERE ("expenses"."id" = "expense_attachments"."expense_id"))));
+CREATE POLICY "Permetre lectura anònima d'items d'un pressupost públic" ON "public"."quote_items" FOR SELECT TO "anon" USING ((EXISTS ( SELECT 1
+   FROM "public"."quotes" "q"
+  WHERE (("q"."id" = "quote_items"."quote_id") AND ("q"."secure_id" IS NOT NULL)))));
 
 
 
-CREATE POLICY "Permetre lectura pública d'equips" ON "public"."teams" FOR SELECT TO "authenticated", "anon" USING (true);
+CREATE POLICY "Permetre lectura anònima de contactes d'un pressupost públic" ON "public"."contacts" FOR SELECT TO "anon" USING ((EXISTS ( SELECT 1
+   FROM "public"."quotes" "q"
+  WHERE (("q"."contact_id" = "contacts"."id") AND ("q"."secure_id" IS NOT NULL)))));
 
 
 
-CREATE POLICY "Permetre lectura pública de pressupostos" ON "public"."quotes" FOR SELECT TO "authenticated", "anon" USING (true);
+CREATE POLICY "Permetre lectura anònima de l'equip d'un pressupost públic" ON "public"."teams" FOR SELECT TO "anon" USING ((EXISTS ( SELECT 1
+   FROM "public"."quotes" "q"
+  WHERE (("q"."team_id" = "teams"."id") AND ("q"."secure_id" IS NOT NULL)))));
 
 
 
-CREATE POLICY "Team members can manage their own departments" ON "public"."departments" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
+CREATE POLICY "Permetre lectura anònima de pressupostos públics (secure_id)" ON "public"."quotes" FOR SELECT TO "anon" USING (("secure_id" IS NOT NULL));
 
 
 
@@ -4452,83 +4632,11 @@ CREATE POLICY "Team members can view, and admins/owners can manage team creden" 
 
 
 
-CREATE POLICY "Team owners and admins can manage subscriptions." ON "public"."subscriptions" USING (("team_id" IN ( SELECT "team_members"."team_id"
+CREATE POLICY "Team owners and admins can manage subscriptions." ON "public"."subscriptions" TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"())))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
+  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])))))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"]))))));
-
-
-
-CREATE POLICY "Users can create and update their own profile" ON "public"."profiles" FOR INSERT WITH CHECK (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users can manage activities for their active team." ON "public"."activities" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage activities of their active team." ON "public"."activities" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage campaigns for their active team." ON "public"."campaigns" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage expenses for their active team." ON "public"."expenses" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage expenses of their active team." ON "public"."expenses" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage opportunities for their active team." ON "public"."opportunities" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage opportunities of their active team." ON "public"."opportunities" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage products for their active team." ON "public"."products" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage products of their active team." ON "public"."products" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage quote items for their active team." ON "public"."quote_items" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage quotes for their active team." ON "public"."quotes" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage stages for their active team." ON "public"."pipeline_stages" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage suppliers for their active team." ON "public"."suppliers" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage suppliers of their active team." ON "public"."suppliers" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage tags for their active team." ON "public"."contact_tags" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage templates for their active team." ON "public"."email_templates" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
-
-
-
-CREATE POLICY "Users can manage their own blacklist rules" ON "public"."blacklist_rules" USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -4536,33 +4644,7 @@ CREATE POLICY "Users can manage their own campaign templates" ON "public"."campa
 
 
 
-CREATE POLICY "Users can manage their own campaigns" ON "public"."campaigns" USING (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Users can manage their own email templates" ON "public"."email_templates" USING (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Users can manage their own expense items" ON "public"."expense_items" USING (("auth"."uid"() = ( SELECT "expenses"."user_id"
-   FROM "public"."expenses"
-  WHERE ("expenses"."id" = "expense_items"."expense_id"))));
-
-
-
 CREATE POLICY "Users can manage their own personal credentials" ON "public"."user_credentials" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Users can manage their own pipeline stages" ON "public"."pipeline_stages" USING (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Users can manage their own profile." ON "public"."profiles" USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users can manage their own quote items" ON "public"."quote_items" USING (("auth"."uid"() = "user_id"));
 
 
 
@@ -4570,39 +4652,7 @@ CREATE POLICY "Users can manage their own social posts" ON "public"."social_post
 
 
 
-CREATE POLICY "Users can update their own profile" ON "public"."profiles" FOR UPDATE USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users can view and update their own profile." ON "public"."profiles" USING (("auth"."uid"() = "id")) WITH CHECK (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users can view members of their own team." ON "public"."team_members" FOR SELECT USING (("team_id" IN ( SELECT "team_members_1"."team_id"
-   FROM "public"."team_members" "team_members_1"
-  WHERE ("team_members_1"."user_id" = "auth"."uid"()))));
-
-
-
-CREATE POLICY "Users can view teams they are a member of." ON "public"."teams" FOR SELECT USING (("id" IN ( SELECT "team_members"."team_id"
-   FROM "public"."team_members"
-  WHERE ("team_members"."user_id" = "auth"."uid"()))));
-
-
-
-CREATE POLICY "Users can view their own membership." ON "public"."team_members" FOR SELECT USING (("auth"."uid"() = "user_id"));
-
-
-
 CREATE POLICY "Users can view their own notifications" ON "public"."notifications" FOR SELECT USING (("auth"."uid"() = "user_id"));
-
-
-
-CREATE POLICY "Users can view their own profile" ON "public"."profiles" FOR SELECT USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users manage quote items for their active team" ON "public"."quote_items" TO "authenticated" USING (("team_id" = "public"."get_active_team_id"())) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
 
 
 
@@ -4658,6 +4708,9 @@ ALTER TABLE "public"."inbox_permissions" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "insert_own_layouts" ON "public"."project_layouts" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
 
+
+
+ALTER TABLE "public"."invitations" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."invoice_attachments" ENABLE ROW LEVEL SECURITY;
@@ -4727,6 +4780,9 @@ ALTER TABLE "public"."tasks" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."team_credentials" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."team_members" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."teams" ENABLE ROW LEVEL SECURITY;
 
 
@@ -4774,6 +4830,12 @@ GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "
 
 
 
+GRANT ALL ON FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."create_new_organization"("org_name" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."create_new_organization"("org_name" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."create_new_organization"("org_name" "text") TO "service_role";
@@ -4810,9 +4872,15 @@ GRANT ALL ON FUNCTION "public"."get_active_team_id"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text", "p_column_name" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text", "p_column_name" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text", "p_column_name" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."get_active_team_role"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_active_team_role"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_active_team_role"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_column_valid_values"("p_ref_table_name" "text") TO "service_role";
 
 
 
@@ -4837,12 +4905,6 @@ GRANT ALL ON FUNCTION "public"."get_current_jwt_claims"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_current_team_id"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_current_team_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_current_team_id"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "service_role";
 
 
 
@@ -4936,6 +4998,18 @@ GRANT ALL ON FUNCTION "public"."get_table_columns_info"("p_table_name" "text") T
 
 
 
+GRANT ALL ON FUNCTION "public"."get_team_dashboard_data"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_team_dashboard_data"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_team_dashboard_data"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_team_ticket_count"("p_team_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_team_ticket_count"("p_team_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_team_ticket_count"("p_team_id" "uuid") TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") TO "service_role";
@@ -4945,6 +5019,12 @@ GRANT ALL ON FUNCTION "public"."get_user_id_by_email"("email_to_check" "text") T
 GRANT ALL ON FUNCTION "public"."get_user_team_context"("p_user_id" "uuid", "p_team_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_user_team_context"("p_user_id" "uuid", "p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_user_team_context"("p_user_id" "uuid", "p_team_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_user_team_id"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_user_team_id"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_user_team_id"() TO "service_role";
 
 
 
@@ -4969,12 +5049,6 @@ GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_n
 GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."handle_quote_acceptance"() TO "anon";
-GRANT ALL ON FUNCTION "public"."handle_quote_acceptance"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."handle_quote_acceptance"() TO "service_role";
 
 
 
@@ -5026,6 +5100,12 @@ GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_
 
 
 
+GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) TO "anon";
+GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "service_role";
@@ -5044,9 +5124,9 @@ GRANT ALL ON TABLE "public"."expenses" TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."save_expense_with_items"("expense_data" "jsonb", "items_data" "jsonb", "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_id_to_update" bigint) TO "anon";
-GRANT ALL ON FUNCTION "public"."save_expense_with_items"("expense_data" "jsonb", "items_data" "jsonb", "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_id_to_update" bigint) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."save_expense_with_items"("expense_data" "jsonb", "items_data" "jsonb", "p_team_id" "uuid", "p_user_id" "uuid", "p_expense_id_to_update" bigint) TO "service_role";
+GRANT ALL ON FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigint, "p_user_id" "uuid", "p_team_id" "uuid", "expense_data" "jsonb", "items_data" "jsonb") TO "anon";
+GRANT ALL ON FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigint, "p_user_id" "uuid", "p_team_id" "uuid", "expense_data" "jsonb", "items_data" "jsonb") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigint, "p_user_id" "uuid", "p_team_id" "uuid", "expense_data" "jsonb", "items_data" "jsonb") TO "service_role";
 
 
 
@@ -5080,15 +5160,15 @@ GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid",
 
 
 
+GRANT ALL ON FUNCTION "public"."set_proposal_stage_on_activity"() TO "anon";
+GRANT ALL ON FUNCTION "public"."set_proposal_stage_on_activity"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_proposal_stage_on_activity"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "anon";
 GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_contact_last_interaction"("contact_id_to_update" bigint) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."update_pipeline_on_quote_creation"() TO "anon";
-GRANT ALL ON FUNCTION "public"."update_pipeline_on_quote_creation"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_pipeline_on_quote_creation"() TO "service_role";
 
 
 

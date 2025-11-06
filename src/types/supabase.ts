@@ -787,6 +787,7 @@ export type Database = {
           id: string
           invoice_id: number
           mime_type: string | null
+          team_id: string | null
           uploaded_at: string | null
         }
         Insert: {
@@ -795,6 +796,7 @@ export type Database = {
           id?: string
           invoice_id: number
           mime_type?: string | null
+          team_id?: string | null
           uploaded_at?: string | null
         }
         Update: {
@@ -803,6 +805,7 @@ export type Database = {
           id?: string
           invoice_id?: number
           mime_type?: string | null
+          team_id?: string | null
           uploaded_at?: string | null
         }
         Relationships: [
@@ -811,6 +814,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_attachments_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -1800,6 +1810,7 @@ export type Database = {
         Row: {
           created_at: string | null
           current_period_end: string | null
+          current_period_start: string
           id: string
           plan_id: string
           status: string
@@ -1810,6 +1821,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           current_period_end?: string | null
+          current_period_start?: string
           id?: string
           plan_id: string
           status: string
@@ -1820,6 +1832,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           current_period_end?: string | null
+          current_period_start?: string
           id?: string
           plan_id?: string
           status?: string
@@ -2503,6 +2516,10 @@ export type Database = {
         Args: { invitation_id: string }
         Returns: Json
       }
+      accept_quote_and_create_invoice: {
+        Args: { p_secure_id: string }
+        Returns: undefined
+      }
       addauth: { Args: { "": string }; Returns: boolean }
       addgeometrycolumn:
         | {
@@ -2541,6 +2558,7 @@ export type Database = {
             }
             Returns: string
           }
+      can_access_ticket: { Args: { ticket_user_id: string }; Returns: boolean }
       create_new_organization: { Args: { org_name: string }; Returns: string }
       create_team_with_defaults: {
         Args: { team_name: string }
@@ -2682,12 +2700,20 @@ export type Database = {
       }
       geomfromewkt: { Args: { "": string }; Returns: unknown }
       get_active_team_id: { Args: never; Returns: string }
-      get_column_valid_values: {
-        Args: { p_column_name: string; p_ref_table_name: string }
-        Returns: {
-          value: string
-        }[]
-      }
+      get_active_team_role: { Args: never; Returns: string }
+      get_column_valid_values:
+        | {
+            Args: { p_ref_table_name: string }
+            Returns: {
+              value: string
+            }[]
+          }
+        | {
+            Args: { p_column_name: string; p_ref_table_name: string }
+            Returns: {
+              value: string
+            }[]
+          }
       get_crm_dashboard_data: { Args: never; Returns: Json }
       get_crm_overview: { Args: never; Returns: Json }
       get_current_jwt_claims: { Args: never; Returns: string }
@@ -2777,7 +2803,12 @@ export type Database = {
       get_marketing_page_data: { Args: { p_team_id: string }; Returns: Json }
       get_my_team_id: { Args: never; Returns: string }
       get_my_team_ids: { Args: never; Returns: string[] }
-      get_my_teams: { Args: never; Returns: string[] }
+      get_my_teams: {
+        Args: never
+        Returns: {
+          team_id: string
+        }[]
+      }
       get_public_profiles: {
         Args: never
         Returns: {
@@ -2800,7 +2831,9 @@ export type Database = {
       }
       get_table_columns_excluding_security: {
         Args: { p_table_name: string }
-        Returns: string[]
+        Returns: {
+          column_name: string
+        }[]
       }
       get_table_columns_info: {
         Args: { p_table_name: string }
@@ -2809,6 +2842,7 @@ export type Database = {
           data_type: string
         }[]
       }
+      get_team_ticket_count: { Args: { p_team_id: string }; Returns: number }
       get_user_id_by_email: {
         Args: { email_to_check: string }
         Returns: string
@@ -2935,45 +2969,89 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
-      save_expense_with_items: {
-        Args: {
-          expense_data: Json
-          items_data: Json
-          p_expense_id_to_update?: number
-          p_team_id: string
-          p_user_id: string
-        }
-        Returns: {
-          category: string | null
-          created_at: string
-          description: string
-          discount_amount: number | null
-          expense_date: string
-          extra_data: Json | null
-          id: number
-          invoice_number: string | null
-          is_billable: boolean
-          is_reimbursable: boolean
-          notes: string | null
-          payment_date: string | null
-          payment_method: string | null
-          project_id: string | null
-          status: Database["public"]["Enums"]["expense_status"]
-          subtotal: number | null
-          supplier_id: string | null
-          tax_amount: number | null
-          tax_rate: number | null
-          team_id: string | null
-          total_amount: number
-          user_id: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "expenses"
-          isOneToOne: false
-          isSetofReturn: true
-        }
+      reject_quote_with_reason: {
+        Args: { p_reason: string; p_secure_id: string }
+        Returns: undefined
       }
+      save_expense_with_items:
+        | {
+            Args: {
+              expense_data: Json
+              items_data: Json
+              p_expense_id_to_update: number
+              p_team_id: string
+              p_user_id: string
+            }
+            Returns: {
+              category: string | null
+              created_at: string
+              description: string
+              discount_amount: number | null
+              expense_date: string
+              extra_data: Json | null
+              id: number
+              invoice_number: string | null
+              is_billable: boolean
+              is_reimbursable: boolean
+              notes: string | null
+              payment_date: string | null
+              payment_method: string | null
+              project_id: string | null
+              status: Database["public"]["Enums"]["expense_status"]
+              subtotal: number | null
+              supplier_id: string | null
+              tax_amount: number | null
+              tax_rate: number | null
+              team_id: string | null
+              total_amount: number
+              user_id: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "expenses"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
+        | {
+            Args: {
+              expense_data: Json
+              items_data: Json
+              p_expense_id_to_update?: number
+              p_team_id: string
+              p_user_id: string
+            }
+            Returns: {
+              category: string | null
+              created_at: string
+              description: string
+              discount_amount: number | null
+              expense_date: string
+              extra_data: Json | null
+              id: number
+              invoice_number: string | null
+              is_billable: boolean
+              is_reimbursable: boolean
+              notes: string | null
+              payment_date: string | null
+              payment_method: string | null
+              project_id: string | null
+              status: Database["public"]["Enums"]["expense_status"]
+              subtotal: number | null
+              supplier_id: string | null
+              tax_amount: number | null
+              tax_rate: number | null
+              team_id: string | null
+              total_amount: number
+              user_id: string
+            }[]
+            SetofOptions: {
+              from: "*"
+              to: "expenses"
+              isOneToOne: false
+              isSetofReturn: true
+            }
+          }
       save_refresh_token: {
         Args: { provider_name: string; refresh_token_value: string }
         Returns: undefined
@@ -2996,6 +3074,7 @@ export type Database = {
           discount_amount: number
           expense_date: string
           extra_data: Json
+          full_count: number
           id: number
           invoice_number: string
           is_billable: boolean
@@ -3003,16 +3082,15 @@ export type Database = {
           notes: string
           payment_date: string
           payment_method: string
-          project_id: string
+          project_id: number
           status: Database["public"]["Enums"]["expense_status"]
           subtotal: number
-          supplier_id: string
+          supplier_id: number
           supplier_nom: string
           tax_amount: number
           tax_rate: number
           team_id: string
           total_amount: number
-          total_count: number
           user_id: string
         }[]
       }
@@ -3394,11 +3472,11 @@ export type Database = {
         Returns: unknown
       }
       st_generatepoints:
+        | { Args: { area: unknown; npoints: number }; Returns: unknown }
         | {
             Args: { area: unknown; npoints: number; seed: number }
             Returns: unknown
           }
-        | { Args: { area: unknown; npoints: number }; Returns: unknown }
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
@@ -3666,11 +3744,11 @@ export type Database = {
           }
       st_triangulatepolygon: { Args: { g1: unknown }; Returns: unknown }
       st_union:
+        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
         | {
             Args: { geom1: unknown; geom2: unknown; gridsize: number }
             Returns: unknown
           }
-        | { Args: { geom1: unknown; geom2: unknown }; Returns: unknown }
       st_voronoilines: {
         Args: { extend_to?: unknown; g1: unknown; tolerance?: number }
         Returns: unknown
