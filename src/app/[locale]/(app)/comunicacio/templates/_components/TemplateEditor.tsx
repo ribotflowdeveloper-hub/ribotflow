@@ -20,8 +20,9 @@ interface TemplateEditorProps {
 
 export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateEditorProps) {
   const t = useTranslations('TemplatesPage');
-  const [editorView, setEditorView] = useState<'code' | 'preview'>('preview');
-
+  const [editorView, setEditorView] = useState<'code' | 'preview'>(
+    typeof window !== 'undefined' && window.innerWidth < 1024 ? 'preview' : 'code'
+  );
   if (!selectedTemplate) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-4 glass-card rounded-xl">
@@ -83,25 +84,27 @@ export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateE
         </div>
 
         {/* ✏️ Cos de l’editor o vista prèvia */}
-        <div className="flex-1 min-h-0 overflow-auto bg-background">
+        <div className="flex-1 min-h-0 overflow-auto bg-background relative">
           {editorView === 'code' ? (
-            <Editor
-              value={selectedTemplate.body || ''}
-              onValueChange={(code) =>
-                onUpdateTemplate((t) => (t ? { ...t, body: code } : null))
-              }
-              highlight={(code) => highlight(code, languages.markup!, 'markup')}
-              padding={16}
-              className="font-mono text-sm"
-              style={{
-                backgroundColor: '#1e1e1e',
-                color: '#dcdcdc',
-                height: '100%',
-                minHeight: '100%',
-                fontFamily: '"Fira Code", monospace',
-              }}
-            />
-
+            <div className="h-full overflow-auto">
+              <Editor
+                value={selectedTemplate.body || ''}
+                onValueChange={(code) =>
+                  onUpdateTemplate((t) => (t ? { ...t, body: code } : null))
+                }
+                highlight={(code) => highlight(code, languages.markup!, 'markup')}
+                padding={16}
+                className="font-mono text-sm min-h-full outline-none"
+                style={{
+                  backgroundColor: '#1e1e1e',
+                  color: '#dcdcdc',
+                  fontFamily: '"Fira Code", monospace',
+                  whiteSpace: 'pre-wrap',
+                  wordWrap: 'break-word',
+                  overflow: 'auto',
+                }}
+              />
+            </div>
           ) : (
             <iframe
               srcDoc={selectedTemplate.body ?? undefined}
@@ -110,6 +113,7 @@ export function TemplateEditor({ selectedTemplate, onUpdateTemplate }: TemplateE
             />
           )}
         </div>
+
       </div>
     </div>
   );
