@@ -1,34 +1,50 @@
-import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
+// /src/lib/subscription/subscription.ts (FITXER COMPLET I REFACTORITZAT)
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  PLAN_FEATURES,
   PLAN_IDS,
   PLAN_LIMITS,
+  type PlanFeature,
   type PlanId,
   type PlanLimit,
-} from '@/config/subscriptions'; // O @/config/subscriptions
+} from "@/config/subscriptions";
 import { validatePageSession } from "@/lib/supabase/session";
 import { getUserTeamContext } from "@/lib/supabase/teamContext";
-/**
- * [DEPRECATED] Aquesta funció ja no és necessària.
- * La lògica ara està dins de getUserTeamContext.
- * export async function getActivePlan(...)
- */
+import { Infinity } from "@/lib/utils/utils";
+import { limitCheckers } from '@/lib/services/limits/checkers'; // ✅ 1. Importem el nostre nou REGISTRE
 
 /**
  * Obté el límit numèric per a una característica.
- * ✅ Aquesta funció ara és SÍNCRONA.
- * Rep el planId directament.
+ * (No canvia)
  */
 export function getPlanLimit(
-  planId: PlanId,
-  limit: PlanLimit
+  planId: PlanId | typeof PLAN_IDS.FREE,
+  limit: PlanLimit,
 ): number {
-  const limits = PLAN_LIMITS[planId] || PLAN_LIMITS[PLAN_IDS.FREE];
+  const safePlanId = (planId in PLAN_LIMITS) ? planId : PLAN_IDS.FREE;
+
+  const limits = PLAN_LIMITS[safePlanId];
   return limits[limit] ?? 0;
 }
 
 /**
+ * Comprova si una característica està activada (Feature Flag).
+ * (No canvia)
+ */
+export function isFeatureEnabled(
+  planId: PlanId | typeof PLAN_IDS.FREE,
+  feature: PlanFeature,
+): boolean {
+  const safePlanId = (planId in PLAN_FEATURES) ? planId : PLAN_IDS.FREE;
+
+  const features = PLAN_FEATURES[safePlanId];
+  return features[feature] ?? false;
+}
+
+/**
  * Tipus per al resultat de la comprovació de límit.
+ * (No canvia)
  */
 export type UsageCheckResult = {
   allowed: boolean;
@@ -38,99 +54,81 @@ export type UsageCheckResult = {
 };
 
 /**
- * Comprova si un equip pot crear un nou recurs.
- * ✅ Aquesta funció ara és més simple. Rep el planId directament
- * i només s'encarrega de FER EL RECOMPTE.
+ * Funció interna que només s'utilitza com a FALLBACK
+ * (No canvia)
+ */
+function getISODate30DaysAgo(): string {
+  console.warn(
+    "[UsageLimit] Fallback: utilitzant finestra de 30 dies en lloc del cicle de facturació.",
+  );
+  const date = new Date();
+  date.setDate(date.getDate() - 30);
+  return date.toISOString();
+}
+
+/**
+ * ✅ 2. AQUESTA ÉS LA NOVA FUNCIÓ 'checkUsageLimit'
+ * Ara és un simple "router" que crida al "checker" correcte.
  */
 export async function checkUsageLimit(
   supabase: SupabaseClient,
-  teamId: string,
   limit: PlanLimit,
-  planId: PlanId // <-- Rep el planId obtingut del context!
+  planId: PlanId,
+  userId: string,
+  teamId: string | null,
+  billingCycleStartDate: string,
 ): Promise<UsageCheckResult> {
   
-  // 1. Obtenim el límit (crida síncrona, 0 cost)
   const max = getPlanLimit(planId, limit);
-
-  // 2. Comprovem si és il·limitat
   if (max === Infinity) {
-    return { allowed: true, current: -1, max: Infinity }; // -1 = no comptat
+    return { allowed: true, current: -1, max: Infinity };
   }
 
-  let current = 0;
-  let errorMessage = 'Has assolit el límit del teu pla.';
-
-  // 3. Fem el recompte (Aquest switch és perfecte, no canvia)
   try {
-    switch (limit) {
-      case 'maxTickets':
-        const { count: ticketCount } = await supabase
-          .from('tickets')
-          .select('*', { count: 'exact', head: true })
-          .eq('team_id', teamId);
-        current = ticketCount || 0;
-        errorMessage = 'Has assolit el límit de tickets per al teu pla.';
-        break;
-
-      case 'maxContacts':
-        const { count: contactCount } = await supabase
-          .from('contacts')
-          .select('*', { count: 'exact', head: true })
-          .eq('team_id', teamId);
-        current = contactCount || 0;
-        errorMessage = 'Has assolit el límit de contactes per al teu pla.';
-        break;
-
-      case 'maxTeamMembers':
-        const { count: memberCount } = await supabase
-          .from('team_members')
-          .select('*', { count: 'exact', head: true })
-          .eq('team_id', teamId);
-        current = memberCount || 0;
-        errorMessage = 'Has assolit el límit de membres d\'equip per al teu pla.';
-        break;
-
-      default:
-        // Aquesta és la millora de robustesa que vam comentar
-        throw new Error(
-          `[UsageLimit] Lògica de recompte no implementada per al límit: ${limit}`
-        );
+    // 1. Busquem la funció de recompte correcta al nostre registre
+    const checker = limitCheckers[limit];
+    if (!checker) {
+      throw new Error(`[UsageLimit] Lògica de recompte no implementada per al límit: ${limit}`);
     }
-  } catch (error) {
-    console.error(`Error checking usage for ${limit}:`, error);
-    if (error instanceof Error && error.message.startsWith('[UsageLimit]')) {
-      throw error; // Propaguem l'error de desenvolupament
+
+    // 2. Executem la funció específica (ex: checkContactsLimit)
+    const { current, error } = await checker(
+      supabase,
+      teamId!, // Passem el teamId (els checkers que no el necessiten, l'ignoraran)
+      userId,
+      billingCycleStartDate
+    );
+
+    console.log(`[checkUsageLimit] Recompte per '${limit}': ${current} (Max: ${max})`);
+
+    // 3. Comprovem el resultat
+    const safeErrorMessage = typeof error === "string" ? error : undefined;
+    if (current >= max) {
+      return { allowed: false, current, max, error: safeErrorMessage };
     }
-    return {
-      allowed: false,
-      current: 0,
-      max: 0,
-      error: 'Error en verificar el límit.',
-    };
-  }
+    return { allowed: true, current, max };
 
-  // 4. Retornem el resultat
-  if (current >= max) {
-    return { allowed: false, current, max, error: errorMessage };
-  }
+  } catch (error: unknown) {
+    let message: string;
+    if (error instanceof Error) { message = error.message; }
+    else { message = String(error) || "Error desconegut al comprovar el límit"; }
 
-  return { allowed: true, current, max };
+    console.error(`[checkUsageLimit] Error real per ${limit}:`, message);
+    return { allowed: false, current: 0, max: 0, error: message };
+  }
 }
 
 /**
  * Funció d'alt nivell per obtenir l'estat d'ús d'un límit per a l'usuari actual.
- * * Centralitza la lògica de:
- * 1. Validar la sessió de l'usuari.
- * 2. Obtenir el seu equip actiu i el seu pla (via getUserTeamContext).
- * 3. Comprovar l'ús actual contra el límit del pla (via checkUsageLimit).
- * * @param limitType El tipus de límit a comprovar (ex: 'maxContacts', 'maxTickets').
- * @returns Un objecte UsageCheckResult amb l'estat del límit.
+ * ✅ AQUESTA FUNCIÓ ÉS LA MATEIXA QUE TENS ARA. NO CANVIA.
+ * Ja fa la lògica de buscar la data del cicle de facturació.
  */
 export async function getUsageLimitStatus(
-  limitType: PlanLimit // ✅ 2. Utilitzem el tipus correcte 'PlanLimit'
+  limitType: PlanLimit
 ): Promise<UsageCheckResult> {
   
-  // 1. Validem la sessió
+  console.log(`[getUsageLimitStatus] Iniciant comprovació de límit per a: ${limitType}`);
+  
   const session = await validatePageSession();
   if ('error' in session) {
     console.error("getUsageLimitStatus: Sessió invàlida", session.error);
@@ -138,17 +136,57 @@ export async function getUsageLimitStatus(
   }
   
   const { supabase, user, activeTeamId } = session;
-
-  // 2. Obtenim el context (inclou el planId)
-  // Aquesta crida utilitza React.cache, per tant és eficient
   const context = await getUserTeamContext(supabase, user.id, activeTeamId);
 
-  // 3. Cridem la funció de baix nivell 'checkUsageLimit'
-  // El planId ja ve validat des de 'getUserTeamContext'
+  console.log(`[getUsageLimitStatus] Context obtingut: PlanID = ${context.planId}, TeamID = ${activeTeamId}`);
+
+  let billingCycleStartDate: string;
+  
+  if (activeTeamId) {
+      const { data: subData, error: subError } = await supabase
+      .from('subscriptions')
+      .select('current_period_start') 
+      .eq('team_id', activeTeamId)
+      .in('status', ['active', 'trialing']) 
+      .maybeSingle();
+
+      if (subError) {
+        console.error("[getUsageLimitStatus] Error greu consultant 'subscriptions':", subError.message);
+        billingCycleStartDate = getISODate30DaysAgo(); // Fallback
+      } else if (subData?.current_period_start) { 
+        billingCycleStartDate = new Date(subData.current_period_start).toISOString();
+      } else {
+        console.warn(`[getUsageLimitStatus] No s'ha trobat 'current_period_start' per a l'equip ${activeTeamId}. Fent fallback.`);
+        billingCycleStartDate = getISODate30DaysAgo(); // Fallback
+      }
+  } else {
+    billingCycleStartDate = getISODate30DaysAgo();
+  }
+
+  console.log(`[getUsageLimitStatus] Data d'inici del cicle seleccionada: ${billingCycleStartDate}`);
+
   return checkUsageLimit(
     supabase,
-    activeTeamId,
     limitType,
-    context.planId 
+    context.planId, 
+    user.id,
+    activeTeamId,
+    billingCycleStartDate // Passem la data correcta
   );
+}
+
+/**
+ * Funció d'alt nivell per comprovar un permís de pla (feature flag).
+ * (No canvia)
+ */
+export async function getFeatureFlagStatus(
+  featureType: PlanFeature,
+): Promise<{ enabled: boolean }> {
+  // ... (aquesta funció no canvia) ...
+  const session = await validatePageSession();
+  if ("error" in session) { return { enabled: false }; }
+  const { supabase, user, activeTeamId } = session;
+  if (!activeTeamId) { return { enabled: false }; }
+  const context = await getUserTeamContext(supabase, user.id, activeTeamId);
+  return { enabled: isFeatureEnabled(context.planId, featureType) };
 }
