@@ -1,18 +1,20 @@
-//* eslint-disable react/jsx-no-undef */
-// Ubicació: /app/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx
+// /app/(app)/comunicacio/planificador/_components/CreatePostDialog.tsx (FITXER COMPLET I CORREGIT)
 "use client";
 
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from '@/components/ui/textarea'; // ✅ Es fa servir
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import Image from 'next/image';
-import { Link, Loader2, PlayCircle, Trash2 } from 'lucide-react';
+import Image from 'next/image'; // ✅ Es fa servir
+import { Link, Loader2, PlayCircle, Trash2, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTranslations } from 'next-intl'; // ✅ ARREGLAT: Importem 'useTranslations'
 
 import { useCreatePost } from '../_hooks/useCreatePost';
 import type { SocialPost } from '@/types/db';
-import { type ConnectionStatuses } from '../types'; // ✅ Importem el tipus centralitzat
+import { type ConnectionStatuses } from '../types';
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
 
 interface CreatePostDialogProps {
     isOpen: boolean;
@@ -20,19 +22,29 @@ interface CreatePostDialogProps {
     onCreate: (newPost: SocialPost) => void;
     connectionStatuses: ConnectionStatuses;
     t: (key: string) => string;
+    accountLimitStatus: UsageCheckResult;
+    postLimitStatus: UsageCheckResult;
 }
 
-export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionStatuses, t }: CreatePostDialogProps) {
+export function CreatePostDialog({ 
+  isOpen, onOpenChange, onCreate, connectionStatuses, t,
+  accountLimitStatus, postLimitStatus 
+}: CreatePostDialogProps) {
+    
+    const t_billing = useTranslations('Billing'); // Aquesta línia ara funciona
+
     const {
         content, setContent, previewUrls, selectedProviders, isPending,
         handleMediaChange, removeMedia, setSelectedProviders, handleSubmit, resetState,
-        mediaFiles // <-- Add this line to destructure mediaFiles from the hook
+        mediaFiles
     } = useCreatePost({
         isOpen,
         connectionStatuses,
         onCreate,
         onClose: () => onOpenChange(false),
-        t
+        t,
+        postLimitStatus, 
+        accountLimitStatus
     });
 
     const handleClose = (open: boolean) => {
@@ -43,13 +55,16 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
     };
     const hasAnyConnection = Object.values(connectionStatuses).some(status => status === true);
 
+    const isPostLimitReached = !postLimitStatus.allowed;
+    const isAccountLimitReached = !accountLimitStatus.allowed;
+
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
             <DialogContent className="max-w-4xl h-[90vh] md:h-[80vh] flex flex-col">
                 <DialogHeader><DialogTitle>{t('createDialogTitle')}</DialogTitle></DialogHeader>
                 <div className="grid md:grid-cols-2 gap-6 p-1 md:p-4 flex-grow overflow-y-auto">
                     <div className="space-y-4 flex flex-col">
-                        <Textarea
+                        <Textarea // ✅ 'Textarea' s'utilitza aquí
                             placeholder={t('whatsOnYourMind')}
                             className="flex-grow text-base min-h-[200px]"
                             value={content}
@@ -76,6 +91,11 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
                                     ))}
                                 </div>
                             )}
+                            {isAccountLimitReached && (
+                                <p className="text-xs text-destructive">
+                                  {accountLimitStatus.error} <Link href="/settings/integrations" className="underline">Gestionar</Link>
+                                </p>
+                            )}
                         </div>
                     </div>
                     <div className="bg-muted/50 p-4 rounded-lg flex flex-col">
@@ -90,14 +110,14 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
 
                                         return (
                                             <div key={url} className="relative group aspect-square">
-                                                <Image src={url} alt={`Preview ${index + 1}`} className="rounded-md object-cover" fill unoptimized />
-                                                {/* ✅ ICONA DE PLAY PER A VÍDEOS */}
+                                                <Image src={url} alt={`Preview ${index + 1}`} className="rounded-md object-cover" fill unoptimized /> 
                                                 {isVideo && (
                                                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                                                         <PlayCircle className="w-8 h-8 text-white" />
                                                     </div>
                                                 )}
-                                                <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 ..." onClick={() => removeMedia(index)}>
+                                                {/* ✅ 'removeMedia' s'utilitza aquí */}
+                                                <Button size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => removeMedia(index)}> 
                                                     <Trash2 className="h-3 w-3" />
                                                 </Button>
                                             </div>
@@ -108,15 +128,33 @@ export function CreatePostDialog({ isOpen, onOpenChange, onCreate, connectionSta
                         </div>
                     </div>
                 </div>
+                
                 <DialogFooter className="flex-shrink-0 mt-4">
                     <Button variant="ghost" onClick={() => handleClose(false)}>{t('cancel')}</Button>
-                    <Button onClick={handleSubmit} disabled={isPending || !content || selectedProviders.length === 0}>
-                        {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {isPending ? t('saving') : t('saveDraft')}
-                    </Button>
+                    
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span tabIndex={isPostLimitReached ? 0 : -1}>
+                            <Button onClick={handleSubmit} disabled={isPending || !content || selectedProviders.length === 0 || isPostLimitReached}>
+                              {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                              {isPostLimitReached ? <Lock className="w-4 h-4 mr-2" /> : null}
+                              {isPending ? t('saving') : (isPostLimitReached ? t_billing('limitReachedTitle') : t('saveDraft'))}
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        {isPostLimitReached && (
+                          <TooltipContent>
+                            <p>{postLimitStatus.error || t_billing('limitReachedDefault')}</p>
+                            <Button asChild size="sm" className="mt-2 w-full">
+                              <Link href="/settings/billing">{t_billing('upgradePlan')}</Link>
+                            </Button>
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    </TooltipProvider>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
     );
 };
-

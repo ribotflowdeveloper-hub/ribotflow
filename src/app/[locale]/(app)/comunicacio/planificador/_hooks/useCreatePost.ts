@@ -1,5 +1,4 @@
-// Ubicació: /app/(app)/comunicacio/planificador/_hooks/useCreatePost.ts
-
+// /src/app/[locale]/(app)/comunicacio/planificador/_hooks/useCreatePost.ts (FITXER COMPLET I CORREGIT)
 "use client";
 
 import { useState, useTransition, useEffect } from 'react';
@@ -8,13 +7,18 @@ import { type ConnectionStatuses } from '../types';
 import { generateVideoThumbnail } from '@/lib/utils/media';
 import { getPresignedUploadUrlAction, createSocialPostAction } from '../actions';
 import type { SocialPost } from '@/types/db';   
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
+
 interface UseCreatePostProps {
     isOpen: boolean;
     connectionStatuses: ConnectionStatuses;
     onCreate: (newPost: SocialPost) => void;
     onClose: () => void;
     t: (key: string) => string;
+    postLimitStatus: UsageCheckResult; 
+    accountLimitStatus: UsageCheckResult;
 }
+
 // --- Funció d'ajuda per a la validació ---
 const validateImageAspectRatio = (file: File): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -37,7 +41,10 @@ const validateImageAspectRatio = (file: File): Promise<boolean> => {
         reader.readAsDataURL(file);
     });
 };
-export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t }: UseCreatePostProps) {
+export function useCreatePost({ 
+  isOpen, connectionStatuses, onCreate, onClose, t,
+  postLimitStatus, accountLimitStatus
+}: UseCreatePostProps) {
     const [content, setContent] = useState('');
     const [mediaFiles, setMediaFiles] = useState<File[]>([]);
     const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -46,15 +53,19 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
 
     useEffect(() => {
         if (isOpen) {
-            const defaultProviders = Object.keys(connectionStatuses).filter(key => connectionStatuses[key]);
-            setSelectedProviders(defaultProviders);
+            // Filtrem els proveïdors permesos pel límit de comptes
+            const allowedProviders = Object.keys(connectionStatuses)
+                .filter(key => connectionStatuses[key])
+                .slice(0, accountLimitStatus.max === Infinity ? undefined : accountLimitStatus.max);
+            
+            setSelectedProviders(allowedProviders);
         }
-    }, [isOpen, connectionStatuses]);
+    }, [isOpen, connectionStatuses, accountLimitStatus.max]);
 
     const resetState = () => {
         setContent('');
         setMediaFiles([]);
-        previewUrls.forEach(url => URL.revokeObjectURL(url));
+        previewUrls.forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
         setPreviewUrls([]);
         setSelectedProviders([]);
     };
@@ -86,7 +97,7 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
                     toast.error(t('invalidAspectRatioTitle'), { description: t('invalidAspectRatioDescription') });
                 }
             } else {
-                validFiles.push(file); // Afegim vídeos directament
+                validFiles.push(file);
             }
         }
         if (validFiles.length === 0) return;
@@ -94,7 +105,6 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
         const newFiles = [...mediaFiles, ...validFiles].slice(0, 10);
         setMediaFiles(newFiles);
 
-        // Neteja URLs anteriors
         previewUrls.forEach(url => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
 
         const newPreviewPromises = newFiles.map(file => {
@@ -111,12 +121,22 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
         setMediaFiles(prev => prev.filter((_, index) => index !== indexToRemove));
         setPreviewUrls(prev => {
             const urlToRemove = prev[indexToRemove];
-            URL.revokeObjectURL(urlToRemove);
+            if (urlToRemove.startsWith('blob:')) {
+                URL.revokeObjectURL(urlToRemove);
+            }
             return prev.filter((_, index) => index !== indexToRemove);
         });
     };
 
     const handleSubmit = () => {
+        
+        if (!postLimitStatus.allowed) {
+            toast.error(t('errorPostCreation'), { 
+                description: postLimitStatus.error || "Has assolit el límit de posts." 
+            });
+            return; 
+        }
+
         startTransition(async () => {
             let mediaPaths: string[] | null = null;
             let mediaType: string | null = null;
@@ -124,8 +144,8 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
             if (mediaFiles.length > 0) {
                 try {
                     const fileNames = mediaFiles.map(f => f.name);
-                    const urlResult = await getPresignedUploadUrlAction(fileNames);
-                    // ✅ CORRECCIÓ: Proporcionem un missatge per defecte si 'urlResult.message' és undefined
+                    // Aquesta acció ja està protegida per 'validateActionAndUsage'
+                    const urlResult = await getPresignedUploadUrlAction(fileNames); 
                     if (!urlResult.success || !urlResult.data) {
                         throw new Error(urlResult.message || "Error desconegut en obtenir les URLs de pujada.");
                     }
@@ -144,12 +164,13 @@ export function useCreatePost({ isOpen, connectionStatuses, onCreate, onClose, t
                 }
             }
 
+            // Aquesta acció també està protegida per 'validateActionAndUsage'
             const createResult = await createSocialPostAction(content, selectedProviders, mediaPaths, mediaType);
+            
             if (createResult.success && createResult.data) {
                 toast.success(t('successDraftCreated'));
                 onCreate(createResult.data);
             } else {
-                // ✅ CORRECCIÓ: Proporcionem un missatge per defecte aquí també
                 toast.error(createResult.message || "Hi ha hagut un error en crear la publicació.");
             }
             onClose();

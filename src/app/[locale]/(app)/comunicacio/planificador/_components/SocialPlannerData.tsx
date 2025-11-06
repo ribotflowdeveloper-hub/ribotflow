@@ -1,42 +1,43 @@
+// /app/[locale]/(app)/comunicacio/planificador/_components/SocialPlannerData.tsx (FITXER COMPLET I CORREGIT)
 import { SocialPlannerClient } from './SocialPlannerClient';
-import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice';
-import { validatePageSession } from '@/lib/supabase/session';
+// ❌ import { UpgradePlanNotice } from '@/app/[locale]/(app)/settings/billing/_components/UpgradePlanNotice'; // No es fa servir
+import { AccessDenied } from '@/components/shared/AccessDenied';
+import { validateSessionAndPermission, PERMISSIONS } from '@/lib/permissions/permissions'; 
+import { getUsageLimitStatus} from '@/lib/subscription/subscription'; // ✅ 'UsageCheckResult' s'utilitza
 import { getSocialPlannerInitialData } from '@/lib/services/comunicacio/socialPlanner.service';
-import type { SocialPost, ConnectionStatuses } from '@/lib/services/comunicacio/socialPlanner.service'; // Importem tipus del servei
+import type { SocialPost, ConnectionStatuses } from '@/lib/services/comunicacio/socialPlanner.service';
 
-// Re-exportem tipus per al client
 export type { SocialPost, ConnectionStatuses };
 
-// Plans permesos (pots moure'ls a config si vols)
-const ALLOWED_PLANS = ['plus', 'premium'];
-
 export async function SocialPlannerData() {
-    const session = await validatePageSession();
-    // validatePageSession ja gestiona redirecció si no hi ha sessió/equip
-    // Però afegim comprovació per a TypeScript i possibles errors inesperats
-    if (!session) return null;
-
-    const { supabase, user, activeTeamId } = session;
-    const locale = user.user_metadata?.locale || 'ca';
-
-    // Comprovació de pla de subscripció
-    const activeTeamPlan = user.app_metadata?.active_team_plan as string | undefined;
-    if (!activeTeamPlan || !ALLOWED_PLANS.includes(activeTeamPlan.toLowerCase())) {
-        return <UpgradePlanNotice featureName="Planificador Social" requiredPlan="Plus" locale={locale} />;
+    
+    const validation = await validateSessionAndPermission(PERMISSIONS.VIEW_SOCIAL_PLANNER);
+    if ('error' in validation) {
+        return <AccessDenied message={validation.error.message} />;
     }
+    
+    const { supabase, user, activeTeamId } = validation;
+    // ❌ 'locale' no es feia servir
+    // const locale = user.user_metadata?.locale || 'ca';
 
-    // Cridem al servei per obtenir les dades
-    const { data, error } = await getSocialPlannerInitialData(supabase, user.id, activeTeamId);
+    const [
+      { data, error },
+      accountLimit,
+      postLimit
+    ] = await Promise.all([
+        getSocialPlannerInitialData(supabase, user.id, activeTeamId),
+        getUsageLimitStatus('maxSocialAccounts'),
+        getUsageLimitStatus('maxSocialPostsPerMonth')
+    ]);
 
     if (error || !data) {
         console.error("Error carregant les dades del Planificador Social (Component):", error);
-        // Mostrem un estat d'error o buit
-        // Podries passar un prop 'errorLoading' al client
         return (
             <SocialPlannerClient
                 initialPosts={[]}
                 connectionStatuses={{ linkedin: false, facebook: false, instagram: false }}
-                // errorLoading="No s'han pogut carregar les dades."
+                accountLimitStatus={accountLimit}
+                postLimitStatus={postLimit}
             />
         );
     }
@@ -45,6 +46,8 @@ export async function SocialPlannerData() {
         <SocialPlannerClient
             initialPosts={data.posts}
             connectionStatuses={data.connectionStatuses}
+            accountLimitStatus={accountLimit}
+            postLimitStatus={postLimit}
         />
     );
 }
