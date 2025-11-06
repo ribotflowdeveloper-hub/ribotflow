@@ -117,3 +117,24 @@ export async function updateOpportunityStage(
     throw new Error(error.message);
   }
 }
+
+/**
+ * SERVEI: Elimina una oportunitat.
+ * Llança un error si falla.
+ */
+export async function deleteOpportunity(
+  supabase: SupabaseClient<Database>,
+  opportunityId: number,
+  activeTeamId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("opportunities")
+    .delete()
+    .eq("id", opportunityId)
+    .eq("team_id", activeTeamId);
+
+  if (error) {
+    console.error("Error en eliminar l'oportunitat (service):", error);
+    throw new Error("No s'ha pogut eliminar l'oportunitat.");
+  }
+}

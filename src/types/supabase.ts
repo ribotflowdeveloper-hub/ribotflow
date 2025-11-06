@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "12.2.12 (cd3cf9e)"
+    PostgrestVersion: "13.0.5"
   }
   graphql_public: {
     Tables: {
@@ -141,12 +141,15 @@ export type Database = {
       }
       audio_jobs: {
         Row: {
+          assigned_tasks_summary: Json | null
           created_at: string
+          dialogue_flow: Json | null
           error_message: string | null
           id: string
           key_moments: Json | null
           participants: Json | null
           project_id: string | null
+          speaker_identification: Json | null
           status: Database["public"]["Enums"]["audio_job_status"]
           storage_path: string
           summary: string | null
@@ -155,12 +158,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assigned_tasks_summary?: Json | null
           created_at?: string
+          dialogue_flow?: Json | null
           error_message?: string | null
           id?: string
           key_moments?: Json | null
           participants?: Json | null
           project_id?: string | null
+          speaker_identification?: Json | null
           status?: Database["public"]["Enums"]["audio_job_status"]
           storage_path: string
           summary?: string | null
@@ -169,12 +175,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assigned_tasks_summary?: Json | null
           created_at?: string
+          dialogue_flow?: Json | null
           error_message?: string | null
           id?: string
           key_moments?: Json | null
           participants?: Json | null
           project_id?: string | null
+          speaker_identification?: Json | null
           status?: Database["public"]["Enums"]["audio_job_status"]
           storage_path?: string
           summary?: string | null
@@ -370,6 +379,7 @@ export type Database = {
           email: string
           empresa: string | null
           estat: string | null
+          gender: string | null
           hobbies: string[] | null
           id: number
           industry: string | null
@@ -397,6 +407,7 @@ export type Database = {
           email: string
           empresa?: string | null
           estat?: string | null
+          gender?: string | null
           hobbies?: string[] | null
           id?: number
           industry?: string | null
@@ -424,6 +435,7 @@ export type Database = {
           email?: string
           empresa?: string | null
           estat?: string | null
+          gender?: string | null
           hobbies?: string[] | null
           id?: number
           industry?: string | null
@@ -2802,6 +2814,19 @@ export type Database = {
       get_crm_overview: { Args: never; Returns: Json }
       get_current_jwt_claims: { Args: never; Returns: string }
       get_current_team_id: { Args: never; Returns: string }
+      get_dashboard_stats: {
+        Args: never
+        Returns: {
+          active_clients: number
+          expenses_current_month: number
+          expenses_previous_month: number
+          invoiced_current_month: number
+          invoiced_previous_month: number
+          opportunities: number
+          pending_total: number
+          total_contacts: number
+        }[]
+      }
       get_dashboard_stats_for_team: {
         Args: { p_team_id: string }
         Returns: {
@@ -2844,10 +2869,10 @@ export type Database = {
           attachments: Json
           body: string
           contact_email: string
-          contact_id: string
+          contact_id: number
           contact_nom: string
           created_at: string
-          id: string
+          id: number
           preview: string
           profile_avatar_url: string
           profile_full_name: string
@@ -2875,19 +2900,6 @@ export type Database = {
         Args: never
         Returns: {
           team_id: string
-        }[]
-      }
-      get_public_profiles: {
-        Args: never
-        Returns: {
-          company_name: string
-          id: string
-          latitude: number
-          logo_url: string
-          longitude: number
-          services: Json
-          summary: string
-          website_url: string
         }[]
       }
       get_quote_details: { Args: { p_quote_id: number }; Returns: Json }
@@ -2990,11 +3002,11 @@ export type Database = {
       }
       log_task_activity:
         | {
-            Args: { new_status_input: boolean; task_id_input: string }
+            Args: { new_status_input: boolean; task_id_input: number }
             Returns: undefined
           }
         | {
-            Args: { new_status_input: boolean; task_id_input: number }
+            Args: { new_status_input: boolean; task_id_input: string }
             Returns: undefined
           }
       longtransactionsenabled: { Args: never; Returns: boolean }
@@ -3051,15 +3063,10 @@ export type Database = {
       }
       postgis_version: { Args: never; Returns: string }
       postgis_wagyu_version: { Args: never; Returns: string }
-      reject_quote_with_reason:
-        | {
-            Args: { p_reason: string; p_secure_id: string }
-            Returns: undefined
-          }
-        | {
-            Args: { p_reason: string; p_secure_id: string }
-            Returns: undefined
-          }
+      reject_quote_with_reason: {
+        Args: { p_reason: string; p_secure_id: string }
+        Returns: undefined
+      }
       save_expense_with_items: {
         Args: {
           expense_data: Json
@@ -3300,7 +3307,6 @@ export type Database = {
               maxdecimaldigits?: number
               nprefix?: string
               options?: number
-              version: number
             }
             Returns: string
           }
@@ -3311,6 +3317,7 @@ export type Database = {
               maxdecimaldigits?: number
               nprefix?: string
               options?: number
+              version: number
             }
             Returns: string
           }
@@ -3509,8 +3516,8 @@ export type Database = {
       st_geogfromtext: { Args: { "": string }; Returns: unknown }
       st_geographyfromtext: { Args: { "": string }; Returns: unknown }
       st_geohash:
-        | { Args: { geom: unknown; maxchars?: number }; Returns: string }
         | { Args: { geog: unknown; maxchars?: number }; Returns: string }
+        | { Args: { geom: unknown; maxchars?: number }; Returns: string }
       st_geomcollfromtext: { Args: { "": string }; Returns: unknown }
       st_geometricmedian: {
         Args: {
@@ -3708,8 +3715,8 @@ export type Database = {
         Returns: unknown
       }
       st_setsrid:
-        | { Args: { geom: unknown; srid: number }; Returns: unknown }
         | { Args: { geog: unknown; srid: number }; Returns: unknown }
+        | { Args: { geom: unknown; srid: number }; Returns: unknown }
       st_sharedpaths: {
         Args: { geom1: unknown; geom2: unknown }
         Returns: unknown
@@ -3732,8 +3739,8 @@ export type Database = {
         Returns: Record<string, unknown>[]
       }
       st_srid:
-        | { Args: { geom: unknown }; Returns: number }
         | { Args: { geog: unknown }; Returns: number }
+        | { Args: { geom: unknown }; Returns: number }
       st_subdivide: {
         Args: { geom: unknown; gridsize?: number; maxvertices?: number }
         Returns: unknown[]

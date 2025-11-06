@@ -156,10 +156,21 @@ export async function fetchContactDetail(
     .eq("team_id", teamId)
     .single();
 
+  // ✅ INICI DE LA CORRECCIÓ
   if (error) {
-    console.error("Error fetching contact detail (service):", error.message);
+    // Si l'error és 'PGRST116', significa "no s'han trobat files".
+    // Això és normal si el contacte s'acaba d'eliminar.
+    // No ho mostrem com un error crític.
+    if (error.code === 'PGRST116') {
+      console.log(`fetchContactDetail: No s'ha trobat el contacte ${contactId}. (Probablement eliminat)`);
+    } else {
+      // Per a qualsevol altre error (RLS, connexió, etc.), sí que el mostrem.
+      console.error("Error fetching contact detail (service):", error.message);
+    }
     return null; 
   }
+  // ✅ FI DE LA CORRECCIÓ
+
   return data as unknown as ContactDetail;
 }
 

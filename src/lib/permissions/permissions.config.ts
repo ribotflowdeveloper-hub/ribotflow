@@ -34,6 +34,8 @@ export const PERMISSIONS = {
   MANAGE_SOCIAL_PLANNER: 'manage_social_planner', // Programar, aprovar posts
   VIEW_MARKETING: 'view_marketing',
   MANAGE_MARKETING: 'manage_marketing', // Crear campanyes
+  VIEW_TRANSLATIONS: 'view_translations',
+  MANAGE_TRANSLATIONS: 'manage_translations', // Crear, editar traduccions
 
   // --- Finances ---
   VIEW_FINANCES: 'view_finances', // Veure dashboard financer

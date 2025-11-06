@@ -6,7 +6,6 @@ import * as opportunityService from "@/lib/services/crm/pipeline/opportunities.s
 
 /**
  * ACCIÓ: Desa (crea o actualitza) una oportunitat.
- * (Aquesta acció no canvia, ja que el servei 'saveOpportunity' és qui processa el FormData)
  */
 export async function saveOpportunityAction(formData: FormData) {
   const session = await validateUserSession();
@@ -32,7 +31,6 @@ export async function saveOpportunityAction(formData: FormData) {
 
 /**
  * ACCIÓ: Actualitza l'etapa d'una oportunitat (per Drag-n-Drop).
- * ✅ CORRECCIÓ: 'newStageId' és ara un 'number'.
  */
 export async function updateOpportunityStageAction(opportunityId: number, newStageId: number) {
   const session = await validateUserSession();
@@ -40,14 +38,37 @@ export async function updateOpportunityStageAction(opportunityId: number, newSta
   const { supabase, activeTeamId } = session;
 
   try {
-    // Passem l'ID numèric al servei
     await opportunityService.updateOpportunityStage(
       supabase,
       opportunityId,
-      newStageId, // ✅ ID numèric
+      newStageId,
       activeTeamId
     );
 
+    revalidatePath("/crm/pipeline");
+    return { success: true };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut";
+    return { error: { message } };
+  }
+}
+
+/**
+ * ✅ NOVA ACCIÓ: Elimina una oportunitat.
+ */
+export async function deleteOpportunityAction(opportunityId: number) {
+  const session = await validateUserSession();
+  if ('error' in session) return { error: session.error };
+  const { supabase, activeTeamId } = session;
+
+  try {
+    await opportunityService.deleteOpportunity(
+      supabase,
+      opportunityId,
+      activeTeamId
+    );
+    
     revalidatePath("/crm/pipeline");
     return { success: true };
 

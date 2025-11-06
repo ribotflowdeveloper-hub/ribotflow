@@ -24,7 +24,7 @@ const baseLimits = {
   maxQuotesPerMonth: 1,
   maxProducts: 10,
   maxCalendarAccounts: 1,
-  maxTasks: 5,
+  maxTasks: 25,
   // Comunicació
   maxEmailAccounts: 1,
   maxTickets: 150,

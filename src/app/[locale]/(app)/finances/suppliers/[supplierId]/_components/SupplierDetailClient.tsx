@@ -40,8 +40,7 @@ export function SupplierDetailClient({
   // ✅ 3. Rebem les noves props
   userId,
   teamId,
-  title,
-  description,
+
   limitStatus
 }: SupplierDetailClientProps) {
   
