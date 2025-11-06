@@ -1,13 +1,15 @@
-// /app/[locale]/(app)/finances/suppliers/_components/SuppliersData.tsx (FITXER CORREGIT)
 import { redirect } from 'next/navigation';
 import { SuppliersClient } from './SuppliersClient';
-import { createClient as createServerActionClient } from '@/lib/supabase/server';
 import { getTranslations } from 'next-intl/server';
 
-// ✅ 1. Importem les ACCIONS des d'../actions
 import { fetchPaginatedSuppliers } from '../actions'; 
-// ✅ 2. Importem els TIPUS des del SERVEI
 import type { SupplierPageFilters } from '@/lib/services/finances/suppliers/suppliers.service';
+
+// ✅ 1. Importem guardians i comprovadors de límits
+import { validateSessionAndPermission } from '@/lib/permissions/permissions';
+import { PERMISSIONS } from '@/lib/permissions/permissions.config';
+import { getUsageLimitStatus } from '@/lib/subscription/subscription';
+import { type PlanLimit } from '@/config/subscriptions';
 
 // Constants inicials
 const INITIAL_ROWS_PER_PAGE = 10;
@@ -15,27 +17,46 @@ const INITIAL_SORT_COLUMN = 'nom';
 const INITIAL_SORT_ORDER = 'asc';
 
 export async function SuppliersData() {
-    const supabase = createServerActionClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // ✅ 2. Validació de VISTA
+    const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+    if ('error' in session) {
         redirect('/login');
     }
+    // No necessitem supabase/user aquí, les accions ho gestionen
+
     const t = await getTranslations('SuppliersPage'); 
 
     try {
-        const initialData = await fetchPaginatedSuppliers({
-            searchTerm: '',
-            filters: {} as SupplierPageFilters, 
-            sortBy: INITIAL_SORT_COLUMN,
-            sortOrder: INITIAL_SORT_ORDER,
-            limit: INITIAL_ROWS_PER_PAGE,
-            offset: 0,
-        });
+        // ✅ 3. Comprovem dades i límit en paral·lel
+        const [initialDataResult, limitStatusResult] = await Promise.allSettled([
+            fetchPaginatedSuppliers({
+                searchTerm: '',
+                filters: {} as SupplierPageFilters, 
+                sortBy: INITIAL_SORT_COLUMN,
+                sortOrder: INITIAL_SORT_ORDER,
+                limit: INITIAL_ROWS_PER_PAGE,
+                offset: 0,
+            }),
+            getUsageLimitStatus('maxSuppliers' as PlanLimit) // <-- Comprovem límit
+        ]);
 
-        // ✅ Comprovació d'errors eliminada: la funció ja llença excepcions si hi ha error
+        // Gestionem errors
+        if (initialDataResult.status === 'rejected') {
+            console.error("Error fetching initial suppliers data:", initialDataResult.reason);
+            throw new Error(t('errors.loadDataFailed') || "Error en carregar les dades inicials de proveïdors.");
+        }
+        if (limitStatusResult.status === 'rejected') {
+            console.error("Error fetching suppliers limit status:", limitStatusResult.reason);
+        }
+
+        const initialData = initialDataResult.value;
+        const supplierLimitStatus = limitStatusResult.status === 'fulfilled' ? limitStatusResult.value : null;
 
         return (
-            <SuppliersClient initialData={initialData} />
+            <SuppliersClient 
+                initialData={initialData} 
+                supplierLimitStatus={supplierLimitStatus} // ✅ 4. Passem el límit
+            />
         );
 
     } catch (error) {

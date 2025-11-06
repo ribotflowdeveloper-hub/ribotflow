@@ -1,14 +1,17 @@
-// /app/[locale]/(app)/finances/suppliers/[supplierId]/actions.ts (FITXER NOU)
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session";
 import { type ActionResult } from "@/types/shared/actionResult";
 
-// ✅ 1. Importem el servei consolidat
-import * as supplierService from '@/lib/services/finances/suppliers/suppliers.service';
+// ✅ 1. Importem guardians, permisos i límits
+import { 
+  validateSessionAndPermission,
+  validateActionAndUsage
+} from "@/lib/permissions/permissions";
+import { PERMISSIONS } from "@/lib/permissions/permissions.config";
+import { type PlanLimit } from "@/config/subscriptions";
 
-// ✅ 2. Importem tipus per a ús intern
+import * as supplierService from '@/lib/services/finances/suppliers/suppliers.service';
 import type { 
   Supplier, 
   SupplierFormData
@@ -18,10 +21,11 @@ import type {
  * ACCIÓ: Obté el detall d'un únic proveïdor.
  */
 export async function fetchSupplierDetail(id: string): Promise<Supplier> {
-    const session = await validateUserSession();
+    // ✅ 2. Validació de VISTA
+    const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
     if ("error" in session) {
         console.error("Session error fetching supplier detail:", session.error);
-        throw new Error(session.error.message); // Llança error que 'ProductDetailData' capturarà
+        throw new Error(session.error.message); 
     }
     const { supabase, activeTeamId } = session;
 
@@ -36,9 +40,29 @@ export async function saveSupplierAction(
     formData: SupplierFormData,
     supplierId: string | null
 ): Promise<ActionResult<Supplier>> {
-    const session = await validateUserSession();
-    if ("error" in session) return { success: false, message: session.error.message };
-    const { supabase, user, activeTeamId } = session;
+    
+    // ✅ 3. CAPA 3: Validació de GESTIÓ + LÍMIT
+    let validationResult;
+    const isNew = supplierId === null || supplierId === 'new';
+    const limitToCheck: PlanLimit = 'maxSuppliers'; // Definim el límit
+
+    if (isNew) {
+        validationResult = await validateActionAndUsage(
+            PERMISSIONS.MANAGE_SUPPLIERS,
+            limitToCheck
+        );
+    } else {
+        validationResult = await validateSessionAndPermission(
+            PERMISSIONS.MANAGE_SUPPLIERS
+        );
+    }
+
+    if ("error" in validationResult) {
+        return { success: false, message: validationResult.error.message };
+    }
+
+    // Validació superada
+    const { supabase, user, activeTeamId } = validationResult;
 
     const result = await supplierService.saveSupplier(
         supabase, 
@@ -48,10 +72,8 @@ export async function saveSupplierAction(
         supplierId
     );
     
-    // Gestionem la revalidació
     if (result.success) {
         revalidatePath('/finances/suppliers');
-        // Revalidem la pàgina de detall només si estàvem editant
         if (supplierId && supplierId !== 'new') {
             revalidatePath(`/finances/suppliers/${supplierId}`);
         }
