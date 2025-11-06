@@ -33,9 +33,9 @@ const baseLimits = {
   maxSocialPostsPerMonth: 2,
   maxMarketingCampaignsPerMonth: 1,
   // Finances
-  maxInvoicesPerMonth: 15,
-  maxExpensesPerMonth: 15,
-  maxSuppliers: 10,
+  maxInvoicesPerMonth: 1,
+  maxExpensesPerMonth: 1,
+  maxSuppliers: 1,
   // IA
   maxAIActionsPerMonth: 5,
 };

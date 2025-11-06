@@ -8,7 +8,8 @@ interface PageHeaderProps {
   title: string;
   description?: string;
   showBackButton?: boolean;
-  children?: React.ReactNode; // Per a botons d'acció (ex: "Nou Proveïdor")
+  children?: React.ReactNode; // Per a botons d'acció I AVISOS
+  // ❗ Eliminem 'isLimitExceeded'. El pare decidirà què renderitzar.
 }
 
 export function PageHeader({ 
@@ -33,6 +34,7 @@ export function PageHeader({
             <span className="sr-only">Tornar</span>
           </Button>
         )}
+        
         <div className="grid gap-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {title}
@@ -45,9 +47,9 @@ export function PageHeader({
         </div>
       </div>
       
-      {/* Aquí es renderitzaran els botons d'acció */}
+      {/* ✅ Aquest contenidor ara és 'flex' per alinear l'avís i el botó */}
       {children && (
-        <div className="flex-shrink-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-shrink-0">
           {children}
         </div>
       )}

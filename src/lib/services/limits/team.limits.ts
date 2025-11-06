@@ -24,7 +24,6 @@ export const checkTeamsLimit: LimitCheckFunction = async (
   supabase,
   _teamId, // Ignorat
   userId,
-  _startDate, // Ignorat
 ) => {
   const { count, error } = await supabase
     .from('team_members')
@@ -46,8 +45,7 @@ export const checkTeamsLimit: LimitCheckFunction = async (
 export const checkTeamMembersLimit: LimitCheckFunction = async (
   supabase,
   teamId,
-  _userId, // Ignorat
-  _startDate, // Ignorat
+
 ) => {
   const { count, error } = await supabase
     .from('team_members')

@@ -1,16 +1,38 @@
 // /src/lib/subscription/limit.checkers.ts (FITXER NOU I CORREGIT)
-import 'server-only';
-import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/supabase';
-import type { PlanLimit } from '@/config/subscriptions';
+import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/types/supabase";
+import type { PlanLimit } from "@/config/subscriptions";
 // ✅ CORRECCIÓ 1: Importem el tipus que faltava
-import type { UsageCheckResult } from '@/lib/subscription/subscription'; 
-import type { LimitCheckFunction, LimitCheckResult } from '@/lib/services/limits/team.limits';
+import type {
+  LimitCheckFunction,
+  LimitCheckResult,
+} from "@/lib/services/limits/team.limits";
 
 // Importem TOTS els nostres checkers
-import { checkTeamsLimit, checkTeamMembersLimit } from '@/lib/services/limits/team.limits';
-import { checkContactsLimit, checkTasksLimit, checkQuotesPerMonthLimit } from '@/lib/services/limits/crm.limits';
-import { checkTicketsLimit, checkSocialAccountsLimit, checkSocialPostsPerMonthLimit } from '@/lib/services/limits/comms.limits';
+import {
+  checkTeamMembersLimit,
+  checkTeamsLimit,
+} from "@/lib/services/limits/team.limits";
+import {
+  checkContactsLimit,
+  checkQuotesPerMonthLimit,
+  checkTasksLimit,
+} from "@/lib/services/limits/crm.limits";
+import {
+  checkEmailTemplatesLimit,
+  checkMarketingCampaignsLimit, // ✅ 1. Importem el de campanyes
+  checkSocialAccountsLimit,
+  checkSocialPostsPerMonthLimit,
+  checkTicketsLimit,
+} from "@/lib/services/limits/comms.limits";
+// ✅ 1. Importem els nous checkers de finances
+import {
+  checkExpensesPerMonthLimit,
+  checkInvoicesPerMonthLimit,
+  checkSuppliersLimit,
+} from "@/lib/services/limits/finances.limits";
+import { checkAIActionsLimit } from "@/lib/services/limits/ai.limits"; // ✅ 2. Importem el d'IA
 
 // El nostre Registre
 export const limitCheckers: Record<PlanLimit, LimitCheckFunction> = {
@@ -30,18 +52,18 @@ export const limitCheckers: Record<PlanLimit, LimitCheckFunction> = {
   // Límits de Comunicació
   maxEmailAccounts: notImplemented, // TODO
   maxTickets: checkTicketsLimit,
-  maxEmailTemplates: notImplemented, // TODO
+  maxEmailTemplates: checkEmailTemplatesLimit, // TODO
   maxSocialAccounts: checkSocialAccountsLimit,
   maxSocialPostsPerMonth: checkSocialPostsPerMonthLimit,
-  maxMarketingCampaignsPerMonth: notImplemented, // TODO
+  maxMarketingCampaignsPerMonth: checkMarketingCampaignsLimit, // ✅ 3. AFEGIT
 
   // Límits de Finances
-  maxInvoicesPerMonth: notImplemented, // TODO
-  maxExpensesPerMonth: notImplemented, // TODO
-  maxSuppliers: notImplemented, // TODO
-
+  maxInvoicesPerMonth: checkInvoicesPerMonthLimit,
+  maxExpensesPerMonth: checkExpensesPerMonthLimit, // TODO
+  maxSuppliers: checkSuppliersLimit, // <-- Substituïm 'notImplemented'
+  
   // Límits d'IA
-  maxAIActionsPerMonth: notImplemented, // TODO
+  maxAIActionsPerMonth: checkAIActionsLimit,
 };
 
 /**
@@ -53,5 +75,7 @@ async function notImplemented(
   _userId: string,
   _startDate: string,
 ): LimitCheckResult { // ✅ CORRECCIÓ 3: Utilitzem el tipus de retorn correcte
-  throw new Error(`[UsageLimit] La lògica de recompte per a aquest límit encara no està implementada.`);
+  throw new Error(
+    `[UsageLimit] La lògica de recompte per a aquest límit encara no està implementada.`,
+  );
 }

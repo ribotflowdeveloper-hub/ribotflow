@@ -63,5 +63,43 @@ export const checkSocialPostsPerMonthLimit: LimitCheckFunction = async (
     errorMessage: "Has assolit el límit de posts socials mensuals.",
   };
 };
+/**
+ * ✅ NOU: Comprova el límit de maxEmailTemplates
+ */
+export const checkEmailTemplatesLimit: LimitCheckFunction = async (
+  supabase,
+  teamId,
 
-// ... Aquí afegiries checkEmailTemplatesLimit, etc.
+) => {
+  const { count, error } = await supabase
+    .from('email_templates') // Assegura't que la taula es diu així
+    .select('*', { count: 'exact', head: true })
+    .eq('team_id', teamId);
+    
+  if (error) throw new Error(error.message);
+  return {
+    current: count || 0,
+    error: "Has assolit el límit de plantilles d'email.",
+  };
+};
+/**
+ * ✅ NOU: Comprova el límit de maxMarketingCampaignsPerMonth
+ */
+export const checkMarketingCampaignsLimit: LimitCheckFunction = async (
+  supabase,
+  teamId,
+  _userId,
+  startDate, // La data d'inici del cicle
+) => {
+  const { count, error } = await supabase
+    .from('campaigns') // Assegura't que la taula es diu així
+    .select('*', { count: 'exact', head: true })
+    .eq('team_id', teamId)
+    .gte('created_at', startDate);
+    
+  if (error) throw new Error(error.message);
+  return {
+    current: count || 0,
+    error: "Has assolit el límit de campanyes de màrqueting mensuals.",
+  };
+};
