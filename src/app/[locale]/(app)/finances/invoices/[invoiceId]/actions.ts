@@ -1,7 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session";
+// ✅ 1. Importem els nous guardians, permisos i el TIPUS PlanLimit
+import { 
+  validateSessionAndPermission, 
+  validateActionAndUsage 
+} from "@/lib/permissions/permissions";
+import { PERMISSIONS } from "@/lib/permissions/permissions.config";
+// Eliminem la importació errònia de PLAN_LIMITS_IDS
+import { type PlanLimit } from "@/config/subscriptions"; 
+
 import { type ActionResult } from "@/types/shared/index";
 import {
     type InvoiceItem,
@@ -9,7 +17,6 @@ import {
     type InvoiceFormDataForAction,
 } from '@/types/finances/invoices';
 
-// ✅ PAS 1: Importem el nostre nou servei
 import * as invoiceService from '@/lib/services/finances/invoices/invoicesDetail.service';
 
 /**
@@ -20,12 +27,35 @@ export async function saveInvoiceAction(
   invoiceId: number | null
 ): Promise<ActionResult<{ id: number }>> {
   
-  // 1. Validació
-  const session = await validateUserSession();
-  if ("error" in session) return { success: false, message: session.error.message };
-  const { supabase, user, activeTeamId } = session;
+  let validationResult;
 
-  // 2. Delegació (crida al servei)
+  // ✅ 2. Lògica de validació corregida
+  if (invoiceId === null) {
+    // És una CREACIÓ. Hem de comprovar permís + límit.
+    
+    // Utilitzem el string literal. El tipus 'PlanLimit' ho valida.
+    const limitToCheck: PlanLimit = 'maxInvoicesPerMonth'; 
+    
+    console.log(`[saveInvoiceAction] Comprovant límit: ${limitToCheck}`);
+    validationResult = await validateActionAndUsage(
+      PERMISSIONS.MANAGE_INVOICES,
+      limitToCheck // <-- Corregit
+    );
+  } else {
+    // És una ACTUALITZACIÓ. Només comprovem permís.
+    validationResult = await validateSessionAndPermission(
+      PERMISSIONS.MANAGE_INVOICES
+    );
+  }
+
+  // 3. Validació
+  if ("error" in validationResult) {
+    return { success: false, message: validationResult.error.message };
+  }
+  
+  const { supabase, user, activeTeamId } = validationResult;
+
+  // 4. Delegació (crida al servei)
   const result = await invoiceService.saveInvoice(
     supabase,
     formData,
@@ -34,7 +64,7 @@ export async function saveInvoiceAction(
     activeTeamId
   );
 
-  // 3. Revalidació (si èxit)
+  // 5. Revalidació (si èxit)
   if (result.success && result.data?.id) {
     revalidatePath('/finances/invoices');
     revalidatePath(`/finances/invoices/${result.data.id}`);
@@ -44,18 +74,15 @@ export async function saveInvoiceAction(
 }
 
 /**
- * ACCIÓ: Esborra una factura (només si és 'Draft').
+ * ACCIÓ: Esborra una factura
  */
 export async function deleteInvoiceAction(invoiceId: number): Promise<ActionResult> {
-  // 1. Validació
-  const session = await validateUserSession();
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
-  // 2. Delegació
   const result = await invoiceService.deleteInvoice(supabase, invoiceId, activeTeamId);
 
-  // 3. Revalidació
   if (result.success) {
     revalidatePath('/finances/invoices');
   }
@@ -71,15 +98,12 @@ export async function uploadInvoiceAttachmentAction(
     formData: FormData
 ): Promise<ActionResult<{ newAttachment: InvoiceAttachment }>> {
   
-  // 1. Validació
-  const session = await validateUserSession();
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
-  // 2. Delegació
   const result = await invoiceService.uploadAttachment(supabase, invoiceId, activeTeamId, formData);
 
-  // 3. Revalidació
   if (result.success) {
     revalidatePath(`/finances/invoices/${invoiceId}`);
   }
@@ -91,13 +115,10 @@ export async function uploadInvoiceAttachmentAction(
  * ACCIÓ: Obté una URL signada per a un adjunt.
  */
 export async function getInvoiceAttachmentSignedUrl(filePath: string): Promise<ActionResult<{ signedUrl: string }>> {
-  // 1. Validació
-  const session = await validateUserSession();
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { activeTeamId } = session;
 
-  // 2. Delegació
-  // Aquesta acció no necessita el client 'supabase' de sessió, només 'teamId' per seguretat
   return invoiceService.getAttachmentSignedUrl(activeTeamId, filePath);
 }
 
@@ -109,20 +130,14 @@ export async function deleteInvoiceAttachmentAction(
     filePath: string | null
 ): Promise<ActionResult> {
 
-  // 1. Validació
-  const session = await validateUserSession();
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
-  // 2. Delegació
   const result = await invoiceService.deleteAttachment(supabase, activeTeamId, attachmentId, filePath);
 
-  // 3. Revalidació (El camí es revalida dins del servei si és necessari)
-  // Per coherència, ho fem aquí:
   if (result.success) {
-      // Necessitaríem l'invoiceId de tornada, però per ara revalidem la llista
       revalidatePath('/finances/invoices');
-      // Idealment, el servei retornaria l'invoiceId per revalidar específicament
   }
 
   return result;
@@ -135,15 +150,12 @@ export async function finalizeInvoiceAction(
   invoiceId: number,
 ): Promise<ActionResult<{ signature: string }>> {
 
-  // 1. Validació
-  const session = await validateUserSession();
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ('error' in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
-  // 2. Delegació
   const result = await invoiceService.finalizeInvoice(supabase, invoiceId, activeTeamId);
 
-  // 3. Revalidació
   if (result.success) {
     revalidatePath('/finances/invoices');
     revalidatePath(`/finances/invoices/${invoiceId}`);
@@ -160,12 +172,10 @@ export async function sendInvoiceByEmailAction(
   recipientEmail: string,
 ): Promise<ActionResult> {
 
-  // 1. Validació
-  const session = await validateUserSession();
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ('error' in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
-  // 2. Delegació
   const result = await invoiceService.sendInvoiceByEmail(
     supabase,
     invoiceId,
@@ -173,9 +183,8 @@ export async function sendInvoiceByEmailAction(
     recipientEmail
   );
 
-  // 3. Revalidació (Opcional, potser registrar una activitat)
   if (result.success) {
-      revalidatePath(`/finances/invoices/${invoiceId}`); // Per veure l'activitat d'enviament
+      revalidatePath(`/finances/invoices/${invoiceId}`);
   }
 
   return result;

@@ -1,11 +1,13 @@
-// src/app/[locale]/(app)/finances/invoices/_components/InvoicesData.tsx
-import { redirect } from 'next/navigation'; // Per si cal redirigir
-import { InvoicesClient } from './InvoiceClient'; // El client refactoritzat
-import { fetchPaginatedInvoices, getClientsForFilter, type InvoicePageFilters } from '../actions'; // Accions actualitzades
-import { createClient as createServerActionClient } from '@/lib/supabase/server'; // Per validar sessió
-import { getTranslations } from 'next-intl/server'; // Per traduccions d'error
+import { redirect } from 'next/navigation';
+import { InvoicesClient } from './InvoiceClient'; // Assegura't que el nom és 'InvoicesClient' o 'InvoiceClient'
+import { fetchPaginatedInvoices, getClientsForFilter, type InvoicePageFilters } from '../actions';
+import { createClient as createServerActionClient } from '@/lib/supabase/server';
+import { getTranslations } from 'next-intl/server';
 
-// ✅ CORRECCIÓ: Les props ara són els paràmetres individuals
+// ✅ 1. Importem el comprovador d'alt nivell i el TIPUS PlanLimit
+import { getUsageLimitStatus } from '@/lib/subscription/subscription';
+import { type PlanLimit } from '@/config/subscriptions'; // Eliminem la importació errònia
+
 interface InvoicesDataProps {
   page?: string;
   perPage?: string;
@@ -13,34 +15,33 @@ interface InvoicesDataProps {
   status?: string;
   search?: string;
 }
-// Opcions inicials (han de coincidir amb el hook)
+
 const INITIAL_ROWS_PER_PAGE = 10;
 const INITIAL_SORT_COLUMN = 'issue_date';
 const INITIAL_SORT_ORDER = 'desc';
-/**
- * Component ASYNC que carrega les dades inicials per a InvoicesClient.
- */
-export async function InvoicesData({}: InvoicesDataProps) { // Ja no necessitem searchParams directament
+
+export async function InvoicesData({}: InvoicesDataProps) {
   const supabase = createServerActionClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
-    redirect('/login'); // O la teva pàgina de login
+    redirect('/login');
   }
 
-  const t = await getTranslations('InvoicesPage'); // Per missatges d'error
+  const t = await getTranslations('InvoicesPage');
 
   try {
-    // Obtenim dades inicials i clients en paral·lel
-    const [initialDataResult, clientsResult] = await Promise.allSettled([
+    const [initialDataResult, clientsResult, limitStatusResult] = await Promise.allSettled([
       fetchPaginatedInvoices({
-        searchTerm: '', // O llegir de searchParams si ho prefereixes
+        searchTerm: '',
         filters: { status: 'all', contactId: 'all' } as InvoicePageFilters,
         sortBy: INITIAL_SORT_COLUMN,
         sortOrder: INITIAL_SORT_ORDER,
         limit: INITIAL_ROWS_PER_PAGE,
         offset: 0,
       }),
-      getClientsForFilter() // Obtenim els clients per al filtre
+      getClientsForFilter(),
+      // ✅ 2. Comprovem l'estat del límit amb el string literal correcte
+      getUsageLimitStatus('maxInvoicesPerMonth' as PlanLimit) // <-- Corregit
     ]);
 
     // Gestionem errors
@@ -50,24 +51,28 @@ export async function InvoicesData({}: InvoicesDataProps) { // Ja no necessitem 
     }
     if (clientsResult.status === 'rejected') {
       console.error("Error fetching clients for filter:", clientsResult.reason);
-      // Podem continuar sense el filtre de clients
+    }
+    if (limitStatusResult.status === 'rejected') {
+        console.error("Error fetching usage limit status:", limitStatusResult.reason);
     }
 
     const initialData = initialDataResult.value;
     const clientsForFilter = clientsResult.status === 'fulfilled' ? clientsResult.value : [];
+    const invoiceLimitStatus = limitStatusResult.status === 'fulfilled' ? limitStatusResult.value : null;
 
-    // Passem les dades i opcions de filtre al client
+    // ✅ 3. Passem les dades al client
     return (
       <InvoicesClient
         initialData={initialData}
         clientsForFilter={clientsForFilter}
+        invoiceLimitStatus={invoiceLimitStatus} 
       />
     );
 
   } catch (error) {
     console.error("Unhandled error during InvoicesData loading:", error);
     if (error instanceof Error) {
-       throw error;
+        throw error;
     }
     throw new Error(t('errors.loadDataFailed') || "No s'han pogut carregar les dades de la pàgina de factures.");
   }

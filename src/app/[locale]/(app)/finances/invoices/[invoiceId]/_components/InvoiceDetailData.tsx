@@ -1,14 +1,18 @@
-// /app/[locale]/(app)/finances/invoices/[invoiceId]/_components/InvoiceDetailData.tsx (COMPLET I REFACTORITZAT)
 import { notFound } from 'next/navigation'
 import { fetchInvoiceDetail } from '../_hooks/fetchInvoiceDetail'
 import { InvoiceDetailClient } from './InvoiceDetailClient'
 import { getTranslations } from 'next-intl/server'
-import { validateUserSession } from '@/lib/supabase/session'
 
-// ✅ Importem els tipus de DB
+import { 
+  validateActionAndUsage, 
+  validateSessionAndPermission 
+} from '@/lib/permissions/permissions' // Assegura't que la ruta és correcta
+import { PERMISSIONS } from '@/lib/permissions/permissions.config'
+import { type PlanLimit } from '@/config/subscriptions'
+// Assegura't que aquest component existeix i la ruta és correcta
+import { AccessDenied } from '@/components/shared/AccessDenied' 
+
 import { type Contact } from '@/types/db' 
-
-// ✅ PAS 1: Importem els NOUS SERVEIS
 import { getActiveContacts, getContactById } from '@/lib/services/crm/contacts/contacts.service'
 import { getActiveProducts } from '@/lib/services/finances/products/products.service'
 import { getCompanyProfile } from '@/lib/services/settings/team/team.service'
@@ -23,23 +27,34 @@ export async function InvoiceDetailData({
   const t = await getTranslations('InvoiceDetailPage')
   const isNew = invoiceIdProp === 'new'
 
-  const session = await validateUserSession()
-  if ('error' in session) {
-    notFound()
-  }
-  const { supabase, user, activeTeamId } = session
-
-  // --- Càrregues Comunes (per a 'new' i 'edit') ---
-  // ✅ PAS 2: Cridem als serveis en lloc de crides directes
-  const [contacts, products] = await Promise.all([
-    getActiveContacts(supabase, activeTeamId),
-    getActiveProducts(supabase, activeTeamId)
-  ])
-  
   // --- Lògica per a una nova factura ---
   if (isNew) {
-    // ✅ PAS 3: Cridem al servei
-    const company = await getCompanyProfile(supabase, activeTeamId)
+    // CAPA 2: Validació de CREACIÓ (Permís + Límit)
+    const limitToCheck: PlanLimit = 'maxInvoicesPerMonth';
+    const validation = await validateActionAndUsage(
+      PERMISSIONS.MANAGE_INVOICES,
+      limitToCheck
+    );
+
+    if ('error' in validation) {
+      console.warn(`[InvoiceDetailData] Bloquejada creació de factura: ${validation.error.message}`);
+      return (
+        <AccessDenied 
+          title={t('errors.limitReachedTitle') || 'Límit assolit'}
+          message={validation.error.message}
+          backUrl="/settings/billing"
+        />
+      )
+    }
+
+    const { supabase, user, activeTeamId } = validation;
+    
+    // Càrregues Comunes per 'new'
+    const [contacts, products, company] = await Promise.all([
+      getActiveContacts(supabase, activeTeamId),
+      getActiveProducts(supabase, activeTeamId),
+      getCompanyProfile(supabase, activeTeamId)
+    ]);
 
     return (
       <InvoiceDetailClient
@@ -58,6 +73,16 @@ export async function InvoiceDetailData({
   }
 
   // --- Lògica de càrrega per a una factura existent ---
+  
+  // CAPA 2: Validació d'EDICIÓ (Només permís)
+  const validation = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
+
+  if ('error' in validation) {
+    console.warn(`[InvoiceDetailData] Bloquejada edició de factura: ${validation.error.message}`);
+    notFound();
+  }
+  
+  const { supabase, user, activeTeamId } = validation;
 
   const numericInvoiceId = parseInt(invoiceIdProp, 10)
   if (isNaN(numericInvoiceId)) {
@@ -65,10 +90,12 @@ export async function InvoiceDetailData({
     notFound()
   }
 
-  // ✅ PAS 4: Cridem als serveis en paral·lel
-  const [invoiceData, company] = await Promise.all([
-    fetchInvoiceDetail(numericInvoiceId), // Aquest ja era un hook/fetcher, està bé
+  // ✅ CORRECCIÓ: Carreguem TOTES les dades necessàries per 'edit'
+  const [invoiceData, company, contacts, products] = await Promise.all([
+    fetchInvoiceDetail(numericInvoiceId),
     getCompanyProfile(supabase, activeTeamId),
+    getActiveContacts(supabase, activeTeamId), // <-- Faltava
+    getActiveProducts(supabase, activeTeamId)  // <-- Faltava
   ])
 
   // Validem la factura
@@ -79,17 +106,15 @@ export async function InvoiceDetailData({
   // Validem l'empresa
   if (!company) {
     console.error("Error carregant el perfil de l'empresa")
-    // Podem fer notFound() o continuar amb 'null' si el client ho gestiona
     notFound()
   }
 
-  // ✅ PAS 5: Cridem al servei per obtenir el contacte
+  // Obtenim el contacte
   let contact: Contact | null = null
   if (invoiceData.contact_id) {
     contact = await getContactById(supabase, activeTeamId, invoiceData.contact_id)
   }
 
-  // Calculem títol i descripció
   const title = t('editTitle', {
     number: invoiceData?.invoice_number ?? invoiceIdProp,
   })
@@ -100,8 +125,8 @@ export async function InvoiceDetailData({
       initialData={invoiceData}
       company={company}
       contact={contact}
-      contacts={contacts} // Llista de tots els contactes
-      products={products} // Llista de productes
+      contacts={contacts} // ✅ Ara sí que existeix
+      products={products} // ✅ Ara sí que existeix
       userId={user.id} 
       teamId={activeTeamId}
       isNew={isNew}

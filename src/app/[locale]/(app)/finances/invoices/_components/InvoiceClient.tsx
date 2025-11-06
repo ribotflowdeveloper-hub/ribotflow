@@ -1,34 +1,45 @@
-// src/app/[locale]/(app)/finances/invoices/_components/InvoicesClient.tsx
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Mantenim router si s'usa en columnes
+import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { PlusCircle, Edit } from 'lucide-react'; // Importem Edit per a l'acció
-import { usePathname } from 'next/navigation'; // ✅ 1. Importar usePathname
+import { PlusCircle, Edit, TriangleAlert } from 'lucide-react'; 
+import { usePathname } from 'next/navigation';
 
 // Tipus i Accions
 import { type InvoiceListRow, type InvoiceStatus } from '@/types/finances/invoices';
 import { type ActionResult } from '@/types/shared/actionResult';
 import { fetchPaginatedInvoices, type InvoicePageFilters } from '../actions';
-// ❗ IMPORTANT: Importa deleteInvoiceAction des del seu lloc correcte!
-import { deleteInvoiceAction } from '../[invoiceId]/actions'; // Ajusta la ruta si cal
+import { deleteInvoiceAction } from '../[invoiceId]/actions';
 
 // Components Compartits
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Button } from '@/components/ui/button';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
-import { StatusBadge } from '@/components/shared/StatusBadge'; // Badge per a estats
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+// Importem els components de l'Alert
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // Components Específics
-import { InvoiceFilters } from './InvoicesFilters'; // El nostre nou component
+import { InvoiceFilters } from './InvoicesFilters';
 
 // Hook Genèric
-import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; // <-- Corregit 'usePaginateResource' a 'usePaginatedResource'
+import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource';
 // Utilitats
 import { formatDate, formatCurrency } from '@/lib/utils/formatters';
+import { type UsageCheckResult } from '@/lib/subscription/subscription';
 
 // Alias per claredat
 type PaginatedInvoicesResponse = PaginatedResponse<InvoiceListRow>;
@@ -37,21 +48,31 @@ type FetchInvoicesParams = PaginatedActionParams<InvoicePageFilters>;
 // Opcions de files per pàgina
 const INVOICE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
 
-// Interfície de Props (Opcional: afegim clients per filtrar)
 interface InvoicesClientProps {
   initialData: PaginatedInvoicesResponse;
-  clientsForFilter?: { id: number; nom: string | null }[]; // Llista de clients
+  clientsForFilter?: { id: number; nom: string | null }[];
+  invoiceLimitStatus: UsageCheckResult | null; 
 }
 
-export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesClientProps) {
+export function InvoicesClient({
+  initialData,
+  clientsForFilter = [],
+  invoiceLimitStatus 
+}: InvoicesClientProps) {
+
   const t = useTranslations('InvoicesPage');
   const tShared = useTranslations('Shared');
-  const router = useRouter(); // Per al botó 'Nova' i potser columnes
-  const locale = useLocale(); // Per a enllaços
-  const pathname = usePathname(); // ✅ 2. Obtenir la ruta actual 
-  // --- Definició de Columnes ---
+  const t_billing = useTranslations('Shared.limits');
+  const router = useRouter();
+  const locale = useLocale();
+  const pathname = usePathname();
+
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
+  // --- Definició de Columnes (No canvia) ---
   const allColumns = useMemo<ColumnDef<InvoiceListRow>[]>(() => [
-    {
+    // ... (les teves columnes) ...
+     {
       accessorKey: 'invoice_number',
       header: t('table.number'),
       enableSorting: true,
@@ -65,7 +86,6 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
       ),
     },
     {
-      // Usem 'client_name' que ve del RPC per ordenar
       accessorKey: 'client_name',
       header: t('table.client'),
       enableSorting: true,
@@ -110,10 +130,9 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
         <StatusBadge status={invoice.status as InvoiceStatus} />
       ),
     },
-    // Afegim columna d'acció EDITAR explícita
     {
       accessorKey: "actions_edit",
-      header: "", // Sense text
+      header: "",
       enableSorting: false,
       cell: (invoice) => (
         <Link href={`/${locale}/finances/invoices/${invoice.id}`} title={tShared('actions.edit')}>
@@ -121,13 +140,13 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
         </Link>
       ),
     }
-  ], [t, locale, tShared, pathname]); // Afegim locale, tShared i pathname si s'usen
+  ], [t, locale, tShared, pathname]);
 
-  // --- Hook Genèric ---
+  // --- Hook Genèric (No canvia) ---
   const {
     isPending,
-    data: invoices, // Renombrem
-    itemToDelete: invoiceToDelete, // Renombrem
+    data: invoices,
+    itemToDelete: invoiceToDelete,
     setItemToDelete: setInvoiceToDelete,
     handleDelete,
     handleSort,
@@ -145,32 +164,31 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
     rowsPerPage,
     handleRowsPerPageChange,
   } = usePaginatedResource<InvoiceListRow, InvoicePageFilters>({
-    initialData,
-    initialFilters: { status: 'all', contactId: 'all' }, // Filtres inicials
-    initialSort: { column: 'issue_date', order: 'desc' }, // Ordenació inicial
-    allColumns,
-    fetchAction: fetchPaginatedInvoices as (params: FetchInvoicesParams) => Promise<PaginatedInvoicesResponse>,
-    deleteAction: async (id: string | number): Promise<ActionResult> => { // Adaptador
-      if (typeof id !== 'number') {
-        const msg = tShared('errors.invalidId');
-        console.error(msg, { id });
-        return { success: false, message: msg };
-      }
-      return deleteInvoiceAction(id); // Funció d'eliminació real
-    },
-    initialRowsPerPage: INVOICE_ROWS_PER_PAGE_OPTIONS[0],
-    rowsPerPageOptions: INVOICE_ROWS_PER_PAGE_OPTIONS,
-    toastMessages: {
-      deleteSuccess: t('toast.deleteSuccess'), // Assegura't que existeix
-    }
+      // ... (configuració del hook sense canvis)
+       initialData,
+       initialFilters: { status: 'all', contactId: 'all' },
+       initialSort: { column: 'issue_date', order: 'desc' },
+       allColumns,
+       fetchAction: fetchPaginatedInvoices as (params: FetchInvoicesParams) => Promise<PaginatedInvoicesResponse>,
+       deleteAction: async (id: string | number): Promise<ActionResult> => {
+         if (typeof id !== 'number') {
+           const msg = tShared('errors.invalidId');
+           return { success: false, message: msg };
+         }
+         return deleteInvoiceAction(id);
+       },
+       initialRowsPerPage: INVOICE_ROWS_PER_PAGE_OPTIONS[0],
+       rowsPerPageOptions: INVOICE_ROWS_PER_PAGE_OPTIONS,
+       toastMessages: {
+         deleteSuccess: t('toast.deleteSuccess'),
+       }
   });
 
-  // --- Columnes Visibles i Descripció Esborrat ---
+  // --- Columnes Visibles i Descripció Esborrat (No canvien) ---
   const visibleColumns = useMemo(
     () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
     [allColumns, columnVisibility]
   );
-
   const deleteDescription = (
     <>
       {tShared('deleteDialog.description1')}{' '}
@@ -180,35 +198,71 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
     </>
   );
 
+  // Variable per mostrar l'alerta
+  const isLimitExceeded = invoiceLimitStatus && !invoiceLimitStatus.allowed;
+
+  // Gestor pel botó "Nova Factura"
+  const handleNewInvoiceClick = () => {
+    if (isLimitExceeded) {
+      setShowLimitModal(true);
+    } else {
+      router.push(`/${locale}/finances/invoices/new`);
+    }
+  };
+
   // --- Renderització ---
   return (
-    <div className="flex flex-col gap-4 h-full"> {/* Ajustat gap i h-full */}
+    <div className="flex flex-col gap-4 h-full">
+      
+      {/* ✅ AQUEST ÉS EL CANVI PRINCIPAL */}
       <PageHeader title={t('title')}>
-        <Button onClick={() => router.push(`/${locale}/finances/invoices/new`)}>
+        
+        {/* 1. L'Alerta ara és un fill del PageHeader */}
+        {isLimitExceeded && (
+          <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
+            <TriangleAlert className="h-4 w-4 text-yellow-900" />
+            <AlertTitle className="font-semibold text-xs mb-0"> {/* Més compacte */}
+              {t_billing('modalTitle', { default: 'Límit assolit' })}
+            </AlertTitle>
+            <AlertDescription className="text-xs">
+              {invoiceLimitStatus.error || t_billing('invoicesPerMonth', { current: invoiceLimitStatus.current, max: invoiceLimitStatus.max })}
+              <Button asChild variant="link" size="sm" className="p-0 h-auto ml-1 text-yellow-900 font-semibold underline">
+                <Link href={`/${locale}/settings/billing`}>{t_billing('upgradeButton')}</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* 2. El Botó ara és un "germà" de l'Alerta */}
+        <Button onClick={handleNewInvoiceClick}>
           <PlusCircle className="mr-2 h-4 w-4" /> {t('newButton')}
         </Button>
+      
       </PageHeader>
 
-      {/* Barra de Filtres / Accions */}
+      {/* ❗ Eliminem l'Alert que hi havia aquí abans */}
+
+      {/* Barra de Filtres / Accions (sense canvis) */}
       <div className="flex justify-between items-center">
-        {/* La crida aquí ja està preparada per a la versió corregida de InvoiceFilters */}
-        <InvoiceFilters
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-          filters={filters} // <-- Passa l'objecte de filtres
-          onFilterChange={handleFilterChange} // <-- Passa el gestor genèric
-          clients={clientsForFilter}
-        />
-        <ColumnToggleButton
-          allColumns={allColumns}
-          columnVisibility={columnVisibility}
-          toggleColumnVisibility={toggleColumnVisibility}
-        />
+        {/* ... (InvoiceFilters i ColumnToggleButton) ... */}
+         <InvoiceFilters
+           searchTerm={searchTerm}
+           onSearchChange={handleSearchChange}
+           filters={filters}
+           onFilterChange={handleFilterChange}
+           clients={clientsForFilter}
+         />
+         <ColumnToggleButton
+           allColumns={allColumns}
+           columnVisibility={columnVisibility}
+           toggleColumnVisibility={toggleColumnVisibility}
+         />
       </div>
 
-      {/* Taula Genèrica */}
+      {/* Taula Genèrica (sense canvis) */}
       <GenericDataTable<InvoiceListRow>
-        className="flex-grow overflow-hidden" // Ocupa espai restant
+        // ... (props de la taula)
+        className="flex-grow overflow-hidden"
         columns={visibleColumns}
         data={invoices}
         isPending={isPending}
@@ -224,11 +278,38 @@ export function InvoicesClient({ initialData, clientsForFilter = [] }: InvoicesC
         deleteItem={invoiceToDelete}
         setDeleteItem={setInvoiceToDelete}
         onDelete={handleDelete}
-        // Assegura't que aquesta clau existeix, sinó usa una de Shared
         deleteTitleKey="InvoicesPage.deleteDialog.title"
         deleteDescription={deleteDescription}
         emptyStateMessage={t('emptyState')}
       />
+
+      {/* Modal d'avís de límit (sense canvis) */}
+      <AlertDialog open={showLimitModal} onOpenChange={setShowLimitModal}>
+        {/* ... (contingut del modal) ... */}
+         <AlertDialogContent>
+           <AlertDialogHeader>
+             <AlertDialogTitle className="flex items-center gap-2">
+               <TriangleAlert className="text-destructive" /> 
+               {t_billing('modalTitle')}
+             </AlertDialogTitle>
+             <AlertDialogDescription>
+               {t_billing('invoicesPerMonth', {
+                 current: invoiceLimitStatus?.current ?? 0,
+                 max: invoiceLimitStatus?.max ?? 0
+               })}
+               <br />
+               {t_billing('upgradePlan')}
+             </AlertDialogDescription>
+           </AlertDialogHeader>
+           <AlertDialogFooter>
+             <AlertDialogCancel>{tShared('actions.cancel')}</AlertDialogCancel>
+             <AlertDialogAction onClick={() => router.push(`/${locale}/settings/billing`)}>
+               {t_billing('upgradeButton')}
+             </AlertDialogAction>
+           </AlertDialogFooter>
+         </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
