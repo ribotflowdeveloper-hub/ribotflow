@@ -4,17 +4,17 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 
 import { type ExpenseDetail, type ExpenseFormDataForAction, type ExpenseItem } from '@/types/finances/expenses';
-// ❌ 'Supplier' ja no és necessari aquí
 import { saveExpenseAction } from '../actions';
 
+// ✅ 1. Actualitzem la interfície per acceptar les noves props
 interface UseExpenseDetailProps {
     initialData: ExpenseDetail | null;
     isNew: boolean;
-    // ❌ 'allSuppliers' eliminat, és redundant.
-    // La informació del proveïdor inicial ja ve a 'initialData.suppliers'.
+    userId: string; // <-- AFEGIT
+    teamId: string; // <-- AFEGIT
 }
 
-// ✅ Hem afegit tots els camps que falten segons l'esquema de la BD
+// (Aquesta constant és correcta)
 const defaultInitialData: Omit<ExpenseFormDataForAction, 'status'> = {
     id: 'new',
     description: '',
@@ -28,24 +28,25 @@ const defaultInitialData: Omit<ExpenseFormDataForAction, 'status'> = {
     notes: null,
     tax_rate: 21,
     supplier_id: null,
-    // ✅ CAMPS AFEGITS PER CORREGIR L'ERROR DE TIPATGE
     payment_method: null,
     payment_date: null,
     is_billable: false,
     project_id: null,
     is_reimbursable: false,
-    // ---
     expense_items: [],
 };
 
-// ❌ 'allSuppliers' eliminat de la desestructuració
-export function useExpenseDetail({ initialData, isNew }: UseExpenseDetailProps) {
+// ✅ 2. Desestructurem les noves props a la signatura de la funció
+export function useExpenseDetail({ 
+    initialData, 
+    isNew, 
+
+}: UseExpenseDetailProps) {
+    
     const t = useTranslations('ExpenseDetailPage');
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
 
-    // El 'as ExpenseFormDataForAction' és necessari perquè TypeScript sap que a defaultInitialData li falta 'status',
-    // però confiem que la resta de la nostra lògica ja no el fa servir.
     const [formData, setFormData] = useState<ExpenseFormDataForAction>(
         initialData ? { ...initialData, id: initialData.id.toString() } : defaultInitialData as ExpenseFormDataForAction
     );
@@ -94,6 +95,9 @@ export function useExpenseDetail({ initialData, isNew }: UseExpenseDetailProps) 
             quantity: 1,
             unit_price: 0,
             total: 0,
+            // Nota: No cal afegir userId/teamId aquí.
+            // La Server Action (Capa 3) ja els obté de la sessió validada
+            // i els passa al servei de BBDD.
         };
         setFormData(prev => ({ ...prev, expense_items: [...(prev.expense_items || []), newItem] }));
     };
@@ -107,12 +111,14 @@ export function useExpenseDetail({ initialData, isNew }: UseExpenseDetailProps) 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         startTransition(async () => {
+            // La Server Action ja està blindada i gestiona els permisos/límits
             const result = await saveExpenseAction(formData, isNew ? null : (formData.id ?? null));
             if (result.success) {
                 toast.success(t('toast.saveSuccess'));
-                router.push('/finances/expenses'); // <-- Canviat a /expenses (despeses)
+                router.push('/finances/expenses'); 
                 router.refresh();
             } else {
+                // Si la Capa 3 (Server Action) bloqueja per límit, es mostrarà aquí
                 toast.error(result.message || t('toast.saveError'));
             }
         });
@@ -127,6 +133,5 @@ export function useExpenseDetail({ initialData, isNew }: UseExpenseDetailProps) 
         handleAddItem,
         handleRemoveItem,
         t,
-        // ❌ 'allSuppliers' eliminat del return
     };
 }

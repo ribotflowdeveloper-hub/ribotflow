@@ -1,11 +1,7 @@
-// /app/[locale]/(app)/finances/expenses/actions.ts (FITXER CORREGIT)
 'use server';
 
-import {
-  type ExpenseWithContact,
-} from "@/types/finances/expenses";
+import { type ExpenseWithContact } from "@/types/finances/expenses";
 import { type ActionResult } from "@/types/shared/index";
-import { validateUserSession } from "@/lib/supabase/session";
 import { type Expense } from "@/types/finances/expenses";
 import { revalidatePath } from "next/cache";
 import { 
@@ -13,17 +9,23 @@ import {
   type PaginatedResponse 
 } from '@/hooks/usePaginateResource';
 
-// ✅ 1. Importem ELS DOS NOUS SERVEIS
+// ✅ 1. Importem els nous guardians, permisos i límits
+import { 
+  validateSessionAndPermission, 
+  validateActionAndUsage 
+} from "@/lib/permissions/permissions";
+import { PERMISSIONS } from "@/lib/permissions/permissions.config";
+import { type PlanLimit } from "@/config/subscriptions";
+
 import * as expensesListService from '@/lib/services/finances/expenses/expenses.service';
 import * as expensesDetailService from '@/lib/services/finances/expenses/expenseDetail.service';
 
-// ✅ 2. Importem el tipus NOMÉS PER A ÚS INTERN
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
 
-// Definim els tipus que el client necessita
+// Tipus
 type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 type PaginatedExpensesData = PaginatedResponse<ExpenseWithContact>;
-export type ExpenseForSupplier = Partial<Expense>; // Aquest export de tipus local és correcte
+export type ExpenseForSupplier = Partial<Expense>; 
 
 /**
  * ACCIÓ: Obté les dades paginades per al client.
@@ -31,26 +33,21 @@ export type ExpenseForSupplier = Partial<Expense>; // Aquest export de tipus loc
 export async function fetchPaginatedExpenses(
   params: FetchExpensesParams,
 ): Promise<PaginatedExpensesData> {
-  const session = await validateUserSession();
+  // ✅ 2. Validació de PERMÍS DE VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) {
     console.error("Session error in fetchPaginatedExpenses:", session.error);
     return { data: [], count: 0 };
   }
   const { supabase, activeTeamId } = session;
 
-  // 🔴 LOG 6: Paràmetres rebuts per l'ACCIÓ (Consola del Servidor)
   console.log("expenses/actions.ts (fetchPaginatedExpenses): Paràmetres rebuts:", JSON.stringify(params, null, 2));
 
   try {
-    // ✅ Crida al servei de LLISTA
     const result = await expensesListService.fetchPaginatedExpenses(supabase, activeTeamId, params);
-    
-    // 🔴 LOG 7: Resultat del SERVEI (Consola del Servidor)
     console.log(`expenses/actions.ts (fetchPaginatedExpenses): Retornant ${result.data.length} files i un count de ${result.count}`);
     return result;
-
   } catch (error: unknown) {
-    // ✅ CORRECCIÓ: Propaguem l'error a la UI
     const message = (error as Error).message;
     console.error("Error a fetchPaginatedExpenses (action):", message);
     return { data: [], count: 0 };
@@ -58,19 +55,23 @@ export async function fetchPaginatedExpenses(
 }
 
 /**
- * ACCIÓ: Processa un OCR.
+ * ACCIÓ: Processa un OCR (CREA una nova despesa).
  */
 export async function processOcrAction(
   formData: FormData,
 ): Promise<ActionResult<Record<string, unknown>>> {
-  const session = await validateUserSession();
+  // ✅ 3. Validació de CREACIÓ (PERMÍS + LÍMIT)
+  const limitToCheck: PlanLimit = 'maxExpensesPerMonth';
+  const session = await validateActionAndUsage(
+    PERMISSIONS.MANAGE_EXPENSES,
+    limitToCheck
+  );
   if ("error" in session) {
     return { success: false, message: session.error.message };
   }
   const { supabase } = session;
 
   try {
-    // ✅ Crida al servei de DETALL
     const data = await expensesDetailService.processOcr(supabase, formData);
     return { success: true, message: "Document processat amb èxit.", data };
   } catch (error: unknown) {
@@ -82,11 +83,11 @@ export async function processOcrAction(
  * ACCIÓ: Obté despeses per a un proveïdor.
  */
 export async function fetchExpensesForSupplier(supplierId: string) {
-  const session = await validateUserSession();
+  // ✅ 4. Validació de PERMÍS DE VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return [];
   const { supabase, activeTeamId } = session;
   
-  // ✅ Crida al servei de DETALL
   return await expensesDetailService.fetchExpensesForSupplier(supabase, supplierId, activeTeamId);
 }
 
@@ -98,11 +99,11 @@ export async function searchExpensesForLinking(
 ): Promise<
   Pick<Expense, "id" | "description" | "expense_date" | "total_amount">[]
 > {
-  const session = await validateUserSession();
+  // ✅ 5. Validació de PERMÍS DE VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return [];
   const { supabase, activeTeamId } = session;
 
-  // ✅ Crida al servei de DETALL
   return await expensesDetailService.searchExpensesForLinking(supabase, activeTeamId, searchTerm);
 }
 
@@ -113,14 +114,14 @@ export async function linkExpenseToSupplier(
   expenseId: number,
   supplierId: string,
 ): Promise<ActionResult<Expense>> {
-  const session = await validateUserSession();
+  // ✅ 6. Validació de PERMÍS DE GESTIÓ
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) {
     return { success: false, message: session.error.message };
   }
   const { supabase, activeTeamId } = session;
 
   try {
-    // ✅ Crida al servei de DETALL
     const data = await expensesDetailService.linkExpenseToSupplier(supabase, activeTeamId, expenseId, supplierId);
     revalidatePath(`/finances/suppliers/${supplierId}`);
     revalidatePath(`/finances/expenses/${expenseId}`);
@@ -138,14 +139,14 @@ export async function unlinkExpenseFromSupplier(
   expenseId: number,
   supplierId: string, // Per revalidar
 ): Promise<ActionResult> {
-  const session = await validateUserSession();
+  // ✅ 7. Validació de PERMÍS DE GESTIÓ
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) {
     return { success: false, message: session.error.message };
   }
   const { supabase, activeTeamId } = session;
 
   try {
-    // ✅ Crida al servei de DETALL
     await expensesDetailService.unlinkExpenseFromSupplier(supabase, activeTeamId, expenseId);
     revalidatePath(`/finances/suppliers/${supplierId}`);
     revalidatePath(`/finances/expenses/${expenseId}`);
@@ -160,7 +161,8 @@ export async function unlinkExpenseFromSupplier(
  * ACCIÓ: Obté categories úniques (gestiona la sessió).
  */
 export async function getUniqueExpenseCategories(): Promise<string[]> {
-  const session = await validateUserSession();
+  // ✅ 8. Validació de PERMÍS DE VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) {
     console.error("Session error in getUniqueExpenseCategories:", session.error);
     return [];
@@ -168,6 +170,5 @@ export async function getUniqueExpenseCategories(): Promise<string[]> {
   const { activeTeamId } = session;
 
   console.log("expenses/actions.ts (getUniqueExpenseCategories): Cridant al servei...");
-  // ✅ Crida al servei de LLISTA
   return await expensesListService.getUniqueExpenseCategories(activeTeamId);
 }

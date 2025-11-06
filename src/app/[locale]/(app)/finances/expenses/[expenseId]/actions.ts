@@ -1,4 +1,3 @@
-// /app/[locale]/(app)/finances/expenses/[expenseId]/actions.ts (SENSE CANVIS, JA ÉS CORRECTE)
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -8,10 +7,16 @@ import {
   type ExpenseAttachment,
 } from "@/types/finances/expenses";
 import { type ActionResult } from "@/types/shared/index";
-import { validateUserSession } from "@/lib/supabase/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// ✅ Aquest fitxer ja importava del servei de detall correcte
+// ✅ 1. Importem els nous guardians, permisos i límits
+import { 
+  validateSessionAndPermission, 
+  validateActionAndUsage 
+} from "@/lib/permissions/permissions";
+import { PERMISSIONS } from "@/lib/permissions/permissions.config";
+import { type PlanLimit } from "@/config/subscriptions";
+
 import * as expensesService from "@/lib/services/finances/expenses/expenseDetail.service";
 
 // --- Server Actions Públiques ---
@@ -20,7 +25,8 @@ import * as expensesService from "@/lib/services/finances/expenses/expenseDetail
  * ACCIÓ: Obté el detall d'una despesa.
  */
 export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDetail | null> {
-  const session = await validateUserSession();
+  // ✅ 2. Validació de PERMÍS DE VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return null;
   const { supabase, activeTeamId } = session;
 
@@ -34,14 +40,36 @@ export async function fetchExpenseDetail(expenseId: number): Promise<ExpenseDeta
 
 /**
  * ACCIÓ: Desa una despesa (crea o actualitza).
+ * ✅ AQUESTA ÉS LA CAPA 3 DE DEFENSA
  */
 export async function saveExpenseAction(
   expenseData: ExpenseFormDataForAction,
   expenseId: string | number | null 
 ): Promise<ActionResult<{ id: number }>> {
-  const session = await validateUserSession();
-  if ("error" in session) return { success: false, message: session.error.message };
-  const { supabase, user, activeTeamId } = session;
+  
+  let validationResult;
+  const isNew = expenseId === null || expenseId === 'new';
+
+  if (isNew) {
+    // ✅ 3. Validació de CREACIÓ (PERMÍS + LÍMIT)
+    const limitToCheck: PlanLimit = 'maxExpensesPerMonth';
+    console.log(`[saveExpenseAction] Comprovant límit: ${limitToCheck}`);
+    validationResult = await validateActionAndUsage(
+      PERMISSIONS.MANAGE_EXPENSES,
+      limitToCheck
+    );
+  } else {
+    // ✅ 4. Validació d'EDICIÓ (NOMÉS PERMÍS)
+    validationResult = await validateSessionAndPermission(
+      PERMISSIONS.MANAGE_EXPENSES
+    );
+  }
+
+  if ("error" in validationResult) {
+    return { success: false, message: validationResult.error.message };
+  }
+
+  const { supabase, user, activeTeamId } = validationResult;
 
   try {
     const { id: resultingExpenseId } = await expensesService.saveExpense(
@@ -71,7 +99,8 @@ export async function uploadAttachmentAction(
     expenseId: string | number, 
     formData: FormData
 ): Promise<ActionResult<{ newAttachment: ExpenseAttachment }>> {
-  const session = await validateUserSession();
+  // ✅ 5. Validació de PERMÍS DE GESTIÓ
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, user, activeTeamId } = session;
 
@@ -104,7 +133,8 @@ export async function uploadAttachmentAction(
  * ACCIÓ: Elimina una despesa.
  */
 export async function deleteExpense(expenseId: number): Promise<ActionResult> {
-  const session = await validateUserSession();
+  // ✅ 6. Validació de PERMÍS DE GESTIÓ
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
@@ -122,7 +152,8 @@ export async function deleteExpense(expenseId: number): Promise<ActionResult> {
  * ACCIÓ: Obté una URL signada per a un adjunt.
  */
 export async function getAttachmentSignedUrl(filePath: string): Promise<ActionResult<{ signedUrl: string }>> {
-  const session = await validateUserSession();
+  // ✅ 7. Validació de PERMÍS DE VISTA
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { activeTeamId } = session;
 
@@ -142,7 +173,8 @@ export async function deleteAttachmentAction(
   attachmentId: string, 
   filePath: string
 ): Promise<ActionResult> {
-  const session = await validateUserSession();
+  // ✅ 8. Validació de PERMÍS DE GESTIÓ
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
   
