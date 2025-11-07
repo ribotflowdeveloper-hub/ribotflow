@@ -180,6 +180,13 @@ export const navModules: NavItem[] = [
     path: "/network",
     isSingle: true,
   },
+    {
+    id: "roadmap",
+    labelKey: "roadmap",
+    icon: Puzzle,
+    path: "/roadmap",
+    isSingle: true,
+  },
   /*{
     id: 'projectStrocture',
     labelKey: 'architecture',

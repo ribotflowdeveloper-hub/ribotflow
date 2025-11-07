@@ -3,9 +3,6 @@
 
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { type User } from '@supabase/supabase-js'
-// ❌ ELIMINEM la llibreria incorrecta
-// import { Base64 } from 'js-base64' 
-
 import type { Database } from '@/types/supabase'
 import type { AudioJob } from '@/types/db'
 import { decryptToken } from '@/lib/utils/crypto'
@@ -78,12 +75,13 @@ async function getGoogleAccessToken(
 }
 
 
-// --- HELPER 2: buildHtmlBody (Sense canvis) ---
+/**
+ * ✅ HELPER 2 (HTML CORREGIT): Construeix el cos HTML amb millor disseny.
+ */
 function buildHtmlBody(
   job: AudioJob,
   t: (key: string) => string
 ): string {
-  // (Aquesta funció és idèntica i correcta)
   const assignedTasks =
     (job.assigned_tasks_summary as {
       assignee_name: string
@@ -97,12 +95,13 @@ function buildHtmlBody(
       action_items: string[]
     }[]) || []
 
+  // Estils millorats
   const html = `
-  <div style="font-family: Arial, sans-serif; color: #222; max-width: 640px; margin: auto; padding: 24px; background: #f9fafb; border-radius: 10px; border: 1px solid #e5e7eb;">
-    <h2 style="text-align: center; color: #374151; margin-bottom: 16px; font-size: 22px;">${t(
+  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'; color: #333; max-width: 600px; margin: auto; padding: 20px; background: #fdfdfd; border-radius: 8px; border: 1px solid #eaeaea;">
+    <h2 style="text-align: center; color: #111; margin-bottom: 24px; font-size: 24px; font-weight: 600;">${t(
       'Email.summaryTitle'
     )}</h2>
-    <p style="font-size: 15px; line-height: 1.5; color: #555; background: #fff; border-radius: 8px; padding: 16px; border-left: 4px solid #5e6ad2;">
+    <p style="font-size: 16px; line-height: 1.6; color: #444; background: #f9f9f9; border-radius: 8px; padding: 20px; border-left: 4px solid #5e6ad2; margin: 0 0 24px;">
       ${job.summary || t('summaryEmpty')}
     </p>
     
@@ -110,19 +109,24 @@ function buildHtmlBody(
       ${
         assignedTasks.length > 0
           ? `
-      <h3 style="font-size: 18px; color: #374151; margin-bottom: 12px; border-bottom: 2px solid #d1d5db; padding-bottom: 4px;">
+      <h3 style="font-size: 20px; color: #111; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-weight: 600;">
         ${t('Email.assignedTasksTitle')}
       </h3>
-      <div style="padding-left: 10px; border-left: 3px solid #5e6ad2;">
+      <div style="padding-left: 10px;">
         ${assignedTasks
           .map(
             (group) => `
-          <div style="margin: 16px 0; padding-left: 10px;">
-            <div style="font-weight: bold; color: #111827; font-size: 15px;">👤 ${
+          <div style="margin: 0 0 20px; padding-left: 10px;">
+            <div style="font-weight: 600; color: #111; font-size: 17px; margin-bottom: 8px;">👤 ${
               group.assignee_name
             }</div>
-            <ul style="margin: 6px 0 0 16px; color: #374151; font-size: 14px;">
-              ${group.tasks.map((task) => `<li>${task}</li>`).join('')}
+            <ul style="margin: 0 0 0 20px; padding: 0; color: #333; font-size: 16px; line-height: 1.5;">
+              ${group.tasks
+                .map(
+                  (task) =>
+                    `<li style="margin-bottom: 6px;">${task}</li>`
+                )
+                .join('')}
             </ul>
           </div>
         `
@@ -138,25 +142,25 @@ function buildHtmlBody(
       keyMoments.length > 0
         ? `
     <div style="margin-top: 32px;">
-      <h3 style="font-size: 18px; color: #374151; margin-bottom: 12px; border-bottom: 2px solid #d1d5db; padding-bottom: 4px;">
+      <h3 style="font-size: 20px; color: #111; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-weight: 600;">
         ${t('keyMomentsTitle')}
       </h3>
-      <div style="padding-left: 10px; border-left: 3px solid #10b981;">
+      <div style="padding-left: 10px;">
         ${keyMoments
           .map(
             (moment) => `
-          <div style="margin: 18px 0; padding-left: 10px;">
-            <div style="font-weight: bold; font-size: 15px; color: #111827;">🟢 ${
+          <div style="margin: 0 0 24px; padding-left: 10px; border-left: 3px solid #10b981;">
+            <div style="font-weight: 600; font-size: 17px; color: #111; margin-bottom: 6px;">🟢 ${
               moment.topic
             }</div>
-            <p style="font-size: 14px; color: #555; margin: 4px 0 6px;">${
+            <p style="font-size: 16px; color: #444; margin: 4px 0 10px; line-height: 1.6;">${
               moment.summary
             }</p>
             ${
               moment.decisions.length > 0
                 ? `
-            <div style="font-size: 13px; color: #047857; margin-bottom: 4px;">
-              <strong>${t(
+            <div style="font-size: 15px; color: #047857; margin-bottom: 4px; padding: 6px 10px; background: #f0fdf4; border-radius: 6px;">
+              <strong style="font-weight: 600;">${t(
                 'keyMomentsDecisions'
               )}:</strong> ${moment.decisions.join(', ')}
             </div>`
@@ -165,8 +169,8 @@ function buildHtmlBody(
             ${
               moment.action_items.length > 0
                 ? `
-            <div style="font-size: 13px; color: #1d4ed8;">
-              <strong>${t(
+            <div style="font-size: 15px; color: #1d4ed8; margin-top: 6px; padding: 6px 10px; background: #eff6ff; border-radius: 6px;">
+              <strong style="font-weight: 600;">${t(
                 'Email.keyMomentsActions'
               )}:</strong> ${moment.action_items.join(', ')}
             </div>`
@@ -182,8 +186,8 @@ function buildHtmlBody(
         : ''
     }
     
-    <hr style="margin-top: 32px; border: none; border-top: 1px solid #e5e7eb;">
-    <p style="text-align: center; font-size: 12px; color: #9ca3af; margin-top: 12px;">
+    <hr style="margin-top: 32px; border: none; border-top: 1px solid #eee;">
+    <p style="text-align: center; font-size: 12px; color: #999; margin-top: 20px;">
       ${t('Email.footerText')} • RibotFlow
     </p>
   </div>
@@ -191,12 +195,13 @@ function buildHtmlBody(
   return html
 }
 
-// --- HELPER 2.5: buildPlainTextBody (Sense canvis) ---
+/**
+ * ✅ HELPER 2.5 (TEXT PLA CORREGIT): Construeix el cos en Text Pla més net.
+ */
 function buildPlainTextBody(
   job: AudioJob,
   t: (key: string) => string
 ): string {
-  // (Aquesta funció és idèntica i correcta)
   const assignedTasks =
     (job.assigned_tasks_summary as {
       assignee_name: string
@@ -210,40 +215,43 @@ function buildPlainTextBody(
       action_items: string[]
     }[]) || []
 
-  let text = `${t('Email.summaryTitle')}\n`
-  text += `====================================\n\n`
+  let text = `*** ${t('Email.summaryTitle')} ***\n`
+  text += `--------------------------------------------------\n\n`
   text += `${job.summary || t('summaryEmpty')}\n\n`
 
   if (assignedTasks.length > 0) {
-    text += `${t('Email.assignedTasksTitle')}\n`
-    text += `====================================\n\n`
-    assignedTasks.forEach((group) => {
+    text += `*** ${t('Email.assignedTasksTitle')} ***\n`
+    text += `--------------------------------------------------\n\n`
+    assignedTasks.forEach((group, index) => {
+      // Afegeix un salt de línia ABANS del següent usuari, però no del primer
+      if (index > 0) text += `\n`
       text += `👤 ${group.assignee_name}:\n`
       group.tasks.forEach((task) => {
-        text += `  - ${task}\n`
+        text += `   - ${task}\n` // Més indentació
       })
-      text += `\n`
     })
+    text += `\n` // Un salt de línia al final del bloc
   }
 
   if (keyMoments.length > 0) {
-    text += `${t('keyMomentsTitle')}\n`
-    text += `====================================\n\n`
-    keyMoments.forEach((moment) => {
+    text += `*** ${t('keyMomentsTitle')} ***\n`
+    text += `--------------------------------------------------\n\n`
+    keyMoments.forEach((moment, index) => {
+      if (index > 0) text += `\n`
       text += `🟢 ${moment.topic}\n`
       text += `${moment.summary}\n`
       if (moment.decisions.length > 0) {
-        text += `  ${t('keyMomentsDecisions')}: ${moment.decisions.join(
+        text += `   -> ${t('keyMomentsDecisions')}: ${moment.decisions.join(
           ', '
         )}\n`
       }
       if (moment.action_items.length > 0) {
-        text += `  ${t(
+        text += `   -> ${t(
           'Email.keyMomentsActions'
         )}: ${moment.action_items.join(', ')}\n`
       }
-      text += `\n`
     })
+    text += `\n`
   }
 
   text += `\n--\n${t('Email.footerText')} • RibotFlow\n`
@@ -265,7 +273,7 @@ function buildTranscriptionMimeMessage(
 ): string {
   const boundary = `----=${Math.random().toString(16).substring(2)}`
   
-  // ✅ CANVI: Utilitzem Buffer.from(text).toString('base64')
+  // Utilitzem Buffer.from(text).toString('base64')
   // 'Buffer' és natiu de Node.js i gestiona UTF-8 correctament.
   const encodedSubject = Buffer.from(subject).toString('base64');
   const encodedPlainText = Buffer.from(plainTextBody).toString('base64');
@@ -274,7 +282,6 @@ function buildTranscriptionMimeMessage(
   let message = `From: ${fromName} <${fromEmail}>\r\n`
   message += `To: ${recipients.join(', ')}\r\n`
   message += `Cc: ${ccRecipient}\r\n`
-  // Utilitzem l'assumpte codificat correctament
   message += `Subject: =?UTF-8?B?${encodedSubject}?=\r\n`
   message += `Content-Type: multipart/alternative; boundary=${boundary}\r\n\r\n`
 
@@ -282,14 +289,12 @@ function buildTranscriptionMimeMessage(
   message += `--${boundary}\r\n`
   message += `Content-Type: text/plain; charset=UTF-8\r\n`
   message += `Content-Transfer-Encoding: base64\r\n\r\n` 
-  // Inserim el text pla codificat amb Buffer
   message += `${encodedPlainText}\r\n\r\n`
 
   // --- PART 2: HTML ---
   message += `--${boundary}\r\n`
   message += `Content-Type: text/html; charset=UTF-8\r\n`
   message += `Content-Transfer-Encoding: base64\r\n\r\n`
-  // Inserim l'HTML codificat amb Buffer
   message += `${encodedHtml}\r\n\r\n` 
 
   message += `--${boundary}--`
@@ -301,7 +306,6 @@ function buildTranscriptionMimeMessage(
 // --- Lògica principal (EXPORTADA) ---
 
 /**
- * ✅ FUNCIÓ PRINCIPAL (MODIFICADA)
  * Orquestra l'enviament d'un resum de transcripció per email.
  */
 export async function sendTranscriptionSummaryEmail(
@@ -371,8 +375,7 @@ export async function sendTranscriptionSummaryEmail(
       plainTextBody 
     )
 
-    // 6. ✅ CANVI: Codificar per a la URL de l'API de GMAIL
-    // Utilitzem 'base64url' per a compatibilitat amb l'API de Gmail
+    // 6. Codificar per a la URL de l'API de GMAIL
     const rawEmail = Buffer.from(mimeMessage).toString('base64url');
 
     console.log(

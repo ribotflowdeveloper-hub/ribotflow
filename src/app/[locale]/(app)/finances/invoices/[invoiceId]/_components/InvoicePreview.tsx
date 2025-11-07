@@ -1,59 +1,71 @@
+// src/app/[locale]/(app)/finances/invoices/[invoiceId]/_components/InvoicePreview.tsx (FITXER CORREGIT)
+
 "use client";
 
 import React from 'react';
-import Image from 'next/image'; // ✅ 1. Importa Image
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { type InvoiceFormData } from '@/types/finances/invoices';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Separator } from '@/components/ui/separator';
 
+// ✅ 1. Importem els tipus REALS que rebem com a props
+import { type CompanyProfile } from '@/types/settings/team';
+import { type Database } from '@/types/supabase';
+
+// Definim el tipus Contact basat en la taula de Supabase
+type Contact = Database['public']['Tables']['contacts']['Row'];
+
 interface InvoicePreviewProps {
     formData: InvoiceFormData;
-    companyProfile?: {
-        name: string | null;
-        tax_id: string | null;
-        address: string | null;
-        email: string | null;
-        logo_url?: string | null;
-    } | null;
+    // ✅ 2. Aquestes són ara els tipus correctes
+    companyProfile?: CompanyProfile | null;
+    clientProfile?: Contact | null; // <-- Canviat al tipus 'Contact' real
 }
 
-export function InvoicePreview({ formData, companyProfile }: InvoicePreviewProps) {
+export function InvoicePreview({ formData, companyProfile, clientProfile }: InvoicePreviewProps) {
     const t = useTranslations('InvoiceDetailPage');
 
-    const company = companyProfile ?? {
+    // ✅ 3. LÒGICA DE MAPPEIG (Companyia)
+    // Mapegem des del tipus 'CompanyProfile' (que té camps com 'street') o 'formData'
+    const company = {
         name: formData.company_name,
-        tax_id: formData.company_tax_id,
-        address: formData.company_address,
-        email: formData.company_email,
-        logo_url: formData.company_logo_url,
+        tax_id:  formData.company_tax_id,
+        address: companyProfile
+            ? [ companyProfile.company_address].filter(Boolean).join('\n')
+            : formData.company_address,
+        email:  formData.company_email,
+        logo_url: companyProfile?.logo_url ?? formData.company_logo_url,
     };
 
+    // ✅ 4. LÒGICA DE MAPPEIG (Client)
+    // Mapegem des del tipus 'Contact' (que té 'nom', 'street') o 'formData'
     const client = {
-        name: formData.client_name,
-        tax_id: formData.client_tax_id,
-        address: formData.client_address,
-        email: formData.client_email,
+        name: clientProfile?.nom ?? formData.client_name, // <-- Corregit: 'nom' en lloc de 'name'
+        tax_id: clientProfile?.tax_id ?? formData.client_tax_id,
+        address: clientProfile
+            ? [clientProfile.street, clientProfile.city, clientProfile.postal_code, clientProfile.country].filter(Boolean).join('\n')
+            : formData.client_address,
+        email: clientProfile?.email ?? formData.client_email,
     };
 
     const currency = formData.currency || 'EUR';
     const locale = formData.language || 'ca';
 
     return (
-        <div className="bg-white p-6 sm:p-8 rounded-lg shadow-lg max-w-4xl mx-auto border print:shadow-none print:border-none text-sm">
+        <div className="bg-white text-gray-900 p-6 sm:p-8 rounded-lg shadow-lg max-w-4xl mx-auto border print:shadow-none print:border-none text-sm">
             {/* Capçalera */}
             <header className="flex flex-col sm:flex-row justify-between items-start mb-6 gap-4">
                 {/* Dades Empresa */}
                 <div className="flex-1">
                     {company.logo_url && (
-                        // ✅ 2. Substitueix img per Image i afegeix width/height
                         <Image
                             src={company.logo_url}
                             alt="Logo Empresa"
-                            width={150} // 👈 3. Afegeix ample (ajusta segons necessitis)
-                            height={64} // 👈 3. Afegeix alçada (ajusta per mantenir relació aspecte)
-                            className="h-12 sm:h-16 w-auto mb-3 object-contain" // Manté alçada visual i evita deformació
+                            width={150}
+                            height={64}
+                            className="h-12 sm:h-16 w-auto mb-3 object-contain"
                         />
                     )}
                     <h1 className="text-xl sm:text-2xl font-bold mb-1">{company.name || t('preview.defaultCompanyName')}</h1>
@@ -61,8 +73,8 @@ export function InvoicePreview({ formData, companyProfile }: InvoicePreviewProps
                     {company.tax_id && <p className="text-xs text-gray-600">NIF: {company.tax_id}</p>}
                     {company.email && <p className="text-xs text-gray-600">{company.email}</p>}
                 </div>
-                {/* ... resta del component ... */}
-                 {/* Dades Factura */}
+
+                {/* Dades Factura (sense canvis) */}
                 <div className="text-left sm:text-right w-full sm:w-auto mt-4 sm:mt-0">
                     <h2 className="text-2xl sm:text-3xl font-bold uppercase text-gray-700 mb-2">{t('preview.invoiceTitle')}</h2>
                     <p><strong className="font-semibold">{t('field.invoiceNumber')}:</strong> {formData.invoice_number || t('preview.pending')}</p>
@@ -77,16 +89,17 @@ export function InvoicePreview({ formData, companyProfile }: InvoicePreviewProps
             {/* Dades del Client */}
             <section className="mb-6">
                 <h3 className="text-xs font-semibold uppercase text-gray-500 mb-1">{t('preview.billTo')}</h3>
+                {/* ✅ AQUESTA PART ARA FUNCIONARÀ */}
                 <p className="font-semibold">{client.name || t('preview.noClient')}</p>
                 {client.address && <p className="text-xs text-gray-600 whitespace-pre-line">{client.address}</p>}
                 {client.tax_id && <p className="text-xs text-gray-600">NIF: {client.tax_id}</p>}
                 {client.email && <p className="text-xs text-gray-600">{client.email}</p>}
             </section>
 
-            {/* Taula de Línies */}
+            {/* Taula de Línies (sense canvis) */}
             <section className="mb-6">
                 <Table>
-                    <TableHeader className="bg-gray-50 text-xs uppercase">
+                    <TableHeader className="bg-gray-50 text-xs uppercase text-gray-600">
                         <TableRow>
                             <TableHead className="w-[50%] px-2 py-2">{t('preview.itemDescription')}</TableHead>
                             <TableHead className="text-right px-2 py-2">{t('preview.itemQuantity')}</TableHead>
@@ -99,23 +112,23 @@ export function InvoicePreview({ formData, companyProfile }: InvoicePreviewProps
                     </TableHeader>
                     <TableBody className="text-sm">
                         {(formData.invoice_items || []).map((item, index) => {
-                             const quantity = Number(item.quantity) || 0;
-                             const unitPrice = Number(item.unit_price) || 0;
-                             const lineTotalBeforeDiscount = quantity * unitPrice;
-                             let lineDiscountDisplay = "-";
-                             let lineDiscountAmount = 0;
-                             const discountAmount = Number(item.discount_amount) || 0;
-                             const discountPercentage = Number(item.discount_percentage) || 0;
-                             if (discountAmount > 0) {
-                                 lineDiscountAmount = discountAmount;
-                                 lineDiscountDisplay = formatCurrency(lineDiscountAmount, currency, locale);
-                             } else if (discountPercentage > 0) {
-                                 lineDiscountAmount = lineTotalBeforeDiscount * (discountPercentage / 100);
-                                 lineDiscountDisplay = `${discountPercentage}%`;
-                             }
-                             const lineTotalAfterDiscount = lineTotalBeforeDiscount - lineDiscountAmount;
+                            const quantity = Number(item.quantity) || 0;
+                            const unitPrice = Number(item.unit_price) || 0;
+                            const lineTotalBeforeDiscount = quantity * unitPrice;
+                            let lineDiscountDisplay = "-";
+                            let lineDiscountAmount = 0;
+                            const discountAmount = Number(item.discount_amount) || 0;
+                            const discountPercentage = Number(item.discount_percentage) || 0;
+                            if (discountAmount > 0) {
+                                lineDiscountAmount = discountAmount;
+                                lineDiscountDisplay = formatCurrency(lineDiscountAmount, currency, locale);
+                            } else if (discountPercentage > 0) {
+                                lineDiscountAmount = lineTotalBeforeDiscount * (discountPercentage / 100);
+                                lineDiscountDisplay = `${discountPercentage}%`;
+                            }
+                            const lineTotalAfterDiscount = lineTotalBeforeDiscount - lineDiscountAmount;
 
-                             return (
+                            return (
                                 <TableRow key={item.id ?? index} className="border-b">
                                     <TableCell className="font-medium py-1.5 px-2">{item.description || '(Sense descripció)'}</TableCell>
                                     <TableCell className="text-right py-1.5 px-2">{quantity}</TableCell>
@@ -125,33 +138,34 @@ export function InvoicePreview({ formData, companyProfile }: InvoicePreviewProps
                                     )}
                                     <TableCell className="text-right py-1.5 px-2">{formatCurrency(lineTotalAfterDiscount, currency, locale)}</TableCell>
                                 </TableRow>
-                             );
+                            );
                         })}
-                         {formData.invoice_items.length === 0 && (
-                             <TableRow>
-                                 <TableCell colSpan={formData.invoice_items?.some(it => (it.discount_percentage ?? 0) > 0 || (it.discount_amount ?? 0) > 0) ? 5 : 4} className="text-center text-gray-500 py-4">{t('preview.noItems')}</TableCell>
-                             </TableRow>
-                         )}
+                        {formData.invoice_items.length === 0 && (
+                            <TableRow>
+                                <TableCell colSpan={formData.invoice_items?.some(it => (it.discount_percentage ?? 0) > 0 || (it.discount_amount ?? 0) > 0) ? 5 : 4} className="text-center text-gray-500 py-4">{t('preview.noItems')}</TableCell>
+                            </TableRow>
+                        )}
                     </TableBody>
                 </Table>
             </section>
 
-            {/* Totals i Peu */}
+            {/* Totals i Peu (sense canvis) */}
             <section className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-6">
-                 <div className="flex-1 text-xs text-gray-600 space-y-3">
-                     {formData.terms && (
-                         <div>
-                             <h4 className="font-semibold mb-1 uppercase text-gray-500">{t('field.terms')}:</h4>
-                             <p className="whitespace-pre-line">{formData.terms}</p>
-                         </div>
-                     )}
-                     {formData.payment_details && (
-                          <div>
-                              <h4 className="font-semibold mb-1 uppercase text-gray-500">{t('field.paymentDetails')}:</h4>
-                              <p className="whitespace-pre-line">{formData.payment_details}</p>
-                          </div>
-                     )}
-                 </div>
+                <div className="flex-1 text-xs text-gray-600 space-y-3">
+                    {formData.terms && (
+                        <div>
+                            <h4 className="font-semibold mb-1 uppercase text-gray-500">{t('field.terms')}:</h4>
+                            <p className="whitespace-pre-line">{formData.terms}</p>
+                        </div>
+                    )}
+                    {formData.payment_details && (
+                        <div>
+                            <h4 className="font-semibold mb-1 uppercase text-gray-500">{t('field.paymentDetails')}:</h4>
+                            <p className="whitespace-pre-line">{formData.payment_details}</p>
+                        </div>
+                    )}
+                </div>
+              
                 <div className="w-full sm:w-auto sm:max-w-xs space-y-1 text-sm self-end">
                     <div className="flex justify-between">
                         <span className="text-gray-600">{t('label.subtotal')}:</span>
@@ -174,7 +188,7 @@ export function InvoicePreview({ formData, companyProfile }: InvoicePreviewProps
                         </div>
                     )}
                     <Separator className="my-1.5" />
-                    <div className="flex justify-between font-bold text-base">
+                                   <div className="flex justify-between font-bold text-base">
                         <span>{t('label.total')}:</span>
                         <span className="text-right">{formatCurrency(formData.total_amount, currency, locale)}</span>
                     </div>

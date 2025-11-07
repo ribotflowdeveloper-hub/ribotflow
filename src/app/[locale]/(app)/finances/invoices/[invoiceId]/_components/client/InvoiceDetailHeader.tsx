@@ -175,7 +175,13 @@ export function InvoiceDetailHeader({
               <DialogTitle>{t('preview.title')}</DialogTitle>
             </DialogHeader>
             <ScrollArea className="flex-grow py-4 pr-6 -mr-6">
-              <InvoicePreview formData={formData} />
+              {/* ✅ 2. PASSEM LES PROPS QUE FALTAVEN */}
+              <InvoicePreview
+                formData={formData}
+                companyProfile={company}
+                clientProfile={contact}
+              />
+
             </ScrollArea>
             <DialogFooter className="mt-4">
               <DialogClose asChild>

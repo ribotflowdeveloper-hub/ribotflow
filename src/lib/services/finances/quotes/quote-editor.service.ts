@@ -1,8 +1,8 @@
-// /src/lib/services/crm/quotes/quote-editor.service.ts (CORREGIT)
+"use server"; // Assegurem que és un Server Component
+
 import {
   type SupabaseClient,
-  type PostgrestError,
-  type User, // ✅ CORRECCIÓ 2: Importem el tipus 'User'
+  type User,
 } from '@supabase/supabase-js'
 import { type Database } from '@/types/supabase'
 import { type ActionResult } from '@/types/shared/index'
@@ -18,15 +18,13 @@ import {
   type Product,
   type Quote,
   type QuoteItem,
-} from '@/types/finances/quotes' // Assegura't que la ruta és correcta
+} from '@/types/finances/quotes' 
 import { generateQuotePdfBuffer } from '@/lib/pdf/generateQuotePDF'
 import { type EditableQuote } from '@/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor'
 
-// ✅ CORRECCIÓ 1: Importem 'Base64' des de 'js-base64'
 import { Base64 } from 'js-base64'
 import crypto from 'crypto' // Per al randomUUID de Node.js
-
-// ✅ Importem la teva funció de crypto.ts
+import { PostgrestError } from '@supabase/supabase-js'
 import { decryptToken } from '@/lib/utils/crypto'
 
 // --- Tipus Locals ---
@@ -168,9 +166,6 @@ export async function getQuoteEditorData(
         return { data: null, error: 'Pressupost no trobat.' }
       }
 
-      // 🚨 ATENCIÓ: Aquesta lògica de 'pdfUrl' és la que estem eliminant
-      // La deixem de moment per no trencar el 'QuoteEditorData',
-      // però el botó de descàrrega hauria de ser on-the-fly.
       let pdfUrl: string | null = null
       const filePath = `quotes/${teamId}/${quoteId}.pdf`
       const { data: signedUrlData, error: signedUrlError } =
@@ -214,6 +209,7 @@ export async function saveQuote(
   quoteData: QuotePayload,
   teamId: string
 ): Promise<ActionResult<number>> {
+  // ... (Aquesta funció no té canvis)
   // 1. Validació de dades
   if (!quoteData.contact_id) {
     return { success: false, message: 'Cal seleccionar un client.' }
@@ -283,6 +279,7 @@ export async function deleteQuote(
   supabase: SupabaseClient<Database>,
   quoteId: number
 ): Promise<{ error: PostgrestError | null }> {
+  // ... (Aquesta funció no té canvis)
   const { error: itemsError } = await supabase
     .from('quote_items')
     .delete()
@@ -315,6 +312,7 @@ export async function createProduct(
   userId: string,
   teamId: string
 ): Promise<ActionResult<Product>> {
+  // ... (Aquesta funció no té canvis)
   try {
     const { data, error } = await supabase
       .from('products')
@@ -344,6 +342,7 @@ export async function updateTeamProfile(
   teamData: Partial<Team>,
   teamId: string
 ): Promise<ActionResult<Team>> {
+  // ... (Aquesta funció no té canvis)
   try {
     const { data, error } = await supabase
       .from('teams')
@@ -372,7 +371,7 @@ async function getGoogleAccessToken(
   supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<{ accessToken: string; userEmail: string }> {
-  
+  // ... (Aquesta funció no té canvis)
   if (!process.env.ENCRYPTION_SECRET_KEY) {
     throw new Error(
       "Falta ENCRYPTION_SECRET_KEY a les variables d'entorn per desxifrar el token."
@@ -380,13 +379,11 @@ async function getGoogleAccessToken(
   }
 
   console.log('[sendQuote] Obtenint credencials d_usuari...')
-  // ✅ CORRECCIÓ 3: Canviat 'provider_email' per 'provider_user_id'
-  // ✅ CORRECCIÓ PRINCIPAL: Canviat 'google' per 'google_gmail'
   const { data: creds, error: credsError } = await supabase
     .from('user_credentials')
     .select('refresh_token, provider_user_id') 
     .eq('user_id', userId)
-    .eq('provider', 'google_gmail') // 👈 EL GRAN CANVI ÉS AQUÍ
+    .eq('provider', 'google_gmail')
     .maybeSingle()
 
   if (credsError)
@@ -395,7 +392,6 @@ async function getGoogleAccessToken(
     throw new Error(
       "No s'han trobat les credencials de Google (refresh token). Si us plau, connecta el teu compte a 'Integracions'."
     )
-  // ✅ CORRECCIÓ 3: Comprovem 'provider_user_id'
   if (!creds.provider_user_id)
     throw new Error("Les credencials no tenen un email (provider_user_id) associat.")
 
@@ -427,7 +423,6 @@ async function getGoogleAccessToken(
   }
 
   console.log('[sendQuote] Google Access Token obtingut.')
-  // ✅ CORRECCIÓ 3: Retornem el 'provider_user_id' com a 'userEmail'
   return { accessToken: tokenData.access_token, userEmail: creds.provider_user_id }
 }
 
@@ -441,7 +436,7 @@ function buildHtmlBody(
   clientPortalUrl: string,
   senderEmail: string
 ): string {
-  // (Aquesta funció no té canvis, és la teva plantilla)
+  // ... (Aquesta funció no té canvis)
   return `
     <div style="font-family: 'Inter', Arial, sans-serif; font-size: 16px; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9; border-radius: 10px;">
       <p>Hola <strong>${contact.nom}</strong>,</p>
@@ -473,11 +468,11 @@ function buildMimeMessage(
   senderEmail: string,
   pdfBase64: string
 ): string {
+  // ... (Aquesta funció no té canvis)
   console.log('[sendQuote] Construint missatge MIME...')
   const subject = `El teu pressupost ${quote.quote_number} de ${companyName}`
 
   const encodeSubject = (subject: string): string => {
-    // ✅ CORRECCIÓ 1: Fem servir Base64.encode
     const encoded = Base64.encode(subject, true) // true = URL-safe
     return `=?UTF-8?B?${encoded}?=`
   }
@@ -520,15 +515,18 @@ function buildMimeMessage(
 
 /**
  * SERVEI PRINCIPAL: Envia el pressupost per email (PDF "al vol" + Gmail API)
+ *
+ * ✅ *** LÒGICA DE PIPELINE CORREGIDA ***
  */
 export async function sendQuote(
   supabase: SupabaseClient<Database>,
-  user: User, // Ara necessitem l'usuari per a l'autenticació
+  user: User, 
   quoteId: number
 ): Promise<ActionResult> {
   try {
     // --- 1. Obtenir Dades ---
     console.log(`[sendQuote] Obtenint dades per al pressupost ${quoteId}...`)
+    // ✅ CORRECCIÓ: Necessitem 'opportunity_id' a la consulta principal
     const { data: quoteData, error: quoteError } = await supabase
       .from('quotes')
       .select('*, items:quote_items(*), contacts(*), team:teams(*)')
@@ -543,7 +541,7 @@ export async function sendQuote(
     const contact = quoteData.contacts as Contact | null
     const company = quoteData.team as Team | null
 
-    // Validacions
+    // Validacions (sense canvis)
     if (!contact)
       return { success: false, message: 'El pressupost no té un contacte assignat.' }
     if (!contact.email)
@@ -562,6 +560,7 @@ export async function sendQuote(
     console.log('[sendQuote] Dades obtingudes correctament.')
 
     // --- 2. Generar el PDF "al vol" ---
+    // ... (sense canvis) ...
     console.log(`[sendQuote] Generant PDF per al pressupost ${quote.quote_number}...`)
     const pdfBuffer = await generateQuotePdfBuffer(quote, company, contact)
     const pdfBase64 = pdfBuffer.toString('base64')
@@ -570,10 +569,11 @@ export async function sendQuote(
     )
 
     // --- 3. Obtenir Autenticació de Google ---
-    // Aquesta funció ara retorna l'email de la integració (provider_user_id)
+    // ... (sense canvis) ...
     const { accessToken, userEmail } = await getGoogleAccessToken(supabase, user.id)
 
     // --- 4. Construir Email MIME ---
+    // ... (sense canvis) ...
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const clientPortalUrl = `${baseUrl}/quote/${quote.secure_id}`
     const companyName = company.name || 'El teu equip'
@@ -583,17 +583,17 @@ export async function sendQuote(
       quote,
       companyName,
       clientPortalUrl,
-      userEmail, // ✅ Fem servir l'email de la integració (provider_user_id)
+      userEmail,
       pdfBase64
     )
 
-    // ✅ CORRECCIÓ 1: Fem servir Base64.encode
     const rawEmail = Base64.encode(mimeMessage, true)
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
       .replace(/=+$/, '')
 
     // --- 5. Enviar Email via Gmail API ---
+    // ... (sense canvis) ...
     console.log(`[sendQuote] Enviant email via Gmail API com a ${userEmail}...`)
     const gmailRes = await fetch(
       'https://www.googleapis.com/gmail/v1/users/me/messages/send',
@@ -614,7 +614,9 @@ export async function sendQuote(
     }
     console.log(`[sendQuote] Email enviat correctament a ${contact.email}.`)
 
-    // --- 6. Actualitzar Estats ---
+    // --- 6. Actualitzar Estats (LÒGICA CORREGIDA) ---
+    
+    // 6a. Actualitzem el pressupost (Quote)
     const { error: updateError } = await supabase
       .from('quotes')
       .update({ status: 'Sent', sent_at: new Date().toISOString() })
@@ -626,11 +628,57 @@ export async function sendQuote(
       )
     }
 
+    // 6b. Moure l'Oportunitat (si existeix)
     if (quote.opportunity_id) {
-      await supabase
-        .from('opportunities')
-        .update({ stage_name: 'Proposta Enviada' })
-        .eq('id', quote.opportunity_id)
+      try {
+        // PAS 1: Obtenir el pipeline_id de l'oportunitat actual
+        // Ho fem unint l'etapa actual per trobar el seu 'pipeline_id' pare
+        const { data: oppData, error: oppError } = await supabase
+          .from('opportunities')
+          .select('pipeline_stage_id, pipeline_stages(pipeline_id)') 
+          .eq('id', quote.opportunity_id)
+          .single();
+
+        if (oppError || !oppData || !oppData.pipeline_stages) {
+          throw new Error(`Oportunitat ${quote.opportunity_id} no trobada o sense pipeline_stage vàlid.`);
+        }
+        
+        const currentPipelineId = oppData.pipeline_stages.pipeline_id;
+        const targetStageName = "Proposta Enviada";
+
+        // PAS 2: Buscar l'ID de l'etapa "Proposta Enviada" DINS d'aquest pipeline
+        const { data: targetStage, error: stageError } = await supabase
+          .from('pipeline_stages')
+          .select('id')
+          .eq('pipeline_id', currentPipelineId)
+          .ilike('name', targetStageName) // Busquem el nom (case-insensitive)
+          .limit(1)
+          .single();
+
+        if (stageError || !targetStage) {
+          throw new Error(`No s'ha trobat l'etapa '${targetStageName}' al pipeline ${currentPipelineId}.`);
+        }
+          
+        // PAS 3: Actualitzar l'oportunitat amb l'ID de l'etapa correcte
+        const { error: updateOppError } = await supabase
+          .from('opportunities')
+          .update({ 
+              pipeline_stage_id: targetStage.id, // <-- AQUESTA ÉS LA CORRECCIÓ
+              stage_name: targetStageName        // <-- Actualitzem el text per consistència
+          })
+          .eq('id', quote.opportunity_id);
+
+        if (updateOppError) {
+            throw new Error(`No s'ha pogut moure l'oportunitat: ${updateOppError.message}`);
+        }
+
+        console.log(`[sendQuote] Oportunitat ${quote.opportunity_id} moguda a '${targetStageName}' (ID: ${targetStage.id})`);
+
+      } catch (oppMoveError: unknown) {
+          // Si el moviment de l'oportunitat falla, no aturem l'èxit de l'enviament de l'email,
+          // però sí que ho registrem.
+          console.warn(`[sendQuote] L'email s'ha enviat, però ha fallat el moviment de l'oportunitat: ${(oppMoveError as Error).message}`);
+      }
     }
 
     return { success: true, message: `Pressupost enviat a ${contact.email}.` }

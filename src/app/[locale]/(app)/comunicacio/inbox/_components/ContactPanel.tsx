@@ -65,6 +65,11 @@ export const ContactPanel: React.FC<ContactPanelProps> = ({ ticket, isPendingSav
                 user_id: null,
                 supplier_id: null, // <-- Afegit per complir amb el tipus Contact
                 gender: null, // <-- Afegit per complir amb el tipus Contact
+                city: null, // <-- Afegit per complir amb el tipus Contact
+                country: null, // <-- Afegit per complir amb el tipus Contact
+                postal_code: null, // <-- Afegit per complir amb el tipus Contact
+                street: null, // <-- Afegit per complir amb el tipus Contact
+                tax_id: null, // <-- Afegit per complir amb el tipus Contact
             };
         }
 

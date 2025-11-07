@@ -57,7 +57,8 @@
     "permissions": "Permisos d'Aplicació",
     "brandNameMobile": "Ribotflow",
     "transcription": "Transcripció d'Àudio",
-    "pipelinesSettings": "Configuració de Pipelines"
+    "pipelinesSettings": "Configuració de Pipelines",
+    "roadmap": "Full de Ruta"
   },
   "InboxPage": {
     "composeDialogTitle": "Escriure un Correu",
@@ -146,7 +147,8 @@
       "manualEmailDescription": "Si el contacte no existeix, es crearà automàticament.",
       "invalidEmailFormat": "El format de l'email no és vàlid.",
       "toastSuccessTitle":"Exit!",
-      "toastErrorTitle":"Error en l'enviament"
+      "toastErrorTitle":"Error en l'enviament",
+      "replyHeader":"--- El {date} {name} va escriure ---"
     },
     "editor": {
       "bold": "Negreta",
@@ -512,7 +514,10 @@
     "contactStatuses": {
       "Lead": "Lead",
       "Client": "Client",
-      "Proveidor": "Proveïdor"
+      "Proveidor": "Proveïdor",
+      "Actiu": "Actiu",
+      "Inactiu": "Inactiu",
+      "Perdut": "Perdut"
     },
     "toast": {
       "errorTitle": "Error",
@@ -856,6 +861,7 @@
         "emptySearch": "No s'han trobat productes.",
         "addManualItem": "Afegir línia manual",
         "createNewItem": "Crear i desar producte",
+        "newProductDescPlaceholder": "Descripció del producte (opcional)",
         "toast": {
           "requiredFields": "Camps obligatoris",
           "requiredFieldsDesc": "El nom i el preu són necessaris.",
@@ -1883,7 +1889,8 @@
       "postcodeLabel": "Codi Postal",
       "regionLabel": "Província",
       "errorFetchingSuggestions": "Error en obtenir els suggeriments de Mapbox:",
-      "errorRetrievingAddress": "Error en recuperar l'adreça de Mapbox:"
+      "errorRetrievingAddress": "Error en recuperar l'adreça de Mapbox:",
+      "noResults": "No s'han trobat resultats."
     },
     "step3": {
       "title": "Últims detalls",
