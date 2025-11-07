@@ -289,15 +289,16 @@ $$;
 ALTER FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
-DECLARE
+DECLARE 
   v_quote public.quotes%ROWTYPE;
-  v_new_invoice_id bigint;
-  v_target_stage_id bigint; -- Canvi de nom de variable
+  v_new_invoice_id BIGINT;
+  v_target_stage_id BIGINT;
 BEGIN
-  -- Pas 1: Actualitzar el pressupost
+  -- 1️⃣ Actualitzar el pressupost
   UPDATE public.quotes
   SET status = 'Accepted'
   WHERE secure_id = p_secure_id
@@ -307,33 +308,34 @@ BEGIN
     RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
   END IF;
 
-  -- -----------------------------------------------------------------
-  -- PAS 2: ACTUALITZAR L'OPORTUNITAT (LÒGICA DE FLUX DEFINITIVA)
-  -- -----------------------------------------------------------------
+  -- 2️⃣ Actualitzar l’oportunitat (etapa guanyada)
   IF v_quote.opportunity_id IS NOT NULL THEN
     BEGIN
-      -- Troba l'ID de l'etapa marcada com 'WON' 
-      -- dins del mateix pipeline de l'oportunitat.
       SELECT ps_target.id
       INTO v_target_stage_id
       FROM public.opportunities o
-      JOIN public.pipeline_stages ps_current ON o.pipeline_stage_id = ps_current.id
-      JOIN public.pipeline_stages ps_target ON ps_current.pipeline_id = ps_target.pipeline_id
+      JOIN public.pipeline_stages ps_current 
+        ON o.pipeline_stage_id = ps_current.id
+      JOIN public.pipeline_stages ps_target 
+        ON ps_current.pipeline_id = ps_target.pipeline_id
       WHERE o.id = v_quote.opportunity_id
-        AND ps_target.stage_type = 'WON'; -- ✅ AQUEST ÉS EL CANVI CLAU
+        AND ps_target.stage_type = 'WON'
+      LIMIT 1;
 
       IF v_target_stage_id IS NOT NULL THEN
         UPDATE public.opportunities
         SET pipeline_stage_id = v_target_stage_id
         WHERE id = v_quote.opportunity_id;
       END IF;
-    
+
     EXCEPTION 
-      WHEN NO_DATA_FOUND THEN NULL; -- Ignorem si l'oportunitat no té etapa
+      WHEN NO_DATA_FOUND THEN 
+        -- Si no trobem etapa, ignorem.
+        NULL;
     END;
   END IF;
 
-  -- Pas 3: Crear la factura (sense canvis)
+  -- 3️⃣ Crear la factura associada
   INSERT INTO public.invoices (
     user_id, team_id, contact_id, quote_id, status, 
     total_amount, subtotal, tax_amount, discount_amount,
@@ -343,26 +345,33 @@ BEGIN
     v_quote.total, v_quote.subtotal, v_quote.tax, v_quote.discount,
     CURRENT_DATE,
     CURRENT_DATE + INTERVAL '30 days'
-  ) RETURNING id INTO v_new_invoice_id; 
+  )
+  RETURNING id INTO v_new_invoice_id;
 
-  -- Pas 4: Copiar els conceptes (sense canvis)
+  -- 4️⃣ Copiar els ítems del pressupost
   INSERT INTO public.invoice_items (
     invoice_id, product_id, description, quantity, unit_price, 
     tax_rate, total, user_id, team_id
   )
   SELECT
-    v_new_invoice_id, 
-    item.product_id, item.description, item.quantity, item.unit_price,
-    COALESCE(p.iva, 0), item.total, v_quote.user_id, v_quote.team_id
-  FROM public.quote_items AS item
-  LEFT JOIN public.products AS p ON item.product_id = p.id
-  WHERE item.quote_id = v_quote.id;
-  
+    v_new_invoice_id,
+    qi.product_id,
+    qi.description,
+    qi.quantity,
+    qi.unit_price,
+    COALESCE(p.iva, 0) AS tax_rate,
+    qi.total,
+    v_quote.user_id,
+    v_quote.team_id
+  FROM public.quote_items qi
+  LEFT JOIN public.products p ON qi.product_id = p.id
+  WHERE qi.quote_id = v_quote.id;
+
 END;
 $$;
 
 
-ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") RETURNS boolean
@@ -416,16 +425,67 @@ ALTER FUNCTION "public"."create_new_organization"("org_name" "text") OWNER TO "p
 
 CREATE OR REPLACE FUNCTION "public"."create_opportunity_on_reply"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
-DECLARE stage_id BIGINT;
+DECLARE
+  v_target_stage_id BIGINT;
+  v_default_pipeline_id BIGINT;
+  v_contact_name TEXT;
 BEGIN
-  IF NEW.type = 'enviat' AND NOT EXISTS (SELECT 1 FROM public.opportunities WHERE contact_id = NEW.contact_id AND status NOT IN ('Won', 'Lost')) THEN
-    SELECT id INTO stage_id FROM public.pipeline_stages WHERE name = 'Contactat' LIMIT 1;
-    IF stage_id IS NOT NULL THEN
-      INSERT INTO public.opportunities (user_id, contact_id, name, value, pipeline_stage_id, status)
-      VALUES (NEW.user_id, NEW.contact_id, 'Nova oportunitat per a ' || (SELECT nom FROM contacts WHERE id = NEW.contact_id), 0, stage_id, 'Open');
+  -- ✅ Només crear oportunitat si és un correu enviat i no n’hi ha cap “en curs”
+  IF NEW.type = 'enviat' AND NOT EXISTS (
+    SELECT 1
+    FROM public.opportunities o
+    JOIN public.pipeline_stages ps ON o.pipeline_stage_id = ps.id
+    WHERE o.contact_id = NEW.contact_id
+      AND ps.stage_type IS NULL  -- NULL = etapa “en curs”
+  ) THEN
+
+    -- ✅ 1. Trobar el pipeline per defecte
+    SELECT t.default_pipeline_id
+    INTO v_default_pipeline_id
+    FROM public.teams t
+    WHERE t.id = NEW.team_id;
+
+    IF v_default_pipeline_id IS NULL THEN
+      RETURN NEW; -- sense pipeline, no fem res
+    END IF;
+
+    -- ✅ 2. Trobar l’etapa “CONTACTED” dins el pipeline
+    SELECT id
+    INTO v_target_stage_id
+    FROM public.pipeline_stages
+    WHERE pipeline_id = v_default_pipeline_id
+      AND stage_type = 'CONTACTED'
+    LIMIT 1;
+
+    -- ✅ 3. Si la trobem, crear una nova oportunitat
+    IF v_target_stage_id IS NOT NULL THEN
+      SELECT nom INTO v_contact_name
+      FROM public.contacts
+      WHERE id = NEW.contact_id;
+
+      INSERT INTO public.opportunities (
+        user_id,
+        team_id,
+        contact_id,
+        name,
+        value,
+        pipeline_stage_id,
+        source
+      )
+      VALUES (
+        NEW.user_id,
+        NEW.team_id,
+        NEW.contact_id,
+        'Oportunitat per ' || COALESCE(v_contact_name, 'Contacte'),
+        0,
+        v_target_stage_id,
+        'Email Sortint'
+      );
     END IF;
   END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -782,6 +842,64 @@ $$;
 ALTER FUNCTION "public"."get_current_team_id"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats"() RETURNS TABLE("total_contacts" bigint, "active_clients" bigint, "opportunities" bigint, "invoiced_current_month" numeric, "invoiced_previous_month" numeric, "pending_total" numeric, "expenses_current_month" numeric, "expenses_previous_month" numeric)
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_team_id uuid;
+BEGIN
+  -- 1. Obtenim l'equip actiu (corregit a 'profiles')
+  SELECT active_team_id INTO v_team_id
+  FROM public.profiles
+  WHERE id = auth.uid()
+  LIMIT 1;
+
+  -- Si no hi ha equip, retornem zeros per a tot
+  IF v_team_id IS NULL THEN
+    RETURN QUERY SELECT 0::bigint, 0::bigint, 0::bigint, 0::numeric, 0::numeric, 0::numeric, 0::numeric, 0::numeric;
+    RETURN;
+  END IF;
+
+  -- Retornem les estadístiques utilitzant el team_id
+  RETURN QUERY
+  SELECT
+    (SELECT COUNT(*) FROM contacts WHERE team_id = v_team_id) AS total_contacts,
+    
+    (SELECT COUNT(DISTINCT contact_id) FROM invoices 
+     WHERE team_id = v_team_id AND status = 'Paid' AND issue_date >= (now() - interval '1 year')) AS active_clients,
+     
+    -- 2. Lògica d'oportunitats (corregida a 'stage_type')
+    (SELECT COUNT(*) 
+     FROM opportunities o
+     LEFT JOIN pipeline_stages ps ON o.pipeline_stage_id = ps.id
+     WHERE o.team_id = v_team_id AND (ps.stage_type IS NULL OR ps.stage_type NOT IN ('WON', 'LOST'))) AS opportunities,
+     
+    (SELECT COALESCE(SUM(total_amount), 0) FROM invoices 
+     WHERE team_id = v_team_id AND status = 'Paid' AND date_trunc('month', issue_date) = date_trunc('month', now())) AS invoiced_current_month,
+     
+    (SELECT COALESCE(SUM(total_amount), 0) FROM invoices 
+     WHERE team_id = v_team_id AND status = 'Paid' AND date_trunc('month', issue_date) = date_trunc('month', now() - interval '1 month')) AS invoiced_previous_month,
+
+    (SELECT COALESCE(SUM(total_amount), 0) FROM invoices 
+     WHERE team_id = v_team_id AND status IN ('Sent', 'Overdue', 'Draft')) AS pending_total,
+
+    -- ✅ 3. LÒGICA CORREGIDA:
+    -- Canviat 'amount' per 'total_amount'
+    (SELECT COALESCE(SUM(total_amount), 0) FROM expenses 
+     WHERE team_id = v_team_id AND status = 'paid' AND date_trunc('month', expense_date) = date_trunc('month', now())) AS expenses_current_month,
+
+    -- ✅ 3. LÒGICA CORREGIDA:
+    -- Canviat 'amount' per 'total_amount'
+    (SELECT COALESCE(SUM(total_amount), 0) FROM expenses 
+     WHERE team_id = v_team_id AND status = 'paid' AND date_trunc('month', expense_date) = date_trunc('month', now() - interval '1 month')) AS expenses_previous_month;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_dashboard_stats"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") RETURNS TABLE("total_contacts" bigint, "active_clients" bigint, "opportunities" bigint, "total_value" numeric, "invoiced_current_month" numeric, "invoiced_previous_month" numeric, "pending_total" numeric, "expenses_current_month" numeric, "expenses_previous_month" numeric)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
@@ -1023,14 +1141,18 @@ ALTER FUNCTION "public"."get_marketing_kpis"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."get_marketing_page_data"("p_team_id" "uuid") RETURNS json
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   RETURN (
     SELECT json_build_object(
       'kpis', (
         SELECT json_build_object(
-          'totalLeads', COALESCE(count(*), 0),
-          'conversionRate', COALESCE((count(*) FILTER (WHERE estat = 'Client') * 100.0 / NULLIF(count(*), 0)), 0)
+          'totalLeads', COALESCE(COUNT(*), 0),
+          'conversionRate', COALESCE(
+            (COUNT(*) FILTER (WHERE estat = 'Client') * 100.0 / NULLIF(COUNT(*), 0)),
+            0
+          )
         )
         FROM public.contacts
         WHERE team_id = p_team_id
@@ -1038,7 +1160,15 @@ BEGIN
       'campaigns', (
         SELECT COALESCE(json_agg(c), '[]'::json)
         FROM (
-          SELECT id, name, type, status, campaign_date, goal, target_audience, content
+          SELECT
+            id,
+            name,
+            type,
+            status,
+            campaign_date,
+            goal,
+            target_audience,
+            content
           FROM public.campaigns
           WHERE team_id = p_team_id
           ORDER BY campaign_date DESC
@@ -1087,60 +1217,49 @@ $$;
 ALTER FUNCTION "public"."get_my_teams"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_public_profiles"() RETURNS TABLE("id" "uuid", "company_name" "text", "logo_url" "text", "summary" "text", "services" "jsonb", "website_url" "text", "latitude" double precision, "longitude" double precision)
-    LANGUAGE "sql" SECURITY DEFINER
-    AS $$
-  SELECT
-    p.id,
-    p.company_name,
-    p.logo_url,
-    p.summary,
-    p.services,
-    p.website_url,
-    p.latitude,
-    p.longitude
-  FROM
-    public.profiles p
-  WHERE
-    p.is_public_profile = TRUE AND p.latitude IS NOT NULL AND p.longitude IS NOT NULL;
-$$;
-
-
-ALTER FUNCTION "public"."get_public_profiles"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_quote_details"("p_quote_id" bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
-declare
-  quote_data jsonb;
-  opportunities_data jsonb;
-begin
-  -- 1. Obtenim les dades del pressupost i els seus items
-  select to_jsonb(q) into quote_data
-  from (
-    select q.*, jsonb_agg(qi) as items
-    from public.quotes q
-    left join public.quote_items qi on q.id = qi.quote_id
-    where q.id = p_quote_id
-    group by q.id
+DECLARE
+  quote_data JSONB;
+  opportunities_data JSONB;
+BEGIN
+  -- ✅ 1. Obtenim les dades del pressupost i els seus items
+  SELECT to_jsonb(q)
+  INTO quote_data
+  FROM (
+    SELECT q.*, COALESCE(jsonb_agg(qi) FILTER (WHERE qi.id IS NOT NULL), '[]'::jsonb) AS items
+    FROM public.quotes q
+    LEFT JOIN public.quote_items qi ON q.id = qi.quote_id
+    WHERE q.id = p_quote_id
+    GROUP BY q.id
   ) q;
 
-  -- 2. Si el pressupost té un contacte, busquem les seves oportunitats
-  if (quote_data->>'contact_id') is not null then
-    select jsonb_agg(o) into opportunities_data
-    from public.opportunities o
-    where o.contact_id = (quote_data->>'contact_id')::bigint;
-  else
-    opportunities_data := '[]'::jsonb;
-  end if;
+  IF quote_data IS NULL THEN
+    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT per ID %', p_quote_id;
+  END IF;
 
-  -- 3. Retornem un únic objecte JSON amb tota la informació
-  return jsonb_build_object(
+  -- ✅ 2. Si el pressupost té un contacte, busquem les seves oportunitats
+  IF (quote_data->>'contact_id') IS NOT NULL THEN
+    SELECT COALESCE(jsonb_agg(o), '[]'::jsonb)
+    INTO opportunities_data
+    FROM public.opportunities o
+    WHERE o.contact_id = (quote_data->>'contact_id')::BIGINT;
+  ELSE
+    opportunities_data := '[]'::jsonb;
+  END IF;
+
+  -- ✅ 3. Retornem un únic objecte JSON amb tota la informació
+  RETURN jsonb_build_object(
     'quote', quote_data,
     'opportunities', opportunities_data
   );
-end;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Error a get_quote_details(%): %', p_quote_id, SQLERRM;
+END;
 $$;
 
 
@@ -1640,6 +1759,50 @@ $$;
 ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."handle_opportunity_on_quote_creation"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_target_stage_id bigint;
+  v_opportunity_id bigint;
+BEGIN
+  v_opportunity_id := NEW.opportunity_id;
+
+  IF v_opportunity_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  BEGIN
+    SELECT ps_target.id
+    INTO v_target_stage_id
+    FROM public.opportunities o
+    JOIN public.pipeline_stages ps_current 
+      ON o.pipeline_stage_id = ps_current.id
+    JOIN public.pipeline_stages ps_target 
+      ON ps_current.pipeline_id = ps_target.pipeline_id
+    WHERE o.id = v_opportunity_id
+      AND ps_target.stage_type = 'PROPOSAL';
+
+    IF v_target_stage_id IS NOT NULL THEN
+      UPDATE public.opportunities
+      SET pipeline_stage_id = v_target_stage_id
+      WHERE id = v_opportunity_id;
+    END IF;
+
+  EXCEPTION 
+    WHEN NO_DATA_FOUND THEN 
+      NULL;
+  END;
+
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."handle_opportunity_on_quote_creation"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."handle_quote_status_change"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1696,11 +1859,12 @@ ALTER FUNCTION "public"."handle_quote_status_change"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_updated_at"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
+  NEW.updated_at := NOW();
+  RETURN NEW;
 END;
 $$;
 
@@ -1881,68 +2045,15 @@ $$;
 ALTER FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  v_quote public.quotes%ROWTYPE;
-  v_perdut_stage_id BIGINT;
-BEGIN
-  -- ✅ PAS 1: Actualitzar el pressupost
-  UPDATE public.quotes
-  SET status = 'Declined',
-      rejection_reason = p_reason
-  WHERE secure_id = p_secure_id
-  RETURNING * INTO v_quote;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
-  END IF;
-
-  -- ✅ PAS 2: Actualitzar oportunitat associada
-  IF v_quote.opportunity_id IS NOT NULL THEN
-    BEGIN
-      SELECT ps_target.id
-      INTO v_perdut_stage_id
-      FROM public.opportunities o
-      JOIN public.pipeline_stages ps_current ON o.pipeline_stage_id = ps_current.id
-      JOIN public.pipeline_stages ps_target ON ps_current.pipeline_id = ps_target.pipeline_id
-      WHERE o.id = v_quote.opportunity_id
-        AND ps_target.name = 'Perdut'
-      LIMIT 1;
-
-      IF v_perdut_stage_id IS NOT NULL THEN
-        UPDATE public.opportunities
-        SET pipeline_stage_id = v_perdut_stage_id
-        WHERE id = v_quote.opportunity_id;
-      END IF;
-
-    EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        -- Si no hi ha pipeline vàlid, simplement no fem res
-        NULL;
-    END;
-  END IF;
-
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE EXCEPTION 'Error a reject_quote_with_reason (%): %', p_secure_id, SQLERRM;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
-DECLARE
+DECLARE 
   v_quote public.quotes%ROWTYPE;
   v_target_stage_id bigint;
 BEGIN
-  -- Pas 1: Actualitzar el pressupost
+  -- 🧾 Pas 1: Actualitzar el pressupost
   UPDATE public.quotes
   SET status = 'Declined',
       rejection_reason = p_reason
@@ -1953,31 +2064,32 @@ BEGIN
     RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
   END IF;
 
-  -- -----------------------------------------------------------------
-  -- PAS 2: ACTUALITZAR L'OPORTUNITAT (LÒGICA DE FLUX DEFINITIVA)
-  -- -----------------------------------------------------------------
+  -- 🔁 Pas 2: Actualitzar l'oportunitat associada
   IF v_quote.opportunity_id IS NOT NULL THEN
     BEGIN
-      -- Troba l'ID de l'etapa marcada com 'LOST'
+      -- Trobar l’etapa marcada com LOST dins del mateix pipeline
       SELECT ps_target.id
       INTO v_target_stage_id
       FROM public.opportunities o
-      JOIN public.pipeline_stages ps_current ON o.pipeline_stage_id = ps_current.id
-      JOIN public.pipeline_stages ps_target ON ps_current.pipeline_id = ps_target.pipeline_id
+      JOIN public.pipeline_stages ps_current 
+        ON o.pipeline_stage_id = ps_current.id
+      JOIN public.pipeline_stages ps_target 
+        ON ps_current.pipeline_id = ps_target.pipeline_id
       WHERE o.id = v_quote.opportunity_id
-        AND ps_target.stage_type = 'LOST'; -- ✅ AQUEST ÉS EL CANVI CLAU
+        AND ps_target.stage_type = 'LOST';
 
+      -- Si existeix, actualitzem l’oportunitat
       IF v_target_stage_id IS NOT NULL THEN
         UPDATE public.opportunities
         SET pipeline_stage_id = v_target_stage_id
         WHERE id = v_quote.opportunity_id;
       END IF;
-      
+
     EXCEPTION 
-      WHEN NO_DATA_FOUND THEN NULL; -- Ignorem si l'oportunitat no té etapa
+      WHEN NO_DATA_FOUND THEN 
+        NULL; -- Ignorem si no hi ha etapa LOST
     END;
   END IF;
-
 END;
 $$;
 
@@ -2389,12 +2501,12 @@ $$;
 ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql"
+CREATE OR REPLACE FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
-  -- 1. Neteja qualsevol altra etapa que tingués aquest tipus
-  -- dins d'aquest pipeline.
+  -- 1️⃣ Neteja qualsevol altra etapa que tingués aquest tipus dins del pipeline
   UPDATE public.pipeline_stages
   SET stage_type = NULL
   WHERE pipeline_id = p_pipeline_id
@@ -2402,7 +2514,7 @@ BEGIN
     AND stage_type = p_stage_type
     AND id != p_stage_id;
 
-  -- 2. Assigna el nou tipus a l'etapa seleccionada
+  -- 2️⃣ Assigna el nou tipus a l'etapa seleccionada
   UPDATE public.pipeline_stages
   SET stage_type = p_stage_type
   WHERE id = p_stage_id
@@ -2412,7 +2524,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_proposal_stage_on_activity"() RETURNS "trigger"
@@ -2760,7 +2872,10 @@ CREATE TABLE IF NOT EXISTS "public"."audio_jobs" (
     "error_message" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "participants" "jsonb" DEFAULT '[]'::"jsonb",
-    "key_moments" "jsonb"
+    "key_moments" "jsonb",
+    "speaker_identification" "jsonb",
+    "dialogue_flow" "jsonb",
+    "assigned_tasks_summary" "jsonb"
 );
 
 ALTER TABLE ONLY "public"."audio_jobs" REPLICA IDENTITY FULL;
@@ -2900,11 +3015,16 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "children_count" smallint,
     "partner_name" "text",
     "team_id" "uuid",
-    "supplier_id" "uuid"
+    "supplier_id" "uuid",
+    "gender" "text"
 );
 
 
 ALTER TABLE "public"."contacts" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."contacts"."gender" IS 'Gènere del contacte (ex: Home, Dona, Altre) per ajudar a la identificació de lA IA.';
+
 
 
 ALTER TABLE "public"."contacts" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENTITY (
@@ -3052,7 +3172,7 @@ CREATE TABLE IF NOT EXISTS "public"."tickets" (
 ALTER TABLE "public"."tickets" OWNER TO "postgres";
 
 
-CREATE OR REPLACE VIEW "public"."enriched_tickets" WITH ("security_invoker"='true') AS
+CREATE OR REPLACE VIEW "public"."enriched_tickets" WITH ("security_invoker"='on') AS
  SELECT "t"."id",
     "t"."user_id",
     "t"."subject",
@@ -3356,7 +3476,7 @@ CREATE TABLE IF NOT EXISTS "public"."pipeline_stages" (
     "pipeline_id" bigint NOT NULL,
     "color" "text" DEFAULT '#808080'::"text" NOT NULL,
     "stage_type" "text",
-    CONSTRAINT "chk_stage_type" CHECK ((("stage_type" IS NULL) OR ("stage_type" = ANY (ARRAY['WON'::"text", 'LOST'::"text"]))))
+    CONSTRAINT "chk_stage_type" CHECK ((("stage_type" IS NULL) OR ("stage_type" = ANY (ARRAY['WON'::"text", 'LOST'::"text", 'PROSPECT'::"text", 'CONTACTED'::"text", 'PROPOSAL'::"text"]))))
 );
 
 
@@ -4263,11 +4383,7 @@ CREATE INDEX "ticket_assignments_ticket_id_idx" ON "public"."ticket_assignments"
 
 
 
-CREATE OR REPLACE TRIGGER "on_invoices_updated" BEFORE UPDATE ON "public"."invoices" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
-
-
-
-CREATE OR REPLACE TRIGGER "on_user_credentials_update" BEFORE UPDATE ON "public"."user_credentials" FOR EACH ROW EXECUTE FUNCTION "public"."handle_updated_at"();
+CREATE OR REPLACE TRIGGER "trg_move_opportunity_on_quote_insert" AFTER INSERT ON "public"."quotes" FOR EACH ROW EXECUTE FUNCTION "public"."handle_opportunity_on_quote_creation"();
 
 
 
@@ -4756,6 +4872,10 @@ ALTER TABLE ONLY "public"."user_credentials"
 
 
 
+CREATE POLICY "Allow authenticated users to read profiles" ON "public"."profiles" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
+
+
+
 CREATE POLICY "Allow individual access" ON "public"."user_credentials" USING (("auth"."uid"() = "user_id")) WITH CHECK (("auth"."uid"() = "user_id"));
 
 
@@ -5040,6 +5160,12 @@ CREATE POLICY "Users can manage their own social posts" ON "public"."social_post
 
 
 
+CREATE POLICY "Users can see contacts from their own team" ON "public"."contacts" FOR SELECT USING (("team_id" IN ( SELECT "team_members"."team_id"
+   FROM "public"."team_members"
+  WHERE ("team_members"."user_id" = "auth"."uid"()))));
+
+
+
 CREATE POLICY "Users can view their own notifications" ON "public"."notifications" FOR SELECT USING (("auth"."uid"() = "user_id"));
 
 
@@ -5218,9 +5344,9 @@ GRANT ALL ON FUNCTION "public"."accept_personal_invitation"("invitation_id" "uui
 
 
 
-GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") TO "service_role";
 
 
 
@@ -5302,6 +5428,12 @@ GRANT ALL ON FUNCTION "public"."get_current_team_id"() TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "anon";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") TO "service_role";
@@ -5353,12 +5485,6 @@ GRANT ALL ON FUNCTION "public"."get_my_team_id"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_my_teams"() TO "anon";
 GRANT ALL ON FUNCTION "public"."get_my_teams"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_my_teams"() TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."get_public_profiles"() TO "anon";
-GRANT ALL ON FUNCTION "public"."get_public_profiles"() TO "authenticated";
-GRANT ALL ON FUNCTION "public"."get_public_profiles"() TO "service_role";
 
 
 
@@ -5446,6 +5572,12 @@ GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_n
 
 
 
+GRANT ALL ON FUNCTION "public"."handle_opportunity_on_quote_creation"() TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_opportunity_on_quote_creation"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_opportunity_on_quote_creation"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."handle_quote_status_change"() TO "anon";
 GRANT ALL ON FUNCTION "public"."handle_quote_status_change"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."handle_quote_status_change"() TO "service_role";
@@ -5506,12 +5638,6 @@ GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions".
 
 
 
-GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "text", "p_reason" "text") TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") TO "service_role";
@@ -5560,9 +5686,9 @@ GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid",
 
 
 
-GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") TO "anon";
-GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_stage_id" bigint, "p_stage_type" "text", "p_team_id" "uuid") TO "service_role";
+GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") TO "service_role";
 
 
 

@@ -347,7 +347,10 @@
     "contactStatuses": {
       "Lead": "Lead",
       "Client": "Client",
-      "Proveidor": "Supplier"
+      "Proveidor": "Supplier",
+      "Actiu": "Active",
+      "Inactiu": "Inactive",
+      "Perdut": "Lost"
     },
     "title": "Contacts",
     "searchPlaceholder": "Search...",

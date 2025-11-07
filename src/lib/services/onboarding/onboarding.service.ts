@@ -62,26 +62,34 @@ export async function submitOnboarding(
   const rpcParams = {
     p_user_id: user.id,
     p_full_name: validData.full_name,
-    p_email: user.email!,
+    p_email: user.email!, // Assegura't que user.email mai és null
     p_company_name: validData.company_name,
     p_tax_id: validData.tax_id ?? '',
     p_website: validData.website ?? '',
     p_summary: validData.summary ?? '',
     p_sector: validData.sector ?? '',
-    p_services: validData.services,
+    p_services: validData.services, // string[] es converteix bé a jsonb
     p_phone: validData.phone ?? '',
     p_street: validData.street,
     p_city: validData.city,
     p_postal_code: validData.postal_code,
     p_region: validData.region,
     p_country: validData.country,
-    p_latitude: validData.latitude !== undefined ? validData.latitude : undefined,
-    p_longitude: validData.longitude !== undefined ? validData.longitude : undefined,
+    
+    // 💡 LA CORRECCIÓ ÉS AQUÍ
+    // Canviem 'null' per 'undefined'.
+    // 'undefined' elimina la clau, 'null' l'envia com a valor nul (SQL NULL).
+    p_latitude: validData.latitude ?? undefined,
+    p_longitude: validData.longitude ?? undefined,
   };
 
   try {
     const { error } = await supabase.rpc('handle_onboarding', rpcParams);
-    if (error) throw error;
+    
+    if (error) {
+        console.error("Error detallat de la RPC d'Onboarding:", error);
+        throw error;
+    }
 
     return { success: true, message: "Onboarding completat!" };
   } catch (error) {

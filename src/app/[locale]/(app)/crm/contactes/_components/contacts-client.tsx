@@ -1,7 +1,8 @@
 // @/app/[locale]/(app)/crm/contactes/_components/ContactsClient.tsx
 "use client";
 
-import React, { useState, useMemo, useTransition } from 'react';
+// 💡 1. Importem useEffect
+import React, { useState, useMemo, useTransition, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -9,15 +10,12 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-// ✅ 1. Importem Tooltip i una icona de bloqueig
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Database } from '@/types/supabase';
 import { type ContactWithOpportunities } from './ContactsData';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
-// ✅ 2. Importem el tipus del nostre resultat de límit
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
 
 import { useContactFilters } from '../_hooks/useContactFilters';
@@ -28,14 +26,13 @@ import ContactTable from './ContactTable';
 import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
 import { exportToExcel, importFromExcel } from '@/app/[locale]/(app)/excel/actions';
 
-type Contact = Database['public']['Tables']['contacts']['Row'];
 
 interface ContactsClientProps {
     initialContacts: ContactWithOpportunities[];
     totalPages: number;
     currentPage: number;
     initialViewMode: 'cards' | 'list';
-    limitStatus: UsageCheckResult; // ✅ 3. Afegim la nova prop
+    limitStatus: UsageCheckResult;
 }
 
 export function ContactsClient({
@@ -43,23 +40,29 @@ export function ContactsClient({
     totalPages,
     currentPage,
     initialViewMode,
-    limitStatus // ✅ 4. Rebem la prop
+    limitStatus
 }: ContactsClientProps) {
     const t = useTranslations('ContactsClient');
     const t2 = useTranslations('excel');
-    // ✅ 5. Afegim traduccions de Billing per als missatges de límit
     const t_billing = useTranslations('Billing');
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [isExporting, startTransition] = useTransition();
+    // Renombrat per claredat
+    const [isPending, startTransition] = useTransition();
 
     const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
 
     const [contacts, setContacts] = useState<ContactWithOpportunities[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
 
-    // ✅ 6. Calculem si s'ha assolit el límit
     const isLimitReached = !limitStatus.allowed;
+
+    // 💡 2. AFEGIM AQUEST 'useEffect'
+    // Això és el que fa que la pàgina s'actualitzi visualment després
+    // del router.refresh() (tant a l'importar com al crear).
+    useEffect(() => {
+        setContacts(initialContacts);
+    }, [initialContacts]);
 
     const filteredContacts = useMemo(() => contacts.filter(c =>
         (c.nom?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -77,7 +80,7 @@ export function ContactsClient({
         { value: 'download', label: t2('contacts.download'), icon: Download },
     ];
 
-    // ... (lògica de handleExportAndDownload i handleImport) ...
+
     async function handleExportAndDownload(shouldDownload: boolean) {
         toast.info(t2('contacts.startingexport'));
         try {
@@ -110,7 +113,6 @@ export function ContactsClient({
     }
 
     function handleImport() {
-        // ✅ 7. Afegim la comprovació de límit ABANS de pujar l'Excel
         if (isLimitReached) {
             toast.error(t_billing('limitReachedTitle'), {
                 description: limitStatus.error || t_billing('limitReachedDefault')
@@ -120,7 +122,8 @@ export function ContactsClient({
 
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.xlsx, .xls';
+        // Acceptem també CSV
+        input.accept = '.xlsx, .xls, .csv';
 
         input.onchange = async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
@@ -136,14 +139,12 @@ export function ContactsClient({
 
             startTransition(async () => {
                 try {
-                    // La Server Action 'importFromExcel' també hauria de tenir
-                    // la validació de límits per a cada fila que importa.
                     const result = await importFromExcel('contacts', formData);
 
                     if (result.success) {
                         toast.success(result.message);
-                        // Aquí hauríem de refrescar les dades per veure els nous contactes
-                        // i possiblement el nou estat del límit.
+                        // Aquesta línia (que ja tenies) ara dispararà
+                        // l'useEffect de dalt i refrescarà la UI.
                         router.refresh();
                     } else {
                         toast.error(t2('errorloadingdata'), { description: result.message });
@@ -166,7 +167,7 @@ export function ContactsClient({
                 startTransition(() => handleExportAndDownload(false));
                 break;
             case 'load':
-                handleImport(); // Aquesta funció ara té la comprovació de límit
+                handleImport();
                 break;
             default:
                 break;
@@ -176,14 +177,12 @@ export function ContactsClient({
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
             {/* CAPÇALERA */}
-            {/* CAPÇALERA RESPONSIVE */}
             <div className="flex flex-col gap-3 sm:gap-4 mb-6">
-                {/* Títol */}
                 <h1 className="text-2xl sm:text-3xl font-bold text-balance">{t('title')}</h1>
 
                 {/* Controls */}
                 <div className="flex flex-wrap gap-2 w-full items-center">
-                    {/* 🔍 Cercador */}
+                    {/* Cercador */}
                     <div className="relative flex-grow min-w-[160px]">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -194,7 +193,7 @@ export function ContactsClient({
                         />
                     </div>
 
-                    {/* 🔽 Ordenar */}
+                    {/* Ordenar */}
                     <Select value={sortBy} onValueChange={(value) => handleFilterChange('sort', value)}>
                         <SelectTrigger className="w-full sm:w-[160px]">
                             <SelectValue placeholder={t('filters.sortBy')} />
@@ -205,7 +204,7 @@ export function ContactsClient({
                         </SelectContent>
                     </Select>
 
-                    {/* 📊 Estat */}
+                    {/* Estat */}
                     <Select value={statusFilter} onValueChange={(value) => handleFilterChange('status', value)}>
                         <SelectTrigger className="w-full sm:w-[160px]">
                             <SelectValue placeholder={t('filters.status')} />
@@ -220,7 +219,7 @@ export function ContactsClient({
                         </SelectContent>
                     </Select>
 
-                    {/* 👁️ Modes de vista (icones) */}
+                    {/* Modes de vista */}
                     <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
                         <Button
                             variant={viewMode === 'cards' ? 'secondary' : 'ghost'}
@@ -238,21 +237,21 @@ export function ContactsClient({
                         </Button>
                     </div>
 
-                    {/* 🧾 Excel Dropdown */}
+                    {/* Excel Dropdown */}
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
-                        disabled={isExporting}
+                        disabled={isPending}
                     />
 
-                    {/* ➕ Nou contacte (amb límit) */}
+                    {/* Nou contacte (amb límit) */}
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <span tabIndex={isLimitReached ? 0 : -1}>
                                     <ContactDialog
                                         trigger={
-                                            <Button className="flex-shrink-0 w-full sm:w-auto" disabled={isLimitReached}>
+                                            <Button className="flex-shrink-0 w-full sm:w-auto" disabled={isLimitReached || isPending}>
                                                 {isLimitReached ? (
                                                     <Lock className="w-4 h-4 mr-1" />
                                                 ) : (
@@ -261,11 +260,10 @@ export function ContactsClient({
                                                 <span className="hidden md:inline">{t('newContactButton')}</span>
                                             </Button>
                                         }
-                                        onContactSaved={(newContact) => {
-                                            setContacts(prev => [
-                                                { ...(newContact as Contact), opportunities: [] },
-                                                ...prev
-                                            ]);
+                                        onContactSaved={() => {
+                                            // 💡 3. SIMPLIFICAT
+                                            // El 'router.refresh' actualitzarà 'initialContacts',
+                                            // i l''useEffect' de dalt actualitzarà l'estat 'contacts'.
                                             router.refresh();
                                         }}
                                         isLimitReached={isLimitReached}
@@ -273,7 +271,6 @@ export function ContactsClient({
                                     />
                                 </span>
                             </TooltipTrigger>
-
                             {isLimitReached && (
                                 <TooltipContent className="max-w-xs p-3 shadow-lg rounded-lg border-2 border-yellow-400 bg-yellow-50">
                                     <div className="flex flex-col gap-2">
@@ -316,20 +313,30 @@ export function ContactsClient({
             {/* PAGINACIÓ */}
             {totalPages > 1 && (
                 <div className="flex justify-center items-center gap-2 md:gap-4 mt-8 flex-shrink-0">
-                    <Button asChild disabled={currentPage <= 1} size="sm" className="px-3">
-                        <Link href={`/crm/contactes?page=${currentPage - 1}`}>
-                            <span className="hidden md:inline">{t('pagination.previous')}</span>
-                            <span className="md:hidden">←</span>
-                        </Link>
+                    {/* 💡 CORRECCIÓ PAGINACIÓ: Canviat <Link> per <Button onClick> */}
+                    <Button
+                        disabled={currentPage <= 1}
+                        size="sm"
+                        className="px-3"
+                        onClick={() => router.push(`/crm/contactes?page=${currentPage - 1}`)}
+                    >
+                        <span className="hidden md:inline">{t('pagination.previous')}</span>
+                        <span className="md:hidden">←</span>
                     </Button>
+
                     <span className="text-sm text-muted-foreground">
                         {t('pagination.page', { currentPage, totalPages })}
                     </span>
-                    <Button asChild disabled={currentPage >= totalPages} size="sm" className="px-3">
-                        <Link href={`/crm/contactes?page=${currentPage + 1}`}>
-                            <span className="hidden md:inline">{t('pagination.next')}</span>
-                            <span className="md:hidden">→</span>
-                        </Link>
+
+                    {/* 💡 CORRECCIÓ PAGINACIÓ: Canviat <Link> per <Button onClick> */}
+                    <Button
+                        disabled={currentPage >= totalPages}
+                        size="sm"
+                        className="px-3"
+                        onClick={() => router.push(`/crm/contactes?page=${currentPage + 1}`)}
+                    >
+                        <span className="hidden md:inline">{t('pagination.next')}</span>
+                        <span className="md:hidden">→</span>
                     </Button>
                 </div>
             )}

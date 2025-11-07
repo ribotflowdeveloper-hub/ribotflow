@@ -353,7 +353,10 @@
     "contactStatuses": {
       "Lead": "Lead",
       "Client": "Client",
-      "Proveidor": "Proveïdor"
+      "Proveidor": "Proveïdor",
+      "Actiu": "Actiu",
+      "Inactiu": "Inactiu",
+      "Perdut": "Perdut"
     },
     "title": "Contactes",
     "searchPlaceholder": "Cerca...",

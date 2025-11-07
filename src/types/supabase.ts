@@ -2941,51 +2941,28 @@ export type Database = {
       }
       get_user_team_id: { Args: never; Returns: string }
       gettransactionid: { Args: never; Returns: unknown }
-      handle_onboarding:
-        | {
-            Args: {
-              p_city: string
-              p_company_name: string
-              p_country: string
-              p_email: string
-              p_full_name: string
-              p_latitude: number
-              p_longitude: number
-              p_phone: string
-              p_postal_code: string
-              p_region: string
-              p_sector: string
-              p_services: string[]
-              p_street: string
-              p_summary: string
-              p_tax_id: string
-              p_user_id: string
-              p_website: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_city: string
-              p_company_name: string
-              p_country: string
-              p_email: string
-              p_full_name: string
-              p_latitude?: number
-              p_longitude?: number
-              p_phone: string
-              p_postal_code: string
-              p_region: string
-              p_sector: string
-              p_services: string[]
-              p_street: string
-              p_summary: string
-              p_tax_id: string
-              p_user_id: string
-              p_website: string
-            }
-            Returns: string
-          }
+      handle_onboarding: {
+        Args: {
+          p_city: string
+          p_company_name: string
+          p_country: string
+          p_email: string
+          p_full_name: string
+          p_latitude?: number
+          p_longitude?: number
+          p_phone: string
+          p_postal_code: string
+          p_region: string
+          p_sector: string
+          p_services: Json
+          p_street: string
+          p_summary: string
+          p_tax_id: string
+          p_user_id: string
+          p_website: string
+        }
+        Returns: string
+      }
       increment_invoice_sequence: {
         Args: { p_series: string; p_user_id: string }
         Returns: number
@@ -3200,15 +3177,42 @@ export type Database = {
       }
       search_paginated_quotes: {
         Args: {
-          limit_param?: number
-          offset_param?: number
+          limit_param: number
+          offset_param: number
           search_term_param?: string
           sort_by_param?: string
           sort_order_param?: string
-          status_param?: string
+          status_param?: Database["public"]["Enums"]["quote_status"]
           team_id_param: string
         }
-        Returns: Record<string, unknown>[]
+        Returns: {
+          contact_empresa: string
+          contact_id: number
+          contact_nom: string
+          created_at: string
+          discount: number
+          expiry_date: string
+          id: number
+          issue_date: string
+          notes: string
+          opportunity_id: number
+          quote_number: string
+          rejection_reason: string
+          secure_id: string
+          send_at: string
+          sent_at: string
+          sequence_number: number
+          show_quantity: boolean
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          tax: number
+          tax_percent: number
+          team_id: string
+          theme_color: string
+          total: number
+          total_count: number
+          user_id: string
+        }[]
       }
       set_pipeline_stage_type: {
         Args: {

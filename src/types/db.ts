@@ -32,7 +32,7 @@ export type Activity = DbTableRow<'activities'>;
 export type Task = DbTableRow<'tasks'>; // ✅ Canviat 'Tables' per 'Task' per claredat
 export type Pipeline = DbTableRow<'pipelines'>; // ✅ AFEGIT
 export type PipelineStage = DbTableRow<'pipeline_stages'>;
-
+export type QuoteStatus = Database['public']['Enums']['quote_status']; // ✅ AFEGIT
 // --- TIPUS ESPECÍFICS PER A L'INBOX ---
 export type EnrichedTicket = DbTableRow<'enriched_tickets'>;
 export type TeamMemberWithProfile = DbTableRow<'team_members_with_profiles'>;

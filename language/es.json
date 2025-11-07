@@ -342,7 +342,10 @@
     "contactStatuses": {
       "Lead": "Lead",
       "Client": "Cliente",
-      "Proveidor": "Proveedor"
+      "Proveidor": "Proveedor",
+      "Actiu": "Activo",
+      "Inactiu": "Inactivo",
+      "Perdut": "Perdido"
     },
     "title": "Contactos",
     "searchPlaceholder": "Buscar...",

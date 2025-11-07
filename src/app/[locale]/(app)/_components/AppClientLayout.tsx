@@ -1,40 +1,41 @@
-// Ubicació: /app/(app)/components/AppClientLayout.tsx
-
 "use client";
 
-import React, { useState} from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
-// Hooks i Stores
 import { useAppNavigation } from '@/hooks/useAppNavigation';
 import { useNavigationStore } from '@/stores/navigationStore';
-
-// Components
 import { MainSidebar } from './main-sidebar';
 import { ModuleSidebar } from './module-sidebar';
 import { MobileMenu } from './MobileMenu';
 import { Chatbot } from '@/components/chatbot/Chatbot';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-
-// Accions
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
+} from "@/components/ui/alert-dialog";
 import { logoutAction } from '@/app/[locale]/(auth)/auth/actions';
 
-// ✅ 2. DEFINIM LA INTERFÍCIE CORRECTA
+// ✅ INTERFÍCIE AMB AI LIMIT OPCIONAL
 interface AppClientLayoutProps {
-  children: React.ReactNode;
-  locale: string;
-  aiLimitStatus: UsageCheckResult;
+    children: React.ReactNode;
+    locale: string;
+    aiLimitStatus?: UsageCheckResult; // ara opcional
 }
-// Imatges i tipus
+
 export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProps) {
     const t = useTranslations('Navigation');
     const { isChatbotOpen } = useNavigationStore();
     const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
 
-    // ✅ Tota la lògica complexa ve del nostre hook personalitzat!
     const {
         activeModule,
         isModuleSidebarOpen,
@@ -43,14 +44,15 @@ export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProp
         handleMainMenuClick,
     } = useAppNavigation();
 
-    const handleSignOut = () => {
-        logoutAction();
-    };
+    const handleSignOut = () => logoutAction();
 
     const handleNotImplementedClick = (e: React.MouseEvent) => {
         e.preventDefault();
         toast.info(t('comingSoon'), { description: t('featureUnavailable') });
     };
+
+    // ✅ Fallback si aiLimitStatus és undefined
+    const safeAiLimitStatus: UsageCheckResult = aiLimitStatus ?? { allowed: false, current: 0, max: 0 };
 
     return (
         <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
@@ -58,7 +60,7 @@ export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProp
                 onModuleSelect={handleMainMenuClick}
                 onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                 onNotImplemented={handleNotImplementedClick}
-                aiLimitStatus={aiLimitStatus} // La passem
+                aiLimitStatus={safeAiLimitStatus} // Passem el fallback
             />
 
             <motion.div
@@ -82,22 +84,22 @@ export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProp
                         src="/icon0.svg"
                         alt={t('logoAlt')}
                         className="object-cover"
-                        priority height={30}
-                        width={30}   // Substitueix per l'amplada real de la teva imatge
-
+                        priority
+                        height={30}
+                        width={30}
                     />
-
                     <span className="font-bold text-lg">{t('brandNameMobile')}</span>
                     <MobileMenu
                         onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
                         onNotImplementedClick={handleNotImplementedClick}
                         handleNavigation={handleNavigation}
                     />
-
                 </header>
+
                 <main className="flex-1 overflow-y-auto">
                     <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>
                 </main>
+
                 {isChatbotOpen && <Chatbot />}
             </div>
 
@@ -109,7 +111,12 @@ export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProp
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSignOut} className="bg-destructive hover:bg-destructive/90">{t('confirmSignOut')}</AlertDialogAction>
+                        <AlertDialogAction
+                            onClick={handleSignOut}
+                            className="bg-destructive hover:bg-destructive/90"
+                        >
+                            {t('confirmSignOut')}
+                        </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>

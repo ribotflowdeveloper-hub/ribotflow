@@ -1,12 +1,11 @@
-// /app/[locale]/onboarding/actions.ts (FITXER CORREGIT I NET)
+// /app/[locale]/onboarding/actions.ts
 "use server";
 
-// ❌ Eliminem 'zod', 'createAdminClient'
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-// ✅ 1. Importem el NOU servei i els seus tipus
+// Importem el NOU servei i els seus tipus
 import * as onboardingService from '@/lib/services/onboarding/onboarding.service';
 import type { OnboardingFormData } from '@/lib/services/onboarding/schema';
 

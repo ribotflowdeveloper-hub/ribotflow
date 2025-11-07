@@ -51,8 +51,8 @@ export async function ContactsData({ page, sortBy, status, searchTerm, viewMode 
 
     // ✅ 5. Gestionem l'error
     if (error || !data) {
-        console.error("Error en obtenir contactes (Component):", error);
-        return <ContactsClient
+        console.error("Error en obtenir contactes (Component ContactsData):", error);
+         return <ContactsClient
             initialContacts={[]}
             totalPages={0}
             currentPage={1}

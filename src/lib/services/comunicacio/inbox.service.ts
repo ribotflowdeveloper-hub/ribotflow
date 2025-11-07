@@ -10,109 +10,111 @@ import type {
     InboxPermission,
     DbTableInsert,
     TicketFilter,
-    TicketForSupplier, // ✅ Importem el tipus que vam definir a db.ts
+    TicketForSupplier,
     Team 
 } from '@/types/db';
 import { getTeamMembersWithProfiles } from "@/lib/supabase/teams";
 
 // --- Tipus de Retorn del Servei (Ja el tenies) ---
 export type InboxInitialData = {
-    permissions: InboxPermission[];
-    teamMembers: TeamMemberWithProfile[];
-    allTeamContacts: Contact[];
-    templates: Template[];
-    receivedCount: number;
-    sentCount: number;
-    tickets: EnrichedTicket[];
+    permissions: InboxPermission[];
+    teamMembers: TeamMemberWithProfile[];
+    allTeamContacts: Contact[];
+    templates: Template[];
+    receivedCount: number;
+    sentCount: number;
+    tickets: EnrichedTicket[];
 };
 
 export type InboxDataError = {
-    permissionsError?: PostgrestError | null;
-    teamMembersError?: PostgrestError | { message: string } | null;
-    contactsError?: PostgrestError | null;
-    templatesError?: PostgrestError | null;
-    receivedCountError?: PostgrestError | null;
-    sentCountError?: PostgrestError | null;
-    ticketsError?: PostgrestError | null;
+    permissionsError?: PostgrestError | null;
+    teamMembersError?: PostgrestError | { message: string } | null;
+    contactsError?: PostgrestError | null;
+    templatesError?: PostgrestError | null;
+    receivedCountError?: PostgrestError | null;
+    sentCountError?: PostgrestError | null;
+    ticketsError?: PostgrestError | null;
 };
 
 /**
- * SERVEI (Ja el tenies)
- * Obté totes les dades inicials necessàries per a la pàgina de l'Inbox.
- */
+ * SERVEI (Ja el tenies)
+ * Obté totes les dades inicials necessàries per a la pàgina de l'Inbox.
+ */
 export async function getInboxInitialData(
-    supabase: SupabaseClient<Database>,
-    userId: string,
-    teamId: string
+    supabase: SupabaseClient<Database>,
+    userId: string,
+    teamId: string
 ): Promise<{ data: InboxInitialData | null; error: InboxDataError | null }> {
-    // ... (Aquesta funció ja era correcta i no es modifica) ...
-    // 1. Obtenir permisos
-    const { data: permissions, error: permissionsError } = await supabase
-        .from('inbox_permissions')
-        .select('*')
-        .eq('team_id', teamId)
-        .eq('grantee_user_id', userId);
+    // 1. Obtenir permisos
+    const { data: permissions, error: permissionsError } = await supabase
+        .from('inbox_permissions')
+        .select('*')
+        .eq('team_id', teamId)
+        .eq('grantee_user_id', userId);
 
-    if (permissionsError) {
-        console.error("Error en carregar els permisos de l'inbox (service):", permissionsError);
-        return { data: null, error: { permissionsError } };
-    }
+    if (permissionsError) {
+        console.error("Error en carregar els permisos de l'inbox (service):", permissionsError);
+        return { data: null, error: { permissionsError } };
+    }
 
-    const safePermissions: InboxPermission[] = permissions || [];
-    const visibleUserIds = [userId, ...(safePermissions.map(p => p.target_user_id).filter(Boolean) || [])];
+    const safePermissions: InboxPermission[] = permissions || [];
+    const visibleUserIds = [userId, ...(safePermissions.map(p => p.target_user_id).filter(Boolean) || [])];
 
-    // 2. Executar la resta de consultes en paral·lel
-    const [
-        teamMembersRes,
-        allTeamContactsRes,
-        templatesRes,
-        receivedCountRes,
-        sentCountRes,
-        ticketsRes
-    ] = await Promise.all([
-        getTeamMembersWithProfiles(supabase, teamId),
-        supabase.from('contacts').select('*').eq('team_id', teamId),
-        supabase.from("email_templates").select("*").eq('team_id', teamId),
-        supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds }),
-        supabase.rpc('get_inbox_sent_count', { p_visible_user_ids: visibleUserIds }),
-        supabase.rpc('get_inbox_tickets', {
-            p_user_id: userId,
-            p_team_id: teamId,
-            p_visible_user_ids: visibleUserIds,
-            p_limit: 50,
-            p_offset: 0,
-            p_search_term: '',
-            p_active_filter: ''
-        })
-    ]);
+    // 2. Executar la resta de consultes en paral·lel
+    const [
+        teamMembersRes,
+        allTeamContactsRes,
+        templatesRes,
+        receivedCountRes,
+        sentCountRes,
+        ticketsRes
+    ] = await Promise.all([
+        getTeamMembersWithProfiles(supabase, teamId),
+        supabase.from('contacts').select('*').eq('team_id', teamId),
+        supabase.from("email_templates").select("*").eq('team_id', teamId),
+        supabase.rpc('get_inbox_received_count', { p_visible_user_ids: visibleUserIds }),
+        supabase.rpc('get_inbox_sent_count', { p_visible_user_ids: visibleUserIds }),
+        
+        // 💡💡💡 INICI DE LA CORRECCIÓ 1 💡💡💡
+        supabase.rpc('get_inbox_tickets', {
+            // p_user_id: userId,           // ❌ ELIMINAT: La RPC no l'espera
+            // p_team_id: teamId,           // ❌ ELIMINAT: La RPC no l'espera
+            p_visible_user_ids: visibleUserIds,
+            p_limit: 50,
+            p_offset: 0,
+            p_search_term: '',
+            p_active_filter: ''
+        })
+        // 💡💡💡 FI DE LA CORRECCIÓ 1 💡💡💡
+    ]);
 
-    // 3. Comprovar errors
-    const errors: InboxDataError = {};
-    if (teamMembersRes.error) errors.teamMembersError = teamMembersRes.error;
-    if (allTeamContactsRes.error) errors.contactsError = allTeamContactsRes.error;
-    if (templatesRes.error) errors.templatesError = templatesRes.error;
-    if (receivedCountRes.error) errors.receivedCountError = receivedCountRes.error;
-    if (sentCountRes.error) errors.sentCountError = sentCountRes.error;
-    if (ticketsRes.error) errors.ticketsError = ticketsRes.error;
+    // 3. Comprovar errors
+    const errors: InboxDataError = {};
+    if (teamMembersRes.error) errors.teamMembersError = teamMembersRes.error;
+    if (allTeamContactsRes.error) errors.contactsError = allTeamContactsRes.error;
+    if (templatesRes.error) errors.templatesError = templatesRes.error;
+    if (receivedCountRes.error) errors.receivedCountError = receivedCountRes.error;
+    if (sentCountRes.error) errors.sentCountError = sentCountRes.error;
+    if (ticketsRes.error) errors.ticketsError = ticketsRes.error;
 
-    if (Object.keys(errors).length > 0) {
-        console.error("Error(s) a getInboxInitialData (service):", errors);
-        if (permissionsError) errors.permissionsError = permissionsError;
-        return { data: null, error: errors };
-    }
+    if (Object.keys(errors).length > 0) {
+        console.error("Error(s) a getInboxInitialData (service):", errors);
+        if (permissionsError) errors.permissionsError = permissionsError;
+        return { data: null, error: errors };
+    }
 
-    // 4. Construir i retornar les dades
-    const data: InboxInitialData = {
-        permissions: safePermissions,
-        teamMembers: (teamMembersRes.data as TeamMemberWithProfile[]) || [],
-        allTeamContacts: (allTeamContactsRes.data as Contact[]) || [],
-        templates: (templatesRes.data as Template[]) || [],
-        receivedCount: receivedCountRes.data || 0,
-        sentCount: sentCountRes.data || 0,
-        tickets: (ticketsRes.data as EnrichedTicket[] || [])
-    };
+    // 4. Construir i retornar les dades
+    const data: InboxInitialData = {
+        permissions: safePermissions,
+        teamMembers: (teamMembersRes.data as TeamMemberWithProfile[]) || [],
+        allTeamContacts: (allTeamContactsRes.data as Contact[]) || [],
+        templates: (templatesRes.data as Template[]) || [],
+        receivedCount: receivedCountRes.data || 0,
+        sentCount: sentCountRes.data || 0,
+        tickets: (ticketsRes.data as unknown as EnrichedTicket[] || [])
+    };
 
-    return { data, error: null };
+    return { data, error: null };
 }
 
 // ---
@@ -125,13 +127,11 @@ export async function getInboxInitialData(
 export async function getTicketBody(
     supabase: SupabaseClient<Database>,
     ticketId: number
-    // ❌ ELIMINAT: teamId: string -> Aquesta columna no existeix a 'tickets'
 ): Promise<string> {
     const { data, error } = await supabase
         .from("tickets")
         .select("body")
         .eq("id", ticketId)
-        // ❌ ELIMINAT: .eq("team_id", teamId)
         .single();
 
     if (error) {
@@ -148,13 +148,11 @@ export async function getTicketBody(
 export async function deleteTicket(
     supabase: SupabaseClient<Database>,
     ticketId: number
-    // ❌ ELIMINAT: teamId: string
 ): Promise<void> {
     const { error } = await supabase
         .from("tickets")
         .delete()
         .eq("id", ticketId);
-        // ❌ ELIMINAT: .eq("team_id", teamId)
 
     if (error) {
         console.error("Error a deleteTicket (service):", error);
@@ -169,13 +167,11 @@ export async function deleteTicket(
 export async function markTicketAsRead(
     supabase: SupabaseClient<Database>,
     ticketId: number
-    // ❌ ELIMINAT: teamId: string
 ): Promise<void> {
     const { error } = await supabase
         .from("tickets")
         .update({ status: "Llegit" })
         .eq("id", ticketId);
-        // ❌ ELIMINAT: .eq("team_id", teamId)
 
     if (error) {
         console.error("Error a markTicketAsRead (service):", error);
@@ -198,7 +194,6 @@ interface SendEmailServiceParams {
 
 /**
  * SERVEI: Envia un email i realitza lògiques associades
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function sendEmail({
     supabase,
@@ -257,7 +252,6 @@ export async function sendEmail({
 
 /**
  * SERVEI: Assigna un tiquet a un tracte (opportunity).
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function assignTicket(
     supabase: SupabaseClient<Database>,
@@ -281,7 +275,6 @@ export async function assignTicket(
 
 /**
  * SERVEI: Carrega més tiquets de forma paginada.
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function loadMoreTickets(
     supabase: SupabaseClient<Database>,
@@ -327,7 +320,6 @@ export async function loadMoreTickets(
 
 /**
  * SERVEI: Afegeix un email a la llista negra.
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function addToBlacklist(
     supabase: SupabaseClient<Database>,
@@ -357,14 +349,12 @@ export async function linkTicketsToContact(
     contactId: number,
     senderEmail: string,
     userId: string
-    // ❌ ELIMINAT: teamId: string
 ): Promise<void> {
     const { error } = await supabase
         .from("tickets")
         .update({ contact_id: contactId })
-        .eq("user_id", userId) // ✅ Aquesta era la lògica original i correcta
+        .eq("user_id", userId) 
         .eq("sender_email", senderEmail.toLowerCase());
-        // ❌ ELIMINAT: .eq("team_id", teamId)
 
     if (error) {
         console.error("Error a linkTicketsToContact (service):", error);
@@ -374,7 +364,6 @@ export async function linkTicketsToContact(
 
 /**
  * SERVEI: Carrega tiquets de forma paginada o per cerca usant RPC.
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function getTickets(
     supabase: SupabaseClient<Database>,
@@ -396,26 +385,27 @@ export async function getTickets(
     const ITEMS_PER_PAGE = 50;
     const offset = (page - 1) * ITEMS_PER_PAGE;
 
+    // 💡💡💡 INICI DE LA CORRECCIÓ 2 💡💡💡
     const { data, error } = await supabase.rpc('get_inbox_tickets', {
-        p_user_id: userId,
-        p_team_id: teamId,
+        // p_user_id: userId,           // ❌ ELIMINAT: La RPC no l'espera
+        // p_team_id: teamId,           // ❌ ELIMINAT: La RPC no l'espera
         p_visible_user_ids: visibleUserIds,
         p_limit: ITEMS_PER_PAGE,
         p_offset: offset,
         p_search_term: searchTerm,
         p_active_filter: filter
     });
+    // 💡💡💡 FI DE LA CORRECCIÓ 2 💡💡💡
 
     if (error) {
         console.error("Error a getTickets (service):", error);
         return [];
     }
-    return (data ?? []) as EnrichedTicket[];
+    return (data ?? []) as unknown as EnrichedTicket[];
 }
 
 /**
  * SERVEI: Carrega un tiquet específic pel seu ID.
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function getTicketById(
     supabase: SupabaseClient<Database>,
@@ -481,22 +471,21 @@ export async function fetchTicketsForSupplierContacts(
     .select(
       `
       *, 
-      contacts!inner (  /* ✅ 1. Canviem a !inner per assegurar el join */
+      contacts!inner (
         id, 
-        full_name,
+        nom, /* Canviat de full_name a nom */
         email
       )
       `
     )
     .in('contact_id', contactIds)
-    .eq('team_id', teamId)
-    // ✅✅✅ LÍNIA CLAU DE LA SOLUCIÓ ✅✅✅
-    .eq('contacts.team_id', teamId) /* 2. Afegim filtre RLS a la taula annidada */
-    // ✅✅✅ FI DE LA SOLUCIÓ ✅✅✅
-    .order('last_reply_at', { ascending: false })
+    // .eq('team_id', teamId) // Aquesta línia és redundant si filtrem per 'contacts.team_id'
+    .eq('contacts.team_id', teamId)
+    // .order('last_reply_at', { ascending: false }) // Aquesta columna 'last_reply_at' no existeix a 'tickets'
+    .order('sent_at', { ascending: false })
+
 
   if (ticketsError) {
-    // Ara aquest error ja no hauria de ser {}, sinó un error real si n'hi hagués
     console.error(
       'Error fetching tickets for supplier contacts (service):',
       ticketsError
@@ -504,7 +493,6 @@ export async function fetchTicketsForSupplierContacts(
     return []
   }
 
-  // Assegurem el tipus de retorn
   return (tickets as unknown as TicketForSupplier[]) || []
 }
 
@@ -515,7 +503,6 @@ export async function fetchTicketsForSupplierContacts(
 export async function deleteMultipleTickets(
     supabase: SupabaseClient<Database>,
     ticketIds: number[]
-    // ❌ ELIMINAT: teamId: string
 ): Promise<void> {
     if (!ticketIds || ticketIds.length === 0) {
         throw new Error("No s'han proporcionat tiquets per eliminar.");
@@ -525,7 +512,6 @@ export async function deleteMultipleTickets(
         .from("tickets")
         .delete()
         .in("id", ticketIds);
-        // ❌ ELIMINAT: .eq("team_id", teamId)
 
     if (error) {
         console.error("Error en l'esborrat múltiple (service):", error);
@@ -544,7 +530,6 @@ export interface NetworkContactData {
 
 /**
  * SERVEI: Prepara les dades per a un nou missatge de Network.
- * (Aquesta funció era correcta, no es modifica)
  */
 export async function prepareNetworkContact(
     supabase: SupabaseClient<Database>,
