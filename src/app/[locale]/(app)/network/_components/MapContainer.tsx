@@ -1,31 +1,32 @@
-// /app/[locale]/network/_components/MapContainer.tsx
 "use client";
 
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useRef, useEffect } from 'react';
 import Map, { Marker, Popup, NavigationControl, MapRef } from 'react-map-gl';
-import type { PublicProfileListItem, PublicProfileDetail, JobPostingListItem, PublicJobPostingDetail } from '../types';
+// ✅ 1. Importem els nous tipus
+import type { MapTeam, MapJobPosting, PublicProfileDetail, PublicJobPostingDetail } from '../types';
 import { Building2, Globe, Briefcase, Loader2, Mail, Phone, MapPin, DollarSign, Wrench } from 'lucide-react';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 
+// ✅ 2. Actualitzem les PROPS
 interface MapContainerProps {
-    profiles: PublicProfileListItem[];
-    jobPostings: JobPostingListItem[];
+    profiles: MapTeam[];
+    jobPostings: MapJobPosting[];
     displayMode: 'all' | 'profiles' | 'projects';
-    
-    selectedProfile: PublicProfileListItem | null;
+
+    selectedProfile: MapTeam | null;
     detailedProfile: PublicProfileDetail | null;
     isLoading: boolean;
-    onSelectProfile: (profile: PublicProfileListItem | null) => void;
-    
-    selectedProject: JobPostingListItem | null;
+    onSelectProfile: (profile: MapTeam | null) => void;
+
+    selectedProject: MapJobPosting | null;
     detailedProject: PublicJobPostingDetail | null;
     isProjectLoading: boolean;
-    onSelectProject: (project: JobPostingListItem | null) => void;
+    onSelectProject: (project: MapJobPosting | null) => void;
+    onDeselect: () => void; // Prop per deseleccionar
 }
 
-// ✅ 1. Aquesta funció ara SÍ s'utilitza
 const formatWebsiteUrl = (url: string | null | undefined): string => {
     if (!url) return '';
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -34,24 +35,24 @@ const formatWebsiteUrl = (url: string | null | undefined): string => {
     return `https://${url}`;
 };
 
-export default function MapContainer({ 
-    profiles, 
-    jobPostings, 
+export default function MapContainer({
+    profiles,
+    jobPostings,
     displayMode,
-    selectedProfile, 
-    detailedProfile, 
+    selectedProfile,
+    detailedProfile,
     isLoading,
     onSelectProfile,
     selectedProject,
     detailedProject,
     isProjectLoading,
-    onSelectProject
+    onSelectProject,
+    onDeselect // ✅ Prop rebuda
 }: MapContainerProps) {
     const mapRef = useRef<MapRef>(null);
     const t = useTranslations('NetworkPage');
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
-    // ... (Efectes i handleDragStart sense canvis) ...
     useEffect(() => {
         if (selectedProfile && selectedProfile.latitude != null && selectedProfile.longitude != null && mapRef.current) {
             mapRef.current.flyTo({ center: [selectedProfile.longitude, selectedProfile.latitude], zoom: 14, duration: 1500 });
@@ -65,8 +66,7 @@ export default function MapContainer({
     }, [selectedProject]);
 
     const handleDragStart = () => {
-        onSelectProfile(null);
-        onSelectProject(null);
+        onDeselect(); // ✅ Cridem la nova funció
     };
 
     if (!mapboxToken) {
@@ -74,42 +74,44 @@ export default function MapContainer({
     }
 
     return (
-        <Map 
-            ref={mapRef} 
-            initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }} 
-            style={{ width: '100%', height: '100%' }} 
-            mapStyle="mapbox://styles/mapbox/dark-v11" 
-            mapboxAccessToken={mapboxToken} 
+        <Map
+            ref={mapRef}
+            initialViewState={{ longitude: 2.1734, latitude: 41.3851, zoom: 7 }}
+            style={{ width: '100%', height: '100%' }}
+            mapStyle="mapbox://styles/mapbox/dark-v11"
+            mapboxAccessToken={mapboxToken}
             onDragStart={handleDragStart}
         >
             <NavigationControl position="top-right" />
-            
-            {/* ... (Marcadors de perfil i projecte sense canvis) ... */}
+
+            {/* Marcadors de Perfil (ara utilitza MapTeam) */}
             {(displayMode === 'all' || displayMode === 'profiles') && profiles.filter(p => p.latitude != null && p.longitude != null).map((profile) => (
-                <Marker 
-                    key={`profile-${profile.id}`} 
-                    longitude={profile.longitude!} 
-                    latitude={profile.latitude!} 
-                    onClick={(e) => { 
-                        e.originalEvent.stopPropagation(); 
+                <Marker
+                    key={`profile-${profile.id}`}
+                    longitude={profile.longitude!}
+                    latitude={profile.latitude!}
+                    onClick={(e) => {
+                        e.originalEvent.stopPropagation();
                         onSelectProfile(profile);
                     }}
                 >
                     <div className="transform transition-transform duration-200 hover:scale-125">
-                        {profile.logo_url 
-                            ? <Image src={profile.logo_url} alt={t('logoAltText', { companyName: profile.name })} width={32} height={32} className="rounded-full border-2 border-purple-500 object-cover" /> 
+                        {profile.logo_url
+                            ? <Image src={profile.logo_url} alt={t('logoAltText', { companyName: profile.name })} width={32} height={32} className="rounded-full border-2 border-purple-500 object-cover" />
                             : <div className="w-8 h-8 rounded-full bg-gray-800 border-2 border-purple-500 flex items-center justify-center"><Building2 className="w-4 h-4 text-purple-300" /></div>
                         }
                     </div>
                 </Marker>
             ))}
+
+            {/* Marcadors de Projecte (ara utilitza MapJobPosting) */}
             {(displayMode === 'all' || displayMode === 'projects') && jobPostings.filter(p => p.latitude != null && p.longitude != null).map((project) => (
-                <Marker 
-                    key={`job-${project.id}`} 
-                    longitude={project.longitude!} 
-                    latitude={project.latitude!} 
-                    onClick={(e) => { 
-                        e.originalEvent.stopPropagation(); 
+                <Marker
+                    key={`job-${project.id}`}
+                    longitude={project.longitude!}
+                    latitude={project.latitude!}
+                    onClick={(e) => {
+                        e.originalEvent.stopPropagation();
                         onSelectProject(project);
                     }}
                 >
@@ -120,23 +122,23 @@ export default function MapContainer({
                     </div>
                 </Marker>
             ))}
-            
+
             {/* ✅ 2. Popup de Perfil (CODI RESTAURAT) */}
             {selectedProfile && selectedProfile.latitude != null && selectedProfile.longitude != null && (
-                <Popup 
-                    longitude={selectedProfile.longitude} 
-                    latitude={selectedProfile.latitude} 
+                <Popup
+                    longitude={selectedProfile.longitude}
+                    latitude={selectedProfile.latitude}
                     onClose={() => onSelectProfile(null)}
-                    closeOnClick={false} 
-                    anchor="bottom" 
+                    closeOnClick={false}
+                    anchor="bottom"
                     className="popup-dark"
                 >
                     {isLoading && <div className="p-4 flex justify-center"><Loader2 className="animate-spin text-white" /></div>}
                     {detailedProfile && !isLoading && (
                         <div className="max-w-xs p-1 text-white space-y-2">
                             <div className="flex items-center gap-3">
-                                {detailedProfile.logo_url 
-                                    ? <Image src={detailedProfile.logo_url} alt={`Logo de ${detailedProfile.name}`} width={40} height={40} className="rounded-full object-cover bg-gray-700" /> 
+                                {detailedProfile.logo_url
+                                    ? <Image src={detailedProfile.logo_url} alt={`Logo de ${detailedProfile.name}`} width={40} height={40} className="rounded-full object-cover bg-gray-700" />
                                     : <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0"><Building2 className="w-5 h-5 text-gray-400" /></div>
                                 }
                                 <div>
@@ -146,7 +148,7 @@ export default function MapContainer({
                             </div>
 
                             {detailedProfile.summary && <p className="text-sm text-gray-300">{detailedProfile.summary}</p>}
-                            
+
                             <div className="text-xs space-y-1 pt-2 border-t border-gray-700">
                                 {detailedProfile.phone && (
                                     <a href={`tel:${detailedProfile.phone}`} className="flex items-center gap-2 text-gray-300 hover:text-white">
@@ -167,7 +169,7 @@ export default function MapContainer({
 
                             {detailedProfile.services && detailedProfile.services.length > 0 && (
                                 <div className="pt-2 border-t border-gray-700">
-                                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1 flex items-center gap-2"><Briefcase className="w-3 h-3"/> Serveis</h4>
+                                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1 flex items-center gap-2"><Briefcase className="w-3 h-3" /> Serveis</h4>
                                     <div className="flex flex-wrap gap-1">
                                         {detailedProfile.services.map((s) => (<span key={s} className="bg-gray-700 text-xs px-2 py-1 rounded-full">{s}</span>))}
                                     </div>
@@ -178,14 +180,14 @@ export default function MapContainer({
                 </Popup>
             )}
 
-            {/* ... (Popup de Projecte (sense canvis) ... */}
+            {/* Popup de Projecte */}
             {selectedProject && selectedProject.latitude != null && selectedProject.longitude != null && (
-                <Popup 
-                    longitude={selectedProject.longitude} 
-                    latitude={selectedProject.latitude} 
+                <Popup
+                    longitude={selectedProject.longitude}
+                    latitude={selectedProject.latitude}
                     onClose={() => onSelectProject(null)}
-                    closeOnClick={false} 
-                    anchor="bottom" 
+                    closeOnClick={false}
+                    anchor="bottom"
                     className="popup-dark"
                 >
                     {isProjectLoading && (
@@ -194,8 +196,8 @@ export default function MapContainer({
                     {detailedProject && !isProjectLoading && (
                         <div className="max-w-xs p-1 text-white space-y-3">
                             <div className="flex items-center gap-3">
-                                {detailedProject.teams?.logo_url 
-                                    ? <Image src={detailedProject.teams.logo_url} alt={`Logo de ${detailedProject.teams.name}`} width={40} height={40} className="rounded-full object-cover bg-gray-700" /> 
+                                {detailedProject.teams?.logo_url
+                                    ? <Image src={detailedProject.teams.logo_url} alt={`Logo de ${detailedProject.teams.name}`} width={40} height={40} className="rounded-full object-cover bg-gray-700" />
                                     : <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0"><Briefcase className="w-5 h-5 text-gray-400" /></div>
                                 }
                                 <div>
@@ -220,14 +222,14 @@ export default function MapContainer({
                             </div>
                             {detailedProject.required_skills && detailedProject.required_skills.length > 0 && (
                                 <div className="pt-2 border-t border-gray-700">
-                                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1 flex items-center gap-2"><Wrench className="w-3 h-3"/> Habilitats</h4>
+                                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-1 flex items-center gap-2"><Wrench className="w-3 h-3" /> Habilitats</h4>
                                     <div className="flex flex-wrap gap-1">
                                         {detailedProject.required_skills.map((s) => (<span key={s} className="bg-gray-700 text-xs px-2 py-1 rounded-full">{s}</span>))}
                                     </div>
                                 </div>
                             )}
                             <div className="pt-2 border-t border-gray-700">
-                                <a 
+                                <a
                                     href={`/comunicacio/inbox?to=${detailedProject.team_id}&projectId=${detailedProject.id}`}
                                     className="text-sm text-purple-400 hover:underline"
                                 >

@@ -1,27 +1,18 @@
-// src/app/[locale]/(app)/network/_components/ProfileList.tsx
-
-import type { PublicProfileListItem } from '../../types';
+import type { MapTeam } from '../../types'; // ✅ Canviat a MapTeam
 import ProfileCard from './ProfileCard';
 import { useTranslations } from 'next-intl';
-import { cn } from '@/lib/utils/utils'; // <-- Importa cn
-import type { Dispatch, SetStateAction } from 'react'; // Importem tipus
+import { cn } from '@/lib/utils/utils';
 
 interface ProfileListProps {
-    profiles: PublicProfileListItem[];
-    // Aquestes props les rep del NetworkClient (on hi ha la barra de cerca)
-    searchTerm: string;
-    onSearchChange: Dispatch<SetStateAction<string>>; 
-    onSelectProfile: (profile: PublicProfileListItem) => void;
+    profiles: MapTeam[]; // ✅ Canviat a MapTeam
+    onSelectProfile: (profile: MapTeam) => void; // ✅ Canviat a MapTeam
     selectedProfileId?: string;
     className?: string; 
+    // Traiem searchTerm i onSearchChange, ja que són al component pare
 }
 
 export default function ProfileList({
     profiles,
-    // No necessitem searchTerm ni onSearchChange aquí dins,
-    // ja que la barra de cerca està al NetworkClient.
-    // Les mantenim (o les podríem treure) per si decidim moure la cerca aquí.
-    // De fet, per netejar, les traurem.
     onSelectProfile,
     selectedProfileId,
     className
@@ -29,8 +20,6 @@ export default function ProfileList({
     const t = useTranslations('NetworkPage');
     
     return (
-        // Aquest component només gestiona la llista i l'scroll
-        // La capçalera amb la cerca està ara al NetworkClient
         <div className={cn(
             "flex-1 overflow-y-auto custom-scrollbar p-2",
             className
@@ -39,7 +28,17 @@ export default function ProfileList({
                 profiles.map(profile => (
                     <ProfileCard
                         key={profile.id}
-                        profile={profile}
+                        // ✅ El component ProfileCard ha d'acceptar MapTeam 
+                        // o hem d'adaptar les dades aquí. Assumim que ProfileCard
+                        // només necessita 'id', 'name', 'logo_url', 'sector'
+                        profile={{ 
+                            id: profile.id, 
+                            name: profile.name, 
+                            logo_url: profile.logo_url,
+                            sector: profile.services ? profile.services.join(', ') : null, // Adaptem 'services' a 'sector'
+                            latitude: profile.latitude,
+                            longitude: profile.longitude
+                        }}
                         isSelected={profile.id === selectedProfileId}
                         onClick={() => onSelectProfile(profile)}
                     />

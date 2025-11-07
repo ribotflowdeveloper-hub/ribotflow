@@ -126,6 +126,10 @@
     "addToBlacklist": "Afegeix remitent a la llista negra",
     "noTicketSelected": "Cap correu seleccionat",
     "limitReached": " Has arribat al límit de correus per al teu pla.",
+    "createOpportunityLabel": "Crear Oportunitat",
+    "createOpportunityInPipeline": "Selecciona un canal",
+    "selectPipelinePlaceholder": "Selecciona un canal...",
+    "doNotCreateOpportunity": "No crear oportunitat",
     "toast": {
       "contactSavedSuccess": "Contacte desat correctament",
       "preparingMessage": "Preparant missatge...",
@@ -135,7 +139,14 @@
       "deleteConfirmDescription": "Aquesta acció no es pot desfer.",
       "cancelButton": "Cancel·lar",
       "confirmDeleteButton": "Sí, elimina'l",
-      "deleteMultipleConfirm": "Estàs segur que vols eliminar els correus seleccionats? Aquesta acció no es pot desfer."
+      "deleteMultipleConfirm": "Estàs segur que vols eliminar els correus seleccionats? Aquesta acció no es pot desfer.",
+      "existingContact": "Contacte Existent",
+      "manualEmail": "Email Manual",
+      "manualEmailPlaceholder": "Escriu l'email del destinatari...",
+      "manualEmailDescription": "Si el contacte no existeix, es crearà automàticament.",
+      "invalidEmailFormat": "El format de l'email no és vàlid.",
+      "toastSuccessTitle":"Exit!",
+      "toastErrorTitle":"Error en l'enviament"
     },
     "editor": {
       "bold": "Negreta",
@@ -2528,7 +2539,7 @@
       "meetingTitle": "Reunió:",
       "summaryTitle": "Resum general",
       "keyMomentsTitle": "Moments clau de la reunió",
-      "keyMomentsDecisions": "Decisions", 
+      "keyMomentsDecisions": "Decisions",
       "keyMomentsActions": "Accions",
       "assignedTasksTitle": "Tasques assignades",
       "participantsTitle": "Participants principals",

@@ -1,5 +1,3 @@
-// /app/[locale]/network/types.ts
-
 /**
  * Representa les dades MÍNIMES d'una empresa (team) que es mostren a la llista inicial.
  */
@@ -27,8 +25,6 @@ export type PublicProfileDetail = PublicProfileListItem & {
         full_name: string | null;
     } | null;
 };
-
-// --- NOVES ADDICIONS ---
 
 /**
  * Representa les dades d'un projecte (job_posting) tal com es reben
@@ -60,9 +56,54 @@ export type JobPostingDetail = JobPostingListItem & {
     expires_at: string | null;
 };
 
-// ✅ NOU TIPUS: Afegeix els detalls que falten per al popup
+/**
+ * Representa les dades públiques d'un projecte (per al popup de detall).
+ */
 export interface PublicJobPostingDetail extends JobPostingListItem {
     description: string | null;
     required_skills: string[] | null;
     budget: number | null;
 }
+
+// --- ✅ NOUS TIPUS AFEGITS PER AL MAPA ---
+
+/**
+ * Dades d'un equip (perfil) optimitzades per als marcadors del mapa.
+ * (Basat en el SELECT de getAllNetworkTeams)
+ */
+export type MapTeam = {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  latitude: number; // Filtrat per no ser null al servei
+  longitude: number; // Filtrat per no ser null al servei
+  services: string[]; // Assegurat com a array pel servei
+  city: string | null;
+  country: string | null;
+};
+
+/**
+ * Dades d'un projecte (job) optimitzades per als marcadors del mapa.
+ * (Basat en el SELECT de getAllNetworkJobPostings)
+ */
+export type MapJobPosting = {
+  id: string;
+  title: string;
+  latitude: number; // Filtrat per no ser null al servei
+  longitude: number; // Filtrat per no ser null al servei
+  budget: number | null;
+  team_id: string;
+  teams: { // Objecte de l'equip (no un array)
+    name: string | null;
+    logo_url: string | null;
+  } | null;
+};
+
+/**
+ * Objecte de dades wrapper que conté tota la informació
+ * necessària per renderitzar el mapa inicial.
+ */
+export type MapData = {
+  teams: MapTeam[];
+  jobs: MapJobPosting[];
+};

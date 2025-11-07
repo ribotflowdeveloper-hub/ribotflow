@@ -1,18 +1,99 @@
-// /app/[locale]/network/actions.ts (FITXER REFACTORITZAT)
+// src/app/[locale]/(app)/network/actions.ts
 "use server";
 
-import { validateUserSession } from "@/lib/supabase/session";
-import { revalidatePath } from 'next/cache'; // Importem revalidatePath
+import { validateUserSession } from "@/lib/supabase/session"; 
+import { revalidatePath } from 'next/cache'; 
 
-// ✅ 1. Importem el NOU servei
 import * as networkService from '@/lib/services/network/network.service';
-// ✅ 2. Importem el NOU schema de Zod
 import { CreateJobPostingSchema } from './schemas';
-// ✅ 3. Importem els tipus de DADES (View Models)
-import type { PublicProfileDetail, PublicJobPostingDetail } from './types'; 
+import type { 
+  PublicProfileDetail, 
+  PublicJobPostingDetail, 
+  MapData 
+} from './types'; 
 
 /**
- * ACCIÓ: Obté les dades detallades d'un sol equip.
+ * ACCIÓ PÚBLICA: Obté Totes les dades (equips i projectes) per al mapa públic.
+ */
+export async function getNetworkMapDataAction(): Promise<MapData> {
+  try {
+    const [teams, jobs] = await Promise.all([
+      networkService.getAllNetworkTeams(),
+      networkService.getAllNetworkJobPostings()
+    ]);
+    
+    return { teams, jobs };
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut.";
+    console.error("Error a getNetworkMapDataAction:", message);
+    return { teams: [], jobs: [] };
+  }
+}
+
+// --- 👇 NOVES ACCIONS PÚBLIQUES ---
+// Aquestes accions NO validen sessió i utilitzen el client Admin
+// Són per ser cridades des del mapa PÚBLIC (NetworkClient.tsx)
+
+/**
+ * ACCIÓ PÚBLICA: Obté les dades públiques d'un equip.
+ */
+export async function getPublicTeamDetailsAction(teamId: string): Promise<{ 
+  success: boolean; 
+  data?: PublicProfileDetail | null; 
+  message?: string; 
+}> {
+  if (!teamId) {
+    return { success: false, message: "Falta l'ID de l'equip." };
+  }
+  
+  try {
+    // ✅ Crida al NOU servei públic (amb admin)
+    const data = await networkService.getPublicTeamDetails(teamId);
+    if (!data) {
+      throw new Error("No s'ha pogut trobar l'equip especificat.");
+    }
+    return { success: true, data: data };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut.";
+    console.error("Error a getPublicTeamDetailsAction:", message);
+    return { success: false, message };
+  }
+}
+
+/**
+ * ACCIÓ PÚBLICA: Obté les dades públiques d'un projecte.
+ */
+export async function getPublicJobPostingDetailsAction(jobId: string): Promise<{
+  success: boolean;
+  data?: PublicJobPostingDetail | null;
+  message?: string;
+}> {
+  if (!jobId) {
+    return { success: false, message: "Falta l'ID del projecte." };
+  }
+
+  try {
+    // ✅ Crida al NOU servei públic (amb admin)
+    const data = await networkService.getPublicJobPostingDetails(jobId);
+    if (!data) {
+      throw new Error("No s'ha pogut trobar el projecte especificat.");
+    }
+    return { success: true, data: data };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error desconegut.";
+    console.error("Error a getPublicJobPostingDetailsAction:", message);
+    return { success: false, message };
+  }
+}
+
+
+// --- ACCIONS PRIVADES EXISTENTS (Sense canvis) ---
+// Aquestes accions validen sessió i s'han de fer servir
+// en contextos privats (p.ex. settings, dashboard), NO al mapa públic.
+
+/**
+ * ACCIÓ PRIVADA: Obté les dades detallades d'un sol equip (per a ús intern).
  */
 export async function getTeamDetailsAction(teamId: string): Promise<{ 
   success: boolean; 
@@ -23,13 +104,14 @@ export async function getTeamDetailsAction(teamId: string): Promise<{
     return { success: false, message: "Falta l'ID de l'equip." };
   }
   
-  const session = await validateUserSession();
+  const session = await validateUserSession(); 
   if ('error' in session) {
     return { success: false, message: session.error.message };
   }
   const { supabase } = session;
 
   try {
+    // ✅ Crida al servei PRIVAT (amb RLS)
     const data = await networkService.getTeamDetails(supabase, teamId);
     return { success: true, data: data };
   } catch (error: unknown) {
@@ -40,7 +122,7 @@ export async function getTeamDetailsAction(teamId: string): Promise<{
 }
 
 /**
- * ACCIÓ: Obté les dades detallades d'un sol projecte (job_posting).
+ * ACCIÓ PRIVADA: Obté les dades detallades d'un sol projecte (per a ús intern).
  */
 export async function getJobPostingDetailsAction(jobId: string): Promise<{
   success: boolean;
@@ -58,6 +140,7 @@ export async function getJobPostingDetailsAction(jobId: string): Promise<{
   const { supabase } = session;
 
   try {
+    // ✅ Crida al servei PRIVAT (amb RLS)
     const data = await networkService.getJobPostingDetails(supabase, jobId);
     return { success: true, data: data };
   } catch (error: unknown) {
@@ -68,16 +151,16 @@ export async function getJobPostingDetailsAction(jobId: string): Promise<{
 }
 
 /**
- * ACCIÓ: Crea un nou projecte (job_posting).
+ * ACCIÓ PRIVADA: Crea un nou projecte (job_posting).
  */
 export async function createJobPostingAction(formData: FormData) {
+  // ... (funció idèntica)
   const session = await validateUserSession();
   if ('error' in session) {
     return { success: false, message: "Accés denegat. Has d'iniciar sessió." };
   }
   const { supabase } = session;
-
-  // 1. Validació de dades (es queda a l'acció/controlador)
+ 
   const formObject = Object.fromEntries(formData.entries());
   const validatedFields = CreateJobPostingSchema.safeParse({
     ...formObject,
@@ -96,16 +179,10 @@ export async function createJobPostingAction(formData: FormData) {
   }
   
   try {
-    // 2. Crida al servei
     const data = await networkService.createJobPosting(supabase, validatedFields.data);
-
-    // 3. Efectes secundaris (Revalidació)
-    revalidatePath('/network'); // Revalidem la pàgina del network per veure el nou projecte
-
+    revalidatePath('/network'); 
     return { success: true, data };
-
   } catch (error: unknown) {
-    // 4. Gestió d'errors
     const message = error instanceof Error ? error.message : "Error desconegut en crear el projecte.";
     console.error("Error a createJobPostingAction:", message);
     return { success: false, message };

@@ -3,25 +3,28 @@
 import React, { useState, useMemo, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
+// Canviem els imports de les llistes (suposant que són a subdirectoris)
 import ProfileList from './profiles/ProfileList';
 import ProjectList from './projects/ProjecteList';
-// ✅ 1. Importem els nous tipus
-import type { PublicProfileListItem, PublicProfileDetail, JobPostingListItem, PublicJobPostingDetail } from '../types';
+import type { MapTeam, MapJobPosting, PublicProfileDetail, PublicJobPostingDetail } from '../types';
 import { useTranslations } from 'next-intl';
 import { List, Map as MapIcon, Building2, Briefcase, PlusCircle, Search, Users } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
 import { Button } from '@/components/ui/button';
-// ✅ 2. Importem la nova acció
-import { getTeamDetailsAction, getJobPostingDetailsAction } from '../actions';
+//
+// ✅ 1. CANVI CLAU: Importem les accions PÚBLIQUES
+//
+import { getPublicTeamDetailsAction, getPublicJobPostingDetailsAction, getTeamDetailsAction } from '../actions';
 import { toast } from 'sonner';
-import CreateProjectDialog from './CreateProjectDialog'; 
-import { useNavigationStore } from '@/stores/navigationStore';
+// Suposo que aquest component existeix
+import CreateProjectDialog from './CreateProjectDialog';
 
 const MapLoadingSkeleton = () => {
     const t = useTranslations('NetworkPage');
     return <div className="w-full h-full bg-muted flex items-center justify-center"><p className="text-muted-foreground">{t('loadingMap')}</p></div>;
 };
 
+// Suposo que el MapContainer és a _components
 const DynamicMapContainer = dynamic(() => import('./MapContainer'), { loading: () => <MapLoadingSkeleton />, ssr: false });
 
 const MOBILE_HEADER_HEIGHT_PX = 64;
@@ -29,58 +32,77 @@ const MOBILE_HEADER_HEIGHT_PX = 64;
 type DisplayMode = 'all' | 'profiles' | 'projects';
 
 export function NetworkClient({
-    profiles,
-    jobPostings,
+    initialTeams,
+    initialJobs,
+    userTeamId,
     errorMessage
 }: {
-    profiles: PublicProfileListItem[];
-    jobPostings: JobPostingListItem[];
+    initialTeams: MapTeam[];
+    initialJobs: MapJobPosting[];
+    userTeamId: string | null;
     errorMessage?: string;
 }) {
-    // Estats de perfil
-    const [selectedProfile, setSelectedProfile] = useState<PublicProfileListItem | null>(null);
+    const [selectedProfile, setSelectedProfile] = useState<MapTeam | null>(null);
     const [detailedProfile, setDetailedProfile] = useState<PublicProfileDetail | null>(null);
     const [isDetailsLoading, startDetailsTransition] = useTransition();
-    
-    // ✅ 3. Afegim estats per als detalls del projecte
-    const [selectedProject, setSelectedProject] = useState<JobPostingListItem | null>(null);
+
+    const [selectedProject, setSelectedProject] = useState<MapJobPosting | null>(null);
     const [detailedProject, setDetailedProject] = useState<PublicJobPostingDetail | null>(null);
     const [isProjectDetailsLoading, startProjectDetailsTransition] = useTransition();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
     const [displayMode, setDisplayMode] = useState<DisplayMode>('all');
-    
+
     const t = useTranslations('NetworkPage');
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-    const { activeTeam } = useNavigationStore();
+    const canCreateProject = !!userTeamId;
 
     const filteredProfiles = useMemo(() => {
-        if (!searchTerm) return profiles;
-        return profiles.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }, [profiles, searchTerm]);
+        console.log(`[NetworkClient] Filtrant ${initialTeams.length} equips amb el terme: "${searchTerm}"`);
+        if (!searchTerm) return initialTeams;
+        return initialTeams.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }, [initialTeams, searchTerm]);
 
     const filteredJobPostings = useMemo(() => {
-        if (!searchTerm) return jobPostings;
-        return jobPostings.filter(j =>
+        console.log(`[NetworkClient] Filtrant ${initialJobs.length} projectes amb el terme: "${searchTerm}"`);
+        if (!searchTerm) return initialJobs;
+        return initialJobs.filter(j =>
             j.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
             j.teams?.name?.toLowerCase().includes(searchTerm.toLowerCase())
         );
-    }, [jobPostings, searchTerm]);
+    }, [initialJobs, searchTerm]);
 
-    // Gestor de selecció de Perfil (sense canvis)
-    const handleSelectProfile = (profile: PublicProfileListItem | null) => {
+    const handleSelectProfile = (profile: MapTeam | null) => {
+        console.log("[NetworkClient] handleSelectProfile:", profile?.id || "null");
         setSelectedProject(null);
         setDetailedProject(null);
         setSelectedProfile(profile);
         setDetailedProfile(null);
+
         if (profile) {
             startDetailsTransition(async () => {
-                const result = await getTeamDetailsAction(profile.id);
+                //
+                // ✅ LÒGICA DE DECISIÓ
+                // Comprovem si el 'userTeamId' (passat com a prop) 
+                // coincideix amb el perfil seleccionat.
+                //
+                const isOwnProfile = userTeamId === profile.id;
+
+                console.log(`[NetworkClient] Carregant detalls. isOwnProfile: ${isOwnProfile}`);
+
+                // Si és el seu perfil, cridem l'acció PRIVADA
+                // Si és un altre perfil, cridem la PÚBLICA
+                const actionToCall = isOwnProfile
+                    ? getTeamDetailsAction
+                    : getPublicTeamDetailsAction;
+
+                const result = await actionToCall(profile.id);
+
                 if (result.success) {
                     setDetailedProfile(result.data as PublicProfileDetail);
                     setViewMode('map');
-                    setDisplayMode('profiles'); 
+                    setDisplayMode('profiles');
                 } else {
                     toast.error("Error en carregar els detalls", { description: result.message });
                     setSelectedProfile(null);
@@ -89,36 +111,40 @@ export function NetworkClient({
         }
     };
 
-    // ✅ 4. Actualitzem el gestor de selecció de Projecte
-    const handleSelectProject = (project: JobPostingListItem | null) => {
+    const handleSelectProject = (project: MapJobPosting | null) => {
+        console.log("[NetworkClient] handleSelectProject:", project?.id || "null");
         setSelectedProfile(null);
         setDetailedProfile(null);
         setSelectedProject(project);
-        setDetailedProject(null); // Reseteja el detall
+        setDetailedProject(null);
         if (project) {
             setViewMode('map');
             setDisplayMode('projects');
-            // Iniciem la transició per carregar els detalls del projecte
             startProjectDetailsTransition(async () => {
-                const result = await getJobPostingDetailsAction(project.id);
+                //
+                // ✅ 3. CANVI CLAU: Cridem l'acció PÚBLICA
+                //
+                const result = await getPublicJobPostingDetailsAction(project.id);
                 if (result.success) {
                     setDetailedProject(result.data as PublicJobPostingDetail);
                 } else {
                     toast.error("Error en carregar detalls del projecte", { description: result.message });
-                    setSelectedProject(null); // Deseleccionem si falla
+                    setSelectedProject(null);
                 }
             });
         }
     };
 
     const handleMapDeselect = () => {
+        console.log("[NetworkClient] handleMapDeselect");
         setSelectedProfile(null);
         setDetailedProfile(null);
         setSelectedProject(null);
-        setDetailedProject(null); // Reseteja el detall
+        setDetailedProject(null);
     }
 
     const handleChangeDisplayMode = (mode: DisplayMode) => {
+        console.log("[NetworkClient] handleChangeDisplayMode:", mode);
         setSearchTerm('');
         handleMapDeselect();
         setDisplayMode(mode);
@@ -128,9 +154,11 @@ export function NetworkClient({
         return <div className="p-8 text-destructive text-center">{errorMessage}</div>;
     }
 
+    console.log(`[NetworkClient] Renderitzant. Mode Vista: ${viewMode}, Mode Dades: ${displayMode}`);
+
     return (
         <div className="h-full w-full flex flex-col bg-background overflow-hidden">
-            {/* ... Capçalera mòbil (sense canvis) ... */}
+            {/* Capçalera mòbil */}
             <div
                 className="p-2 border-b bg-background/95 backdrop-blur-sm lg:hidden flex-shrink-0"
                 style={{ height: `${MOBILE_HEADER_HEIGHT_PX}px` }}
@@ -148,7 +176,7 @@ export function NetworkClient({
             <div className="flex-1 relative overflow-hidden min-h-0 p-4 sm:p-6 md:p-8 lg:p-4 lg:grid lg:grid-cols-3 lg:gap-8">
                 {/* --- LAYOUT DESKTOP (lg:) --- */}
                 <div className="hidden lg:flex lg:flex-col glass-effect rounded-lg overflow-hidden">
-                    {/* ... Filtres de llista i cerca (sense canvis) ... */}
+                    {/* Filtres de llista i cerca */}
                     <div className="p-4 border-b border-border flex-shrink-0">
                         <div className="flex w-full bg-muted p-1 rounded-md mb-4">
                             <Button variant={displayMode === 'all' ? 'secondary' : 'ghost'} className="flex-1" onClick={() => handleChangeDisplayMode('all')}>
@@ -165,7 +193,7 @@ export function NetworkClient({
                             <h2 className="text-xl font-bold">
                                 {displayMode === 'projects' ? "Projectes Oberts" : t('networkTitle')}
                             </h2>
-                            {displayMode === 'projects' && activeTeam && (
+                            {displayMode === 'projects' && canCreateProject && (
                                 <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
                                     <PlusCircle className="mr-2 h-4 w-4" />
                                     Publicar
@@ -183,29 +211,26 @@ export function NetworkClient({
                             />
                         </div>
                     </div>
-                    
-                    {/* ... Lògica de llista (sense canvis) ... */}
-                    {displayMode === 'projects' ? (
+
+                    {/* Llistes Desktop */}
+                    {(displayMode === 'all' || displayMode === 'profiles') ? (
+                        <ProfileList
+                            profiles={filteredProfiles}
+                            onSelectProfile={handleSelectProfile}
+                            selectedProfileId={selectedProfile?.id}
+                            className="flex-1"
+                        />
+                    ) : (
                         <ProjectList
                             projects={filteredJobPostings}
                             onSelectProject={handleSelectProject}
                             selectedProjectId={selectedProject?.id}
                             className="flex-1"
                         />
-                    ) : (
-                        <ProfileList
-                            profiles={filteredProfiles}
-                            searchTerm={searchTerm}
-                            onSearchChange={setSearchTerm}
-                            onSelectProfile={handleSelectProfile}
-                            selectedProfileId={selectedProfile?.id}
-                            className="flex-1"
-                        />
                     )}
                 </div>
 
                 {/* --- MAPA DESKTOP --- */}
-                {/* ✅ 5. Passem les noves props del projecte al mapa */}
                 <div className="hidden lg:block lg:col-span-2 rounded-lg overflow-hidden">
                     <DynamicMapContainer
                         profiles={filteredProfiles}
@@ -215,15 +240,15 @@ export function NetworkClient({
                         detailedProfile={detailedProfile}
                         isLoading={isDetailsLoading}
                         selectedProject={selectedProject}
-                        detailedProject={detailedProject} // <-- NOU
-                        isProjectLoading={isProjectDetailsLoading} // <-- NOU
+                        detailedProject={detailedProject}
+                        isProjectLoading={isProjectDetailsLoading}
                         onSelectProfile={handleSelectProfile}
                         onSelectProject={handleSelectProject}
+                        onDeselect={handleMapDeselect}
                     />
                 </div>
 
                 {/* --- LAYOUT MÒBIL (default) --- */}
-                {/* ✅ 6. Passem les noves props del projecte al mapa (mòbil) */}
                 <div className="absolute inset-0 h-full w-full lg:hidden">
                     <DynamicMapContainer
                         profiles={filteredProfiles}
@@ -233,14 +258,15 @@ export function NetworkClient({
                         detailedProfile={detailedProfile}
                         isLoading={isDetailsLoading}
                         selectedProject={selectedProject}
-                        detailedProject={detailedProject} // <-- NOU
-                        isProjectLoading={isProjectDetailsLoading} // <-- NOU
+                        detailedProject={detailedProject}
+                        isProjectLoading={isProjectDetailsLoading}
                         onSelectProfile={handleSelectProfile}
                         onSelectProject={handleSelectProject}
+                        onDeselect={handleMapDeselect}
                     />
                 </div>
 
-                {/* ... Llista Mòbil (Panell animat) (sense canvis) ... */}
+                {/* Llista Mòbil (Panell animat) */}
                 <AnimatePresence>
                     {viewMode === 'list' && (
                         <motion.div
@@ -271,7 +297,7 @@ export function NetworkClient({
                                     <h2 className="text-xl font-bold">
                                         {displayMode === 'projects' ? "Projectes Oberts" : t('networkTitle')}
                                     </h2>
-                                    {displayMode === 'projects' && activeTeam && (
+                                    {displayMode === 'projects' && canCreateProject && (
                                         <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
                                             <PlusCircle className="mr-2 h-4 w-4" />
                                             Publicar
@@ -290,32 +316,31 @@ export function NetworkClient({
                                 </div>
                             </div>
 
-                            {displayMode === 'projects' ? (
+                            {/* Llistes Mòbil */}
+                            {(displayMode === 'all' || displayMode === 'profiles') ? (
+                                <ProfileList
+                                    profiles={filteredProfiles}
+                                    onSelectProfile={handleSelectProfile}
+                                    selectedProfileId={selectedProfile?.id}
+                                    className="flex-1"
+                                />
+                            ) : (
                                 <ProjectList
                                     projects={filteredJobPostings}
                                     onSelectProject={handleSelectProject}
                                     selectedProjectId={selectedProject?.id}
                                     className="flex-1"
                                 />
-                            ) : (
-                                <ProfileList
-                                    profiles={filteredProfiles}
-                                    searchTerm={searchTerm}
-                                    onSearchChange={setSearchTerm}
-                                    onSelectProfile={handleSelectProfile}
-                                    selectedProfileId={selectedProfile?.id}
-                                    className="flex-1"
-                                />
                             )}
                         </motion.div>
                     )}
                 </AnimatePresence>
-                
-                {activeTeam && (
+
+                {canCreateProject && userTeamId && (
                     <CreateProjectDialog
                         open={isCreateDialogOpen}
                         onOpenChange={setIsCreateDialogOpen}
-                        teamId={activeTeam.id}
+                        teamId={userTeamId}
                     />
                 )}
             </div>
