@@ -375,6 +375,8 @@ export type Database = {
           address: Json | null
           birthday: string | null
           children_count: number | null
+          city: string | null
+          country: string | null
           created_at: string | null
           email: string
           empresa: string | null
@@ -390,8 +392,11 @@ export type Database = {
           nom: string
           notes: string | null
           partner_name: string | null
+          postal_code: string | null
           social_media: Json | null
+          street: string | null
           supplier_id: string | null
+          tax_id: string | null
           team_id: string | null
           telefon: string | null
           ubicacio: string | null
@@ -403,6 +408,8 @@ export type Database = {
           address?: Json | null
           birthday?: string | null
           children_count?: number | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email: string
           empresa?: string | null
@@ -418,8 +425,11 @@ export type Database = {
           nom: string
           notes?: string | null
           partner_name?: string | null
+          postal_code?: string | null
           social_media?: Json | null
+          street?: string | null
           supplier_id?: string | null
+          tax_id?: string | null
           team_id?: string | null
           telefon?: string | null
           ubicacio?: string | null
@@ -431,6 +441,8 @@ export type Database = {
           address?: Json | null
           birthday?: string | null
           children_count?: number | null
+          city?: string | null
+          country?: string | null
           created_at?: string | null
           email?: string
           empresa?: string | null
@@ -446,8 +458,11 @@ export type Database = {
           nom?: string
           notes?: string | null
           partner_name?: string | null
+          postal_code?: string | null
           social_media?: Json | null
+          street?: string | null
           supplier_id?: string | null
+          tax_id?: string | null
           team_id?: string | null
           telefon?: string | null
           ubicacio?: string | null
@@ -2977,15 +2992,10 @@ export type Database = {
         Args: { team_id_to_check: string }
         Returns: boolean
       }
-      log_task_activity:
-        | {
-            Args: { new_status_input: boolean; task_id_input: number }
-            Returns: undefined
-          }
-        | {
-            Args: { new_status_input: boolean; task_id_input: string }
-            Returns: undefined
-          }
+      log_task_activity: {
+        Args: { new_status_input: boolean; task_id_input: number }
+        Returns: undefined
+      }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_documents: {
         Args: {

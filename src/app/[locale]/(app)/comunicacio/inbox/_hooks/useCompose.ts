@@ -1,4 +1,4 @@
-// src/app/[locale]/(app)/comunicacio/inbox/_hooks/useCompose.ts
+// src/app/[locale]/(app)/comunicacio/inbox/_hooks/useCompose.ts (FITXER CORREGIT I COMPLET)
 "use client"; 
 
 import { useState, useEffect, useMemo, useTransition } from 'react';
@@ -24,7 +24,6 @@ interface UseComposeProps {
 
 export function useCompose({ templates, contacts, initialData, onClose, onEmailSent }: UseComposeProps) {
   const t = useTranslations('InboxPage');
-  // He canviat a 't_toast' per coherència amb el teu ComposeDialog
   const t_toast = useTranslations('InboxPage.toast'); 
   const [isSending, startSendTransition] = useTransition();
 
@@ -45,11 +44,7 @@ export function useCompose({ templates, contacts, initialData, onClose, onEmailS
   const [variableValues, setVariableValues] = useState<{ [key: string]: string }>({});
   const [debouncedVariableValues, setDebouncedVariableValues] = useState<{ [key: string]: string }>({});
   
-  // ✅ 1. CANVI: Substituïm el 'boolean' pel 'number | null'
-  // const [createOpportunity, setCreateOpportunity] = useState(false); // ❌ ELIMINAT
   const [selectedPipelineId, setSelectedPipelineId] = useState<number | null>(null);
-
-  // Estats per al destinatari (això estava bé)
   const [recipientMode, setRecipientMode] = useState<'contact' | 'manual'>('contact');
   const [manualEmail, setManualEmail] = useState('');
 
@@ -62,11 +57,7 @@ export function useCompose({ templates, contacts, initialData, onClose, onEmailS
     setVariableValues({});
     setDebouncedVariableValues({});
     setContactSearch('');
-    
-    // ✅ 2. CANVI: Resetejem el nou estat
-    // setCreateOpportunity(false); // ❌ ELIMINAT
-    setSelectedPipelineId(null); // Reseteja el selector a "No crear"
-
+    setSelectedPipelineId(null); 
     setRecipientMode(initialData?.contactId ? 'contact' : 'contact');
     setManualEmail(initialData?.to || '');
   
@@ -88,12 +79,16 @@ export function useCompose({ templates, contacts, initialData, onClose, onEmailS
     }
   }, [selectedTemplate, debouncedVariableValues]);
 
+  // Aquest 'finalHtmlBody' S'UTILITZA NOMÉS PER A LA PREVIEW DE LA PLANTILLA.
+  // No l'hem d'utilitzar per enviar el correu manual.
   const finalHtmlBody = useMemo(() => {
     if (selectedTemplate && selectedTemplate.body) {
       return renderTemplate(selectedTemplate.body, debouncedVariableValues);
     }
-    return editor?.getHTML() || '';
-  }, [selectedTemplate, debouncedVariableValues, editor]);
+    // Quan no hi ha plantilla, aquest valor no s'actualitza amb el que l'usuari escriu.
+    // Això és correcte, ja que 'ComposeDialog' no el fa servir si 'selectedTemplate' és nul.
+    return ''; 
+  }, [selectedTemplate, debouncedVariableValues]);
   
   const filteredContacts = useMemo(() => {
     if (!contactSearch) return contacts;
@@ -117,10 +112,19 @@ export function useCompose({ templates, contacts, initialData, onClose, onEmailS
     }
   };
 
+  //
+  // ✅ --- AQUESTA ÉS LA FUNCIÓ CORREGIDA --- ✅
+  //
   const handleSend = () => {
-    const isBodyEmpty = !selectedTemplate 
-      ? (editor?.isEmpty || !editor)
-      : !finalHtmlBody.replace(/<p><\/p>/g, '').trim();
+    
+    // 1. Obtenim l'HTML correcte en el moment de l'enviament.
+    const bodyToSend = selectedTemplate 
+      ? finalHtmlBody // Si hi ha plantilla, fem servir el 'finalHtmlBody' (renderitzat)
+      : editor?.getHTML() || ''; // Si NO hi ha plantilla, llegim el valor EN VIU de l'editor.
+    
+    // 2. Validem utilitzant el 'bodyToSend' correcte.
+    // Afegim una comprovació per <p><br></p> que TipTap pot generar buit.
+    const isBodyEmpty = !bodyToSend.replace(/<p><\/p>|<p><br><\/p>/g, '').trim();
 
     const hasRecipient = (recipientMode === 'contact' && !!selectedContactId) || 
                       (recipientMode === 'manual' && !!manualEmail.trim());
@@ -138,14 +142,13 @@ export function useCompose({ templates, contacts, initialData, onClose, onEmailS
     }
     
     startSendTransition(async () => {
-      // ✅ 3. CANVI: Passem el 'selectedPipelineId'
+      // 3. Enviem el 'bodyToSend' a la Server Action.
       const result = await sendEmailActionWithManualCreate({
         contactId: recipientMode === 'contact' ? Number(selectedContactId) : null,
         manualEmail: recipientMode === 'manual' ? manualEmail.trim() : null,
         subject: subject.trim(),
-        htmlBody: finalHtmlBody,
-        // createOpportunity: createOpportunity, // ❌ ELIMINAT
-        selectedPipelineId: selectedPipelineId, // ✅ AFEGIT
+        htmlBody: bodyToSend, // <-- ✅ AQUEST ÉS EL CANVI
+        selectedPipelineId: selectedPipelineId,
       });
       
       if (result.success) {
@@ -164,12 +167,9 @@ export function useCompose({ templates, contacts, initialData, onClose, onEmailS
     contactSearch, setContactSearch,
     selectedTemplate, handleTemplateSelect,
     variableValues, setVariableValues,
-    finalHtmlBody, filteredContacts, isSending, handleSend,
-    
-    // ✅ 4. CANVI: Exportem els estats correctes
-    // createOpportunity, setCreateOpportunity, // ❌ ELIMINAT
-    selectedPipelineId, setSelectedPipelineId, // ✅ AFEGIT (Això arregla l'error TS-2339)
-    
+    finalHtmlBody, // Això està bé, la UI el fa servir per la preview
+    filteredContacts, isSending, handleSend,
+    selectedPipelineId, setSelectedPipelineId,
     recipientMode, setRecipientMode,
     manualEmail, setManualEmail
   };
