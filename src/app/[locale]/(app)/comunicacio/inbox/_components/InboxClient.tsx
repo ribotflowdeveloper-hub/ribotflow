@@ -8,7 +8,7 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useTranslations } from 'next-intl';
 import { useInbox } from '../_hooks/useInbox';
 import type { User } from '@supabase/supabase-js';
-import type { Contact, EnrichedTicket, InboxPermission, TeamMemberWithProfile, Template } from '@/types/db';
+import type { Contact, EnrichedTicket, InboxPermission, TeamMemberWithProfile, Template, Pipeline } from '@/types/db';
 
 // Components
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -33,6 +33,7 @@ interface InboxClientProps {
   allTeamContacts: Contact[];
   ticketLimitStatus: UsageCheckResult; // ✅ Prop de límit de Tiquets
   contactLimitStatus: UsageCheckResult; // ✅ Prop de límit de Contactes
+  pipelines: Pick<Pipeline, 'id' | 'name'>[];
 }
 
 export function InboxClient(props: InboxClientProps) {
@@ -52,7 +53,8 @@ export function InboxClient(props: InboxClientProps) {
     selectedTicketIds,
     onToggleSelectionMode,
     onToggleSelection,
-    onDeleteSelected
+    onDeleteSelected,
+
   } = useInbox({
     ...props,
     initialUnreadCount: props.initialReceivedCount,
@@ -111,6 +113,7 @@ export function InboxClient(props: InboxClientProps) {
         templates={props.initialTemplates}
         contacts={props.allTeamContacts}
         limitStatus={props.ticketLimitStatus} // ✅ Passa el límit de Tiquets
+        pipelines={props.pipelines} // ✅ Passa les pipelines
       />
 
       <AlertDialog open={!!ticketToDelete} onOpenChange={() => setTicketToDelete(null)}>
@@ -201,6 +204,7 @@ export function InboxClient(props: InboxClientProps) {
               onSaveContact={handleSaveContact}
               ticketLimitStatus={props.ticketLimitStatus}   // ✅ Passa el límit de Tiquets
               contactLimitStatus={props.contactLimitStatus} // ✅ Passa el límit de Contactes
+
             />
           )}
         </AnimatePresence>

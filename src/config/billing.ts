@@ -6,7 +6,7 @@ import type { PlanConfig } from '@/types/settings';
  */
 export const plansStructure: PlanConfig[] = [
   {
-    id: 'plan_free',
+    id: process.env.PLAN_FREE_ID || 'plan_free',
     name: 'Free', // Aquesta serà la clau 'free' per a les traduccions
     iconName: 'Gift',
     priceMonthly: 0,
