@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+// ✅ 1. Importem 'useRouter' per refrescar
+import { useSearchParams, useRouter } from 'next/navigation'; 
 import { type InvoiceDetail } from '@/types/finances';
 import { useInvoiceDetail } from '../_hooks/useInvoiceDetail';
 import { type CompanyProfile } from '@/types/settings/team';
 import { type Database } from '@/types/supabase';
+import { toast } from 'sonner'; 
+import { sendInvoiceByEmailAction } from '../actions'; 
 
 // Nous components fills importats
 import { InvoiceDetailHeader } from './client/InvoiceDetailHeader';
@@ -14,142 +17,193 @@ import { InvoiceMainContent } from './client/InvoiceMainContent';
 
 // Definim el tipus 'Contact' correcte
 type Contact = Database['public']['Tables']['contacts']['Row'];
-// ✅ 1. Importem el tipus 'Product'
 type Product = Database['public']['Tables']['products']['Row'];
 
 interface InvoiceDetailClientProps {
-  initialData: InvoiceDetail | null;
-  company: CompanyProfile | null;
-  contact: Contact | null;
-  contacts: Contact[];
-  products: Product[]; // ✅ 2. Acceptem la llista de productes
-  userId: string;      // ✅ 3. Acceptem el userId
-  teamId: string;      // ✅ 4. Acceptem el teamId
-  isNew: boolean;
-  title: string;
-  description: string;
+  initialData: InvoiceDetail | null;
+  company: CompanyProfile | null;
+  contact: Contact | null;
+  contacts: Contact[];
+  products: Product[]; 
+  userId: string;       
+  teamId: string;       
+  isNew: boolean;
+  title: string;
+  description: string;
 }
 
 export function InvoiceDetailClient({
-  initialData,
-  company,
-  contact,
-  contacts = [],
-  products,     // ✅ 5. Rebem la llista de productes
-  userId,       // ✅ 6. Rebem el userId
-  teamId,       // ✅ 7. Rebem el teamId
-  isNew,
-  title,
-  description,
+  initialData,
+  company,
+  contact,
+  contacts = [],
+  products,     
+  userId,       
+  teamId,       
+  isNew,
+  title,
+  description,
 }: InvoiceDetailClientProps) {
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const fromUrl = searchParams.get('from');
+  const router = useRouter(); // ✅ 2. Instanciem el router
+  const searchParams = useSearchParams();
+  const fromUrl = searchParams.get('from');
 
-  const {
-    formData,
-    isPending,
-    isFinalizing,
-    isLocked,
-    handleFieldChange,
-    handleItemChange,
-    handleAddItem,
-    handleAddProductFromLibrary, // ✅ 8. Rebem el nou handler del hook
-    handleRemoveItem,
-    handleSubmit,
-    handleFinalize,
-    t,
-  } = useInvoiceDetail({ 
+  const {
+    formData,
+    setFormData, // ✅ 3. Ara 'setFormData' existeix al hook
+    isPending,
+    isFinalizing,
+    isLocked,
+    handleFieldChange,
+    handleItemChange,
+    handleAddItem,
+    handleAddProductFromLibrary, 
+    handleRemoveItem,
+    handleSubmit,
+    handleFinalize: hookHandleFinalize, // ✅ 4. Renombrem la funció del hook
+    t,
+  } = useInvoiceDetail({ 
         initialData, 
         isNew, 
-        userId, // ✅ 9. Passem userId al hook
-        teamId  // ✅ 10. Passem teamId al hook
+        userId, 
+        teamId 
     });
 
-  const isSaving = isPending || isFinalizing;
-  const formIsDisabled = isSaving || isLocked;
+  // 'isSaving' i 'formIsDisabled' es mantenen igual
+  const isSaving = isPending || isFinalizing;
+  const formIsDisabled = isSaving || isLocked;
 
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(contact);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(contact);
 
-  const handleBack = () => {
-    if (fromUrl) {
-      router.push(fromUrl);
-    } else {
-      router.push('/finances/invoices');
-    }
-  };
+  const [isSendEmailDialogOpen, setIsSendEmailDialogOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  const handleContactIdChange = (contactId: number | null) => {
-    if (contactId === null) {
-      setSelectedContact(null);
-      handleFieldChange('contact_id', null);
-    } else {
-      const newContact = contacts.find(c => c.id === contactId);
-      if (newContact) {
-        setSelectedContact(newContact);
-        handleFieldChange('contact_id', newContact.id);
-      } else {
-        setSelectedContact(null);
-        handleFieldChange('contact_id', null);
-      }
-    }
-  };
+  const handleBack = () => {
+    if (fromUrl) {
+      router.push(fromUrl);
+    } else {
+      router.push('/finances/invoices');
+    }
+  };
 
-  return (
-    <div className="">
-      <form onSubmit={handleSubmit} className="space-y-3">
-        
-        {/* --- 1. Barra d'Accions Sticky --- */}
-        <InvoiceDetailHeader
-          handleBack={handleBack}
-          title={title}
-          description={description}
-          t={t}
-          formIsDisabled={formIsDisabled}
-          formData={formData} 
-          handleFieldChange={handleFieldChange} 
-          isPreviewOpen={isPreviewOpen}
-          setIsPreviewOpen={setIsPreviewOpen}
-          isSaving={isSaving}
-          initialData={initialData}
-          company={company}
-          contact={selectedContact}
-          isLocked={isLocked}
-          isPending={isPending}
-          isNew={isNew}
-          handleFinalize={handleFinalize}
-          isFinalizing={isFinalizing}
-        />
+  const handleContactIdChange = (contactId: number | null) => {
+    if (contactId === null) {
+      setSelectedContact(null);
+      handleFieldChange('contact_id', null);
+    } else {
+      const newContact = contacts.find(c => c.id === contactId);
+      if (newContact) {
+        setSelectedContact(newContact);
+        handleFieldChange('contact_id', newContact.id);
+      } else {
+        setSelectedContact(null);
+        handleFieldChange('contact_id', null);
+      }
+    }
+  };
 
-        {/* --- 2. FILA SUPERIOR (4 Targetes) --- */}
-        <InvoiceMetaGrid
-          formData={formData} 
-          handleFieldChange={handleFieldChange} 
-          formIsDisabled={formIsDisabled}
-          t={t}
-          contacts={contacts}
-          selectedContact={selectedContact}
-          handleContactIdChange={handleContactIdChange}
-          initialData={initialData}
-          isNew={isNew}
-        />
+  const handleSendEmail = async (recipientEmail: string, messageBody: string) => {
+    // Obtenim l'ID correcte (pot ser que initialData sigui null si és nova)
+    const invoiceId = formData.id || initialData?.id;
 
-        {/* --- 3. SECCIÓ D'EDICIÓ (Contingut Principal) --- */}
-        <InvoiceMainContent
-          formData={formData} 
-          handleFieldChange={handleFieldChange} 
-          formIsDisabled={formIsDisabled}
-          t={t}
-          products={products} // ✅ 11. Passem els productes al component fill
-          handleAddItem={handleAddItem} // Per afegir manualment
-          handleAddProductFromLibrary={handleAddProductFromLibrary} // ✅ 12. Passem el handler de productes
-          handleItemChange={handleItemChange}
-          handleRemoveItem={handleRemoveItem}
-        />
-        
-      </form>
-    </div>
-  );
+    if (!invoiceId || !recipientEmail) {
+      toast.error(t('errors.missingEmailData') || "Falten dades per enviar l'email.");
+      return;
+    }
+    
+    setIsSendingEmail(true);
+    const result = await sendInvoiceByEmailAction(
+      invoiceId, 
+      recipientEmail, 
+      messageBody
+    );
+    setIsSendingEmail(false);
+
+    if (result.success) {
+      toast.success(result.message || "Email enviat correctament.");
+      setIsSendEmailDialogOpen(false); 
+    } else {
+      toast.error(result.message || "Error a l'enviar l'email.");
+    }
+  };
+
+  // ✅ 5. Wrapper per a 'handleFinalize'
+  const handleFinalizeWrapper = async () => {
+    
+    // Cridem la funció del hook, que ara retorna el resultat
+    const result = await hookHandleFinalize(); 
+
+    // ✅ 6. Aquesta comprovació ARA FUNCIONARÀ
+    if (result && result.success) {
+      // El hook ja ha actualitzat l'estat local ('setFormData' i 'setIsLocked')
+      // i ha cridat a 'router.refresh()',
+      // així que aquí no cal fer res més.
+      console.log("Finalize successful, state updated by hook.");
+    } else {
+      // El hook ja ha mostrat el toast d'error
+      console.log("Finalize failed, error handled by hook.");
+    }
+  };
+
+
+  return (
+    <div className="">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        
+        <InvoiceDetailHeader
+          handleBack={handleBack}
+          title={title}
+          description={description}
+          t={t}
+          formIsDisabled={formIsDisabled}
+          formData={formData} 
+          handleFieldChange={handleFieldChange} 
+          isPreviewOpen={isPreviewOpen}
+          setIsPreviewOpen={setIsPreviewOpen}
+          isSaving={isSaving}
+          initialData={initialData}
+          company={company}
+          contact={selectedContact}
+          isLocked={isLocked}
+          isPending={isPending}
+          isNew={isNew}
+          
+          handleFinalize={handleFinalizeWrapper} // ✅ Passem el nou wrapper
+          
+          isFinalizing={isFinalizing}
+          isSendEmailDialogOpen={isSendEmailDialogOpen}
+          setIsSendEmailDialogOpen={setIsSendEmailDialogOpen}
+          handleSendEmail={handleSendEmail}
+          isSendingEmail={isSendingEmail}
+        />
+
+        <InvoiceMetaGrid
+          formData={formData} 
+          handleFieldChange={handleFieldChange} 
+          formIsDisabled={formIsDisabled}
+          t={t}
+          contacts={contacts}
+          selectedContact={selectedContact}
+          handleContactIdChange={handleContactIdChange}
+          initialData={initialData}
+          isNew={isNew}
+        />
+
+        <InvoiceMainContent
+          formData={formData} 
+          handleFieldChange={handleFieldChange} 
+          formIsDisabled={formIsDisabled}
+          t={t}
+          products={products} 
+          handleAddItem={handleAddItem} 
+          handleAddProductFromLibrary={handleAddProductFromLibrary} 
+          handleItemChange={handleItemChange}
+          handleRemoveItem={handleRemoveItem}
+        />
+        
+      </form>
+    </div>
+  );
 }

@@ -1,35 +1,35 @@
 "use client";
 
-import React from 'react';
+// ✅ 1. Importem 'useState', 'useEffect' i els components que falten
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Loader2, Save, Settings2, Eye, ArrowLeft, Lock, CheckCircle,
+  Mail // ✅ 2. Importem la icona 'Mail'
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { type InvoiceDetail } from '@/types/finances'; // Encara el necessitem per 'initialData'
+import { type InvoiceDetail } from '@/types/finances';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
   DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { InvoicePreview } from '../InvoicePreview'; // Ajusta la ruta si 'InvoicePreview' no està al mateix directori
+import { InvoicePreview } from '../InvoicePreview'; 
 import { type CompanyProfile } from '@/types/settings/team';
 import { type Database } from '@/types/supabase';
-
-// ✅ Importem el hook per agafar-ne els tipus
 import { useInvoiceDetail } from '../../_hooks/useInvoiceDetail';
+import { Textarea } from '@/components/ui/textarea'; // ✅ 3. Importem 'Textarea'
 
 type Contact = Database['public']['Tables']['contacts']['Row'];
 
-// ✅ Extraiem els tipus de retorn del hook
 type UseInvoiceDetailReturn = ReturnType<typeof useInvoiceDetail>;
 
 const InvoiceDownloadButton = dynamic(
-  () => import('../PDF/InvoiceDownloadButton').then(mod => mod.InvoiceDownloadButton), // Ajusta la ruta
+  () => import('../PDF/InvoiceDownloadButton').then(mod => mod.InvoiceDownloadButton), 
   {
     ssr: false,
     loading: () => (
@@ -41,14 +41,15 @@ const InvoiceDownloadButton = dynamic(
   }
 );
 
+// ✅ 4. *** CORRECCIÓ PRINCIPAL: Afegim les noves props a la interfície ***
 interface InvoiceDetailHeaderProps {
   handleBack: () => void;
   title: string;
   description: string;
-  t: UseInvoiceDetailReturn['t']; // ✅ Tipus corregit
+  t: UseInvoiceDetailReturn['t']; 
   formIsDisabled: boolean;
-  formData: UseInvoiceDetailReturn['formData']; // ✅ Tipus corregit
-  handleFieldChange: UseInvoiceDetailReturn['handleFieldChange']; // ✅ Tipus corregit
+  formData: UseInvoiceDetailReturn['formData']; 
+  handleFieldChange: UseInvoiceDetailReturn['handleFieldChange']; 
   isPreviewOpen: boolean;
   setIsPreviewOpen: (isOpen: boolean) => void;
   isSaving: boolean;
@@ -60,6 +61,13 @@ interface InvoiceDetailHeaderProps {
   isNew: boolean;
   handleFinalize: () => void;
   isFinalizing: boolean;
+
+  // <-- AQUESTES SÓN LES LÍNIES QUE FALTAVEN -->
+  isSendEmailDialogOpen: boolean;
+  setIsSendEmailDialogOpen: (isOpen: boolean) => void;
+  handleSendEmail: (email: string, message: string) => Promise<void>;
+  isSendingEmail: boolean;
+  // <-- FI DE LES LÍNIES QUE FALTAVEN -->
 }
 
 export function InvoiceDetailHeader({
@@ -81,7 +89,46 @@ export function InvoiceDetailHeader({
   isNew,
   handleFinalize,
   isFinalizing,
+
+  // ✅ 5. Desestructurem les noves props
+  isSendEmailDialogOpen,
+  setIsSendEmailDialogOpen,
+  handleSendEmail,
+  isSendingEmail,
 }: InvoiceDetailHeaderProps) {
+
+  // ✅ 6. Estats interns pel formulari del diàleg
+  const [recipientEmail, setRecipientEmail] = useState(contact?.email || '');
+  const [messageBody, setMessageBody] = useState('');
+
+  // ✅ 7. Efecte per omplir els camps del diàleg quan s'obre
+  useEffect(() => {
+    if (isSendEmailDialogOpen) {
+      // Omplim l'email del contacte seleccionat
+      setRecipientEmail(contact?.email || '');
+      
+      // Creem un missatge per defecte
+      const defaultMessage = 
+        t('sendEmailDialog.defaultMessage', { 
+            invoiceNumber: formData.invoice_number || initialData?.invoice_number || formData.id || 'N/A',
+            companyName: company?.company_name || t('yourCompany')
+          }) 
+        || 
+        `Bon dia,\n\nAdjuntem la factura ${formData.invoice_number || initialData?.invoice_number || formData.id}.\n\nGràcies per la teva confiança.\n\nSalutacions,\n${company?.company_name || ''}`;
+      
+      setMessageBody(defaultMessage.replace(/\\n/g, '\n')); // Assegurem salts de línia
+    }
+  }, [
+      contact, 
+      isSendEmailDialogOpen, 
+      t, 
+      formData.invoice_number, 
+      initialData?.invoice_number, 
+      formData.id, 
+      company?.company_name
+    ]);
+
+
   return (
     <header
       className="
@@ -175,13 +222,11 @@ export function InvoiceDetailHeader({
               <DialogTitle>{t('preview.title')}</DialogTitle>
             </DialogHeader>
             <ScrollArea className="flex-grow py-4 pr-6 -mr-6">
-              {/* ✅ 2. PASSEM LES PROPS QUE FALTAVEN */}
               <InvoicePreview
                 formData={formData}
                 companyProfile={company}
                 clientProfile={contact}
               />
-
             </ScrollArea>
             <DialogFooter className="mt-4">
               <DialogClose asChild>
@@ -194,51 +239,128 @@ export function InvoiceDetailHeader({
         </Dialog>
 
         {/* ⬇️ Descarregar PDF */}
-        {formData.status !== 'Draft' && initialData && company && contact && (
+        {/* Mostrem el botó si no és Esborrany i tenim les dades */}
+        {formData.status !== 'Draft' && initialData && company && (
           <InvoiceDownloadButton
             invoice={initialData}
             company={company}
-            contact={contact}
+            contact={contact} // Pot ser null, el component ho hauria de gestionar
           />
         )}
 
-        {/* 💾 Desa / 🧾 Emissió */}
-        {!isLocked && (
-          <Button
-            type="submit"
-            disabled={isSaving}
-            size="sm"
-            className="flex items-center gap-1 min-w-[100px]"
-          >
-            {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">
-              {isPending ? t('button.saving') : t('button.saveDraft')}
-            </span>
-          </Button>
+        {/* ✅ 8. NOU BOTÓ I DIÀLEG: Enviar per Email */}
+        {/* Mostrem el botó si no és Esborrany (p.ex. 'Sent', 'Paid') */}
+        {formData.status !== 'Draft' && (
+          <Dialog open={isSendEmailDialogOpen} onOpenChange={setIsSendEmailDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSaving || isSendingEmail} // Desactivat si s'està desant o enviant
+                className="flex items-center gap-1"
+              >
+                <Mail className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('button.sendByEmail')}</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{t('sendEmailDialog.title')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-muted-foreground">
+                  {t('sendEmailDialog.description')}
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="recipientEmail">
+                    {t('sendEmailDialog.recipient')}
+                  </Label>
+                  <Input
+                    id="recipientEmail"
+                    type="email"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    placeholder="email@client.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="messageBody">
+                    {t('sendEmailDialog.message')}
+                  </Label>
+                  <Textarea
+                    id="messageBody"
+                    value={messageBody}
+                    onChange={(e) => setMessageBody(e.target.value)}
+                    rows={8}
+                    placeholder={t('sendEmailDialog.messagePlaceholder')}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline" disabled={isSendingEmail}>
+                    {t('button.cancel')}
+                  </Button>
+                </DialogClose>
+                <Button
+                  type="button"
+                  onClick={() => handleSendEmail(recipientEmail, messageBody)}
+                  disabled={isSendingEmail || !recipientEmail || !messageBody}
+                  className='min-w-[100px]'
+                >
+                  {isSendingEmail ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  {isSendingEmail ? t('button.sending') : t('button.send')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
 
-        {!isNew && !isLocked && (
-          <Button
-            type="button"
-            variant="default"
-            onClick={handleFinalize}
-            disabled={isSaving}
-            size="sm"
-            className="flex items-center gap-1 min-w-[110px]"
-          >
-            {isFinalizing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <CheckCircle className="w-4 h-4" />
+        {/* 💾 Desa / 🧾 Emissió */}
+        {/* Aquests botons només apareixen si NO està bloquejat (és a dir, és 'Draft') */}
+        {!isLocked && (
+          <>
+            <Button
+              type="submit"
+              disabled={isSaving}
+              size="sm"
+              className="flex items-center gap-1 min-w-[100px]"
+            >
+              {isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isPending ? t('button.saving') : t('button.saveDraft')}
+              </span>
+            </Button>
+          
+            {!isNew && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleFinalize}
+                disabled={isSaving}
+                size="sm"
+                className="flex items-center gap-1 min-w-[110px]"
+              >
+                {isFinalizing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+                </span>
+              </Button>
             )}
-            <span className="hidden sm:inline">
-              {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
-            </span>
-          </Button>
+          </>
         )}
 
         {/* 🔒 Estat enviat */}

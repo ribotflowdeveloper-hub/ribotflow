@@ -1,13 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-// ✅ 1. Importem els nous guardians, permisos i el TIPUS PlanLimit
 import { 
   validateSessionAndPermission, 
   validateActionAndUsage 
 } from "@/lib/permissions/permissions";
 import { PERMISSIONS } from "@/lib/permissions/permissions.config";
-// Eliminem la importació errònia de PLAN_LIMITS_IDS
 import { type PlanLimit } from "@/config/subscriptions"; 
 
 import { type ActionResult } from "@/types/shared/index";
@@ -29,17 +27,14 @@ export async function saveInvoiceAction(
   
   let validationResult;
 
-  // ✅ 2. Lògica de validació corregida
   if (invoiceId === null) {
     // És una CREACIÓ. Hem de comprovar permís + límit.
-    
-    // Utilitzem el string literal. El tipus 'PlanLimit' ho valida.
     const limitToCheck: PlanLimit = 'maxInvoicesPerMonth'; 
     
     console.log(`[saveInvoiceAction] Comprovant límit: ${limitToCheck}`);
     validationResult = await validateActionAndUsage(
       PERMISSIONS.MANAGE_INVOICES,
-      limitToCheck // <-- Corregit
+      limitToCheck 
     );
   } else {
     // És una ACTUALITZACIÓ. Només comprovem permís.
@@ -48,14 +43,12 @@ export async function saveInvoiceAction(
     );
   }
 
-  // 3. Validació
   if ("error" in validationResult) {
     return { success: false, message: validationResult.error.message };
   }
   
   const { supabase, user, activeTeamId } = validationResult;
 
-  // 4. Delegació (crida al servei)
   const result = await invoiceService.saveInvoice(
     supabase,
     formData,
@@ -64,7 +57,6 @@ export async function saveInvoiceAction(
     activeTeamId
   );
 
-  // 5. Revalidació (si èxit)
   if (result.success && result.data?.id) {
     revalidatePath('/finances/invoices');
     revalidatePath(`/finances/invoices/${result.data.id}`);
@@ -165,22 +157,26 @@ export async function finalizeInvoiceAction(
 }
 
 /**
- * ACCIÓ: Envia la factura per email (PDF + Resend).
+ * ACCIÓ: Envia la factura per email (PDF + Edge Function).
+ * ✅ *** CORREGIT AMB ELS 3 ARGUMENTS ***
  */
 export async function sendInvoiceByEmailAction(
   invoiceId: number,
   recipientEmail: string,
+  messageBody: string, // <-- ✅ 1. Acceptem el 3r argument
 ): Promise<ActionResult> {
 
   const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ('error' in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
+  // ✅ 2. Passem els 5 arguments al servei
   const result = await invoiceService.sendInvoiceByEmail(
     supabase,
     invoiceId,
     activeTeamId,
-    recipientEmail
+    recipientEmail,
+    messageBody // <-- ✅ Passem el 5è argument
   );
 
   if (result.success) {

@@ -74,7 +74,10 @@ export function useInvoiceDetail({
     const t = useTranslations("InvoiceDetailPage");
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const [isFinalizing, startFinalizing] = useTransition(); // ✅ Nou estat per a la finalització
+    
+    // ✅ *** CORRECCIÓ 1: Canviem useTransition per useState ***
+    // const [isFinalizing, startFinalizing] = useTransition(); // <-- Això NO
+    const [isFinalizing, setIsFinalizing] = useState(false); // <-- Això SÍ
 
     // ✅ NOU ESTAT: Determina si el formulari ha d'estar bloquejat
     const [isLocked, setIsLocked] = useState(false);
@@ -96,14 +99,14 @@ export function useInvoiceDetail({
                 due_date: initialData.due_date
                     ? formatDate(new Date(initialData.due_date))
                     : null, // YYYY-MM-DD
-                status: initialData.status as InvoiceStatus, // status a la BD és 'text', però el tractem com a enum aquí
+                status: initialData.status as InvoiceStatus, 
                 notes: initialData.notes ?? null,
-                terms: initialData.terms ?? null, // Nou
-                payment_details: initialData.payment_details ?? null, // Nou
-                client_reference: initialData.client_reference ?? null, // Nou
-                currency: initialData.currency ?? "EUR", // Nou
-                language: initialData.language ?? "ca", // Nou
-                project_id: initialData.project_id ?? null, // Nou
+                terms: initialData.terms ?? null, 
+                payment_details: initialData.payment_details ?? null, 
+                client_reference: initialData.client_reference ?? null, 
+                currency: initialData.currency ?? "EUR", 
+                language: initialData.language ?? "ca", 
+                project_id: initialData.project_id ?? null, 
                 budget_id: initialData.budget_id ?? null,
                 quote_id: initialData.quote_id ?? null,
                 tax: initialData.tax ?? null,
@@ -117,20 +120,18 @@ export function useInvoiceDetail({
                 company_tax_id: initialData.company_tax_id ?? null,
                 company_address: initialData.company_address ?? null,
                 company_email: initialData.company_email ?? null,
-                company_logo_url: initialData.company_logo_url ?? null, // Nou
+                company_logo_url: initialData.company_logo_url ?? null, 
                 invoice_items: initialData.invoice_items?.map((item) => ({
                     ...item,
-                    // ✅ CORRECCIÓ: id sempre string (mai null)
                     id: item.id ? String(item.id) : `temp-${Date.now()}-${Math.random()}`,
-                    // Assegurem tipus numèrics per als nous camps d'item si són nulls
                     discount_percentage: item.discount_percentage ?? null,
                     discount_amount: item.discount_amount ?? null,
                 })) || [],
                 subtotal: initialData.subtotal ?? 0,
-                discount_amount: initialData.discount_amount ?? 0, // Descompte general
-                tax_rate: initialData.tax_rate ?? 21, // Taxa general
-                tax_amount: initialData.tax_amount ?? 0, // Impost general
-                shipping_cost: initialData.shipping_cost ?? 0, // Nou
+                discount_amount: initialData.discount_amount ?? 0, 
+                tax_rate: initialData.tax_rate ?? 21, 
+                tax_amount: initialData.tax_amount ?? 0, 
+                shipping_cost: initialData.shipping_cost ?? 0, 
                 total_amount: initialData.total_amount ?? 0,
             };
             return mappedData;
@@ -139,7 +140,6 @@ export function useInvoiceDetail({
     });
 
     // --- Càlcul de Totals ---
-    // Ara inclou el cost d'enviament i considera descomptes per línia si vols
     const calculateTotals = useCallback((
         items: InvoiceItem[],
         generalDiscountAmount: number = 0,
@@ -155,7 +155,6 @@ export function useInvoiceDetail({
             const lineTotal = quantity * unitPrice;
             subtotalBeforeLineDiscounts += lineTotal;
 
-            // Calcula descompte per línia (prioritza amount si existeix, sinó percentage)
             let lineDiscount = 0;
             if (item.discount_amount && item.discount_amount > 0) {
                 lineDiscount = Number(item.discount_amount);
@@ -170,21 +169,18 @@ export function useInvoiceDetail({
 
         const subtotalAfterLineDiscounts = subtotalBeforeLineDiscounts -
             totalLineDiscountAmount;
-        // Aplica descompte general DESPRÉS dels descomptes de línia
         const effectiveSubtotal = subtotalAfterLineDiscounts -
             generalDiscountAmount;
 
         const taxAmount = effectiveSubtotal > 0
             ? effectiveSubtotal * (generalTaxRate / 100)
             : 0;
-        // Suma l'enviament DESPRÉS d'impostos
         const totalAmount = effectiveSubtotal + taxAmount + shippingCost;
 
         return {
-            subtotal: subtotalBeforeLineDiscounts, // Subtotal abans de cap descompte
-            taxAmount, // Impost calculat sobre subtotal efectiu
-            totalAmount, // Total final
-            // Podries retornar més valors si els necessites mostrar (totalLineDiscountAmount, etc.)
+            subtotal: subtotalBeforeLineDiscounts,
+            taxAmount,
+            totalAmount,
         };
     }, []);
 
@@ -207,13 +203,11 @@ export function useInvoiceDetail({
         ) {
             setFormData((prev) => ({
                 ...prev,
-                subtotal, // Actualitza subtotal (abans de descomptes)
+                subtotal,
                 tax_amount: taxAmount,
                 total_amount: totalAmount,
-                // discount_amount i shipping_cost ja estan a l'estat, no cal actualitzar-los aquí
             }));
         }
-        // Incloem shipping_cost a les dependències
     }, [
         formData.invoice_items,
         formData.discount_amount,
@@ -247,7 +241,6 @@ export function useInvoiceDetail({
 
             const updatedItem = { ...currentItems[index], [field]: value };
 
-            // Recalcular total i possiblement descompte si canvien camps rellevants
             if (
                 field === "quantity" || field === "unit_price" ||
                 field === "discount_percentage" || field === "discount_amount"
@@ -255,11 +248,9 @@ export function useInvoiceDetail({
                 const quantity = Number(updatedItem.quantity) || 0;
                 const unitPrice = Number(updatedItem.unit_price) || 0;
                 const lineTotal = quantity * unitPrice;
-                updatedItem.total = lineTotal; // Total base de la línia
+                updatedItem.total = lineTotal; 
 
-                // ✅✅✅ CORRECCIÓ COMPARACIÓ ✅✅✅
-                // Comprovem si NO és null ABANS de comparar amb 0
-                const numericValue = Number(value); // Convertim a número per comparar
+                const numericValue = Number(value); 
 
                 if (
                     field === "discount_percentage" && value !== null &&
@@ -289,20 +280,20 @@ export function useInvoiceDetail({
             unit_price: 0,
             total: 0,
             created_at: new Date().toISOString(),
-            tax_rate: null, // Taxa per línia (si la implementes)
-            user_id: userId, // ✅ Assignem el user ID
-            team_id: teamId, // ✅ Assignem el team ID
+            tax_rate: null, 
+            user_id: userId, 
+            team_id: teamId, 
             product_id: null,
-            // Nous camps
-            discount_percentage: null, // O 0
-            discount_amount: null, // O 0
+            discount_percentage: null, 
+            discount_amount: null, 
             reference_sku: null,
         };
         setFormData((prev) => ({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
         }));
-    }, [formData.id, userId, teamId]); // ✅ Afegim dependències
+    }, [formData.id, userId, teamId]); 
+    
     // --- Esborrar Item (sense canvis) ---
     const handleRemoveItem = useCallback((index: number) => {
         setFormData((prev) => {
@@ -314,6 +305,7 @@ export function useInvoiceDetail({
             return prev;
         });
     }, []);
+
     // ✅ --- NOU HANDLER: Afegir des de la Llibreria (Cridat per ProductSelector -> onProductSelect) ---
     const handleAddProductFromLibrary = useCallback((product: Product) => {
         const newItem: InvoiceItem = {
@@ -325,54 +317,45 @@ export function useInvoiceDetail({
             total: product.price || 0,
             created_at: new Date().toISOString(),
             tax_rate: null,
-            user_id: userId, // ✅ Assignem el user ID
-            team_id: teamId, // ✅ Assignem el team ID
-            product_id: product.id, // ✅ Assignem el product ID
+            user_id: userId, 
+            team_id: teamId, 
+            product_id: product.id, 
             discount_percentage: null,
             discount_amount: null,
-            reference_sku: null, // Podries afegir 'product.sku' si existeix
+            reference_sku: null, 
         };
         setFormData((prev) => ({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
         }));
-    }, [formData.id, userId, teamId]); // ✅ Afegim dependències
+    }, [formData.id, userId, teamId]); 
+
     // --- Submit Handler (Inclou nous camps a enviar) ---
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        // Validation...
-        // ✅ Comprovació de seguretat al client
+        
         if (isLocked) {
-            toast.error(t("toast.cannotEditSentInvoice")); // Afegeix aquesta traducció
+            toast.error(t("toast.cannotEditSentInvoice")); 
             return;
         }
         const {
             invoice_items,
-            ...invoiceData // La resta queda aquí
+            ...invoiceData 
         } = formData;
 
         const itemsForAction = (invoice_items || []).map((item) => {
-            // Excloem camps interns o no editables de l'item
             const { ...restOfItem } = item;
             
-            // ✅ *** CORRECCIÓ APLICADA AL CLIENT ***
-            // Definim quins ID són vàlids per un UPDATE
-            // Si és un string, no ha de ser 'temp-' (i per seguretat, tampoc 'null')
             const isExistingStringId = typeof item.id === 'string' && !item.id.startsWith('temp-') && item.id !== 'null';
-            // Si és un número, és vàlid
             const isExistingNumericId = typeof item.id === 'number';
 
             return {
                 ...restOfItem,
-                // Si és un ID existent (string o numèric), l'enviem.
-                // Si és 'temp-', 'null', o undefined, enviem 'undefined' per forçar un INSERT.
                 id: (isExistingStringId || isExistingNumericId) ? item.id : undefined,
-                
                 quantity: Number(item.quantity) || 0,
                 unit_price: Number(item.unit_price) || 0,
                 tax_rate: item.tax_rate ? Number(item.tax_rate) : null,
                 product_id: item.product_id ? Number(item.product_id) : null,
-                // Assegurem tipus per als nous camps
                 discount_percentage: item.discount_percentage
                     ? Number(item.discount_percentage)
                     : null,
@@ -380,19 +363,13 @@ export function useInvoiceDetail({
                     ? Number(item.discount_amount)
                     : null,
                 reference_sku: item.reference_sku || null,
-                // El 'total' de la línia es recalcularà al servidor amb els descomptes/impostos correctes
             };
         });
 
-        // Construïm l'objecte final per a l'acció
-        // Construïm l'objecte final per a l'acció
         const dataForAction: InvoiceFormDataForAction & {
             invoice_items?: InvoiceItem[];
         } = {
-            // Usem directament invoiceData (després d'excloure items/id)
-            // Fem un cast per assegurar que compleix amb InvoiceFormDataForAction
             ...(invoiceData as InvoiceFormDataForAction),
-            // Assegurem tipus per als camps clau que s'envien
             contact_id: invoiceData.contact_id
                 ? Number(invoiceData.contact_id)
                 : null,
@@ -402,8 +379,7 @@ export function useInvoiceDetail({
             quote_id: invoiceData.quote_id
                 ? Number(invoiceData.quote_id)
                 : null,
-            // ✅✅✅ CORRECCIÓ project_id ✅✅✅
-            project_id: invoiceData.project_id || null, // Ja és string | null, només assegurem null si és buit
+            project_id: invoiceData.project_id || null, 
             discount_amount: Number(invoiceData.discount_amount) || 0,
             tax_rate: Number(invoiceData.tax_rate) ?? 0,
             shipping_cost: Number(invoiceData.shipping_cost) || 0,
@@ -413,7 +389,6 @@ export function useInvoiceDetail({
                 : null,
             currency: invoiceData.currency || "EUR",
             language: invoiceData.language || "ca",
-            // Afegim els items
             invoice_items: itemsForAction as InvoiceItem[],
         };
 
@@ -431,53 +406,74 @@ export function useInvoiceDetail({
                 if (isNew || !currentInvoiceId) {
                     router.replace(`/finances/invoices/${result.data.id}`);
                 } else {
-                    router.refresh(); // Refresca dades si era edició
+                    router.refresh(); 
                 }
             } else {
                 toast.error(result.message || t("toast.saveError"));
             }
         });
-    }, [formData, isNew, router, t, startTransition, isLocked]); // ✅ Afegeix isLocked
-    // ✅ NOVA ACCIÓ: Handler per Finalitzar/Emetre la factura
+    }, [formData, isNew, router, t, startTransition, isLocked]);
+
+    // ✅ *** REFACTORITZAT 'handleFinalize' AMB LA LÒGICA DE 'setIsFinalizing' ***
     const handleFinalize = useCallback(async () => {
         const currentInvoiceId = typeof formData.id === "number"
             ? formData.id
             : null;
 
         if (isNew || !currentInvoiceId) {
-            toast.error(t("toast.mustSaveDraftFirst")); // Afegeix aquesta traducció
-            return;
+            toast.error(t("toast.mustSaveDraftFirst")); 
+            return { success: false, message: t("toast.mustSaveDraftFirst") };
         }
 
         if (isLocked) {
-            toast.error(t("toast.alreadySent")); // Afegeix aquesta traducció
-            return;
+            toast.error(t("toast.alreadySent"));
+            return { success: false, message: t("toast.alreadySent") };
         }
 
-        startFinalizing(async () => {
-            const result = await finalizeInvoiceAction(currentInvoiceId);
-
+        let result;
+        try {
+            // Executem l'acció FORA de la transició per poder fer 'await'
+            setIsFinalizing(true); // ✅ Activem el loading manualment
+            result = await finalizeInvoiceAction(currentInvoiceId);
+            
             if (result.success) {
-                toast.success(result.message || t("toast.finalizeSuccess")); // Afegeix traducció
-                router.refresh(); // Refresca les dades per bloquejar el formulari
+                toast.success(result.message || t("toast.finalizeSuccess"));
+                
+                // Actualitzem l'estat local a l'instant
+                setFormData(prev => ({ ...prev, status: 'Sent' })); 
+                setIsLocked(true); // Bloquegem el formulari
+                
+                // Refresquem la pàgina (ara sense 'startTransition')
+                router.refresh(); 
+                setIsFinalizing(false); // Desactivem el loading al final
             } else {
-                toast.error(result.message || t("toast.finalizeError")); // Afegeix traducció
+                toast.error(result.message || t("toast.finalizeError"));
+                setIsFinalizing(false); // Desactivem el loading si hi ha error
             }
-        });
-    }, [formData.id, isNew, isLocked, router, t, startFinalizing]);
+        } catch (error) {
+            console.error(error);
+            toast.error(t("toast.finalizeError"));
+            result = { success: false, message: t("toast.finalizeError") };
+            setIsFinalizing(false); // Desactivem el loading si hi ha error
+        }
+
+        return result; // Retornem el resultat de l'acció
+        
+    }, [formData.id, isNew, isLocked, router, t]); // ✅ CORRECCIÓ 2: Treiem 'setIsFinalizing' de les dependències
 
     return {
         formData,
+        setFormData, // ✅ ARA SÍ QUE L'EXPORTEM
         isPending,
-        isFinalizing, // ✅ Retorna el nou estat
-        isLocked, // ✅ Retorna l'estat de bloqueig
+        isFinalizing, 
+        isLocked, 
         handleFieldChange,
         handleItemChange,
         handleAddItem,
-        handleAddProductFromLibrary, // ✅ Retornem el nou handler per 'onProductSelect'
+        handleAddProductFromLibrary, 
         handleRemoveItem,
         handleSubmit,
-        handleFinalize, // ✅ Retorna el nou handler
+        handleFinalize, 
         t,
     };
 }
