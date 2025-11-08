@@ -146,9 +146,9 @@
       "manualEmailPlaceholder": "Escriu l'email del destinatari...",
       "manualEmailDescription": "Si el contacte no existeix, es crearà automàticament.",
       "invalidEmailFormat": "El format de l'email no és vàlid.",
-      "toastSuccessTitle":"Exit!",
-      "toastErrorTitle":"Error en l'enviament",
-      "replyHeader":"--- El {date} {name} va escriure ---"
+      "toastSuccessTitle": "Exit!",
+      "toastErrorTitle": "Error en l'enviament",
+      "replyHeader": "--- El {date} {name} va escriure ---"
     },
     "editor": {
       "bold": "Negreta",
@@ -848,8 +848,8 @@
       "emptySearch": "No s'han trobat productes.",
       "vatPlaceholder": "IVA %",
       "addManualItem": "Afegir línia manual",
-      "removeItemTooltip": "Eliminar concepte", 
-      "createNewItem": "Crear i desar producte",  
+      "removeItemTooltip": "Eliminar concepte",
+      "createNewItem": "Crear i desar producte",
       "productSelector": {
         "addButton": "Afegir concepte",
         "newProductTitle": "Crear nou producte",
@@ -1244,7 +1244,11 @@
       "saveDraft": "Desar Esborrany",
       "issueInvoice": "Emetre Factura",
       "issuing": "Emetent...",
-      "addFromLibrary": "Afegir concepte"
+      "addFromLibrary": "Afegir concepte",
+      "sendByEmail": "Enviar Email",
+      "sending": "Enviant...",
+      "send": "Enviar",
+      "cancel": "Cancel·lar"
     },
     "card": {
       "customerDetails": "Dades del Client",
@@ -1350,8 +1354,18 @@
     "errors": {
       "loadDataFailed": "Error en carregar les factures.",
       "limitReachedTitle": "Límit de factures assolit",
-      "limitReachedDescription": "Has arribat al límit de factures per al teu pla."
-    }
+      "limitReachedDescription": "Has arribat al límit de factures per al teu pla.",
+      "missingEmailData": "Falten dades (ID de factura o email) per enviar el correu."
+    },
+    "sendEmailDialog": {
+      "title": "Enviar Factura al Client",
+      "description": "S'enviarà un email al client amb el PDF de la factura adjunt.",
+      "recipient": "Destinatari",
+      "message": "Missatge Personalitzat",
+      "messagePlaceholder": "Escriu el teu missatge aquí...",
+      "defaultMessage": "Bon dia,\n\nAdjuntem la factura {invoiceNumber}.\n\nGràcies per la teva confiança.\n\nSalutacions,\n{companyName}"
+    },
+    "yourCompany": "la teva empresa"
   },
   "NetworkPage": {
     "mapboxError": "Error: La clau d'API de Mapbox no està configurada correctament.",

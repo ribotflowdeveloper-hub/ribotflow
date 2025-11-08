@@ -6,6 +6,14 @@ import { encodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { SMTPClient } from "https://deno.land/x/denomailer@1.1.0/mod.ts";
 import { decrypt } from "../_shared/crypto.ts";
 
+// --- Tipus per als adjunts ---
+interface Attachment {
+  filename: string;
+  content: string; // Base64
+  contentType: string;
+  encoding: string; // Hauria de ser 'base64'
+}
+
 // --- Helpers de Codificació ---
 function encodeSubject(subject: string) {
   const encoded = encodeBase64(new TextEncoder().encode(subject));
@@ -50,7 +58,64 @@ async function getGoogleAccessToken(refreshToken: string) {
 }
 
 /**
- * GOOGLE: Envia el correu via API de Gmail
+ * GOOGLE: Construeix un missatge MIME (per adjunts)
+ * Aquesta funció és necessària perquè l'API de Gmail requereix un format MIME
+ * per enviar adjunts.
+ */
+function buildMimeMessage(
+  from: string,
+  to: string,
+  subject: string,
+  htmlBody: string,
+  attachments: Attachment[],
+): string {
+  const boundary = `boundary-${crypto.randomUUID()}`;
+  const mainBoundary = `boundary-main-${crypto.randomUUID()}`;
+
+  let message = [
+    `Content-Type: multipart/mixed; boundary="${mainBoundary}"`,
+    `MIME-Version: 1.0`,
+    `To: ${to}`,
+    `From: ${from}`,
+    `Subject: ${encodeSubject(subject)}`,
+    ``,
+    `--${mainBoundary}`,
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    ``,
+    // Part 1: HTML Body
+    `--${boundary}`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    `MIME-Version: 1.0`,
+    `Content-Transfer-Encoding: 7bit`,
+    ``,
+    htmlBody,
+    ``,
+    `--${boundary}--`,
+    ``,
+  ];
+
+  // Part 2: Adjunts (si n'hi ha)
+  attachments.forEach((att) => {
+    message = message.concat([
+      `--${mainBoundary}`,
+      `Content-Type: ${att.contentType}; name="${att.filename}"`,
+      `MIME-Version: 1.0`,
+      `Content-Transfer-Encoding: base64`,
+      `Content-Disposition: attachment; filename="${att.filename}"`,
+      ``,
+      att.content, // Aquest ja és el base64
+      ``,
+    ]);
+  });
+
+  // Tancament final
+  message.push(`--${mainBoundary}--`);
+
+  return message.join("\n");
+}
+
+/**
+ * GOOGLE: Envia el correu via API de Gmail (Versió actualitzada amb adjunts)
  */
 async function sendGoogleMail(
   accessToken: string,
@@ -58,18 +123,18 @@ async function sendGoogleMail(
   to: string,
   subject: string,
   htmlBody: string,
+  attachments: Attachment[],
 ) {
-  const emailMessage = [
-    `Content-Type: text/html; charset="UTF-8"`,
-    `MIME-Version: 1.0`,
-    `To: ${to}`,
-    `From: ${from}`,
-    `Subject: ${encodeSubject(subject)}`,
-    ``,
+  // Construïm el missatge MIME
+  const emailMessage = buildMimeMessage(
+    from,
+    to,
+    subject,
     htmlBody,
-  ].join("\n");
-
+    attachments,
+  );
   const rawEmail = encodeEmailForGmail(emailMessage);
+
   const gmailRes = await fetch(
     "https://www.googleapis.com/gmail/v1/users/me/messages/send",
     {
@@ -87,7 +152,9 @@ async function sendGoogleMail(
   if (!gmailRes.ok) {
     const errorData = await gmailRes.json();
     throw new Error(
-      `Error de l'API de Gmail: ${errorData.error?.message || "Error desconegut"}`,
+      `Error de l'API de Gmail: ${
+        errorData.error?.message || "Error desconegut"
+      }`,
     );
   }
 }
@@ -122,13 +189,14 @@ async function getMicrosoftAccessToken(refreshToken: string) {
 }
 
 /**
- * MICROSOFT: Envia el correu via API de MS Graph
+ * MICROSOFT: Envia el correu via API de MS Graph (Versió actualitzada amb adjunts)
  */
 async function sendMicrosoftMail(
   accessToken: string,
   to: string,
   subject: string,
   htmlBody: string,
+  attachments: Attachment[],
 ) {
   const emailPayload = {
     message: {
@@ -144,6 +212,13 @@ async function sendMicrosoftMail(
           },
         },
       ],
+      // ✅ Afegim els adjunts en el format de MS Graph
+      attachments: attachments.map((att) => ({
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        "name": att.filename,
+        "contentType": att.contentType,
+        "contentBytes": att.content, // MS Graph espera el base64 aquí
+      })),
     },
     saveToSentItems: "true",
   };
@@ -160,13 +235,15 @@ async function sendMicrosoftMail(
   if (!graphRes.ok) {
     const errorData = await graphRes.json();
     throw new Error(
-      `Error de l'API de MS Graph: ${errorData.error?.message || "Error desconegut"}`,
+      `Error de l'API de MS Graph: ${
+        errorData.error?.message || "Error desconegut"
+      }`,
     );
   }
 }
 
 /**
- * SMTP: Envia el correu via SMTP
+ * SMTP: Envia el correu via SMTP (Versió actualitzada amb adjunts)
  */
 interface SmtpConfig {
   host: string;
@@ -184,6 +261,7 @@ async function sendSmtpMail(
   to: string,
   subject: string,
   htmlBody: string,
+  attachments: Attachment[],
 ) {
   const client = new SMTPClient({
     connection: {
@@ -201,8 +279,14 @@ async function sendSmtpMail(
     from: from,
     to: to,
     subject: subject,
-    // content: htmlBody, // ❌ ELIMINAT: Aquesta era la causa del problema
-    html: htmlBody, // ✅ CORRECTE: Només enviem la part HTML
+    html: htmlBody, // Assegurem que és 'html'
+    // ✅ Afegim els adjunts en el format de Denomailer
+    attachments: attachments.map((att) => ({
+      name: att.filename,
+      content: att.content,
+      encoding: "base64", // Confiem que la Server Action envia 'base64'
+      contentType: att.contentType,
+    })),
   });
 }
 
@@ -213,13 +297,17 @@ serve(async (req) => {
   }
 
   try {
-    // 1. Obtenir dades de la petició
-    const { contactId, subject, htmlBody } = await req.json();
+    // 1. Obtenir dades de la petició (✅ LLEGIM 'attachments')
+    const { contactId, subject, htmlBody, attachments } = await req.json();
     if (!contactId || !subject || !htmlBody) {
       throw new Error(
         "Falten paràmetres: 'contactId', 'subject', o 'htmlBody'.",
       );
     }
+    // Assegurem que 'attachments' sigui un array, encara que vingui buit o null
+    const attachmentsPayload: Attachment[] = Array.isArray(attachments)
+      ? attachments
+      : [];
 
     // 2. Obtenir clients de Supabase i usuari
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -285,7 +373,7 @@ serve(async (req) => {
       );
     }
 
-    // 6. Lògica d'enviament per proveïdor
+    // 6. Lògica d'enviament per proveïdor (✅ PASSEM 'attachmentsPayload')
     const fromEmail = account.provider_user_id;
 
     switch (account.provider) {
@@ -306,6 +394,7 @@ serve(async (req) => {
           contact.email,
           subject,
           htmlBody,
+          attachmentsPayload, // <-- ✅ Passat
         );
         break;
       }
@@ -320,7 +409,13 @@ serve(async (req) => {
           encryptionSecret,
         );
         const accessToken = await getMicrosoftAccessToken(refreshToken);
-        await sendMicrosoftMail(accessToken, contact.email, subject, htmlBody);
+        await sendMicrosoftMail(
+          accessToken,
+          contact.email,
+          subject,
+          htmlBody,
+          attachmentsPayload, // <-- ✅ Passat
+        );
         break;
       }
       case "custom_email": {
@@ -340,6 +435,7 @@ serve(async (req) => {
           contact.email,
           subject,
           htmlBody,
+          attachmentsPayload, // <-- ✅ Passat
         );
         break;
       }

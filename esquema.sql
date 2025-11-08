@@ -289,16 +289,18 @@ $$;
 ALTER FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE 
   v_quote public.quotes%ROWTYPE;
   v_new_invoice_id BIGINT;
+  v_opportunity_stage_id BIGINT;
+  v_pipeline_id BIGINT;
   v_target_stage_id BIGINT;
 BEGIN
-  -- 1️⃣ Actualitzar el pressupost
+  -- 1️⃣ Actualitzar el pressupost (Ara sense 'accepted_at' ni 'invoice_id')
   UPDATE public.quotes
   SET status = 'Accepted'
   WHERE secure_id = p_secure_id
@@ -311,27 +313,34 @@ BEGIN
   -- 2️⃣ Actualitzar l’oportunitat (etapa guanyada)
   IF v_quote.opportunity_id IS NOT NULL THEN
     BEGIN
-      SELECT ps_target.id
-      INTO v_target_stage_id
-      FROM public.opportunities o
-      JOIN public.pipeline_stages ps_current 
-        ON o.pipeline_stage_id = ps_current.id
-      JOIN public.pipeline_stages ps_target 
-        ON ps_current.pipeline_id = ps_target.pipeline_id
-      WHERE o.id = v_quote.opportunity_id
-        AND ps_target.stage_type = 'WON'
+      -- Pas 2.1: Obtenir l'etapa actual de l'oportunitat
+      SELECT pipeline_stage_id INTO v_opportunity_stage_id
+      FROM public.opportunities
+      WHERE id = v_quote.opportunity_id;
+
+      -- Pas 2.2: Obtenir el pipeline_id a partir de l'etapa actual
+      SELECT pipeline_id INTO v_pipeline_id
+      FROM public.pipeline_stages
+      WHERE id = v_opportunity_stage_id;
+
+      -- Pas 2.3: Trobar l'etapa 'WON' DINS d'aquest pipeline
+      SELECT id INTO v_target_stage_id
+      FROM public.pipeline_stages
+      WHERE pipeline_id = v_pipeline_id
+        AND stage_type = 'WON'
       LIMIT 1;
 
+      -- Pas 2.4: Actualitzar l'oportunitat
       IF v_target_stage_id IS NOT NULL THEN
         UPDATE public.opportunities
-        SET pipeline_stage_id = v_target_stage_id
+        SET 
+          pipeline_stage_id = v_target_stage_id,
+          stage_name = 'Guanyat' -- Actualitzem camp denormalitzat
         WHERE id = v_quote.opportunity_id;
       END IF;
-
     EXCEPTION 
       WHEN NO_DATA_FOUND THEN 
-        -- Si no trobem etapa, ignorem.
-        NULL;
+        RAISE WARNING 'No s''ha pogut moure l''oportunitat (ID: %), dades no trobades.', v_quote.opportunity_id;
     END;
   END IF;
 
@@ -348,7 +357,7 @@ BEGIN
   )
   RETURNING id INTO v_new_invoice_id;
 
-  -- 4️⃣ Copiar els ítems del pressupost
+  -- 4️⃣ Copiar els ítems del pressupost (L'antic Pas 5)
   INSERT INTO public.invoice_items (
     invoice_id, product_id, description, quantity, unit_price, 
     tax_rate, total, user_id, team_id
@@ -371,7 +380,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."can_access_ticket"("ticket_user_id" "uuid") RETURNS boolean
@@ -570,7 +579,6 @@ ALTER FUNCTION "public"."delete_user_credential"("provider_name" "text") OWNER T
 
 CREATE OR REPLACE FUNCTION "public"."get_active_team_id"() RETURNS "uuid"
     LANGUAGE "sql" STABLE
-    SET "search_path" TO 'public'
     AS $$
   SELECT 
     coalesce(
@@ -585,7 +593,6 @@ ALTER FUNCTION "public"."get_active_team_id"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."get_active_team_role"() RETURNS "text"
     LANGUAGE "sql" STABLE
-    SET "search_path" TO 'public'
     AS $$
   SELECT 
     coalesce(
@@ -1043,11 +1050,12 @@ $$;
 ALTER FUNCTION "public"."get_inbox_sent_count"("p_visible_user_ids" "uuid"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" "uuid", "created_at" timestamp with time zone, "user_id" "uuid", "contact_id" "uuid", "provider" "text", "provider_message_id" "text", "subject" "text", "body" "text", "sender_name" "text", "sender_email" "text", "sent_at" timestamp with time zone, "status" "text", "attachments" "jsonb", "preview" "text", "type" "text", "contact_nom" "text", "contact_email" "text", "profile_full_name" "text", "profile_avatar_url" "text")
+CREATE OR REPLACE FUNCTION "public"."get_inbox_tickets"("p_visible_user_ids" "uuid"[], "p_search_term" "text", "p_active_filter" "text", "p_limit" integer, "p_offset" integer) RETURNS TABLE("id" bigint, "created_at" timestamp with time zone, "user_id" "uuid", "contact_id" bigint, "provider" "text", "provider_message_id" "text", "subject" "text", "body" "text", "sender_name" "text", "sender_email" "text", "sent_at" timestamp with time zone, "status" "text", "attachments" "jsonb", "preview" "text", "type" "text", "contact_nom" "text", "contact_email" "text", "profile_full_name" "text", "profile_avatar_url" "text")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
     AS $$
 BEGIN
+    -- Aquest és el teu codi, que ja era correcte
     RETURN QUERY
     SELECT
         et.id,
@@ -1630,14 +1638,14 @@ $$;
 ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "jsonb", "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" numeric DEFAULT NULL::numeric, "p_longitude" numeric DEFAULT NULL::numeric) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
-    AS $$
-DECLARE
+    AS $$DECLARE
   new_team_id uuid;
   user_metadata jsonb;
   app_metadata jsonb;
+  new_pipeline_id bigint;
 BEGIN
   -- 1. Actualitzar Perfil
   UPDATE public.profiles
@@ -1657,94 +1665,38 @@ BEGIN
   INSERT INTO public.team_members (team_id, user_id, role)
   VALUES (new_team_id, p_user_id, 'owner');
 
-  -- 4. Inserir Subscripció (amb client Admin)
-  -- Aquesta és una funció 'helper' que et permet utilitzar el rol 'service_role'
-  -- de forma segura dins d'una funció 'SECURITY DEFINER'.
-  INSERT INTO public.subscriptions (team_id, plan_id, status)
-  VALUES (new_team_id, 'free', 'active');
+  -- 3.5. Inserir Pipeline per defecte
+  INSERT INTO public.pipelines (team_id, name, "position")
+  VALUES (new_team_id, 'Pipeline Principal', 1)
+  RETURNING id INTO new_pipeline_id;
 
-  -- 5. Actualitzar Metadades de l'Usuari (Admin Auth)
-  -- Obtenim les metadades actuals
-  SELECT raw_user_meta_data, raw_app_meta_data
-  INTO user_metadata, app_metadata
-  FROM auth.users WHERE id = p_user_id;
-
-  -- Actualitzem les metadades
-  PERFORM auth.admin_update_user_by_id(
-    p_user_id,
-    jsonb_build_object(
-        'user_metadata', (user_metadata || jsonb_build_object('full_name', p_full_name)),
-        'app_metadata', (app_metadata || jsonb_build_object('active_team_id', new_team_id, 'active_team_plan', 'free'))
-    )
-  );
-  
-  -- 6. Retornem l'ID de l'equip
-  RETURN new_team_id;
-
-EXCEPTION
-  WHEN OTHERS THEN
-    -- Si qualsevol de les operacions anteriors falla, tot es reverteix
-    RAISE EXCEPTION 'Error a handle_onboarding: %', SQLERRM;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision DEFAULT NULL::double precision, "p_longitude" double precision DEFAULT NULL::double precision) RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
-  new_team_id uuid;
-  user_metadata jsonb;
-  app_metadata jsonb;
-BEGIN
-  -- 1. Actualitzar Perfil
-  UPDATE public.profiles
-  SET full_name = p_full_name, phone = p_phone, onboarding_completed = TRUE
-  WHERE id = p_user_id;
-
-  -- 2. Inserir Equip i obtenir el seu ID
-  INSERT INTO public.teams (
-    name, owner_id, tax_id, website, summary, sector, services, phone, email,
-    street, city, postal_code, region, country, latitude, longitude
-  ) VALUES (
-    p_company_name, p_user_id, p_tax_id, p_website, p_summary, p_sector, p_services, p_phone, p_email,
-    p_street, p_city, p_postal_code, p_region, p_country, p_latitude, p_longitude
-  ) RETURNING id INTO new_team_id;
-
-  -- 3. Inserir Membre d'Equip
-  INSERT INTO public.team_members (team_id, user_id, role)
-  VALUES (new_team_id, p_user_id, 'owner');
-
-  -- 4. Inserir Etapes del Pipeline
-  INSERT INTO public.pipeline_stages (name, "position", team_id, user_id)
+  -- 💡 CORRECCIÓ: PAS 4 (Inserim colors i tipus d'etapa)
+  -- Afegeix les columnes 'color' i 'stage_type' a l'INSERT
+  INSERT INTO public.pipeline_stages (
+    name, "position", team_id, user_id, pipeline_id, color, stage_type
+  )
   VALUES
-    ('Prospecte', 1, new_team_id, p_user_id),
-    ('Contactat', 2, new_team_id, p_user_id),
-    ('Proposta Enviada', 3, new_team_id, p_user_id),
-    ('Negociació', 4, new_team_id, p_user_id),
-    ('Guanyat', 5, new_team_id, p_user_id),
-    ('Perdut', 6, new_team_id, p_user_id);
+    ('Prospecte', 1, new_team_id, p_user_id, new_pipeline_id, '#3b82f6', 'PROSPECT'),
+    ('Contactat', 2, new_team_id, p_user_id, new_pipeline_id, '#06b6d4', 'CONTACTED'),
+    ('Proposta Enviada', 3, new_team_id, p_user_id, new_pipeline_id, '#a855f7', 'PROPOSAL'),
+    ('Negociació', 4, new_team_id, p_user_id, new_pipeline_id, '#eab308', NULL),
+    ('Guanyat', 5, new_team_id, p_user_id, new_pipeline_id, '#22c55e', 'WON'),
+    ('Perdut', 6, new_team_id, p_user_id, new_pipeline_id, '#ef4444', 'LOST');
 
   -- 5. Inserir Subscripció
   INSERT INTO public.subscriptions (team_id, plan_id, status)
-  VALUES (new_team_id, 'free', 'active');
+  VALUES (new_team_id, 'plan_free', 'active');
 
   -- 6. Actualitzar Metadades de l'Usuari (Admin Auth)
   SELECT raw_user_meta_data, raw_app_meta_data
   INTO user_metadata, app_metadata
   FROM auth.users WHERE id = p_user_id;
 
-  PERFORM auth.admin_update_user_by_id(
-    p_user_id,
-    jsonb_build_object(
-      'user_metadata', (user_metadata || jsonb_build_object('full_name', p_full_name)),
-      'app_metadata', (app_metadata || jsonb_build_object('active_team_id', new_team_id, 'active_team_plan', 'free'))
-    )
-  );
+  UPDATE auth.users
+  SET 
+    raw_user_meta_data = (user_metadata || jsonb_build_object('full_name', p_full_name)),
+    raw_app_meta_data = (app_metadata || jsonb_build_object('active_team_id', new_team_id, 'active_team_plan', 'free'))
+  WHERE id = p_user_id;
   
   -- 7. Retornar l'ID de l'equip
   RETURN new_team_id;
@@ -1752,11 +1704,10 @@ BEGIN
 EXCEPTION
   WHEN OTHERS THEN
     RAISE EXCEPTION 'Error a handle_onboarding: %', SQLERRM;
-END;
-$$;
+END;$$;
 
 
-ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) OWNER TO "postgres";
+ALTER FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "jsonb", "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" numeric, "p_longitude" numeric) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."handle_opportunity_on_quote_creation"() RETURNS "trigger"
@@ -1926,13 +1877,13 @@ ALTER FUNCTION "public"."is_quote_public"("quote_id_to_check" bigint) OWNER TO "
 
 
 CREATE OR REPLACE FUNCTION "public"."is_team_member"("team_id_to_check" "uuid") RETURNS boolean
-    LANGUAGE "sql" SECURITY DEFINER
+    LANGUAGE "sql"
     SET "search_path" TO 'public', 'pg_temp'
     AS $$
   SELECT EXISTS (
     SELECT 1
     FROM public.team_members
-    WHERE team_members.user_id = auth.uid()
+    WHERE team_members.user_id = auth.uid() -- Ara auth.uid() funcionarà
       AND team_members.team_id = team_id_to_check
   );
 $$;
@@ -1987,39 +1938,6 @@ $$;
 ALTER FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_status_input" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
-    AS $$
-DECLARE
-    new_log_entry jsonb;
-    action_text text;
-    current_user_id uuid := auth.uid();
-BEGIN
-    IF new_status_input THEN
-        action_text := 'actiu';
-    ELSE
-        action_text := 'inactiu';
-    END IF;
-
-    new_log_entry := jsonb_build_object(
-        'timestamp', now(),
-        'action', action_text,
-        'user_id', current_user_id
-    );
-
-    UPDATE public.tasks
-    SET 
-        is_active = new_status_input,
-        time_tracking_log = COALESCE(time_tracking_log, '[]'::jsonb) || new_log_entry
-    WHERE id = task_id_input;
-END;
-$$;
-
-
-ALTER FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) RETURNS TABLE("id" "uuid", "content" "text", "metadata" "jsonb", "similarity" double precision)
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'pg_temp'
@@ -2047,10 +1965,12 @@ ALTER FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector
 
 CREATE OR REPLACE FUNCTION "public"."reject_quote_with_reason"("p_secure_id" "uuid", "p_reason" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public', 'pg_temp'
+    SET "search_path" TO 'public'
     AS $$
 DECLARE 
   v_quote public.quotes%ROWTYPE;
+  v_opportunity_stage_id BIGINT;
+  v_pipeline_id BIGINT;
   v_target_stage_id bigint;
 BEGIN
   -- 🧾 Pas 1: Actualitzar el pressupost
@@ -2067,27 +1987,35 @@ BEGIN
   -- 🔁 Pas 2: Actualitzar l'oportunitat associada
   IF v_quote.opportunity_id IS NOT NULL THEN
     BEGIN
-      -- Trobar l’etapa marcada com LOST dins del mateix pipeline
-      SELECT ps_target.id
-      INTO v_target_stage_id
-      FROM public.opportunities o
-      JOIN public.pipeline_stages ps_current 
-        ON o.pipeline_stage_id = ps_current.id
-      JOIN public.pipeline_stages ps_target 
-        ON ps_current.pipeline_id = ps_target.pipeline_id
-      WHERE o.id = v_quote.opportunity_id
-        AND ps_target.stage_type = 'LOST';
+      -- Pas 2.1: Obtenir l'etapa actual de l'oportunitat
+      SELECT pipeline_stage_id INTO v_opportunity_stage_id
+      FROM public.opportunities
+      WHERE id = v_quote.opportunity_id;
 
-      -- Si existeix, actualitzem l’oportunitat
+      -- Pas 2.2: Obtenir el pipeline_id a partir de l'etapa actual
+      SELECT pipeline_id INTO v_pipeline_id
+      FROM public.pipeline_stages
+      WHERE id = v_opportunity_stage_id;
+      
+      -- Pas 2.3: Trobar l’etapa marcada com LOST dins del mateix pipeline
+      SELECT id INTO v_target_stage_id
+      FROM public.pipeline_stages
+      WHERE pipeline_id = v_pipeline_id
+        AND stage_type = 'LOST'
+      LIMIT 1;
+
+      -- Pas 2.4: Si existeix, actualitzem l’oportunitat
       IF v_target_stage_id IS NOT NULL THEN
         UPDATE public.opportunities
-        SET pipeline_stage_id = v_target_stage_id
+        SET 
+          pipeline_stage_id = v_target_stage_id,
+          stage_name = 'Perdut' -- Actualitzem camp denormalitzat
         WHERE id = v_quote.opportunity_id;
       END IF;
 
     EXCEPTION 
       WHEN NO_DATA_FOUND THEN 
-        NULL; -- Ignorem si no hi ha etapa LOST
+        RAISE WARNING 'No s''ha pogut moure l''oportunitat (ID: %), dades no trobades.', v_quote.opportunity_id;
     END;
   END IF;
 END;
@@ -2435,70 +2363,60 @@ $$;
 ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text", "contact_id_param" bigint, "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text" DEFAULT NULL::"text", "search_term_param" "text" DEFAULT NULL::"text", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 20, "offset_param" integer DEFAULT 0) RETURNS SETOF "record"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'pg_catalog', 'public'
+CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text" DEFAULT NULL::"text", "status_param" "public"."quote_status" DEFAULT NULL::"public"."quote_status", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text") RETURNS TABLE("id" bigint, "sequence_number" integer, "user_id" "uuid", "contact_id" bigint, "team_id" "uuid", "tax_percent" numeric, "show_quantity" boolean, "status" "public"."quote_status", "issue_date" "date", "expiry_date" "date", "subtotal" numeric, "discount" numeric, "tax" numeric, "total" numeric, "created_at" timestamp with time zone, "opportunity_id" bigint, "send_at" timestamp with time zone, "secure_id" "uuid", "sent_at" timestamp with time zone, "quote_number" "text", "notes" "text", "rejection_reason" "text", "theme_color" "text", "contact_nom" "text", "contact_empresa" "text", "total_count" bigint)
+    LANGUAGE "plpgsql"
     AS $$
 BEGIN
   RETURN QUERY
-  SELECT
-    -- Quotes
-    q.id,
-    q.sequence_number,
-    q.user_id,
-    q.contact_id,
-    q.team_id,
-    q.tax_percent,
-    q.show_quantity,
-    q.status,
-    q.issue_date,
-    q.expiry_date,
-    q.subtotal,
-    q.discount,
-    q.tax,
-    q.total,
-    q.created_at,
-    q.opportunity_id,
-    q.send_at,
-    q.secure_id,
-    q.sent_at,
-    q.quote_number,
-    q.notes,
-    q.rejection_reason,
-    q.theme_color,
-    -- Contactes
-    c.nom AS contact_nom,
-    c.empresa AS contact_empresa,
-    -- Total
-    COUNT(*) OVER() AS total_count
-  FROM public.quotes q
-  LEFT JOIN public.contacts c ON q.contact_id = c.id
-  WHERE
-    q.team_id = team_id_param
-    AND (status_param IS NULL OR q.status = status_param)
-    AND (
-      search_term_param IS NULL
-      OR q.quote_number ILIKE '%' || search_term_param || '%'
-      OR c.nom ILIKE '%' || search_term_param || '%'
-    )
+  
+  -- PAS 1: Filtrat (Imitant el patró 'invoices')
+  WITH filtered_quotes AS (
+    SELECT
+      q.id, q.sequence_number, q.user_id, q.contact_id, q.team_id, q.tax_percent, 
+      q.show_quantity, q.status, q.issue_date, q.expiry_date, q.subtotal, 
+      q.discount, q.tax, q.total, q.created_at, q.opportunity_id, q.send_at, 
+      q.secure_id, q.sent_at, q.quote_number, q.notes, q.rejection_reason, q.theme_color,
+      c.nom AS contact_nom,
+      c.empresa AS contact_empresa
+    FROM public.quotes q
+    LEFT JOIN public.contacts c ON q.contact_id = c.id
+    WHERE
+      q.team_id = team_id_param
+      AND (status_param IS NULL OR q.status = status_param) 
+      AND (
+        search_term_param IS NULL
+        OR q.quote_number ILIKE '%' || search_term_param || '%'
+        OR c.nom ILIKE '%' || search_term_param || '%'
+      )
+  ),
+  -- PAS 2: Recompte (Imitant el patró 'invoices')
+  counted_quotes AS (
+     SELECT *, COUNT(*) OVER() AS total_count
+     FROM filtered_quotes
+  )
+  
+  -- PAS 3: Ordenació i Paginació
+  SELECT *
+  FROM counted_quotes fq -- ✅ Utilitzem un àlies (fq)
   ORDER BY
-    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN q.issue_date END ASC NULLS LAST,
-    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN q.issue_date END DESC NULLS LAST,
-    CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'asc' THEN q.quote_number END ASC NULLS LAST,
-    CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'desc' THEN q.quote_number END DESC NULLS LAST,
-    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN c.nom END ASC NULLS LAST,
-    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN c.nom END DESC NULLS LAST,
-    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN q.total END ASC NULLS LAST,
-    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN q.total END DESC NULLS LAST,
-    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN q.status::text END ASC NULLS LAST,
-    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN q.status::text END DESC NULLS LAST
+    -- ✅ Arreglem l'ambigüitat '42702' utilitzant l'àlies 'fq'
+    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN fq.issue_date END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN fq.issue_date END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'asc' THEN fq.quote_number END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'desc' THEN fq.quote_number END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN fq.contact_nom END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN fq.contact_nom END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN fq.total END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN fq.total END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN fq.status::text END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN fq.status::text END DESC NULLS LAST
   LIMIT limit_param
   OFFSET offset_param;
 END;
 $$;
 
 
-ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") RETURNS "void"
@@ -3016,7 +2934,12 @@ CREATE TABLE IF NOT EXISTS "public"."contacts" (
     "partner_name" "text",
     "team_id" "uuid",
     "supplier_id" "uuid",
-    "gender" "text"
+    "gender" "text",
+    "tax_id" "text",
+    "street" "text",
+    "city" "text",
+    "postal_code" "text",
+    "country" "text"
 );
 
 
@@ -4438,7 +4361,7 @@ ALTER TABLE ONLY "public"."audio_jobs"
 
 
 ALTER TABLE ONLY "public"."blacklist_rules"
-    ADD CONSTRAINT "blacklist_rules_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id");
+    ADD CONSTRAINT "blacklist_rules_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4578,7 +4501,7 @@ ALTER TABLE ONLY "public"."invoice_deliveries"
 
 
 ALTER TABLE ONLY "public"."invoice_deliveries"
-    ADD CONSTRAINT "invoice_deliveries_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id");
+    ADD CONSTRAINT "invoice_deliveries_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4688,7 +4611,7 @@ ALTER TABLE ONLY "public"."products"
 
 
 ALTER TABLE ONLY "public"."profiles"
-    ADD CONSTRAINT "profiles_active_team_id_fkey" FOREIGN KEY ("active_team_id") REFERENCES "public"."teams"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "profiles_active_team_id_fkey" FOREIGN KEY ("active_team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4718,7 +4641,7 @@ ALTER TABLE ONLY "public"."quote_items"
 
 
 ALTER TABLE ONLY "public"."quote_items"
-    ADD CONSTRAINT "quote_items_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id");
+    ADD CONSTRAINT "quote_items_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4753,7 +4676,7 @@ ALTER TABLE ONLY "public"."quotes"
 
 
 ALTER TABLE ONLY "public"."social_posts"
-    ADD CONSTRAINT "social_posts_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE SET NULL;
+    ADD CONSTRAINT "social_posts_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4872,6 +4795,10 @@ ALTER TABLE ONLY "public"."user_credentials"
 
 
 
+CREATE POLICY "Admins i Owners poden crear invitacions" ON "public"."invitations" FOR INSERT TO "authenticated" WITH CHECK ((("team_id" = ((("auth"."jwt"() -> 'app_metadata'::"text") ->> 'active_team_id'::"text"))::"uuid") AND ((("auth"."jwt"() -> 'app_metadata'::"text") ->> 'active_team_role'::"text") = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
+
+
+
 CREATE POLICY "Allow authenticated users to read profiles" ON "public"."profiles" FOR SELECT USING (("auth"."role"() = 'authenticated'::"text"));
 
 
@@ -4918,10 +4845,6 @@ CREATE POLICY "Els 'admins' poden ACTUALITZAR membres al seu equip actiu" ON "pu
 
 
 
-CREATE POLICY "Els 'admins' poden CREAR invitacions de l'equip actiu" ON "public"."invitations" FOR INSERT TO "authenticated" WITH CHECK ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
-
-
-
 CREATE POLICY "Els 'admins' poden ESBORRAR invitacions de l'equip actiu" ON "public"."invitations" FOR DELETE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = ANY (ARRAY['owner'::"text", 'admin'::"text"]))));
 
 
@@ -4935,10 +4858,6 @@ CREATE POLICY "Els 'admins' poden INSERTAR membres al seu equip actiu" ON "publi
 
 
 CREATE POLICY "Els 'owners' poden ACTUALITZAR el seu equip actiu" ON "public"."teams" FOR UPDATE TO "authenticated" USING ((("id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = 'owner'::"text"))) WITH CHECK ((("id" = "public"."get_active_team_id"()) AND ("public"."get_active_team_role"() = 'owner'::"text")));
-
-
-
-CREATE POLICY "Els membres d'un equip poden crear invitacions" ON "public"."invitations" FOR INSERT TO "authenticated" WITH CHECK ("public"."is_team_member"("team_id"));
 
 
 
@@ -5030,7 +4949,7 @@ CREATE POLICY "Els membres gestionen les tasques del seu equip actiu" ON "public
 
 
 
-CREATE POLICY "Els membres poden ACTUALITZAR factures en 'Draft' del seu equip" ON "public"."invoices" FOR UPDATE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("status" = 'Draft'::"text"))) WITH CHECK ((("team_id" = "public"."get_active_team_id"()) AND ("status" = 'Draft'::"text")));
+CREATE POLICY "Els membres poden ACTUALITZAR factures en 'Draft' del seu equip" ON "public"."invoices" FOR UPDATE TO "authenticated" USING ((("team_id" = "public"."get_active_team_id"()) AND ("status" = 'Draft'::"text"))) WITH CHECK (("team_id" = "public"."get_active_team_id"()));
 
 
 
@@ -5096,11 +5015,25 @@ CREATE POLICY "La llista de serveis és pública i visible per a tothom" ON "pub
 
 
 
+CREATE POLICY "Members poden crear invitacions" ON "public"."invitations" FOR INSERT TO "authenticated" WITH CHECK ((((("auth"."jwt"() -> 'app_metadata'::"text") ->> 'active_team_role'::"text") = 'member'::"text") AND (EXISTS ( SELECT 1
+   FROM "public"."team_members"
+  WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."team_id" = "invitations"."team_id"))))));
+
+
+
 CREATE POLICY "Owners and admins can manage inbox permissions." ON "public"."inbox_permissions" TO "authenticated" USING (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"])))))) WITH CHECK (("team_id" IN ( SELECT "team_members"."team_id"
    FROM "public"."team_members"
   WHERE (("team_members"."user_id" = "auth"."uid"()) AND ("team_members"."role" = ANY (ARRAY['owner'::"text", 'admin'::"text"]))))));
+
+
+
+CREATE POLICY "Permetre accés complet al service_role per a job_postings" ON "public"."job_postings" FOR SELECT USING (("auth"."role"() = 'service_role'::"text"));
+
+
+
+CREATE POLICY "Permetre accés complet al service_role per a teams" ON "public"."teams" FOR SELECT USING (("auth"."role"() = 'service_role'::"text"));
 
 
 
@@ -5227,9 +5160,6 @@ CREATE POLICY "insert_own_layouts" ON "public"."project_layouts" FOR INSERT WITH
 
 
 
-ALTER TABLE "public"."invitations" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "public"."invoice_attachments" ENABLE ROW LEVEL SECURITY;
 
 
@@ -5344,9 +5274,9 @@ GRANT ALL ON FUNCTION "public"."accept_personal_invitation"("invitation_id" "uui
 
 
 
-GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") TO "service_role";
 
 
 
@@ -5560,15 +5490,9 @@ GRANT ALL ON FUNCTION "public"."handle_new_user"() TO "service_role";
 
 
 
-GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "anon";
-GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_email" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "anon";
-GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "text"[], "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" double precision, "p_longitude" double precision) TO "service_role";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "jsonb", "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" numeric, "p_longitude" numeric) TO "anon";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "jsonb", "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" numeric, "p_longitude" numeric) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."handle_onboarding"("p_user_id" "uuid", "p_full_name" "text", "p_email" "text", "p_company_name" "text", "p_tax_id" "text", "p_website" "text", "p_summary" "text", "p_sector" "text", "p_services" "jsonb", "p_phone" "text", "p_street" "text", "p_city" "text", "p_postal_code" "text", "p_region" "text", "p_country" "text", "p_latitude" numeric, "p_longitude" numeric) TO "service_role";
 
 
 
@@ -5626,12 +5550,6 @@ GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" bigint, "new_
 
 
 
-GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) TO "anon";
-GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."log_task_activity"("task_id_input" "uuid", "new_status_input" boolean) TO "service_role";
-
-
-
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "anon";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "authenticated";
 GRANT ALL ON FUNCTION "public"."match_documents"("query_embedding" "extensions"."vector", "match_threshold" double precision, "match_count" integer) TO "service_role";
@@ -5680,9 +5598,9 @@ GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid
 
 
 
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "status_param" "text", "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") TO "anon";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") TO "service_role";
 
 
 

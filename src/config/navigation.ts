@@ -25,7 +25,6 @@ import {
   User,
   Users,
   Wrench,
-  
 } from "lucide-react";
 import type { NavItem } from "@/types/app/navigation";
 
@@ -180,7 +179,7 @@ export const navModules: NavItem[] = [
     path: "/network",
     isSingle: true,
   },
-    {
+  {
     id: "roadmap",
     labelKey: "roadmap",
     icon: Puzzle,
@@ -201,9 +200,9 @@ export const bottomItems: NavItem[] = [
     id: "ai",
     labelKey: "ai",
     icon: Bot,
-    path: "#",
+    path: "#", // No navega, només obre el xat
     isSingle: true,
-    notImplemented: true,
+    // ✅ CANVI: Hem tret 'notImplemented: true'
   },
   // ✅ 2. Modifiquem l'element 'settings' per a què tingui submenús.
   {
