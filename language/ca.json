@@ -2562,7 +2562,8 @@
       "DecisionsMade": "Decisions Preses",
       "decisions": "Moments destacats de la reunió",
       "actions": "Accions a realitzar",
-      "participants": "Participants principals"
+      "participants": "Participants principals",
+      "invalidData": "Dades de moments clau invàlides."
     },
     "Email": {
       "sendSuccess": "L'email amb el resum de la reunió s'ha enviat correctament a {recipientCount} destinataris.",

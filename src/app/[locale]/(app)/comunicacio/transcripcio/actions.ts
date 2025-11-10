@@ -221,7 +221,8 @@ export async function sendTranscriptionSummaryEmailAction(
     PERMISSIONS.MANAGE_TRANSLATIONS
   )
   if ('error' in validation) {
-    return { success: false, message: validation.error.message }
+    // ✅ Aquest ja retorna correctament { error: ... }
+    return {success: false,  error: validation.error.message }
   }
   const { supabase, activeTeamId, user } = validation
 
@@ -231,13 +232,15 @@ export async function sendTranscriptionSummaryEmailAction(
   // 3. Validar dades del formulari
   const parseResult = sendEmailSchema.safeParse({ jobId: formData.get('jobId') })
   if (!parseResult.success)
-    return { success: false, message: t('sendEmailInvalidData') }
+    // ✅ Aquest també retorna un format d'error que el client potser no gestiona,
+    // però el teu 'handleSendEmail' només busca 'result.error'.
+    // Per coherència, ho canviem també:
+    return {success: false,  error: t('sendEmailInvalidData') }
 
   const { jobId } = parseResult.data
 
   try {
     // 4. Delegar al Servei d'Email
-    // Passem la funció 't' perquè el servei pugui construir l'HTML traduït
     const result = await transcripcioEmailService.sendTranscriptionSummaryEmail(
       supabase,
       user,
@@ -246,12 +249,20 @@ export async function sendTranscriptionSummaryEmailAction(
       t as (key: string) => string
     )
     
-    return result // El servei ja retorna un ActionResult
+    // Si el servei té èxit, retorna { success: true, ... }
+    return result 
   
   } catch (error: unknown) {
-    // Captura errors llançats pel servei
+    // ⚠️ AQUEST ÉS EL PUNT CRÍTIC DE LA CORRECCIÓ
     const message = (error as Error).message
     console.error('Error enviant email de resum (action):', message)
-    return { success: false, message: message }
+    
+    // ABANS (Incorrecte per al teu client):
+    // return { success: false, message: message } 
+    
+    // ARA (Correcte per al teu client):
+    // Retornem un objecte que SÍ té la propietat 'error',
+    // perquè el 'if (result?.error)' del client funcioni.
+    return {  success: false, error: message }
   }
 }

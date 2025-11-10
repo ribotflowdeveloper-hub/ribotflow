@@ -1,5 +1,3 @@
-// src/app/[locale]/(app)/settings/profile/_hooks/useProfileForm.ts (FITXER CORREGIT I COMPLET)
-
 'use client';
 
 import { useState, useTransition, useCallback } from 'react';
@@ -75,30 +73,19 @@ export function useProfileForm({ team }: UseProfileFormProps) {
     const newLogoUrl = publicUrlData.publicUrl;
     console.log('[DEBUG] URL Pública obtinguda:', newLogoUrl);
 
-    // ✅ --- 3. ACTUALITZAR LA BASE DE DADES (EL PAS QUE FALTAVA) ---
-    // Actualitzem la taula 'teams' AMB LA NOVA URL abans de continuar.
-    console.log(`[DEBUG] Actualitzant 'teams' a la BBDD amb el nou logo_url...`);
-    const { error: dbUpdateError } = await supabase
-      .from('teams')
-      .update({ logo_url: newLogoUrl }) // Actualitzem la columna
-      .eq('id', team.id); // Per a l'equip correcte
-
-    // Si la BBDD falla, no fem res més. No esborrem el logo vell.
-    if (dbUpdateError) {
-      console.error('[DEBUG] ERROR actualitzant la BBDD:', dbUpdateError);
-      toast.error(t('toasts.logoDbUpdateError') || 'Error en desar el logo', { description: dbUpdateError.message });
-      setIsUploading(false);
-      return; // No continuem
-    }
-    console.log('[DEBUG] BBDD actualitzada amb èxit.');
-    // ✅ --- FI DE LA CORRECCIÓ ---
-
-    // --- 4. Actualitzar l'estat local i notificar ---
-    setLogoUrl(newLogoUrl); // Actualitzem l'estat local
+    // ✅ --- 3. ACTUALITZAR L'ESTAT LOCAL ---
+    // Hem eliminat la crida a la BBDD. Ara només actualitzem l'estat del hook.
+    setLogoUrl(newLogoUrl); 
     console.log('[DEBUG] setLogoUrl cridat amb èxit.');
-    toast.success(t('toasts.logoUploadSuccess'));
+    
+    // Canviem el missatge per informar l'usuari
+    toast.success(t('toasts.logoUploadSuccess'), {
+      // És una bona pràctica afegir aquesta descripció a 'ca.json'
+      description: t('toasts.logoUploadSuccessDescription') || "Prem 'Desar canvis de l'empresa' per a desar el nou logo."
+    });
 
-    // --- 5. Esborrar el fitxer ANTIC (ara que la BBDD s'ha actualitzat) ---
+    // --- 4. Esborrar el fitxer ANTIC (ara que la BBDD s'ha actualitzat) ---
+    // (Això és correcte, neteja fire-and-forget)
     if (oldLogoUrl) {
       try {
         const urlParts = oldLogoUrl.split(`/${bucketName}/`);
@@ -141,7 +128,7 @@ export function useProfileForm({ team }: UseProfileFormProps) {
     console.log(`[DEBUG] Enviant al servidor (handleUpdateTeam). Valor de logoUrl:`, logoUrl || 'null o buit');
     
     startTeamTransition(async () => {
-      // Aquesta línia ara és correcta, perquè 'logoUrl' SÍ que està sincronitzat amb la BBDD.
+      // Aquesta línia ara és correcta, perquè 'logoUrl' SÍ que estarà sincronitzat.
       formData.set('logo_url', logoUrl || ''); 
       const result = await updateTeamAction(formData);
       if (result.success) toast.success(result.message);
