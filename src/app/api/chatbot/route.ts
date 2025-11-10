@@ -59,7 +59,7 @@ export async function POST(req: Request) {
       "match_platform_documents",
       {
         query_embedding: queryEmbedding,
-        match_threshold: 0.75,
+        match_threshold: 0.45,
         match_count: 5,
       },
     );
