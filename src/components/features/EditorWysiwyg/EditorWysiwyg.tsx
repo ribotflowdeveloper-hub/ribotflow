@@ -125,14 +125,50 @@ export default function EditorWysiwyg({
 
     const setLink = useCallback(() => {
         if (!editor) return;
+        
         const previousUrl = editor.getAttributes('link').href;
         const url = window.prompt('Introdueix la URL', previousUrl || '');
+
+        // 1. Si l'usuari cancel·la, no fem res
         if (url === null) return;
+
+        // 2. Si l'usuari ho deixa en blanc, treiem l'enllaç
         if (url === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
             return;
         }
-        editor.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank' }).run();
+
+        // 🧠 LÒGICA INTEL·LIGENT D'URLS
+        let finalUrl = url;
+        let target = '_blank'; // Per defecte, externs en pestanya nova
+
+        // CAS A: Enllaç intern (comença per '/')
+        // Exemple: /crm/contactes/753
+        if (url.startsWith('/')) {
+            finalUrl = url;
+            target = '_self'; // Obre en la mateixa pestanya
+        }
+        // CAS B: Ja té protocol (http:// o https:// o mailto:)
+        // Exemple: https://www.google.com
+        else if (url.match(/^(https?:\/\/|mailto:|tel:)/)) {
+            finalUrl = url;
+            target = '_blank';
+        }
+        // CAS C: És una web sense protocol (Ex: www.google.com)
+        // Li afegim https:// automàticament
+        else {
+            finalUrl = `https://${url}`;
+            target = '_blank';
+        }
+
+        // Apliquem l'enllaç amb la URL corregida i el target adequat
+        editor
+            .chain()
+            .focus()
+            .extendMarkRange('link')
+            .setLink({ href: finalUrl, target: target })
+            .run();
+
     }, [editor]);
 
     const addImage = useCallback(() => {

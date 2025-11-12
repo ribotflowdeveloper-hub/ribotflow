@@ -1,6 +1,7 @@
 import tailwindcssAnimate from "tailwindcss-animate";
 import flowbiteTypography from 'flowbite-typography';
 import flowbitePlugin from 'flowbite/plugin'; // 👈 1. Importem el plugin principal de Flowbite
+import typography from '@tailwindcss/typography';
 
 /** @type {import('tailwindcss').Config} */
 const config = {
@@ -83,7 +84,8 @@ const config = {
     plugins: [
         tailwindcssAnimate, 
         flowbiteTypography,
-        flowbitePlugin // 👈 3. Registrem el plugin de Flowbite
+        flowbitePlugin, // 👈 3. Registrem el plugin de Flowbite
+        typography,
     ],
 };
 

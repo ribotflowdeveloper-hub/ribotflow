@@ -524,3 +524,43 @@ html.dark .prose-invert .is-editor-focused {
     box-shadow: none !important;
     outline: none !important;
 }
+
+/* 👇 COMPACTAR LLISTES A L'EDITOR */
+.ProseMirror li {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.2 !important; /* Interliniat ajustat (potes posar 1 si ho vols molt enganxat) */
+}
+
+.ProseMirror li p {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  display: inline-block; /* Evita salts de línia extra */
+}
+
+/* Opcional: Ajustar el marge esquerre si ho veus massa separat de la vora */
+.ProseMirror ul, .ProseMirror ol {
+  padding-left: 1.2rem !important;
+}
+
+/* 👇 ELIMINAR ESPAI DOBLE ENTRE PARÀGRAFS */
+.ProseMirror p {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.2 !important; /* 1.2 és estàndard, posa '1' si ho vols molt enganxat */
+}
+
+/* 👇 ESTIL D'ENLLAÇOS PER A TOT (Editor i Visor) */
+/* Això afecta a qualsevol contenidor amb la classe 'prose' */
+.prose a {
+  color: #22A7F4 !important; /* Color Cyan de la teva marca (o posa blue-400) */
+  text-decoration: underline; /* Subratllat sempre visible */
+  text-underline-offset: 2px; /* Una mica separat del text per llegibilitat */
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.prose a:hover {
+  color: #AEF359 !important; /* Opcional: Color verd quan passes el ratolí per sobre */
+  text-decoration: none;
+}

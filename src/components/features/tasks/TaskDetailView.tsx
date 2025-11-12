@@ -322,7 +322,21 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
                 {/* Columna Esquerra: Descripció i detalls */}
                 <div className="md:col-span-2 space-y-6">
                     {currentDescription && (
-                        <div className='max-w-none'>
+                        <div className={cn(
+                            "prose prose-sm dark:prose-invert max-w-none",
+
+                            // Estils d'enllaços (Cyan i Verd)
+                            "prose-a:text-[#22A7F4] prose-a:underline prose-a:decoration-2 prose-a:underline-offset-2",
+                            "hover:prose-a:text-[#AEF359] hover:prose-a:decoration-[#AEF359]",
+                            "prose-a:cursor-pointer",
+
+                            // ✅ COMPACTACIÓ INTEL·LIGENT
+                            "prose-p:my-0",          // 1. Elimina marges verticals (tot junt)
+                            "prose-p:leading-tight", // 2. Interliniat compacte
+
+                            // 👇 LA CLAU DEL PROBLEMA:
+                            "[&_p]:min-h-[1.5em]"    // 3. Força que les línies buides ocupin espai real
+                        )}>
                             {parse(currentDescription, options)}
                         </div>
                     )}

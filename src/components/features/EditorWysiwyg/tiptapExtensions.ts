@@ -18,7 +18,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 
-// ✅ PAS 1: Importar les extensions de llista que falten
+// ✅ PAS 1: Importar les extensions de llista
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { ListItem } from '@tiptap/extension-list-item';
@@ -39,7 +39,7 @@ export const FontSizeTextStyle = TextStyle.extend({
 
 // Llista d'extensions exportada
 export const defaultExtensions = [
-  // ✅ PAS 2: Desactivem les llistes del StarterKit per evitar conflictes
+  // ✅ PAS 2: Desactivem les llistes del StarterKit
   StarterKit.configure({
     heading: { levels: [1, 2, 3] },
     bulletList: false,  // Desactivat
@@ -55,20 +55,40 @@ export const defaultExtensions = [
   Color,
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
-  Link.configure({ openOnClick: false }),
+Link.configure({
+    openOnClick: false, // Perfecte, permet editar sense saltar
+    autolink: true,     // ✅ Detecta automàticament URLs quan escrius i prems espai
+    defaultProtocol: 'https', // ✅ Si algú escriu "google.com", li posa https davant sol
+    HTMLAttributes: {
+      // Seguretat bàsica per a enllaços externs
+      rel: 'noopener noreferrer',
+      // Opcional: Pots forçar un color si Tailwind no ho està fent bé
+      // class: 'text-primary underline', 
+    },
+  }),
   Image,
   Youtube,
   Table.configure({ resizable: true }),
   TableRow,
   TableHeader,
   TableCell,
-  TaskList, // La teva llista de tasques (que funciona)
+  TaskList,
   TaskItem.configure({
     nested: true,
   }),
   
-  // ✅ PAS 3: Afegim les llistes manualment
+  // ✅ PAS 3: CONFIGURACIÓ VISUAL DE LES LLISTES (El canvi clau)
   ListItem,
-  BulletList,
-  OrderedList,
+  
+  BulletList.configure({
+    HTMLAttributes: {
+      class: 'list-disc list-outside ml-4', // Punts visibles + marge
+    },
+  }),
+  
+  OrderedList.configure({
+    HTMLAttributes: {
+      class: 'list-decimal list-outside ml-4', // Números visibles + marge
+    },
+  }),
 ];
