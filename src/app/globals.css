@@ -529,7 +529,7 @@ html.dark .prose-invert .is-editor-focused {
 .ProseMirror li {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-  line-height: 1.2 !important; /* Interliniat ajustat (potes posar 1 si ho vols molt enganxat) */
+  line-height: 1.2 !important; /* Interliniat ajustat */
 }
 
 .ProseMirror li p {
@@ -547,20 +547,34 @@ html.dark .prose-invert .is-editor-focused {
 .ProseMirror p {
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-  line-height: 1.2 !important; /* 1.2 és estàndard, posa '1' si ho vols molt enganxat */
+  line-height: 1.2 !important; 
 }
 
-/* 👇 ESTIL D'ENLLAÇOS PER A TOT (Editor i Visor) */
-/* Això afecta a qualsevol contenidor amb la classe 'prose' */
+/* ===================================================== */
+/* 👇 ESTIL D'ENLLAÇOS ADAPTATIU (Mode Clar vs Fosc) 👇 */
+/* ===================================================== */
+
+/* 1. MODE CLAR (Fons blanc) */
+/* Fem servir colors amb més contrast */
 .prose a {
-  color: #22A7F4 !important; /* Color Cyan de la teva marca (o posa blue-400) */
-  text-decoration: underline; /* Subratllat sempre visible */
-  text-underline-offset: 2px; /* Una mica separat del text per llegibilitat */
+  color: #0284c7 !important; /* Sky-600: Blau fort, llegible en blanc */
+  text-decoration: underline;
+  text-underline-offset: 2px;
   font-weight: 500;
   transition: color 0.2s;
 }
 
 .prose a:hover {
-  color: #AEF359 !important; /* Opcional: Color verd quan passes el ratolí per sobre */
+  color: #16a34a !important; /* Green-600: Verd fort, llegible en blanc */
   text-decoration: none;
+}
+
+/* 2. MODE FOSC (Classe .dark) */
+/* Recuperem els colors Neon que t'agraden */
+.dark .prose a {
+  color: #22A7F4 !important; /* El teu Cyan brillant */
+}
+
+.dark .prose a:hover {
+  color: #AEF359 !important; /* El teu Verd llima brillant */
 }
