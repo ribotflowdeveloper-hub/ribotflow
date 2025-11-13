@@ -30,6 +30,9 @@ type Team = Database["public"]["Tables"]["teams"]["Row"];
 export type EditableQuote = Omit<Quote, "id"> & {
     id: "new" | number;
     items: Partial<QuoteItem>[];
+    // Camps temporals per la UI
+    discount_percent_input?: number | null;
+    tax_percent_input?: number | null;
 };
 
 // Props que espera el hook
@@ -109,6 +112,20 @@ export function useQuoteEditor({
         quote: {
             ...initialQuote,
             items: initialQuote.id === "new" ? [] : initialQuote.items,
+            // ✅✅✅ CORRECCIÓ DE LECTURA ✅✅✅
+            // Deixem de llegir 'discount' i 'tax_percent'.
+            // Calculem els percentatges a partir dels valors nous.
+            tax_percent_input: (initialQuote.tax_rate ?? 0.21) * 100, // ex: 0.21 -> 21
+
+            // Calculem el % de descompte a partir del valor i el subtotal
+            discount_percent_input:
+                (initialQuote.subtotal && initialQuote.subtotal > 0 &&
+                        initialQuote.discount_amount)
+                    ? parseFloat(
+                        ((initialQuote.discount_amount /
+                            initialQuote.subtotal) * 100).toFixed(2),
+                    )
+                    : 0,
         },
         currentTeamData: companyProfile,
         contactOpportunities: initialOpportunities,
@@ -121,22 +138,45 @@ export function useQuoteEditor({
     const [isSaving, startSaveTransition] = useTransition();
     const [isSending, startSendTransition] = useTransition();
 
-    const { subtotal, discountAmount, tax, total } = useMemo(() => {
-        const { items, discount, tax_percent } = state.quote;
+    // ✅ 3. RECONSTRUÏM EL useMemo amb LÒGICA DE PERCENTATGES
+    const {
+        computedSubtotal,
+        computedDiscountAmount,
+        computedTaxAmount,
+        computedTotalAmount,
+    } = useMemo(() => {
+        const { items, discount_percent_input, tax_percent_input } =
+            state.quote;
+
+        // 1. Subtotal
         const sub = items.reduce(
             (acc, item) => acc + (item.quantity || 0) * (item.unit_price || 0),
             0,
         );
-        const calculatedDiscountAmount = sub * ((discount || 0) / 100);
-        const subAfterDiscount = sub - calculatedDiscountAmount;
-        const taxAmount = subAfterDiscount * ((tax_percent ?? 21) / 100);
+
+        // 2. Descompte (calculat a partir del % de l'input)
+        const discountPercent = discount_percent_input || 0;
+        const discountAmount = sub * (discountPercent / 100);
+        const subAfterDiscount = sub - discountAmount;
+
+        // 3. Impost (calculat a partir del % de l'input)
+        const taxPercent = tax_percent_input || 0;
+        const taxAmount = subAfterDiscount * (taxPercent / 100);
+
+        // 4. Total
+        const total = subAfterDiscount + taxAmount;
+
         return {
-            subtotal: sub,
-            discountAmount: calculatedDiscountAmount,
-            tax: taxAmount,
-            total: subAfterDiscount + taxAmount,
+            computedSubtotal: sub,
+            computedDiscountAmount: discountAmount,
+            computedTaxAmount: taxAmount,
+            computedTotalAmount: total,
         };
-    }, [state.quote]);
+    }, [
+        state.quote.items,
+        state.quote.discount_percent_input,
+        state.quote.tax_percent_input,
+    ]);
 
     const onQuoteChange = useCallback(
         <K extends keyof EditableQuote>(field: K, value: EditableQuote[K]) => {
@@ -180,11 +220,20 @@ export function useQuoteEditor({
         }
 
         startSaveTransition(async () => {
+            // ✅✅✅ INICI DE LA CORRECCIÓ ✅✅✅
+            // Hem de passar explícitament els percentatges de la UI
+            // perquè el SQL els pugui desar a les columnes antigues.
             const result = await saveQuoteAction({
                 ...state.quote,
-                subtotal,
-                tax,
-                total,
+
+                // Camps Nous (Valors Calculats)
+                subtotal: computedSubtotal,
+                discount_amount: computedDiscountAmount, // El valor en € (ex: 50)
+                tax_amount: computedTaxAmount,
+                total_amount: computedTotalAmount,
+                tax_rate: (state.quote.tax_percent_input || 0) / 100, // El decimal (ex: 0.21)
+
+        
             });
             if (result.success && typeof result.data === "number") {
                 toast.success(result.message);
@@ -197,7 +246,16 @@ export function useQuoteEditor({
                 });
             }
         });
-    }, [state.quote, subtotal, tax, total, router, t]);
+    }, [
+        state.quote,
+        computedSubtotal,
+        computedDiscountAmount,
+        computedTaxAmount,
+        computedTotalAmount,
+        router,
+        t,
+    ]);
+
     const handleDelete = useCallback(() => {
         // ✅ 3. GUARD: Aquesta comprovació assegura que només passem un 'number' a l'acció.
         if (typeof state.quote.id !== "number") return;
@@ -301,16 +359,6 @@ export function useQuoteEditor({
     }, [state.quote, supabase, t]); //
 
     useEffect(() => {
-        // ✅ RE-APLICACIÓ DE LA MILLORA 1:
-        // Assegurem que si el 'initialQuote' canvia (p.ex. navegació client),
-        // també es netegi si és 'new'.
-        const quoteToSet = initialQuote.id === "new"
-            ? { ...initialQuote, items: [] }
-            : initialQuote;
-        dispatch({ type: "SET_QUOTE", payload: quoteToSet });
-    }, [initialQuote]);
-
-    useEffect(() => {
         const fetchOpportunities = async () => {
             if (!state.quote.contact_id) {
                 dispatch({ type: "SET_OPPORTUNITIES", payload: [] });
@@ -337,10 +385,11 @@ export function useQuoteEditor({
             dispatch({ type: "SET_PROFILE_DIALOG", payload: isOpen }),
         setCurrentTeamData: (data: Team | null) =>
             dispatch({ type: "SET_TEAM_DATA", payload: data }),
-        subtotal,
-        discountAmount,
-        tax,
-        total,
+        // Valors calculats per la UI
+        subtotal: computedSubtotal,
+        discountAmount: computedDiscountAmount, // El valor calculat en €
+        tax_amount: computedTaxAmount, // El valor calculat en €
+        total_amount: computedTotalAmount, // El valor calculat en €
         handleSave,
         handleDelete,
         handleSend,

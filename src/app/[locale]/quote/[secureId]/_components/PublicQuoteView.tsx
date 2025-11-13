@@ -1,14 +1,13 @@
+// /app/[locale]/quote/[secureId]/_components/PublicQuoteView.tsx (CORREGIT)
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { QuotePreview } from "@/app/[locale]/(app)/finances/quotes/[id]/_components/QuotePreview";
-import { type QuoteDataFromServer } from "@/types/finances/quotes"; // ✅ Importem el tipus correcte
-// ✅ 1. Importem els tipus que 'QuotePreview' realment espera.
+import { type QuoteDataFromServer } from "@/types/finances/quotes";
 import { type EditableQuote } from "@/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor";
 import { type Database } from "@/types/supabase";
 
-// Definim els tipus locals que 'QuotePreview' utilitza
 type Contact = Database['public']['Tables']['contacts']['Row'];
 type Team = Database['public']['Tables']['teams']['Row'];
 
@@ -20,11 +19,22 @@ interface PublicQuoteViewProps {
 }
 
 export function PublicQuoteView({ quoteData, onAccept, onReject, isPending }: PublicQuoteViewProps) {
-    
-    // ✅ 2. Creem l'objecte 'quoteForPreview' amb el tipus correcte 'EditableQuote'.
-    //    Fem una asserció de tipus perquè sabem que l'estructura de dades és compatible.
-    const quoteForPreview = quoteData as unknown as EditableQuote;
+    // 🔹 Càlculs equivalents al useQuoteEditor
+    const tax_percent_input = (quoteData.tax_rate ?? 0) * 100; // 0.21 -> 21
+    const discount_percent_input =
+        quoteData.subtotal && quoteData.subtotal > 0
+            ? parseFloat(((quoteData.discount_amount ?? 0) / quoteData.subtotal * 100).toFixed(2))
+            : 0;
 
+    // ✅ 1. Creem l'objecte 'quoteForPreview' CORRECTAMENT
+    // Mapegem els camps de % persistits (que vam desar al SQL)
+    // als camps temporals que el 'QuotePreview' espera.
+    const quoteForPreview = {
+        ...quoteData,
+        tax_percent_input,
+        discount_percent_input,
+        items: quoteData.items || [],
+    } as unknown as EditableQuote;
     return (
         <div className="bg-gray-100 min-h-screen p-4 sm:p-8">
             <div className="max-w-4xl mx-auto">
@@ -33,16 +43,15 @@ export function PublicQuoteView({ quoteData, onAccept, onReject, isPending }: Pu
                     <p className="text-gray-600">Hola {quoteData.contacts?.nom || "estimat client"}, revisa els detalls i confirma la teva decisió.</p>
                 </div>
                 <div className="bg-white rounded-lg shadow-lg">
+
                     <QuotePreview
                         quote={quoteForPreview}
-                        // ✅ 3. Assegurem que els contactes es passen com el tipus correcte.
                         contacts={quoteData.contacts ? [quoteData.contacts as unknown as Contact] : []}
-                        // ✅ 4. Assegurem que el perfil de l'empresa es passa com el tipus correcte.
                         companyProfile={quoteData.team as unknown as Team | null}
                         subtotal={quoteData.subtotal || 0}
-                        discountAmount={(quoteData.subtotal || 0) * (quoteData.discount || 0) / 100}
-                        tax={quoteData.tax || 0}
-                        total={quoteData.total || 0}
+                        discount_amount={quoteData.discount_amount || 0}
+                        tax_amount={quoteData.tax_amount || 0}
+                        total_amount={quoteData.total_amount || 0}
                     />
                 </div>
                 <div className="mt-8 p-6 bg-white rounded-lg shadow-lg flex flex-col sm:flex-row justify-around items-center gap-4">

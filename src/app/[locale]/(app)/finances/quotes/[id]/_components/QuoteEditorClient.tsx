@@ -53,7 +53,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
         setCurrentTeamData,
         setIsDeleteDialogOpen,
         setIsProfileDialogOpen,
-        subtotal, discountAmount, tax, total,
+        subtotal, tax_amount, total_amount, discountAmount, // 👈 Aquest és el VALOR (€) calculat
         handleSave, handleDelete, handleSend,
         isSaving, isSending,
         t
@@ -115,7 +115,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                 <header className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6 flex-shrink-0">
                     {/* Esquerra: botó enrere + estat */}
                     <div className="flex flex-wrap items-center gap-2">
-                        <Button variant="outline" onClick={handleBack} className="flex-shrink-0">
+                        <Button variant="outline" onClick={handleBack} className="flex-shrink-0 bg-card">
                             <ArrowLeft className="w-4 h-4 mr-2" />
                             {t('quoteEditor.backButton')}
                         </Button>
@@ -124,13 +124,20 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
 
                     {/* Dreta: accions */}
                     <div className="flex flex-wrap justify-start sm:justify-end items-center gap-2 w-full sm:w-auto">
-                        {/* Descàrrega PDF */}
+                        {/* ✅✅✅ CORRECCIÓ FASE 1: 'QuoteDownloadButton' ✅✅✅ */}
+                        {/* Passem els noms de props correctes al botó de descàrrega. */}
+                        {/* Nota: El component 'QuoteDownloadButton' també s'ha d'actualitzar internament! */}
                         {typeof quote.id === 'number' ? (
                             <QuoteDownloadButton
-                                quote={quote}
+                                quote={quote} // Passa el pressupost sencer (conté tax_rate)
                                 company={state.currentTeamData}
                                 contact={props.contacts.find(c => c.id === quote.contact_id) || null}
-                                totals={{ subtotal, discountAmount, tax, total }}
+                                totals={{
+                                    subtotal: subtotal,
+                                    discount_amount: quote.discount_amount || 0, // Passem el valor fix
+                                    tax_amount: tax_amount,
+                                    total_amount: total_amount
+                                }}
                                 t={t}
                             />
                         ) : (
@@ -167,6 +174,7 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 size="icon"
                                 onClick={() => setIsDeleteDialogOpen(true)}
                                 title={t('quoteEditor.deleteTooltip')}
+                                className='bg-card'
                             >
                                 <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
@@ -262,15 +270,21 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                                 userId={props.userId}
                             />
                             <Separator className="my-4" />
+                            {/* ✅✅✅ CORRECCIÓ FASE 1: 'QuoteTotals' Props ✅✅✅ */}
+                            {/* Passem les props correctes que espera el component 'QuoteTotals' refactoritzat. */}
                             <QuoteTotals
+                                // Valors calculats
                                 subtotal={subtotal}
-                                discount={quote.discount}
-                                setDiscount={(d) => onQuoteChange('discount', d)}
-                                discountAmount={discountAmount}
-                                tax={tax}
-                                total={total}
-                                tax_percent={quote.tax_percent}
-                                setTaxPercent={(p) => onQuoteChange('tax_percent', p)}
+                                discountAmountCalculated={discountAmount} // El valor en €
+                                tax_amount={tax_amount}
+                                total_amount={total_amount}
+
+                                // Valors dels inputs (per mantenir la lògica de %)
+                                discount_percent_input={quote.discount_percent_input ?? null}
+                                tax_percent_input={quote.tax_percent_input ?? null}
+
+                                // Setter
+                                onQuoteChange={onQuoteChange}
                             />
                         </Card>
 
@@ -300,14 +314,16 @@ export function QuoteEditorClient(props: QuoteEditorClientProps) { // ❌ 'pdfUr
                     </section>
 
                     <aside id="quote-preview-for-pdf-wrapper" className="hidden lg:block glass-card p-4 overflow-y-auto">
+                        {/* ✅ 3. PASSANT LES PROPS CORRECTES A QUOTEPREVIEW */}
                         <QuotePreview
-                            quote={quote}
+                            quote={quote} // Passa el pressupost (conté _percent_input)
                             contacts={props.contacts}
                             companyProfile={state.currentTeamData}
+                            // Valors calculats
                             subtotal={subtotal}
-                            discountAmount={discountAmount}
-                            tax={tax}
-                            total={total}
+                            discount_amount={discountAmount} // Valor en €
+                            tax_amount={tax_amount} // Valor en €
+                            total_amount={total_amount} // Valor en €
                         />
                     </aside>
                 </main>

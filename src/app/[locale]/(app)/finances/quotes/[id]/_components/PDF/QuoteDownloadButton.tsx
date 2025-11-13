@@ -21,9 +21,9 @@ interface QuoteDownloadButtonProps {
   contact: Contact | null
   totals: {
     subtotal: number
-    discountAmount: number
-    tax: number
-    total: number
+    discount_amount: number
+    tax_amount: number
+    total_amount: number
   }
   className?: string
   t: (key: string) => string
@@ -90,7 +90,7 @@ export function QuoteDownloadButton({
       disabled={isGenerating} // Desactivat mentre es genera
       size="icon"
       title={t('quoteEditor.downloadPDF')}
-      className={className}
+      className={`${className} bg-card`}
       onClick={handleDownload} // El 'onClick' ara és la nostra funció
     >
       {isGenerating ? (

@@ -89,7 +89,7 @@ export function QuotesClient({ initialData, limitStatus }: QuotesClientProps) {
        accessorKey: 'total',
        header: t('table.total'),
        enableSorting: true,
-       cell: (quote) => formatCurrency(quote.total ?? 0),
+       cell: (quote) => formatCurrency(quote.total_amount ?? 0),
      },
      {
        accessorKey: 'status',

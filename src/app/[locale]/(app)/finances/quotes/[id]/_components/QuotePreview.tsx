@@ -12,13 +12,14 @@ type Contact = Database['public']['Tables']['contacts']['Row'];
 type Team = Database['public']['Tables']['teams']['Row'];
 
 interface QuotePreviewProps {
+    // ✅ 1. 'quote' ara és 'EditableQuote'
     quote: EditableQuote;
     contacts: Contact[];
-    companyProfile: Team | null; // <-- Ara és de tipus 'Team'
+    companyProfile: Team | null;
     subtotal: number;
-    discountAmount: number;
-    tax: number;
-    total: number;
+    discount_amount: number; // Valor en €
+    tax_amount: number; // Valor en €
+    total_amount: number; // Valor en €
 }
 
 export const QuotePreview = ({
@@ -26,12 +27,12 @@ export const QuotePreview = ({
     contacts,
     companyProfile, // <-- Ja no es diu 'displayProfile', rep el 'team' directament
     subtotal,
-    discountAmount,
-    tax,
-    total
+    discount_amount,   // 👈 Nom nou
+    tax_amount,       // 👈 Nom nou
+    total_amount       // 👈 Nom nou
 }: QuotePreviewProps) => {
     const contact = contacts.find(c => c.id === quote.contact_id);
-    const base = subtotal - discountAmount;
+    const base = subtotal - discount_amount;
     const t = useTranslations('QuoteEditor');
 
     // ⛔ La funció 'mapTeamDataToProfile' i el tipus 'CompanyProfile' ja no són necessaris.
@@ -131,7 +132,7 @@ export const QuotePreview = ({
                                             {/* ✅ CORRECCIÓ 2: El 'p' amb la quantitat extra s'ha eliminat. */}
                                             {item.description}
                                         </td>
-                                        
+
                                         {/* Mostrem/amaguem les cel·les corresponents */}
                                         {(quote.show_quantity ?? true) && (
                                             <>
@@ -159,11 +160,14 @@ export const QuotePreview = ({
                                 <p>{subtotal.toFixed(2)} €</p>
                             </div>
 
-                            {/* Descompte */}
-                            {quote.discount && quote.discount > 0 && (
+                            {/* ✅ 3. Descompte (amb % de l'input) */}
+                            {/* Mostrem la línia si el % és major que 0 */}
+                            {(quote.discount_percent_input ?? 0) > 0 && (
                                 <div className="flex justify-between text-green-600">
-                                    <p>{t('preview.discountLine')} ({quote.discount}%)</p>
-                                    <p>-{discountAmount.toFixed(2)} €</p>
+                                    {/* Llegim el % del camp '_input' */}
+                                    <p>{t('preview.discountLine')} ({quote.discount_percent_input}%)</p>
+                                    {/* Mostrem el valor en € calculat */}
+                                    <p>-{discount_amount.toFixed(2)} €</p>
                                 </div>
                             )}
 
@@ -173,18 +177,19 @@ export const QuotePreview = ({
                                 <p>{base.toFixed(2)} €</p>
                             </div>
 
-                            {/* IVA */}
+                            {/* ✅ 4. IVA (amb % de l'input) */}
                             <div className="flex justify-between">
                                 <p className="text-gray-600">
-                                    {t('preview.taxesLine')} ({quote.tax_percent ?? 21}%)
+                                    {/* Llegim el % del camp '_input' */}
+                                    {t('preview.taxesLine')} ({quote.tax_percent_input ?? 21}%)
                                 </p>
-                                <p>{tax.toFixed(2)} €</p>
+                                _         <p>{tax_amount.toFixed(2)} €</p>
                             </div>
 
                             {/* TOTAL FINAL */}
                             <div className="flex justify-between font-bold text-xl mt-2 pt-2 border-t-2 border-gray-800">
                                 <p>{t('preview.totalHeader')}:</p>
-                                <p>{total.toFixed(2)} €</p>
+                                <p>{total_amount.toFixed(2)} €</p>
                             </div>
                         </div>
                     </section>

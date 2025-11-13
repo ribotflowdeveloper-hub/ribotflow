@@ -213,9 +213,9 @@ interface QuotePdfDocumentProps {
   company: Team | null
   contact: Contact | null
   subtotal: number
-  discountAmount: number
-  tax: number
-  total: number
+  discount_amount: number
+  tax_amount: number
+  total_amount: number
 }
 
 // --- Component Pur del PDF ---
@@ -224,12 +224,16 @@ export function QuotePdfDocument({
   company,
   contact,
   subtotal,
-  discountAmount,
-  tax,
-  total,
+  discount_amount,
+  tax_amount,
+  total_amount,
 }: QuotePdfDocumentProps) {
-  const base = subtotal - discountAmount
+  const base = subtotal - discount_amount
   const showQuantity = quote.show_quantity ?? true
+
+  // ✅ 2. Obtenim els percentatges correctes des dels camps d'input
+  const discountPercent = quote.discount_percent_input || 0
+  const taxPercent = quote.tax_percent_input ?? 21
 
   return (
     <Document>
@@ -361,11 +365,13 @@ export function QuotePdfDocument({
               <Text>{formatCurrency(subtotal)}</Text>
             </View>
 
-            {quote.discount && quote.discount > 0 && (
+            {/* ✅ 3. CORRECCIÓ DEL DESCOMPTE */}
+            {/* Comprovem el percentatge de l'input, no el camp antic 'quote.discount' */}
+            {discountPercent > 0 && (
               <View style={styles.totalsRowGreen}>
-                {/* ✅ CORRECCIÓ 2: Convertim a String */}
-                <Text>Descompte ({String(quote.discount)}%)</Text>
-                <Text>-{formatCurrency(discountAmount)}</Text>
+                {/* Mostrem el percentatge correcte */}
+                <Text>Descompte ({String(discountPercent)}%)</Text>
+                <Text>-{formatCurrency(discount_amount)}</Text>
               </View>
             )}
 
@@ -375,20 +381,20 @@ export function QuotePdfDocument({
             </View>
 
             <View style={styles.totalsRow}>
-              {/* ✅ CORRECCIÓ 3: Convertim a String */}
+              {/* ✅ 4. CORRECCIÓ DE L'IMPOST */}
               <Text style={styles.textGray}>
-                IVA ({String(quote.tax_percent ?? 21)}%)
+                {/* Mostrem el percentatge correcte, no 'quote.tax_percent' */}
+                IVA ({String(taxPercent)}%)
               </Text>
-              <Text>{formatCurrency(tax)}</Text>
+              <Text>{formatCurrency(tax_amount)}</Text>
             </View>
 
             <View style={styles.totalsFinal}>
               <Text>TOTAL:</Text>
-              <Text>{formatCurrency(total)}</Text>
+              <Text>{formatCurrency(total_amount)}</Text>
             </View>
           </View>
         </View>
-
         {/* --- PEU DE PÀGINA (NOTES) --- */}
         {quote.notes && (
           <View style={styles.footer}>

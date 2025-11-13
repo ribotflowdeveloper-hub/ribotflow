@@ -1106,6 +1106,12 @@
     }
   },
   "ExpenseDetailPage": {
+    "createDescription": "Completa els detalls per registrar una nova despesa.",
+    "editDescription": "Modifica els detalls de la despesa.",
+    "editTitle": "Editar Despesa #{number}",
+    "createTitle": "Crear Nova Despesa",
+    "aiHelperText": "Utilitza l'assistent d'IA per omplir automàticament els detalls de la despesa a partir de la factura.",
+    
     "title": {
       "new": "Nova Despesa",
       "edit": "Editar Despesa"
@@ -1114,7 +1120,9 @@
       "saving": "Desant...",
       "save": "Desa",
       "cancel": "Cancel·la",
-      "addItem": "Afegeix concepte"
+      "addItem": "Afegeix concepte",
+      "analyzeAI": "Analitza amb IA",
+      "analyzingAI": "Analitzant..."
     },
     "card": {
       "generalDetails": "Detalls Generals",
@@ -1945,6 +1953,7 @@
     }
   },
   "Shared": {
+    
     "limits": {
       "modalTitle": "Límit de assolit",
       "invoicesPerMonth": "Has assolit el límit de factures per mes al teu pla actual.",
@@ -1969,7 +1978,9 @@
       "view": "Veure detall",
       "openMenu": "Obrir menú",
       "title": "Accions",
-      "cancel": "Cancel·lar"
+      "cancel": "Cancel·lar",
+      "back" : "Enrere",
+      "save": "Desar"
     },
     "deleteDialog": {
       "title": "Estàs segur?",

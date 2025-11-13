@@ -2,7 +2,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 
 ├── app
 │   ├── actions
-│   │   ├── chatbotActions.ts
 │   │   ├── departaments
 │   │   │   └── actions.ts
 │   │   ├── invitationActions.ts
@@ -652,6 +651,7 @@ ESTRUCTURA DEL PROJECTE (./src)
 │   └── TranscriptionSummaryEmail.tsx
 ├── hooks
 │   ├── useAppNavigation.ts
+│   ├── useChat.ts
 │   ├── useMediaQuery.ts
 │   ├── usePaginateResource.ts
 │   └── useUser.ts
@@ -811,88 +811,6 @@ ESTRUCTURA DEL PROJECTE (./src)
 
 
 CONTINGUT DELS FITXERS
-
-
-// =================== FILE: src/app/actions/chatbotActions.ts ===================
-
-"use server";
-
-import { createClient } from "@/lib/supabase/server";
-
-
-
-export async function chatbotAction(question: string): Promise<{ data: string | null, error: string | null }> {
-  if (!process.env.GEMINI_API_KEY) {
-    return { data: null, error: "La clau de l'API de Gemini no està configurada." };
-  }
-
-  try {
-    // 🔹 1. Recuperem documents similars de Supabase
-    const supabase = createClient();
-
-    const { data: matches, error: dbError } = await supabase.rpc("match_documents", {
-      query_embedding: JSON.stringify(await embedQuestion(question)),
-      match_threshold: 0.7,
-      match_count: 3,
-    });
-
-    if (dbError) throw dbError;
-
-    console.log("[Chatbot] Documents trobats:", matches?.length);
-
-    console.log("[Chatbot] Context generat:");
-
-    // 🔹 2. Preparem el prompt per a Gemini
-    const prompt = `
-      Ets un assistent útil.
-      Pregunta de l'usuari: "${question}"
-      Context de la base de dades:
-      
-      Respon en català, de manera clara i concisa.
-    `;
-
-    const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
-
-    // 🔹 3. Cridem Gemini directament via fetch
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }
-    );
-
-    if (!response.ok) throw new Error("Error de l'API de Gemini");
-
-    const result = await response.json();
-    const answer: string = result.candidates[0].content.parts[0].text;
-
-    return { data: answer, error: null };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Error desconegut";
-    console.error("Error al chatbot:", message);
-    return { data: null, error: message };
-  }
-}
-
-async function embedQuestion(question: string): Promise<number[]> {
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "text-embedding-3-small",
-      input: question,
-    }),
-  });
-
-  if (!response.ok) throw new Error("Error generant embedding amb OpenAI");
-  const data = await response.json();
-  return data.data[0].embedding;
-}
 
 
 // =================== FILE: src/app/actions/departaments/actions.ts ===================
@@ -1781,25 +1699,137 @@ export async function syncTaskToGoogleAction(
 
 // =================== FILE: src/app/api/chatbot/route.ts ===================
 
-import { chatbotAction } from '../../actions/chatbotActions';
+import {
+  GoogleGenerativeAI,
+  HarmBlockThreshold,
+  HarmCategory,
+} from "@google/generative-ai";
+import { createClient } from "@supabase/supabase-js";
+
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!geminiApiKey || !supabaseUrl || !supabaseServiceKey) {
+  throw new Error(
+    "Variables d'entorn no configurades correctament (API Chatbot).",
+  );
+}
+
+const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
+const genAI = new GoogleGenerativeAI(geminiApiKey);
+
+// ✅ Model de xat actualitzat
+const chatModel = genAI.getGenerativeModel({
+  model: 'gemini-2.5-flash', // exemple de model disponible
+});
+
+// ✅ Model d'embeddings (segueix vàlid)
+const embeddingModel = genAI.getGenerativeModel({
+  model: "text-embedding-004",
+});
+
+export const runtime = "edge";
+
+type ContextChunk = {
+  id: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  similarity: number;
+};
 
 export async function POST(req: Request) {
   try {
-    const { question } = await req.json();
-    if (!question) {
-      return new Response(JSON.stringify({ error: "La pregunta és obligatòria." }), { status: 400 });
+    const { messages } = await req.json();
+    const lastUserMessage = messages[messages.length - 1]?.content;
+
+    if (!lastUserMessage) {
+      return new Response(JSON.stringify({ error: "No user message found" }), {
+        status: 400,
+      });
     }
 
-    const { data, error } = await chatbotAction(question);
+    // 1️⃣ Generar embedding
+    const embeddingResult = await embeddingModel.embedContent(lastUserMessage);
+    const queryEmbedding = embeddingResult.embedding.values;
 
-    if (error) {
-      return new Response(JSON.stringify({ error }), { status: 500 });
-    }
+    if (!queryEmbedding) throw new Error("No s'ha pogut generar l'embedding.");
 
-    return new Response(JSON.stringify({ data }), { status: 200 });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Error desconegut";
-    return new Response(JSON.stringify({ error: message }), { status: 500 });
+    // 2️⃣ Fer cerca de context a Supabase
+    const { data: contextChunks, error: rpcError } = await supabaseClient.rpc(
+      "match_platform_documents",
+      {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.45,
+        match_count: 5,
+      },
+    );
+
+    if (rpcError) throw new Error(`Error RPC: ${rpcError.message}`);
+
+    const context = contextChunks?.length
+      ? contextChunks.map((chunk: ContextChunk) => chunk.content).join(
+        "\n---\n",
+      )
+      : "No s'ha trobat context rellevant.";
+
+    // 3️⃣ Crear prompt
+    const prompt = `
+Ets "Ribot", l'assistent d'IA de RibotFlow.
+Respon només amb la informació del context.
+Si no hi és, digues que no ho saps.
+
+CONTEXT:
+---
+${context}
+---
+
+PREGUNTA:
+${lastUserMessage}
+    `;
+
+    // 4️⃣ Cridar el model i generar resposta
+    const result = await chatModel.generateContentStream({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.4 },
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+        },
+      ],
+    });
+
+    // 5️⃣ Convertir el stream de Gemini a text pla
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of result.stream) {
+          const text = chunk.text();
+          controller.enqueue(encoder.encode(text));
+        }
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
+  } catch (error) {
+    console.error("Error a l’API chatbot:", error);
+    return new Response(
+      JSON.stringify({ error: "Error intern del servidor" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }
 
@@ -2820,6 +2850,60 @@ html.dark .prose-invert .is-editor-focused {
     background-color: transparent !important;
     box-shadow: none !important;
     outline: none !important;
+}
+
+/* 👇 COMPACTAR LLISTES A L'EDITOR */
+.ProseMirror li {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.2 !important; /* Interliniat ajustat */
+}
+
+.ProseMirror li p {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  display: inline-block; /* Evita salts de línia extra */
+}
+
+/* Opcional: Ajustar el marge esquerre si ho veus massa separat de la vora */
+.ProseMirror ul, .ProseMirror ol {
+  padding-left: 1.2rem !important;
+}
+
+/* 👇 ELIMINAR ESPAI DOBLE ENTRE PARÀGRAFS */
+.ProseMirror p {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  line-height: 1.2 !important; 
+}
+
+/* ===================================================== */
+/* 👇 ESTIL D'ENLLAÇOS ADAPTATIU (Mode Clar vs Fosc) 👇 */
+/* ===================================================== */
+
+/* 1. MODE CLAR (Fons blanc) */
+/* Fem servir colors amb més contrast */
+.prose a {
+  color: #0284c7 !important; /* Sky-600: Blau fort, llegible en blanc */
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.prose a:hover {
+  color: #16a34a !important; /* Green-600: Verd fort, llegible en blanc */
+  text-decoration: none;
+}
+
+/* 2. MODE FOSC (Classe .dark) */
+/* Recuperem els colors Neon que t'agraden */
+.dark .prose a {
+  color: #22A7F4 !important; /* El teu Cyan brillant */
+}
+
+.dark .prose a:hover {
+  color: #AEF359 !important; /* El teu Verd llima brillant */
 }
 
 // =================== FILE: src/app/layout.tsx ===================
@@ -9674,7 +9758,8 @@ export async function sendTranscriptionSummaryEmailAction(
     PERMISSIONS.MANAGE_TRANSLATIONS
   )
   if ('error' in validation) {
-    return { success: false, message: validation.error.message }
+    // ✅ Aquest ja retorna correctament { error: ... }
+    return {success: false,  error: validation.error.message }
   }
   const { supabase, activeTeamId, user } = validation
 
@@ -9684,13 +9769,15 @@ export async function sendTranscriptionSummaryEmailAction(
   // 3. Validar dades del formulari
   const parseResult = sendEmailSchema.safeParse({ jobId: formData.get('jobId') })
   if (!parseResult.success)
-    return { success: false, message: t('sendEmailInvalidData') }
+    // ✅ Aquest també retorna un format d'error que el client potser no gestiona,
+    // però el teu 'handleSendEmail' només busca 'result.error'.
+    // Per coherència, ho canviem també:
+    return {success: false,  error: t('sendEmailInvalidData') }
 
   const { jobId } = parseResult.data
 
   try {
     // 4. Delegar al Servei d'Email
-    // Passem la funció 't' perquè el servei pugui construir l'HTML traduït
     const result = await transcripcioEmailService.sendTranscriptionSummaryEmail(
       supabase,
       user,
@@ -9699,13 +9786,21 @@ export async function sendTranscriptionSummaryEmailAction(
       t as (key: string) => string
     )
     
-    return result // El servei ja retorna un ActionResult
+    // Si el servei té èxit, retorna { success: true, ... }
+    return result 
   
   } catch (error: unknown) {
-    // Captura errors llançats pel servei
+    // ⚠️ AQUEST ÉS EL PUNT CRÍTIC DE LA CORRECCIÓ
     const message = (error as Error).message
     console.error('Error enviant email de resum (action):', message)
-    return { success: false, message: message }
+    
+    // ABANS (Incorrecte per al teu client):
+    // return { success: false, message: message } 
+    
+    // ARA (Correcte per al teu client):
+    // Retornem un objecte que SÍ té la propietat 'error',
+    // perquè el 'if (result?.error)' del client funcioni.
+    return {  success: false, error: message }
   }
 }
 
@@ -10953,44 +11048,47 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Check, List, Users } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { type Json } from '@/types/supabase' // ✅ 1. Importem Json
+import { type Json } from '@/types/supabase'
 
-// Definim el tipus esperat (el que vam posar a la Edge Function)
+// ✅ 1. INTERFÍCIE ACTUALITZADA
+// Hem marcat 'decisions', 'action_items' i 'participants_involved' com a opcionals (amb '?')
+// per reflectir la realitat de les dades que rebem.
 interface KeyMoment {
   topic: string
   summary: string
-  decisions: string[]
-  action_items: string[]
-  participants_involved: string[]
+  decisions?: string[]
+  action_items?: string[]
+  participants_involved?: string[]
 }
 
 interface KeyMomentsFlowProps {
-  moments: Json // ✅ 2. Acceptem 'Json'
+  moments: Json
 }
 
-// Funció de guàrdia de tipus per validar
+// ✅ 2. GUÀRDIA DE TIPUS ACTUALITZADA
+// Hem relaxat la validació. Ara només exigim que 'topic' i 'summary' existeixin.
+// Ja no comprovem l'existència de 'decisions', 'action_items', o 'participants_involved',
+// ja que el nostre JSX (amb '?.') ja els gestiona de forma segura si no hi són.
 function isValidKeyMoments(data: unknown): data is KeyMoment[] {
   if (!Array.isArray(data)) {
     return false
   }
-  if (data.length === 0) {
-    return true // Buit és vàlid
-  }
-  const firstItem = data[0]
-  return (
-    typeof firstItem === 'object' &&
-    firstItem !== null &&
-    'topic' in firstItem &&
-    'summary' in firstItem &&
-    'decisions' in firstItem &&
-    'action_items' in firstItem
-  )
+
+  return data.every(item => {
+    return (
+      typeof item === 'object' &&
+      item !== null &&
+      'topic' in item && // Requerit
+      'summary' in item // Requerit
+      // Ja no cal comprovar 'decisions', 'action_items', 'participants_involved' aquí
+    )
+  })
 }
 
 export function KeyMomentsFlow({ moments }: KeyMomentsFlowProps) {
   const t = useTranslations('Transcripcio.KeyMoments')
 
-  // ✅ 3. Validem les dades rebudes
+  // 3. Validem les dades amb la nova funció
   if (!isValidKeyMoments(moments)) {
     return (
       <Card>
@@ -11004,6 +11102,7 @@ export function KeyMomentsFlow({ moments }: KeyMomentsFlowProps) {
     )
   }
 
+  // Aquest 'as' és segur gràcies a la validació
   const keyMoments = moments as KeyMoment[]
 
   if (keyMoments.length === 0) {
@@ -11034,42 +11133,47 @@ export function KeyMomentsFlow({ moments }: KeyMomentsFlowProps) {
               <AccordionContent className="prose prose-sm dark:prose-invert max-w-none space-y-4">
                 <p>{moment.summary}</p>
 
-                {moment.decisions.length > 0 && (
+                {/* ✅ AQUEST CODI JA ESTÀ PREPARAT i no cal canviar-lo */}
+                {/* Gràcies a '?.' (Optional Chaining) i '??' (Nullish Coalescing), */}
+                {/* no hi haurà error si 'moment.decisions' és 'undefined'. */}
+                {(moment.decisions?.length ?? 0) > 0 && (
                   <div>
                     <h4 className="flex items-center gap-2 font-medium">
                       <Check className="h-4 w-4 text-green-500" />
                       {t('decisions')}
                     </h4>
                     <ul className="list-disc pl-6">
-                      {moment.decisions.map((decision, i) => (
+                      {(moment.decisions ?? []).map((decision, i) => (
                         <li key={i}>{decision}</li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {moment.action_items.length > 0 && (
+                {/* ✅ AQUEST CODI JA ESTÀ PREPARAT */}
+                {(moment.action_items?.length ?? 0) > 0 && (
                   <div>
                     <h4 className="flex items-center gap-2 font-medium">
                       <List className="h-4 w-4 text-blue-500" />
                       {t('actions')}
                     </h4>
                     <ul className="list-disc pl-6">
-                      {moment.action_items.map((action, i) => (
+                      {moment.action_items?.map((action, i) => (
                         <li key={i}>{action}</li>
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {moment.participants_involved.length > 0 && (
+                {/* ✅ AQUEST CODI JA ESTÀ PREPARAT */}
+                {(moment.participants_involved?.length ?? 0) > 0 && (
                   <div>
                     <h4 className="flex items-center gap-2 font-medium">
                       <Users className="h-4 w-4 text-muted-foreground" />
                       {t('participants')}
                     </h4>
                     <p className="text-sm text-muted-foreground">
-                      {moment.participants_involved.join(', ')}
+                      {(moment.participants_involved ?? []).join(', ')}
                     </p>
                   </div>
                 )}
@@ -22397,13 +22501,11 @@ export default async function InvoicesListPage() {
 "use server";
 
 import { revalidatePath } from "next/cache";
-// ✅ 1. Importem els nous guardians, permisos i el TIPUS PlanLimit
 import { 
   validateSessionAndPermission, 
   validateActionAndUsage 
 } from "@/lib/permissions/permissions";
 import { PERMISSIONS } from "@/lib/permissions/permissions.config";
-// Eliminem la importació errònia de PLAN_LIMITS_IDS
 import { type PlanLimit } from "@/config/subscriptions"; 
 
 import { type ActionResult } from "@/types/shared/index";
@@ -22425,17 +22527,14 @@ export async function saveInvoiceAction(
   
   let validationResult;
 
-  // ✅ 2. Lògica de validació corregida
   if (invoiceId === null) {
     // És una CREACIÓ. Hem de comprovar permís + límit.
-    
-    // Utilitzem el string literal. El tipus 'PlanLimit' ho valida.
     const limitToCheck: PlanLimit = 'maxInvoicesPerMonth'; 
     
     console.log(`[saveInvoiceAction] Comprovant límit: ${limitToCheck}`);
     validationResult = await validateActionAndUsage(
       PERMISSIONS.MANAGE_INVOICES,
-      limitToCheck // <-- Corregit
+      limitToCheck 
     );
   } else {
     // És una ACTUALITZACIÓ. Només comprovem permís.
@@ -22444,14 +22543,12 @@ export async function saveInvoiceAction(
     );
   }
 
-  // 3. Validació
   if ("error" in validationResult) {
     return { success: false, message: validationResult.error.message };
   }
   
   const { supabase, user, activeTeamId } = validationResult;
 
-  // 4. Delegació (crida al servei)
   const result = await invoiceService.saveInvoice(
     supabase,
     formData,
@@ -22460,7 +22557,6 @@ export async function saveInvoiceAction(
     activeTeamId
   );
 
-  // 5. Revalidació (si èxit)
   if (result.success && result.data?.id) {
     revalidatePath('/finances/invoices');
     revalidatePath(`/finances/invoices/${result.data.id}`);
@@ -22561,22 +22657,26 @@ export async function finalizeInvoiceAction(
 }
 
 /**
- * ACCIÓ: Envia la factura per email (PDF + Resend).
+ * ACCIÓ: Envia la factura per email (PDF + Edge Function).
+ * ✅ *** CORREGIT AMB ELS 3 ARGUMENTS ***
  */
 export async function sendInvoiceByEmailAction(
   invoiceId: number,
   recipientEmail: string,
+  messageBody: string, // <-- ✅ 1. Acceptem el 3r argument
 ): Promise<ActionResult> {
 
   const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ('error' in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
+  // ✅ 2. Passem els 5 arguments al servei
   const result = await invoiceService.sendInvoiceByEmail(
     supabase,
     invoiceId,
     activeTeamId,
-    recipientEmail
+    recipientEmail,
+    messageBody // <-- ✅ Passem el 5è argument
   );
 
   if (result.success) {
@@ -22624,36 +22724,36 @@ export default async function InvoiceDetailPage(props: InvoiceDetailPageProps) {
 
 "use client";
 
-import React from 'react';
+// ✅ 1. Importem 'useState', 'useEffect' i els components que falten
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Loader2, Save, Settings2, Eye, ArrowLeft, Lock, CheckCircle,
+  Mail // ✅ 2. Importem la icona 'Mail'
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { type InvoiceDetail } from '@/types/finances'; // Encara el necessitem per 'initialData'
+import { type InvoiceDetail } from '@/types/finances';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
   DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { InvoicePreview } from '../InvoicePreview'; // Ajusta la ruta si 'InvoicePreview' no està al mateix directori
+import { InvoicePreview } from '../InvoicePreview'; 
 import { type CompanyProfile } from '@/types/settings/team';
 import { type Database } from '@/types/supabase';
-
-// ✅ Importem el hook per agafar-ne els tipus
 import { useInvoiceDetail } from '../../_hooks/useInvoiceDetail';
+import { Textarea } from '@/components/ui/textarea'; // ✅ 3. Importem 'Textarea'
 
 type Contact = Database['public']['Tables']['contacts']['Row'];
 
-// ✅ Extraiem els tipus de retorn del hook
 type UseInvoiceDetailReturn = ReturnType<typeof useInvoiceDetail>;
 
 const InvoiceDownloadButton = dynamic(
-  () => import('../PDF/InvoiceDownloadButton').then(mod => mod.InvoiceDownloadButton), // Ajusta la ruta
+  () => import('../PDF/InvoiceDownloadButton').then(mod => mod.InvoiceDownloadButton), 
   {
     ssr: false,
     loading: () => (
@@ -22665,14 +22765,15 @@ const InvoiceDownloadButton = dynamic(
   }
 );
 
+// ✅ 4. *** CORRECCIÓ PRINCIPAL: Afegim les noves props a la interfície ***
 interface InvoiceDetailHeaderProps {
   handleBack: () => void;
   title: string;
   description: string;
-  t: UseInvoiceDetailReturn['t']; // ✅ Tipus corregit
+  t: UseInvoiceDetailReturn['t']; 
   formIsDisabled: boolean;
-  formData: UseInvoiceDetailReturn['formData']; // ✅ Tipus corregit
-  handleFieldChange: UseInvoiceDetailReturn['handleFieldChange']; // ✅ Tipus corregit
+  formData: UseInvoiceDetailReturn['formData']; 
+  handleFieldChange: UseInvoiceDetailReturn['handleFieldChange']; 
   isPreviewOpen: boolean;
   setIsPreviewOpen: (isOpen: boolean) => void;
   isSaving: boolean;
@@ -22684,6 +22785,13 @@ interface InvoiceDetailHeaderProps {
   isNew: boolean;
   handleFinalize: () => void;
   isFinalizing: boolean;
+
+  // <-- AQUESTES SÓN LES LÍNIES QUE FALTAVEN -->
+  isSendEmailDialogOpen: boolean;
+  setIsSendEmailDialogOpen: (isOpen: boolean) => void;
+  handleSendEmail: (email: string, message: string) => Promise<void>;
+  isSendingEmail: boolean;
+  // <-- FI DE LES LÍNIES QUE FALTAVEN -->
 }
 
 export function InvoiceDetailHeader({
@@ -22705,7 +22813,46 @@ export function InvoiceDetailHeader({
   isNew,
   handleFinalize,
   isFinalizing,
+
+  // ✅ 5. Desestructurem les noves props
+  isSendEmailDialogOpen,
+  setIsSendEmailDialogOpen,
+  handleSendEmail,
+  isSendingEmail,
 }: InvoiceDetailHeaderProps) {
+
+  // ✅ 6. Estats interns pel formulari del diàleg
+  const [recipientEmail, setRecipientEmail] = useState(contact?.email || '');
+  const [messageBody, setMessageBody] = useState('');
+
+  // ✅ 7. Efecte per omplir els camps del diàleg quan s'obre
+  useEffect(() => {
+    if (isSendEmailDialogOpen) {
+      // Omplim l'email del contacte seleccionat
+      setRecipientEmail(contact?.email || '');
+      
+      // Creem un missatge per defecte
+      const defaultMessage = 
+        t('sendEmailDialog.defaultMessage', { 
+            invoiceNumber: formData.invoice_number || initialData?.invoice_number || formData.id || 'N/A',
+            companyName: company?.company_name || t('yourCompany')
+          }) 
+        || 
+        `Bon dia,\n\nAdjuntem la factura ${formData.invoice_number || initialData?.invoice_number || formData.id}.\n\nGràcies per la teva confiança.\n\nSalutacions,\n${company?.company_name || ''}`;
+      
+      setMessageBody(defaultMessage.replace(/\\n/g, '\n')); // Assegurem salts de línia
+    }
+  }, [
+      contact, 
+      isSendEmailDialogOpen, 
+      t, 
+      formData.invoice_number, 
+      initialData?.invoice_number, 
+      formData.id, 
+      company?.company_name
+    ]);
+
+
   return (
     <header
       className="
@@ -22799,13 +22946,11 @@ export function InvoiceDetailHeader({
               <DialogTitle>{t('preview.title')}</DialogTitle>
             </DialogHeader>
             <ScrollArea className="flex-grow py-4 pr-6 -mr-6">
-              {/* ✅ 2. PASSEM LES PROPS QUE FALTAVEN */}
               <InvoicePreview
                 formData={formData}
                 companyProfile={company}
                 clientProfile={contact}
               />
-
             </ScrollArea>
             <DialogFooter className="mt-4">
               <DialogClose asChild>
@@ -22818,51 +22963,128 @@ export function InvoiceDetailHeader({
         </Dialog>
 
         {/* ⬇️ Descarregar PDF */}
-        {formData.status !== 'Draft' && initialData && company && contact && (
+        {/* Mostrem el botó si no és Esborrany i tenim les dades */}
+        {formData.status !== 'Draft' && initialData && company && (
           <InvoiceDownloadButton
             invoice={initialData}
             company={company}
-            contact={contact}
+            contact={contact} // Pot ser null, el component ho hauria de gestionar
           />
         )}
 
-        {/* 💾 Desa / 🧾 Emissió */}
-        {!isLocked && (
-          <Button
-            type="submit"
-            disabled={isSaving}
-            size="sm"
-            className="flex items-center gap-1 min-w-[100px]"
-          >
-            {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">
-              {isPending ? t('button.saving') : t('button.saveDraft')}
-            </span>
-          </Button>
+        {/* ✅ 8. NOU BOTÓ I DIÀLEG: Enviar per Email */}
+        {/* Mostrem el botó si no és Esborrany (p.ex. 'Sent', 'Paid') */}
+        {formData.status !== 'Draft' && (
+          <Dialog open={isSendEmailDialogOpen} onOpenChange={setIsSendEmailDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSaving || isSendingEmail} // Desactivat si s'està desant o enviant
+                className="flex items-center gap-1"
+              >
+                <Mail className="w-4 h-4" />
+                <span className="hidden sm:inline">{t('button.sendByEmail')}</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{t('sendEmailDialog.title')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <p className="text-sm text-muted-foreground">
+                  {t('sendEmailDialog.description')}
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="recipientEmail">
+                    {t('sendEmailDialog.recipient')}
+                  </Label>
+                  <Input
+                    id="recipientEmail"
+                    type="email"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    placeholder="email@client.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="messageBody">
+                    {t('sendEmailDialog.message')}
+                  </Label>
+                  <Textarea
+                    id="messageBody"
+                    value={messageBody}
+                    onChange={(e) => setMessageBody(e.target.value)}
+                    rows={8}
+                    placeholder={t('sendEmailDialog.messagePlaceholder')}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline" disabled={isSendingEmail}>
+                    {t('button.cancel')}
+                  </Button>
+                </DialogClose>
+                <Button
+                  type="button"
+                  onClick={() => handleSendEmail(recipientEmail, messageBody)}
+                  disabled={isSendingEmail || !recipientEmail || !messageBody}
+                  className='min-w-[100px]'
+                >
+                  {isSendingEmail ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-2" />
+                  )}
+                  {isSendingEmail ? t('button.sending') : t('button.send')}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
 
-        {!isNew && !isLocked && (
-          <Button
-            type="button"
-            variant="default"
-            onClick={handleFinalize}
-            disabled={isSaving}
-            size="sm"
-            className="flex items-center gap-1 min-w-[110px]"
-          >
-            {isFinalizing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <CheckCircle className="w-4 h-4" />
+        {/* 💾 Desa / 🧾 Emissió */}
+        {/* Aquests botons només apareixen si NO està bloquejat (és a dir, és 'Draft') */}
+        {!isLocked && (
+          <>
+            <Button
+              type="submit"
+              disabled={isSaving}
+              size="sm"
+              className="flex items-center gap-1 min-w-[100px]"
+            >
+              {isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isPending ? t('button.saving') : t('button.saveDraft')}
+              </span>
+            </Button>
+          
+            {!isNew && (
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleFinalize}
+                disabled={isSaving}
+                size="sm"
+                className="flex items-center gap-1 min-w-[110px]"
+              >
+                {isFinalizing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
+                </span>
+              </Button>
             )}
-            <span className="hidden sm:inline">
-              {isFinalizing ? t('button.issuing') : t('button.issueInvoice')}
-            </span>
-          </Button>
+          </>
         )}
 
         {/* 🔒 Estat enviat */}
@@ -23320,11 +23542,14 @@ export function InvoiceMetaGrid({
 "use client";
 
 import React, { useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+// ✅ 1. Importem 'useRouter' per refrescar
+import { useSearchParams, useRouter } from 'next/navigation'; 
 import { type InvoiceDetail } from '@/types/finances';
 import { useInvoiceDetail } from '../_hooks/useInvoiceDetail';
 import { type CompanyProfile } from '@/types/settings/team';
 import { type Database } from '@/types/supabase';
+import { toast } from 'sonner'; 
+import { sendInvoiceByEmailAction } from '../actions'; 
 
 // Nous components fills importats
 import { InvoiceDetailHeader } from './client/InvoiceDetailHeader';
@@ -23333,144 +23558,195 @@ import { InvoiceMainContent } from './client/InvoiceMainContent';
 
 // Definim el tipus 'Contact' correcte
 type Contact = Database['public']['Tables']['contacts']['Row'];
-// ✅ 1. Importem el tipus 'Product'
 type Product = Database['public']['Tables']['products']['Row'];
 
 interface InvoiceDetailClientProps {
-  initialData: InvoiceDetail | null;
-  company: CompanyProfile | null;
-  contact: Contact | null;
-  contacts: Contact[];
-  products: Product[]; // ✅ 2. Acceptem la llista de productes
-  userId: string;      // ✅ 3. Acceptem el userId
-  teamId: string;      // ✅ 4. Acceptem el teamId
-  isNew: boolean;
-  title: string;
-  description: string;
+  initialData: InvoiceDetail | null;
+  company: CompanyProfile | null;
+  contact: Contact | null;
+  contacts: Contact[];
+  products: Product[]; 
+  userId: string;       
+  teamId: string;       
+  isNew: boolean;
+  title: string;
+  description: string;
 }
 
 export function InvoiceDetailClient({
-  initialData,
-  company,
-  contact,
-  contacts = [],
-  products,     // ✅ 5. Rebem la llista de productes
-  userId,       // ✅ 6. Rebem el userId
-  teamId,       // ✅ 7. Rebem el teamId
-  isNew,
-  title,
-  description,
+  initialData,
+  company,
+  contact,
+  contacts = [],
+  products,     
+  userId,       
+  teamId,       
+  isNew,
+  title,
+  description,
 }: InvoiceDetailClientProps) {
 
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const fromUrl = searchParams.get('from');
+  const router = useRouter(); // ✅ 2. Instanciem el router
+  const searchParams = useSearchParams();
+  const fromUrl = searchParams.get('from');
 
-  const {
-    formData,
-    isPending,
-    isFinalizing,
-    isLocked,
-    handleFieldChange,
-    handleItemChange,
-    handleAddItem,
-    handleAddProductFromLibrary, // ✅ 8. Rebem el nou handler del hook
-    handleRemoveItem,
-    handleSubmit,
-    handleFinalize,
-    t,
-  } = useInvoiceDetail({ 
+  const {
+    formData,
+    setFormData, // ✅ 3. Ara 'setFormData' existeix al hook
+    isPending,
+    isFinalizing,
+    isLocked,
+    handleFieldChange,
+    handleItemChange,
+    handleAddItem,
+    handleAddProductFromLibrary, 
+    handleRemoveItem,
+    handleSubmit,
+    handleFinalize: hookHandleFinalize, // ✅ 4. Renombrem la funció del hook
+    t,
+  } = useInvoiceDetail({ 
         initialData, 
         isNew, 
-        userId, // ✅ 9. Passem userId al hook
-        teamId  // ✅ 10. Passem teamId al hook
+        userId, 
+        teamId 
     });
 
-  const isSaving = isPending || isFinalizing;
-  const formIsDisabled = isSaving || isLocked;
+  // 'isSaving' i 'formIsDisabled' es mantenen igual
+  const isSaving = isPending || isFinalizing;
+  const formIsDisabled = isSaving || isLocked;
 
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(contact);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(contact);
 
-  const handleBack = () => {
-    if (fromUrl) {
-      router.push(fromUrl);
-    } else {
-      router.push('/finances/invoices');
-    }
-  };
+  const [isSendEmailDialogOpen, setIsSendEmailDialogOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  const handleContactIdChange = (contactId: number | null) => {
-    if (contactId === null) {
-      setSelectedContact(null);
-      handleFieldChange('contact_id', null);
-    } else {
-      const newContact = contacts.find(c => c.id === contactId);
-      if (newContact) {
-        setSelectedContact(newContact);
-        handleFieldChange('contact_id', newContact.id);
-      } else {
-        setSelectedContact(null);
-        handleFieldChange('contact_id', null);
-      }
-    }
-  };
+  const handleBack = () => {
+    if (fromUrl) {
+      router.push(fromUrl);
+    } else {
+      router.push('/finances/invoices');
+    }
+  };
 
-  return (
-    <div className="">
-      <form onSubmit={handleSubmit} className="space-y-3">
-        
-        {/* --- 1. Barra d'Accions Sticky --- */}
-        <InvoiceDetailHeader
-          handleBack={handleBack}
-          title={title}
-          description={description}
-          t={t}
-          formIsDisabled={formIsDisabled}
-          formData={formData} 
-          handleFieldChange={handleFieldChange} 
-          isPreviewOpen={isPreviewOpen}
-          setIsPreviewOpen={setIsPreviewOpen}
-          isSaving={isSaving}
-          initialData={initialData}
-          company={company}
-          contact={selectedContact}
-          isLocked={isLocked}
-          isPending={isPending}
-          isNew={isNew}
-          handleFinalize={handleFinalize}
-          isFinalizing={isFinalizing}
-        />
+  const handleContactIdChange = (contactId: number | null) => {
+    if (contactId === null) {
+      setSelectedContact(null);
+      handleFieldChange('contact_id', null);
+    } else {
+      const newContact = contacts.find(c => c.id === contactId);
+      if (newContact) {
+        setSelectedContact(newContact);
+        handleFieldChange('contact_id', newContact.id);
+      } else {
+        setSelectedContact(null);
+        handleFieldChange('contact_id', null);
+      }
+    }
+  };
 
-        {/* --- 2. FILA SUPERIOR (4 Targetes) --- */}
-        <InvoiceMetaGrid
-          formData={formData} 
-          handleFieldChange={handleFieldChange} 
-          formIsDisabled={formIsDisabled}
-          t={t}
-          contacts={contacts}
-          selectedContact={selectedContact}
-          handleContactIdChange={handleContactIdChange}
-          initialData={initialData}
-          isNew={isNew}
-        />
+  const handleSendEmail = async (recipientEmail: string, messageBody: string) => {
+    // Obtenim l'ID correcte (pot ser que initialData sigui null si és nova)
+    const invoiceId = formData.id || initialData?.id;
 
-        {/* --- 3. SECCIÓ D'EDICIÓ (Contingut Principal) --- */}
-        <InvoiceMainContent
-          formData={formData} 
-          handleFieldChange={handleFieldChange} 
-          formIsDisabled={formIsDisabled}
-          t={t}
-          products={products} // ✅ 11. Passem els productes al component fill
-          handleAddItem={handleAddItem} // Per afegir manualment
-          handleAddProductFromLibrary={handleAddProductFromLibrary} // ✅ 12. Passem el handler de productes
-          handleItemChange={handleItemChange}
-          handleRemoveItem={handleRemoveItem}
-        />
-        
-      </form>
-    </div>
-  );
+    if (!invoiceId || !recipientEmail) {
+      toast.error(t('errors.missingEmailData') || "Falten dades per enviar l'email.");
+      return;
+    }
+    
+    setIsSendingEmail(true);
+    const result = await sendInvoiceByEmailAction(
+      invoiceId, 
+      recipientEmail, 
+      messageBody
+    );
+    setIsSendingEmail(false);
+
+    if (result.success) {
+      toast.success(result.message || "Email enviat correctament.");
+      setIsSendEmailDialogOpen(false); 
+    } else {
+      toast.error(result.message || "Error a l'enviar l'email.");
+    }
+  };
+
+  // ✅ 5. Wrapper per a 'handleFinalize'
+  const handleFinalizeWrapper = async () => {
+    
+    // Cridem la funció del hook, que ara retorna el resultat
+    const result = await hookHandleFinalize(); 
+
+    // ✅ 6. Aquesta comprovació ARA FUNCIONARÀ
+    if (result && result.success) {
+      // El hook ja ha actualitzat l'estat local ('setFormData' i 'setIsLocked')
+      // i ha cridat a 'router.refresh()',
+      // així que aquí no cal fer res més.
+      console.log("Finalize successful, state updated by hook.");
+    } else {
+      // El hook ja ha mostrat el toast d'error
+      console.log("Finalize failed, error handled by hook.");
+    }
+  };
+
+
+  return (
+    <div className="">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        
+        <InvoiceDetailHeader
+          handleBack={handleBack}
+          title={title}
+          description={description}
+          t={t}
+          formIsDisabled={formIsDisabled}
+          formData={formData} 
+          handleFieldChange={handleFieldChange} 
+          isPreviewOpen={isPreviewOpen}
+          setIsPreviewOpen={setIsPreviewOpen}
+          isSaving={isSaving}
+          initialData={initialData}
+          company={company}
+          contact={selectedContact}
+          isLocked={isLocked}
+          isPending={isPending}
+          isNew={isNew}
+          
+          handleFinalize={handleFinalizeWrapper} // ✅ Passem el nou wrapper
+          
+          isFinalizing={isFinalizing}
+          isSendEmailDialogOpen={isSendEmailDialogOpen}
+          setIsSendEmailDialogOpen={setIsSendEmailDialogOpen}
+          handleSendEmail={handleSendEmail}
+          isSendingEmail={isSendingEmail}
+        />
+
+        <InvoiceMetaGrid
+          formData={formData} 
+          handleFieldChange={handleFieldChange} 
+          formIsDisabled={formIsDisabled}
+          t={t}
+          contacts={contacts}
+          selectedContact={selectedContact}
+          handleContactIdChange={handleContactIdChange}
+          initialData={initialData}
+          isNew={isNew}
+        />
+
+        <InvoiceMainContent
+          formData={formData} 
+          handleFieldChange={handleFieldChange} 
+          formIsDisabled={formIsDisabled}
+          t={t}
+          products={products} 
+          handleAddItem={handleAddItem} 
+          handleAddProductFromLibrary={handleAddProductFromLibrary} 
+          handleItemChange={handleItemChange}
+          handleRemoveItem={handleRemoveItem}
+        />
+        
+      </form>
+    </div>
+  );
 }
 
 // =================== FILE: src/app/[locale]/(app)/finances/invoices/[invoiceId]/_components/InvoiceDetailData.tsx ===================
@@ -24680,7 +24956,10 @@ export function useInvoiceDetail({
     const t = useTranslations("InvoiceDetailPage");
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
-    const [isFinalizing, startFinalizing] = useTransition(); // ✅ Nou estat per a la finalització
+    
+    // ✅ *** CORRECCIÓ 1: Canviem useTransition per useState ***
+    // const [isFinalizing, startFinalizing] = useTransition(); // <-- Això NO
+    const [isFinalizing, setIsFinalizing] = useState(false); // <-- Això SÍ
 
     // ✅ NOU ESTAT: Determina si el formulari ha d'estar bloquejat
     const [isLocked, setIsLocked] = useState(false);
@@ -24702,14 +24981,14 @@ export function useInvoiceDetail({
                 due_date: initialData.due_date
                     ? formatDate(new Date(initialData.due_date))
                     : null, // YYYY-MM-DD
-                status: initialData.status as InvoiceStatus, // status a la BD és 'text', però el tractem com a enum aquí
+                status: initialData.status as InvoiceStatus, 
                 notes: initialData.notes ?? null,
-                terms: initialData.terms ?? null, // Nou
-                payment_details: initialData.payment_details ?? null, // Nou
-                client_reference: initialData.client_reference ?? null, // Nou
-                currency: initialData.currency ?? "EUR", // Nou
-                language: initialData.language ?? "ca", // Nou
-                project_id: initialData.project_id ?? null, // Nou
+                terms: initialData.terms ?? null, 
+                payment_details: initialData.payment_details ?? null, 
+                client_reference: initialData.client_reference ?? null, 
+                currency: initialData.currency ?? "EUR", 
+                language: initialData.language ?? "ca", 
+                project_id: initialData.project_id ?? null, 
                 budget_id: initialData.budget_id ?? null,
                 quote_id: initialData.quote_id ?? null,
                 tax: initialData.tax ?? null,
@@ -24723,20 +25002,18 @@ export function useInvoiceDetail({
                 company_tax_id: initialData.company_tax_id ?? null,
                 company_address: initialData.company_address ?? null,
                 company_email: initialData.company_email ?? null,
-                company_logo_url: initialData.company_logo_url ?? null, // Nou
+                company_logo_url: initialData.company_logo_url ?? null, 
                 invoice_items: initialData.invoice_items?.map((item) => ({
                     ...item,
-                    // ✅ CORRECCIÓ: id sempre string (mai null)
                     id: item.id ? String(item.id) : `temp-${Date.now()}-${Math.random()}`,
-                    // Assegurem tipus numèrics per als nous camps d'item si són nulls
                     discount_percentage: item.discount_percentage ?? null,
                     discount_amount: item.discount_amount ?? null,
                 })) || [],
                 subtotal: initialData.subtotal ?? 0,
-                discount_amount: initialData.discount_amount ?? 0, // Descompte general
-                tax_rate: initialData.tax_rate ?? 21, // Taxa general
-                tax_amount: initialData.tax_amount ?? 0, // Impost general
-                shipping_cost: initialData.shipping_cost ?? 0, // Nou
+                discount_amount: initialData.discount_amount ?? 0, 
+                tax_rate: initialData.tax_rate ?? 21, 
+                tax_amount: initialData.tax_amount ?? 0, 
+                shipping_cost: initialData.shipping_cost ?? 0, 
                 total_amount: initialData.total_amount ?? 0,
             };
             return mappedData;
@@ -24745,7 +25022,6 @@ export function useInvoiceDetail({
     });
 
     // --- Càlcul de Totals ---
-    // Ara inclou el cost d'enviament i considera descomptes per línia si vols
     const calculateTotals = useCallback((
         items: InvoiceItem[],
         generalDiscountAmount: number = 0,
@@ -24761,7 +25037,6 @@ export function useInvoiceDetail({
             const lineTotal = quantity * unitPrice;
             subtotalBeforeLineDiscounts += lineTotal;
 
-            // Calcula descompte per línia (prioritza amount si existeix, sinó percentage)
             let lineDiscount = 0;
             if (item.discount_amount && item.discount_amount > 0) {
                 lineDiscount = Number(item.discount_amount);
@@ -24776,21 +25051,18 @@ export function useInvoiceDetail({
 
         const subtotalAfterLineDiscounts = subtotalBeforeLineDiscounts -
             totalLineDiscountAmount;
-        // Aplica descompte general DESPRÉS dels descomptes de línia
         const effectiveSubtotal = subtotalAfterLineDiscounts -
             generalDiscountAmount;
 
         const taxAmount = effectiveSubtotal > 0
             ? effectiveSubtotal * (generalTaxRate / 100)
             : 0;
-        // Suma l'enviament DESPRÉS d'impostos
         const totalAmount = effectiveSubtotal + taxAmount + shippingCost;
 
         return {
-            subtotal: subtotalBeforeLineDiscounts, // Subtotal abans de cap descompte
-            taxAmount, // Impost calculat sobre subtotal efectiu
-            totalAmount, // Total final
-            // Podries retornar més valors si els necessites mostrar (totalLineDiscountAmount, etc.)
+            subtotal: subtotalBeforeLineDiscounts,
+            taxAmount,
+            totalAmount,
         };
     }, []);
 
@@ -24813,13 +25085,11 @@ export function useInvoiceDetail({
         ) {
             setFormData((prev) => ({
                 ...prev,
-                subtotal, // Actualitza subtotal (abans de descomptes)
+                subtotal,
                 tax_amount: taxAmount,
                 total_amount: totalAmount,
-                // discount_amount i shipping_cost ja estan a l'estat, no cal actualitzar-los aquí
             }));
         }
-        // Incloem shipping_cost a les dependències
     }, [
         formData.invoice_items,
         formData.discount_amount,
@@ -24853,7 +25123,6 @@ export function useInvoiceDetail({
 
             const updatedItem = { ...currentItems[index], [field]: value };
 
-            // Recalcular total i possiblement descompte si canvien camps rellevants
             if (
                 field === "quantity" || field === "unit_price" ||
                 field === "discount_percentage" || field === "discount_amount"
@@ -24861,11 +25130,9 @@ export function useInvoiceDetail({
                 const quantity = Number(updatedItem.quantity) || 0;
                 const unitPrice = Number(updatedItem.unit_price) || 0;
                 const lineTotal = quantity * unitPrice;
-                updatedItem.total = lineTotal; // Total base de la línia
+                updatedItem.total = lineTotal; 
 
-                // ✅✅✅ CORRECCIÓ COMPARACIÓ ✅✅✅
-                // Comprovem si NO és null ABANS de comparar amb 0
-                const numericValue = Number(value); // Convertim a número per comparar
+                const numericValue = Number(value); 
 
                 if (
                     field === "discount_percentage" && value !== null &&
@@ -24895,20 +25162,20 @@ export function useInvoiceDetail({
             unit_price: 0,
             total: 0,
             created_at: new Date().toISOString(),
-            tax_rate: null, // Taxa per línia (si la implementes)
-            user_id: userId, // ✅ Assignem el user ID
-            team_id: teamId, // ✅ Assignem el team ID
+            tax_rate: null, 
+            user_id: userId, 
+            team_id: teamId, 
             product_id: null,
-            // Nous camps
-            discount_percentage: null, // O 0
-            discount_amount: null, // O 0
+            discount_percentage: null, 
+            discount_amount: null, 
             reference_sku: null,
         };
         setFormData((prev) => ({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
         }));
-    }, [formData.id, userId, teamId]); // ✅ Afegim dependències
+    }, [formData.id, userId, teamId]); 
+    
     // --- Esborrar Item (sense canvis) ---
     const handleRemoveItem = useCallback((index: number) => {
         setFormData((prev) => {
@@ -24920,6 +25187,7 @@ export function useInvoiceDetail({
             return prev;
         });
     }, []);
+
     // ✅ --- NOU HANDLER: Afegir des de la Llibreria (Cridat per ProductSelector -> onProductSelect) ---
     const handleAddProductFromLibrary = useCallback((product: Product) => {
         const newItem: InvoiceItem = {
@@ -24931,54 +25199,45 @@ export function useInvoiceDetail({
             total: product.price || 0,
             created_at: new Date().toISOString(),
             tax_rate: null,
-            user_id: userId, // ✅ Assignem el user ID
-            team_id: teamId, // ✅ Assignem el team ID
-            product_id: product.id, // ✅ Assignem el product ID
+            user_id: userId, 
+            team_id: teamId, 
+            product_id: product.id, 
             discount_percentage: null,
             discount_amount: null,
-            reference_sku: null, // Podries afegir 'product.sku' si existeix
+            reference_sku: null, 
         };
         setFormData((prev) => ({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
         }));
-    }, [formData.id, userId, teamId]); // ✅ Afegim dependències
+    }, [formData.id, userId, teamId]); 
+
     // --- Submit Handler (Inclou nous camps a enviar) ---
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        // Validation...
-        // ✅ Comprovació de seguretat al client
+        
         if (isLocked) {
-            toast.error(t("toast.cannotEditSentInvoice")); // Afegeix aquesta traducció
+            toast.error(t("toast.cannotEditSentInvoice")); 
             return;
         }
         const {
             invoice_items,
-            ...invoiceData // La resta queda aquí
+            ...invoiceData 
         } = formData;
 
         const itemsForAction = (invoice_items || []).map((item) => {
-            // Excloem camps interns o no editables de l'item
             const { ...restOfItem } = item;
             
-            // ✅ *** CORRECCIÓ APLICADA AL CLIENT ***
-            // Definim quins ID són vàlids per un UPDATE
-            // Si és un string, no ha de ser 'temp-' (i per seguretat, tampoc 'null')
             const isExistingStringId = typeof item.id === 'string' && !item.id.startsWith('temp-') && item.id !== 'null';
-            // Si és un número, és vàlid
             const isExistingNumericId = typeof item.id === 'number';
 
             return {
                 ...restOfItem,
-                // Si és un ID existent (string o numèric), l'enviem.
-                // Si és 'temp-', 'null', o undefined, enviem 'undefined' per forçar un INSERT.
                 id: (isExistingStringId || isExistingNumericId) ? item.id : undefined,
-                
                 quantity: Number(item.quantity) || 0,
                 unit_price: Number(item.unit_price) || 0,
                 tax_rate: item.tax_rate ? Number(item.tax_rate) : null,
                 product_id: item.product_id ? Number(item.product_id) : null,
-                // Assegurem tipus per als nous camps
                 discount_percentage: item.discount_percentage
                     ? Number(item.discount_percentage)
                     : null,
@@ -24986,19 +25245,13 @@ export function useInvoiceDetail({
                     ? Number(item.discount_amount)
                     : null,
                 reference_sku: item.reference_sku || null,
-                // El 'total' de la línia es recalcularà al servidor amb els descomptes/impostos correctes
             };
         });
 
-        // Construïm l'objecte final per a l'acció
-        // Construïm l'objecte final per a l'acció
         const dataForAction: InvoiceFormDataForAction & {
             invoice_items?: InvoiceItem[];
         } = {
-            // Usem directament invoiceData (després d'excloure items/id)
-            // Fem un cast per assegurar que compleix amb InvoiceFormDataForAction
             ...(invoiceData as InvoiceFormDataForAction),
-            // Assegurem tipus per als camps clau que s'envien
             contact_id: invoiceData.contact_id
                 ? Number(invoiceData.contact_id)
                 : null,
@@ -25008,8 +25261,7 @@ export function useInvoiceDetail({
             quote_id: invoiceData.quote_id
                 ? Number(invoiceData.quote_id)
                 : null,
-            // ✅✅✅ CORRECCIÓ project_id ✅✅✅
-            project_id: invoiceData.project_id || null, // Ja és string | null, només assegurem null si és buit
+            project_id: invoiceData.project_id || null, 
             discount_amount: Number(invoiceData.discount_amount) || 0,
             tax_rate: Number(invoiceData.tax_rate) ?? 0,
             shipping_cost: Number(invoiceData.shipping_cost) || 0,
@@ -25019,7 +25271,6 @@ export function useInvoiceDetail({
                 : null,
             currency: invoiceData.currency || "EUR",
             language: invoiceData.language || "ca",
-            // Afegim els items
             invoice_items: itemsForAction as InvoiceItem[],
         };
 
@@ -25037,53 +25288,74 @@ export function useInvoiceDetail({
                 if (isNew || !currentInvoiceId) {
                     router.replace(`/finances/invoices/${result.data.id}`);
                 } else {
-                    router.refresh(); // Refresca dades si era edició
+                    router.refresh(); 
                 }
             } else {
                 toast.error(result.message || t("toast.saveError"));
             }
         });
-    }, [formData, isNew, router, t, startTransition, isLocked]); // ✅ Afegeix isLocked
-    // ✅ NOVA ACCIÓ: Handler per Finalitzar/Emetre la factura
+    }, [formData, isNew, router, t, startTransition, isLocked]);
+
+    // ✅ *** REFACTORITZAT 'handleFinalize' AMB LA LÒGICA DE 'setIsFinalizing' ***
     const handleFinalize = useCallback(async () => {
         const currentInvoiceId = typeof formData.id === "number"
             ? formData.id
             : null;
 
         if (isNew || !currentInvoiceId) {
-            toast.error(t("toast.mustSaveDraftFirst")); // Afegeix aquesta traducció
-            return;
+            toast.error(t("toast.mustSaveDraftFirst")); 
+            return { success: false, message: t("toast.mustSaveDraftFirst") };
         }
 
         if (isLocked) {
-            toast.error(t("toast.alreadySent")); // Afegeix aquesta traducció
-            return;
+            toast.error(t("toast.alreadySent"));
+            return { success: false, message: t("toast.alreadySent") };
         }
 
-        startFinalizing(async () => {
-            const result = await finalizeInvoiceAction(currentInvoiceId);
-
+        let result;
+        try {
+            // Executem l'acció FORA de la transició per poder fer 'await'
+            setIsFinalizing(true); // ✅ Activem el loading manualment
+            result = await finalizeInvoiceAction(currentInvoiceId);
+            
             if (result.success) {
-                toast.success(result.message || t("toast.finalizeSuccess")); // Afegeix traducció
-                router.refresh(); // Refresca les dades per bloquejar el formulari
+                toast.success(result.message || t("toast.finalizeSuccess"));
+                
+                // Actualitzem l'estat local a l'instant
+                setFormData(prev => ({ ...prev, status: 'Sent' })); 
+                setIsLocked(true); // Bloquegem el formulari
+                
+                // Refresquem la pàgina (ara sense 'startTransition')
+                router.refresh(); 
+                setIsFinalizing(false); // Desactivem el loading al final
             } else {
-                toast.error(result.message || t("toast.finalizeError")); // Afegeix traducció
+                toast.error(result.message || t("toast.finalizeError"));
+                setIsFinalizing(false); // Desactivem el loading si hi ha error
             }
-        });
-    }, [formData.id, isNew, isLocked, router, t, startFinalizing]);
+        } catch (error) {
+            console.error(error);
+            toast.error(t("toast.finalizeError"));
+            result = { success: false, message: t("toast.finalizeError") };
+            setIsFinalizing(false); // Desactivem el loading si hi ha error
+        }
+
+        return result; // Retornem el resultat de l'acció
+        
+    }, [formData.id, isNew, isLocked, router, t]); // ✅ CORRECCIÓ 2: Treiem 'setIsFinalizing' de les dependències
 
     return {
         formData,
+        setFormData, // ✅ ARA SÍ QUE L'EXPORTEM
         isPending,
-        isFinalizing, // ✅ Retorna el nou estat
-        isLocked, // ✅ Retorna l'estat de bloqueig
+        isFinalizing, 
+        isLocked, 
         handleFieldChange,
         handleItemChange,
         handleAddItem,
-        handleAddProductFromLibrary, // ✅ Retornem el nou handler per 'onProductSelect'
+        handleAddProductFromLibrary, 
         handleRemoveItem,
         handleSubmit,
-        handleFinalize, // ✅ Retorna el nou handler
+        handleFinalize, 
         t,
     };
 }
@@ -38016,8 +38288,6 @@ export function ProfileSkeleton() {
 
 // =================== FILE: src/app/[locale]/(app)/settings/profile/_hooks/useProfileForm.ts ===================
 
-// src/app/[locale]/(app)/settings/profile/_hooks/useProfileForm.ts (FITXER CORREGIT I COMPLET)
-
 'use client';
 
 import { useState, useTransition, useCallback } from 'react';
@@ -38093,30 +38363,19 @@ export function useProfileForm({ team }: UseProfileFormProps) {
     const newLogoUrl = publicUrlData.publicUrl;
     console.log('[DEBUG] URL Pública obtinguda:', newLogoUrl);
 
-    // ✅ --- 3. ACTUALITZAR LA BASE DE DADES (EL PAS QUE FALTAVA) ---
-    // Actualitzem la taula 'teams' AMB LA NOVA URL abans de continuar.
-    console.log(`[DEBUG] Actualitzant 'teams' a la BBDD amb el nou logo_url...`);
-    const { error: dbUpdateError } = await supabase
-      .from('teams')
-      .update({ logo_url: newLogoUrl }) // Actualitzem la columna
-      .eq('id', team.id); // Per a l'equip correcte
-
-    // Si la BBDD falla, no fem res més. No esborrem el logo vell.
-    if (dbUpdateError) {
-      console.error('[DEBUG] ERROR actualitzant la BBDD:', dbUpdateError);
-      toast.error(t('toasts.logoDbUpdateError') || 'Error en desar el logo', { description: dbUpdateError.message });
-      setIsUploading(false);
-      return; // No continuem
-    }
-    console.log('[DEBUG] BBDD actualitzada amb èxit.');
-    // ✅ --- FI DE LA CORRECCIÓ ---
-
-    // --- 4. Actualitzar l'estat local i notificar ---
-    setLogoUrl(newLogoUrl); // Actualitzem l'estat local
+    // ✅ --- 3. ACTUALITZAR L'ESTAT LOCAL ---
+    // Hem eliminat la crida a la BBDD. Ara només actualitzem l'estat del hook.
+    setLogoUrl(newLogoUrl); 
     console.log('[DEBUG] setLogoUrl cridat amb èxit.');
-    toast.success(t('toasts.logoUploadSuccess'));
+    
+    // Canviem el missatge per informar l'usuari
+    toast.success(t('toasts.logoUploadSuccess'), {
+      // És una bona pràctica afegir aquesta descripció a 'ca.json'
+      description: t('toasts.logoUploadSuccessDescription') || "Prem 'Desar canvis de l'empresa' per a desar el nou logo."
+    });
 
-    // --- 5. Esborrar el fitxer ANTIC (ara que la BBDD s'ha actualitzat) ---
+    // --- 4. Esborrar el fitxer ANTIC (ara que la BBDD s'ha actualitzat) ---
+    // (Això és correcte, neteja fire-and-forget)
     if (oldLogoUrl) {
       try {
         const urlParts = oldLogoUrl.split(`/${bucketName}/`);
@@ -38159,7 +38418,7 @@ export function useProfileForm({ team }: UseProfileFormProps) {
     console.log(`[DEBUG] Enviant al servidor (handleUpdateTeam). Valor de logoUrl:`, logoUrl || 'null o buit');
     
     startTeamTransition(async () => {
-      // Aquesta línia ara és correcta, perquè 'logoUrl' SÍ que està sincronitzat amb la BBDD.
+      // Aquesta línia ara és correcta, perquè 'logoUrl' SÍ que estarà sincronitzat.
       formData.set('logo_url', logoUrl || ''); 
       const result = await updateTeamAction(formData);
       if (result.success) toast.success(result.message);
@@ -39816,264 +40075,300 @@ export function SettingsSkeleton() {
 
 // =================== FILE: src/app/[locale]/(app)/_components/AppClientLayout.tsx ===================
 
-"use client";
+// src/app/[locale]/(app)/_components/AppClientLayout.tsx
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
-import { toast } from 'sonner';
-import { type UsageCheckResult } from '@/lib/subscription/subscription';
-import { useAppNavigation } from '@/hooks/useAppNavigation';
-import { useNavigationStore } from '@/stores/navigationStore';
-import { MainSidebar } from './main-sidebar';
-import { ModuleSidebar } from './module-sidebar';
-import { MobileMenu } from './MobileMenu';
-import { Chatbot } from '@/components/chatbot/Chatbot';
+'use client'
+
+import React, { useState } from 'react'
+import Image from 'next/image'
+import { motion } from 'framer-motion'
+import { useTranslations } from 'next-intl'
+import { toast } from 'sonner'
+import { type UsageCheckResult } from '@/lib/subscription/subscription'
+import { useAppNavigation } from '@/hooks/useAppNavigation'
+import { useNavigationStore } from '@/stores/navigationStore'
+import { MainSidebar } from './main-sidebar'
+import { ModuleSidebar } from './module-sidebar'
+import { MobileMenu } from './MobileMenu'
+import { Chatbot } from '@/components/chatbot/Chatbot'
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle
-} from "@/components/ui/alert-dialog";
-import { logoutAction } from '@/app/[locale]/(auth)/auth/actions';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { logoutAction } from '@/app/[locale]/(auth)/auth/actions'
+// No necessitem 'NavItem' aquí
+// import type { NavItem } from '@/types/app/navigation' 
 
-// ✅ INTERFÍCIE AMB AI LIMIT OPCIONAL
 interface AppClientLayoutProps {
-    children: React.ReactNode;
-    locale: string;
-    aiLimitStatus?: UsageCheckResult; // ara opcional
+  children: React.ReactNode
+  locale: string
+  aiLimitStatus?: UsageCheckResult
 }
 
-export function AppClientLayout({ children, aiLimitStatus }: AppClientLayoutProps) {
-    const t = useTranslations('Navigation');
-    const { isChatbotOpen } = useNavigationStore();
-    const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
+export function AppClientLayout({
+  children,
+  aiLimitStatus,
+}: AppClientLayoutProps) {
+  const t = useTranslations('Navigation')
+  // ✅ CORRECCIÓ 1: Ja no necessitem 'toggleChatbot' aquí
+  const { isChatbotOpen } = useNavigationStore()
+  const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false)
 
-    const {
-        activeModule,
-        isModuleSidebarOpen,
-        setIsModuleSidebarOpen,
-        handleNavigation,
-        handleMainMenuClick,
-    } = useAppNavigation();
+  const {
+    activeModule,
+    isModuleSidebarOpen,
+    setIsModuleSidebarOpen,
+    handleNavigation,
+    // ✅ CORRECCIÓ 2: Recuperem el nom original de la funció del hook
+    handleMainMenuClick,
+  } = useAppNavigation()
 
-    const handleSignOut = () => logoutAction();
+  const handleSignOut = () => logoutAction()
 
-    const handleNotImplementedClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        toast.info(t('comingSoon'), { description: t('featureUnavailable') });
-    };
+  const handleNotImplementedClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    toast.info(t('comingSoon'), { description: t('featureUnavailable') })
+  }
 
-    // ✅ Fallback si aiLimitStatus és undefined
-    const safeAiLimitStatus: UsageCheckResult = aiLimitStatus ?? { allowed: false, current: 0, max: 0 };
+  // ✅ CORRECCIÓ 3: Eliminem la funció 'handleMainMenuClick' wrapper
+  // Ja no és necessària, la lògica es gestionarà dins de 'MainSidebar'
 
-    return (
-        <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
-            <MainSidebar
-                onModuleSelect={handleMainMenuClick}
-                onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
-                onNotImplemented={handleNotImplementedClick}
-                aiLimitStatus={safeAiLimitStatus} // Passem el fallback
-            />
+  const safeAiLimitStatus: UsageCheckResult = aiLimitStatus ?? {
+    allowed: false,
+    current: 0,
+    max: 0,
+  }
 
-            <motion.div
-                className="hidden lg:block overflow-hidden flex-shrink-0"
-                initial={false}
-                animate={{ width: isModuleSidebarOpen && activeModule ? '16rem' : '0rem' }}
-                transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+  return (
+    <div className="h-screen w-screen flex flex-col lg:flex-row bg-background text-foreground overflow-hidden">
+      <MainSidebar
+        // ✅ CORRECCIÓ 4: Passem la funció original del hook 'useAppNavigation'
+        // Aquesta funció SÍ té la signatura correcta: (item: NavItem) => void
+        onModuleSelect={handleMainMenuClick}
+        onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
+        onNotImplemented={handleNotImplementedClick}
+        aiLimitStatus={safeAiLimitStatus}
+      />
+
+      <motion.div
+        className="hidden lg:block overflow-hidden flex-shrink-0"
+        initial={false}
+        animate={{ width: isModuleSidebarOpen && activeModule ? '16rem' : '0rem' }}
+        transition={{ type: 'spring', stiffness: 400, damping: 40 }}
+      >
+        {activeModule && (
+          <ModuleSidebar
+            module={activeModule}
+            onClose={() => setIsModuleSidebarOpen(false)}
+            handleNavigation={handleNavigation}
+          />
+        )}
+      </motion.div>
+
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="lg:hidden flex items-center justify-between border-b p-1 border-border flex-shrink-0">
+          <Image
+            src="/icon0.svg"
+            alt={t('logoAlt')}
+            className="object-cover"
+            priority
+            height={30}
+            width={30}
+          />
+          <span className="font-bold text-lg">{t('brandNameMobile')}</span>
+          <MobileMenu
+            onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
+            onNotImplementedClick={handleNotImplementedClick}
+            handleNavigation={handleNavigation}
+          />
+        </header>
+
+        <main className="flex-1 overflow-y-auto">
+          <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>
+        </main>
+
+        {isChatbotOpen && <Chatbot />}
+      </div>
+
+      <AlertDialog
+        open={isSignOutDialogOpen}
+        onOpenChange={setIsSignOutDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('signOutConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('signOutConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSignOut}
+              className="bg-destructive hover:bg-destructive/90"
             >
-                {activeModule && (
-                    <ModuleSidebar
-                        module={activeModule}
-                        onClose={() => setIsModuleSidebarOpen(false)}
-                        handleNavigation={handleNavigation}
-                    />
-                )}
-            </motion.div>
-
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="lg:hidden flex items-center justify-between border-b p-1 border-border flex-shrink-0">
-                    <Image
-                        src="/icon0.svg"
-                        alt={t('logoAlt')}
-                        className="object-cover"
-                        priority
-                        height={30}
-                        width={30}
-                    />
-                    <span className="font-bold text-lg">{t('brandNameMobile')}</span>
-                    <MobileMenu
-                        onOpenSignOutDialog={() => setIsSignOutDialogOpen(true)}
-                        onNotImplementedClick={handleNotImplementedClick}
-                        handleNavigation={handleNavigation}
-                    />
-                </header>
-
-                <main className="flex-1 overflow-y-auto">
-                    <div className="h-full p-4 sm:p-6 md:p-8">{children}</div>
-                </main>
-
-                {isChatbotOpen && <Chatbot />}
-            </div>
-
-            <AlertDialog open={isSignOutDialogOpen} onOpenChange={setIsSignOutDialogOpen}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>{t('signOutConfirmTitle')}</AlertDialogTitle>
-                        <AlertDialogDescription>{t('signOutConfirmDescription')}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                        <AlertDialogAction
-                            onClick={handleSignOut}
-                            className="bg-destructive hover:bg-destructive/90"
-                        >
-                            {t('confirmSignOut')}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
-        </div>
-    );
+              {t('confirmSignOut')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
 }
-
 
 // =================== FILE: src/app/[locale]/(app)/_components/main-sidebar.tsx ===================
 
-// Ubicació: src/app/[locale]/(app)/_components/main-sidebar.tsx
+// src/app/[locale]/(app)/_components/main-sidebar.tsx
 
-"use client";
+'use client'
 
-import React from 'react';
-import Image from 'next/image';
-import { useTranslations } from 'next-intl';
-import { LogOut, Code2 } from 'lucide-react'; // ✅ 1. Importem 'Coin'
-import { cn } from '@/lib/utils/utils'; // <-- Importa cn
+import React from 'react'
+import Image from 'next/image'
+import { useTranslations } from 'next-intl'
+import { LogOut, Code2 } from 'lucide-react'
+import { cn } from '@/lib/utils/utils'
 
-import { useNavigationStore } from '@/stores/navigationStore';
-import { navModules, bottomItems } from '@/config/navigation';
-import type { NavItem as NavItemType } from '@/types/app/navigation';
-import { type UsageCheckResult } from "@/lib/subscription/subscription"; // ✅ 2. Importem el tipus
-import { NavItem } from './NavItem';
+import { useNavigationStore } from '@/stores/navigationStore'
+import { navModules, bottomItems } from '@/config/navigation'
+import type { NavItem as NavItemType } from '@/types/app/navigation'
+import { type UsageCheckResult } from '@/lib/subscription/subscription'
+import { NavItem } from './NavItem' // El teu component NavItem
 
 interface MainSidebarProps {
-    onModuleSelect: (module: NavItemType) => void;
-    onOpenSignOutDialog: () => void;
-    onNotImplemented: (e: React.MouseEvent) => void;
-    aiLimitStatus: UsageCheckResult; // ✅ 3. Rebem la prop
+  onModuleSelect: (module: NavItemType) => void
+  onOpenSignOutDialog: () => void
+  onNotImplemented: (e: React.MouseEvent) => void
+  aiLimitStatus: UsageCheckResult
 }
 
 export function MainSidebar({
-    onModuleSelect,
-    onOpenSignOutDialog,
-    onNotImplemented,
-    aiLimitStatus
+  onModuleSelect,
+  onOpenSignOutDialog,
+  onNotImplemented,
+  aiLimitStatus,
 }: MainSidebarProps) {
-    const t = useTranslations('Navigation');
-    const t_limits = useTranslations('Billing'); // Per al text del tooltip
-    const { isNavigating } = useNavigationStore();
-    const { toggleChatbot } = useNavigationStore();
-    // ✅ 4. Calculem les "monedes" restants
-    const remainingAIActions = aiLimitStatus.allowed
-        ? (aiLimitStatus.max - aiLimitStatus.current)
-        : 0;
-    const maxAIActions = aiLimitStatus.max;
-    // Determinem un color per al comptador
-    const isLowOnCoins = remainingAIActions < (maxAIActions * 0.2); // Menys del 20%
+  const t = useTranslations('Navigation')
+  const t_limits = useTranslations('Billing')
+  const { isNavigating } = useNavigationStore()
+  const { toggleChatbot } = useNavigationStore() // Ja ho tenies aquí, perfecte.
 
-    const handleItemClick = (e: React.MouseEvent<HTMLAnchorElement>, item: NavItemType) => {
-        if (item.notImplemented) {
-            e.preventDefault();
-            onNotImplemented(e);
-            return;
-        }
+  const remainingAIActions = aiLimitStatus.allowed
+    ? aiLimitStatus.max - aiLimitStatus.current
+    : 0
+  const maxAIActions = aiLimitStatus.max
+  const isLowOnCoins = remainingAIActions < maxAIActions * 0.2
 
-        if (item.id === 'ia') {
-            e.preventDefault();
-            toggleChatbot();
-            return;
-        }
+  const handleItemClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    item: NavItemType,
+  ) => {
+    if (item.notImplemented) {
+      e.preventDefault()
+      onNotImplemented(e)
+      return
+    }
 
-        if (!item.isSingle) {
-            e.preventDefault();
-        }
-        onModuleSelect(item);
-    };
+    // ✅ CORRECCIÓ: Canviem 'ia' per 'ai' per coincidir amb 'navigation.ts'
+    if (item.id === 'ai') {
+      e.preventDefault()
+      toggleChatbot()
+      return
+    }
 
-    return (
-        <aside className={cn(
-            "hidden lg:flex w-24 h-full border-r border-border p-4 flex-col items-center z-20",
-            "bg-slate-50 dark:glass-effect"
-        )}>
-            {/* Logo a la part superior */}
-            <div className="flex items-center justify-center gap-3 mb-8">
-                <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
-                    {isNavigating ? (
-                        <video
-                            src="/videoLoading.webm"
-                            autoPlay muted loop playsInline
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <Image
-                            src="/icon0.svg"
-                            alt={t('logoAlt')}
-                            className="object-cover"
-                            priority
-                            width={64}
-                            height={64}
-                        />
-                    )}
-                </div>
-            </div>
+    if (!item.isSingle) {
+      e.preventDefault()
+    }
+    onModuleSelect(item) // Això ara rep la funció correcta des del pare
+  }
 
-            {/* Navegació principal */}
-            <nav className="flex-1 flex flex-col items-center gap-4 z-20">
-                {navModules.map(item => (
-                    <NavItem key={item.id} item={item} onClick={handleItemClick} t={t} />
-                ))}
-            </nav>
-            {/* ✅ 5. NOU COMPTADOR D'IA */}
-            <div className="flex flex-col items-center justify-center h-12 w-12 rounded-lg text-muted-foreground group relative">
-                <Code2 className={cn("w-7 h-7",
-                    isLowOnCoins ? "text-yellow-500" : "text-primary/70"
-                )} />
-                <span className={cn(
-                    "text-lg font-bold",
-                    isLowOnCoins ? "text-yellow-600" : "text-primary"
-                )}>
-                    {remainingAIActions}
-                </span>
-                <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                    {t_limits('aiActionsUsed', { count: aiLimitStatus.current, max: maxAIActions })}
-                </span>
-            </div>
-            {/* Elements de la part inferior */}
-            <div className="flex flex-col items-center gap-4 border-t border-border pt-4 mt-4">
-                {bottomItems.map(item => (
-                    <NavItem key={item.id} item={item} onClick={handleItemClick} t={t} />
-                ))}
+  return (
+    <aside
+      className={cn(
+        'hidden lg:flex w-24 h-full border-r border-border p-4 flex-col items-center z-20',
+        'bg-slate-50 dark:glass-effect',
+      )}
+    >
+      {/* Logo a la part superior */}
+      <div className="flex items-center justify-center gap-3 mb-8">
+        <div className="w-12 h-12 bg-gradient-to-r to-pink-500 rounded-lg flex items-center justify-center overflow-hidden">
+          {isNavigating ? (
+            <video
+              src="/videoLoading.webm"
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <Image
+              src="/icon0.svg"
+              alt={t('logoAlt')}
+              className="object-cover"
+              priority
+              width={64}
+              height={64}
+            />
+          )}
+        </div>
+      </div>
 
+      {/* Navegació principal */}
+      <nav className="flex-1 flex flex-col items-center gap-4 z-20">
+        {navModules.map((item) => (
+          <NavItem key={item.id} item={item} onClick={handleItemClick} t={t} />
+        ))}
+      </nav>
+      {/* Comptador d'IA */}
+      <div className="flex flex-col items-center justify-center h-12 w-12 rounded-lg text-muted-foreground group relative">
+        <Code2
+          className={cn(
+            'w-7 h-7',
+            isLowOnCoins ? 'text-yellow-500' : 'text-primary/70',
+          )}
+        />
+        <span
+          className={cn(
+            'text-lg font-bold',
+            isLowOnCoins ? 'text-yellow-600' : 'text-primary',
+          )}
+        >
+          {remainingAIActions}
+        </span>
+        <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          {t_limits('aiActionsUsed', {
+            count: aiLimitStatus.current,
+            max: maxAIActions,
+          })}
+        </span>
+      </div>
+      {/* Elements de la part inferior */}
+      <div className="flex flex-col items-center gap-4 border-t border-border pt-4 mt-4">
+        {bottomItems.map((item) => (
+          <NavItem key={item.id} item={item} onClick={handleItemClick} t={t} />
+        ))}
 
-
-                {/* Botó de tancar sessió */}
-                <div
-                    onClick={onOpenSignOutDialog}
-                    className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer group relative"
-                    role="button"
-                    aria-label={t('signOut')}
-                >
-                    <LogOut className="w-6 h-6" />
-                    <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">{t('signOut')}</span>
-                </div>
-            </div>
-        </aside>
-    );
+        {/* Botó de tancar sessió */}
+        <div
+          onClick={onOpenSignOutDialog}
+          className="flex items-center justify-center h-12 w-12 rounded-lg text-muted-foreground hover:bg-muted cursor-pointer group relative"
+          role="button"
+          aria-label={t('signOut')}
+        >
+          <LogOut className="w-6 h-6" />
+          <span className="absolute left-16 p-2 px-3 text-sm font-medium bg-popover text-popover-foreground rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            {t('signOut')}
+          </span>
+        </div>
+      </div>
+    </aside>
+  )
 }
 
 // =================== FILE: src/app/[locale]/(app)/_components/MobileMenu.tsx ===================
@@ -44994,101 +45289,92 @@ export function AddressSearch({ onAddressSelect }: AddressSearchProps) {
 
 // =================== FILE: src/components/chatbot/Chatbot.tsx ===================
 
-"use client";
+// src/components/chatbot/Chatbot.tsx
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Bot, Send, User, Loader2, X } from 'lucide-react';
-import { useNavigationStore } from '@/stores/navigationStore';
+'use client'
 
+import { useRef, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Bot, Send, User, Loader2, X } from 'lucide-react'
+import { useNavigationStore } from '@/stores/navigationStore'
+// ✅ CORRECCIÓ 1: Importem 'useChat' i el tipus 'Message'
+import { useChat, type Message } from '@/hooks/useChat'
 export function Chatbot() {
-    const [messages, setMessages] = useState<{ id: string; role: 'user' | 'assistant'; content: string }[]>([]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const chatContainerRef = useRef<HTMLDivElement>(null);
-    const { toggleChatbot } = useNavigationStore();
+    const { toggleChatbot } = useNavigationStore()
+    const chatContainerRef = useRef<HTMLDivElement>(null)
 
+    // Utilitzem el hook 'useChat'
+    const {
+        messages,
+        input,
+        handleInputChange,
+        handleSubmit,
+        isLoading,
+        error,
+    } = useChat()
+
+    // Efecte per fer scroll automàtic al final
     useEffect(() => {
         if (chatContainerRef.current) {
-            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
         }
-    }, [messages]);
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-        if (!input.trim()) return;
-
-        const userMessage = { id: crypto.randomUUID(), role: 'user' as const, content: input };
-        setMessages(prev => [
-            ...prev,
-            userMessage,
-            { id: crypto.randomUUID(), role: 'assistant', content: '' }
-        ]);
-        setIsLoading(true);
-        const question = input;
-        setInput('');
-
-        try {
-            const response = await fetch('/api/chatbot', {
-                method: 'POST',
-                body: JSON.stringify({ question }),
-            });
-
-            if (!response.ok || !response.body) throw new Error("Error en la resposta del servidor.");
-
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                const chunk = decoder.decode(value);
-                setMessages(prev => {
-                    const newMessages = [...prev];
-                    newMessages[newMessages.length - 1].content += chunk;
-                    return newMessages;
-                });
-            }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (error) {
-            setMessages(prev => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1].content = "Hi ha hagut un error. Si us plau, intenta-ho de nou.";
-                return newMessages;
-            });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    function handleInputChange(event: React.ChangeEvent<HTMLInputElement>): void {
-        setInput(event.target.value);
-    }
+    }, [messages])
 
     return (
-        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-card border rounded-lg shadow-lg flex flex-col">
+        <div className="fixed bottom-4 right-4 w-96 h-[600px] bg-card border rounded-lg shadow-lg flex flex-col z-50">
+            {/* Header */}
             <div className="p-4 border-b flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Bot className="w-6 h-6 text-primary" />
                     <h2 className="font-semibold">Assistent d'IA</h2>
                 </div>
-                <Button variant="ghost" size="icon" onClick={toggleChatbot} className="h-8 w-8">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleChatbot}
+                    className="h-8 w-8"
+                >
                     <X className="w-4 h-4" />
                 </Button>
             </div>
-            <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4">
-                {messages.map((msg) => (
-                    <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {msg.role === 'assistant' && <Bot className="w-6 h-6 flex-shrink-0" />}
-                        <div className={`p-3 rounded-lg max-w-xs whitespace-pre-wrap ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+
+            {/* Contingut del Xat */}
+            <div
+                ref={chatContainerRef}
+                className="flex-1 p-4 overflow-y-auto space-y-4"
+            >
+                {messages.length === 0 && !isLoading && (
+                    <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+                        <Bot className="w-12 h-12 mb-2" />
+                        <p>Sóc en Ribot, el teu assistent.</p>
+                        <p>En què et puc ajudar avui?</p>
+                    </div>
+                )}
+
+                {/* ✅ CORRECCIÓ 2: Afegim el tipus 'Message' al map */}
+                {messages.map((msg: Message) => (
+                    <div
+                        key={msg.id}
+                        className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'
+                            }`}
+                    >
+                        {msg.role === 'assistant' && (
+                            <Bot className="w-6 h-6 flex-shrink-0" />
+                        )}
+                        <div
+                            className={`p-3 rounded-lg max-w-xs whitespace-pre-wrap ${msg.role === 'user'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
+                                }`}
+                        >
                             {msg.content}
                         </div>
                         {msg.role === 'user' && <User className="w-6 h-6 flex-shrink-0" />}
                     </div>
                 ))}
-                {isLoading && (
+
+                {isLoading && messages[messages.length - 1]?.role === 'user' && (
                     <div className="flex justify-start gap-3">
                         <Bot className="w-6 h-6 flex-shrink-0" />
                         <div className="p-3 rounded-lg bg-muted flex items-center justify-center">
@@ -45096,7 +45382,18 @@ export function Chatbot() {
                         </div>
                     </div>
                 )}
+
+                {error && (
+                    <div className="flex justify-start gap-3">
+                        <Bot className="w-6 h-6 flex-shrink-0 text-destructive" />
+                        <div className="p-3 rounded-lg bg-destructive/20 text-destructive-foreground max-w-xs whitespace-pre-wrap">
+                            Hi ha hagut un error. Si us plau, torna-ho a provar.
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Input del Xat */}
             <form onSubmit={handleSubmit} className="p-4 border-t flex gap-2">
                 <Input
                     value={input}
@@ -45109,7 +45406,7 @@ export function Chatbot() {
                 </Button>
             </form>
         </div>
-    );
+    )
 }
 
 // =================== FILE: src/components/features/contactes/ContactSelector.tsx ===================
@@ -45796,14 +46093,50 @@ export default function EditorWysiwyg({
 
     const setLink = useCallback(() => {
         if (!editor) return;
+        
         const previousUrl = editor.getAttributes('link').href;
         const url = window.prompt('Introdueix la URL', previousUrl || '');
+
+        // 1. Si l'usuari cancel·la, no fem res
         if (url === null) return;
+
+        // 2. Si l'usuari ho deixa en blanc, treiem l'enllaç
         if (url === '') {
             editor.chain().focus().extendMarkRange('link').unsetLink().run();
             return;
         }
-        editor.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank' }).run();
+
+        // 🧠 LÒGICA INTEL·LIGENT D'URLS
+        let finalUrl = url;
+        let target = '_blank'; // Per defecte, externs en pestanya nova
+
+        // CAS A: Enllaç intern (comença per '/')
+        // Exemple: /crm/contactes/753
+        if (url.startsWith('/')) {
+            finalUrl = url;
+            target = '_self'; // Obre en la mateixa pestanya
+        }
+        // CAS B: Ja té protocol (http:// o https:// o mailto:)
+        // Exemple: https://www.google.com
+        else if (url.match(/^(https?:\/\/|mailto:|tel:)/)) {
+            finalUrl = url;
+            target = '_blank';
+        }
+        // CAS C: És una web sense protocol (Ex: www.google.com)
+        // Li afegim https:// automàticament
+        else {
+            finalUrl = `https://${url}`;
+            target = '_blank';
+        }
+
+        // Apliquem l'enllaç amb la URL corregida i el target adequat
+        editor
+            .chain()
+            .focus()
+            .extendMarkRange('link')
+            .setLink({ href: finalUrl, target: target })
+            .run();
+
     }, [editor]);
 
     const addImage = useCallback(() => {
@@ -45959,7 +46292,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 
-// ✅ PAS 1: Importar les extensions de llista que falten
+// ✅ PAS 1: Importar les extensions de llista
 import { BulletList } from '@tiptap/extension-bullet-list';
 import { OrderedList } from '@tiptap/extension-ordered-list';
 import { ListItem } from '@tiptap/extension-list-item';
@@ -45980,7 +46313,7 @@ export const FontSizeTextStyle = TextStyle.extend({
 
 // Llista d'extensions exportada
 export const defaultExtensions = [
-  // ✅ PAS 2: Desactivem les llistes del StarterKit per evitar conflictes
+  // ✅ PAS 2: Desactivem les llistes del StarterKit
   StarterKit.configure({
     heading: { levels: [1, 2, 3] },
     bulletList: false,  // Desactivat
@@ -45996,22 +46329,42 @@ export const defaultExtensions = [
   Color,
   FontFamily,
   TextAlign.configure({ types: ['heading', 'paragraph'] }),
-  Link.configure({ openOnClick: false }),
+Link.configure({
+    openOnClick: false, // Perfecte, permet editar sense saltar
+    autolink: true,     // ✅ Detecta automàticament URLs quan escrius i prems espai
+    defaultProtocol: 'https', // ✅ Si algú escriu "google.com", li posa https davant sol
+    HTMLAttributes: {
+      // Seguretat bàsica per a enllaços externs
+      rel: 'noopener noreferrer',
+      // Opcional: Pots forçar un color si Tailwind no ho està fent bé
+      // class: 'text-primary underline', 
+    },
+  }),
   Image,
   Youtube,
   Table.configure({ resizable: true }),
   TableRow,
   TableHeader,
   TableCell,
-  TaskList, // La teva llista de tasques (que funciona)
+  TaskList,
   TaskItem.configure({
     nested: true,
   }),
   
-  // ✅ PAS 3: Afegim les llistes manualment
+  // ✅ PAS 3: CONFIGURACIÓ VISUAL DE LES LLISTES (El canvi clau)
   ListItem,
-  BulletList,
-  OrderedList,
+  
+  BulletList.configure({
+    HTMLAttributes: {
+      class: 'list-disc list-outside ml-4', // Punts visibles + marge
+    },
+  }),
+  
+  OrderedList.configure({
+    HTMLAttributes: {
+      class: 'list-decimal list-outside ml-4', // Números visibles + marge
+    },
+  }),
 ];
 
 // =================== FILE: src/components/features/tasks/hooks/useTaskForm.ts ===================
@@ -46496,7 +46849,21 @@ export function TaskDetailView({ task, onSetEditMode, onTaskMutation, onClose }:
                 {/* Columna Esquerra: Descripció i detalls */}
                 <div className="md:col-span-2 space-y-6">
                     {currentDescription && (
-                        <div className='max-w-none'>
+                        <div className={cn(
+                            "prose prose-sm dark:prose-invert max-w-none",
+
+                            // Estils d'enllaços (Cyan i Verd)
+                            "prose-a:text-[#22A7F4] prose-a:underline prose-a:decoration-2 prose-a:underline-offset-2",
+                            "hover:prose-a:text-[#AEF359] hover:prose-a:decoration-[#AEF359]",
+                            "prose-a:cursor-pointer",
+
+                            // ✅ COMPACTACIÓ INTEL·LIGENT
+                            "prose-p:my-0",          // 1. Elimina marges verticals (tot junt)
+                            "prose-p:leading-tight", // 2. Interliniat compacte
+
+                            // 👇 LA CLAU DEL PROBLEMA:
+                            "[&_p]:min-h-[1.5em]"    // 3. Força que les línies buides ocupin espai real
+                        )}>
                             {parse(currentDescription, options)}
                         </div>
                     )}
@@ -51674,7 +52041,6 @@ import {
   User,
   Users,
   Wrench,
-  
 } from "lucide-react";
 import type { NavItem } from "@/types/app/navigation";
 
@@ -51829,7 +52195,7 @@ export const navModules: NavItem[] = [
     path: "/network",
     isSingle: true,
   },
-    {
+  {
     id: "roadmap",
     labelKey: "roadmap",
     icon: Puzzle,
@@ -51850,9 +52216,9 @@ export const bottomItems: NavItem[] = [
     id: "ai",
     labelKey: "ai",
     icon: Bot,
-    path: "#",
+    path: "#", // No navega, només obre el xat
     isSingle: true,
-    notImplemented: true,
+    // ✅ CANVI: Hem tret 'notImplemented: true'
   },
   // ✅ 2. Modifiquem l'element 'settings' per a què tingui submenús.
   {
@@ -52519,6 +52885,89 @@ export function useAppNavigation() {
         handleMainMenuClick,
     };
 }
+
+// =================== FILE: src/hooks/useChat.ts ===================
+
+'use client'
+
+import { useState } from 'react'
+
+export type Message = {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export function useChat() {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value)
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (!input.trim()) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input,
+    }
+
+    setMessages((prev) => [...prev, userMessage])
+    setInput('')
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [...messages, userMessage] }),
+      })
+
+      if (!response.ok) throw new Error('Error a la resposta del servidor')
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let result = ''
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          result += decoder.decode(value, { stream: true })
+        }
+      }
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: result || '(Sense resposta)',
+      }
+
+      setMessages((prev) => [...prev, assistantMessage])
+    } catch (err) {
+      console.error('Error en el xat:', err)
+      setError('Error en enviar el missatge')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return {
+    messages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    isLoading,
+    error,
+  }
+}
+
 
 // =================== FILE: src/hooks/useMediaQuery.ts ===================
 
@@ -55150,407 +55599,419 @@ import * as transcripcioService from '@/lib/services/comunicacio/transcripcio.se
 
 // --- HELPER 1: getGoogleAccessToken (Sense canvis) ---
 interface GoogleTokenResponse {
-  access_token: string
-  expires_in: number
-  scope: string
-  token_type: string
-  id_token?: string
+  access_token: string
+  expires_in: number
+  scope: string
+  token_type: string
+  id_token?: string
 }
 async function getGoogleAccessToken(
-  supabase: SupabaseClient<Database>,
-  userId: string
+  supabase: SupabaseClient<Database>,
+  userId: string
 ): Promise<{ accessToken: string; userEmail: string }> {
-  if (!process.env.ENCRYPTION_SECRET_KEY) {
-    throw new Error('Falta ENCRYPTION_SECRET_KEY per desxifrar el token.')
-  }
-  
-  console.log('[EmailService] Obtenint credencials d_usuari...')
-  const { data: creds, error: credsError } = await supabase
-    .from('user_credentials')
-    .select('refresh_token, provider_user_id')
-    .eq('user_id', userId)
-    .eq('provider', 'google_gmail')
-    .maybeSingle()
+  if (!process.env.ENCRYPTION_SECRET_KEY) {
+    throw new Error('Falta ENCRYPTION_SECRET_KEY per desxifrar el token.')
+  }
+  
+  console.log('[EmailService] Obtenint credencials d_usuari...')
+  const { data: creds, error: credsError } = await supabase
+    .from('user_credentials')
+    .select('refresh_token, provider_user_id')
+    .eq('user_id', userId)
+    .eq('provider', 'google_gmail')
+    .maybeSingle()
 
-  if (credsError)
-    throw new Error(`Error obtenint credencials: ${credsError.message}`)
-  if (!creds?.refresh_token)
-    throw new Error(
-      "No s'han trobat les credencials de Google (refresh token). Si us plau, connecta el teu compte a 'Integracions'."
-    )
-  if (!creds.provider_user_id)
-    throw new Error(
-      'Les credencials no tenen un email (provider_user_id) associat.'
-    )
+  if (credsError)
+    throw new Error(`Error obtenint credencials: ${credsError.message}`)
+  if (!creds?.refresh_token)
+    throw new Error(
+      "No s'han trobat les credencials de Google (refresh token). Si us plau, connecta el teu compte a 'Integracions'."
+    )
+  if (!creds.provider_user_id)
+    throw new Error(
+      'Les credencials no tenen un email (provider_user_id) associat.'
+    )
 
-  console.log('[EmailService] Desencriptant refresh token...')
-  const decryptedToken = await decryptToken(
-    creds.refresh_token,
-    process.env.ENCRYPTION_SECRET_KEY
-  )
+  console.log('[EmailService] Desencriptant refresh token...')
+  const decryptedToken = await decryptToken(
+    creds.refresh_token,
+    process.env.ENCRYPTION_SECRET_KEY
+  )
 
-  console.log('[EmailService] Sol·licitant nou Google Access Token...')
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: process.env.GOOGLE_CLIENT_ID,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      refresh_token: decryptedToken,
-      grant_type: 'refresh_token',
-    }),
-  })
+  console.log('[EmailService] Sol·licitant nou Google Access Token...')
+  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      refresh_token: decryptedToken,
+      grant_type: 'refresh_token',
+    }),
+  })
 
-  const tokenData: GoogleTokenResponse = await tokenResponse.json()
-  if (!tokenResponse.ok || !tokenData.access_token) {
-    console.error('Error en la resposta de Google Token:', tokenData)
-    throw new Error("No s'ha pogut refrescar l'access token de Google.")
-  }
+  const tokenData: GoogleTokenResponse = await tokenResponse.json()
+  if (!tokenResponse.ok || !tokenData.access_token) {
+    console.error('Error en la resposta de Google Token:', tokenData)
+    throw new Error("No s'ha pogut refrescar l'access token de Google.")
+  }
 
-  console.log('[EmailService] Google Access Token obtingut.')
-  return {
-    accessToken: tokenData.access_token,
-    userEmail: creds.provider_user_id,
-  }
+  console.log('[EmailService] Google Access Token obtingut.')
+  return {
+    accessToken: tokenData.access_token,
+    userEmail: creds.provider_user_id,
+  }
 }
 
 
 /**
- * ✅ HELPER 2 (HTML CORREGIT): Construeix el cos HTML amb millor disseny.
- */
+ * ✅ HELPER 2 (HTML CORREGIT): Construeix el cos HTML amb millor disseny.
+ */
 function buildHtmlBody(
-  job: AudioJob,
-  t: (key: string) => string
+  job: AudioJob,
+  t: (key: string) => string
 ): string {
-  const assignedTasks =
-    (job.assigned_tasks_summary as {
-      assignee_name: string
-      tasks: string[]
-    }[]) || []
-  const keyMoments =
-    (job.key_moments as {
-      topic: string
-      summary: string
-      decisions: string[]
-      action_items: string[]
-    }[]) || []
+  const assignedTasks =
+    (job.assigned_tasks_summary as {
+      assignee_name: string
+      tasks: string[]
+    }[]) || []
+  
+  // ✅ CORRECCIÓ 1: Definim les propietats com a opcionals (?)
+  const keyMoments =
+    (job.key_moments as {
+      topic: string
+      summary: string
+      decisions?: string[]
+      action_items?: string[]
+      participants_involved?: string[] // (Afegit per consistència)
+    }[]) || []
 
   // Estils millorats
-  const html = `
-  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'; color: #333; max-width: 600px; margin: auto; padding: 20px; background: #fdfdfd; border-radius: 8px; border: 1px solid #eaeaea;">
-    <h2 style="text-align: center; color: #111; margin-bottom: 24px; font-size: 24px; font-weight: 600;">${t(
-      'Email.summaryTitle'
-    )}</h2>
-    <p style="font-size: 16px; line-height: 1.6; color: #444; background: #f9f9f9; border-radius: 8px; padding: 20px; border-left: 4px solid #5e6ad2; margin: 0 0 24px;">
-      ${job.summary || t('summaryEmpty')}
-    </p>
-    
-    <div style="margin-top: 32px;">
-      ${
-        assignedTasks.length > 0
-          ? `
-      <h3 style="font-size: 20px; color: #111; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-weight: 600;">
-        ${t('Email.assignedTasksTitle')}
-      </h3>
-      <div style="padding-left: 10px;">
-        ${assignedTasks
-          .map(
-            (group) => `
-          <div style="margin: 0 0 20px; padding-left: 10px;">
-            <div style="font-weight: 600; color: #111; font-size: 17px; margin-bottom: 8px;">👤 ${
-              group.assignee_name
-            }</div>
-            <ul style="margin: 0 0 0 20px; padding: 0; color: #333; font-size: 16px; line-height: 1.5;">
-              ${group.tasks
-                .map(
-                  (task) =>
-                    `<li style="margin-bottom: 6px;">${task}</li>`
-                )
-                .join('')}
-            </ul>
-          </div>
-        `
-          )
-          .join('')}
-      </div>
-      `
-          : ''
-      }
-    </div>
-    
-    ${
-      keyMoments.length > 0
-        ? `
-    <div style="margin-top: 32px;">
-      <h3 style="font-size: 20px; color: #111; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-weight: 600;">
-        ${t('keyMomentsTitle')}
-      </h3>
-      <div style="padding-left: 10px;">
-        ${keyMoments
-          .map(
-            (moment) => `
-          <div style="margin: 0 0 24px; padding-left: 10px; border-left: 3px solid #10b981;">
-            <div style="font-weight: 600; font-size: 17px; color: #111; margin-bottom: 6px;">🟢 ${
-              moment.topic
-            }</div>
-            <p style="font-size: 16px; color: #444; margin: 4px 0 10px; line-height: 1.6;">${
-              moment.summary
-            }</p>
-            ${
-              moment.decisions.length > 0
-                ? `
-            <div style="font-size: 15px; color: #047857; margin-bottom: 4px; padding: 6px 10px; background: #f0fdf4; border-radius: 6px;">
-              <strong style="font-weight: 600;">${t(
-                'keyMomentsDecisions'
-              )}:</strong> ${moment.decisions.join(', ')}
-            </div>`
-                : ''
-            }
-            ${
-              moment.action_items.length > 0
-                ? `
-            <div style="font-size: 15px; color: #1d4ed8; margin-top: 6px; padding: 6px 10px; background: #eff6ff; border-radius: 6px;">
-              <strong style="font-weight: 600;">${t(
-                'Email.keyMomentsActions'
-              )}:</strong> ${moment.action_items.join(', ')}
-            </div>`
-                : ''
-            }
-          </div>
-        `
-          )
-          .join('')}
-      </div>
-    </div>
-    `
-        : ''
-    }
-    
-    <hr style="margin-top: 32px; border: none; border-top: 1px solid #eee;">
-    <p style="text-align: center; font-size: 12px; color: #999; margin-top: 20px;">
-      ${t('Email.footerText')} • RibotFlow
-    </p>
-  </div>
-  `
-  return html
+  const html = `
+  <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'; color: #333; max-width: 600px; margin: auto; padding: 20px; background: #fdfdfd; border-radius: 8px; border: 1px solid #eaeaea;">
+    <h2 style="text-align: center; color: #111; margin-bottom: 24px; font-size: 24px; font-weight: 600;">${t(
+      'Email.summaryTitle'
+    )}</h2>
+    <p style="font-size: 16px; line-height: 1.6; color: #444; background: #f9f9f9; border-radius: 8px; padding: 20px; border-left: 4px solid #5e6ad2; margin: 0 0 24px;">
+      ${job.summary || t('summaryEmpty')}
+    </p>
+    
+    <div style="margin-top: 32px;">
+      ${
+        // (Aquesta comprovació de 'assignedTasks' és segura)
+        assignedTasks.length > 0
+          ? `
+      <h3 style="font-size: 20px; color: #111; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-weight: 600;">
+        ${t('Email.assignedTasksTitle')}
+      </h3>
+      <div style="padding-left: 10px;">
+        ${assignedTasks
+          .map(
+            (group) => `
+          <div style="margin: 0 0 20px; padding-left: 10px;">
+            <div style="font-weight: 600; color: #111; font-size: 17px; margin-bottom: 8px;">👤 ${
+              group.assignee_name
+            }</div>
+            <ul style="margin: 0 0 0 20px; padding: 0; color: #333; font-size: 16px; line-height: 1.5;">
+              ${group.tasks
+                .map(
+                  (task) =>
+                    `<li style="margin-bottom: 6px;">${task}</li>`
+                )
+                .join('')}
+            </ul>
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+      `
+          : ''
+      }
+    </div>
+    
+    ${
+      keyMoments.length > 0
+        ? `
+    <div style="margin-top: 32px;">
+      <h3 style="font-size: 20px; color: #111; margin-bottom: 16px; border-bottom: 2px solid #eee; padding-bottom: 8px; font-weight: 600;">
+        ${t('keyMomentsTitle')}
+      </h3>
+      <div style="padding-left: 10px;">
+        ${keyMoments
+          .map(
+            (moment) => `
+          <div style="margin: 0 0 24px; padding-left: 10px; border-left: 3px solid #10b981;">
+            <div style="font-weight: 600; font-size: 17px; color: #111; margin-bottom: 6px;">🟢 ${
+              moment.topic
+            }</div>
+            <p style="font-size: 16px; color: #444; margin: 4px 0 10px; line-height: 1.6;">${
+              moment.summary
+            }</p>
+            
+            ${
+              // ✅ CORRECCIÓ 2: Aplicar optional chaining (?.) i nullish coalescing (??)
+              (moment.decisions?.length ?? 0) > 0
+                ? `
+            <div style="font-size: 15px; color: #047857; margin-bottom: 4px; padding: 6px 10px; background: #f0fdf4; border-radius: 6px;">
+              <strong style="font-weight: 600;">${t(
+                'keyMomentsDecisions'
+              )}:</strong> ${(moment.decisions ?? []).join(', ')} 
+            </div>`
+                : ''
+            }
+            ${
+              // ✅ CORRECCIÓ 3: Aplicar el mateix aquí
+              (moment.action_items?.length ?? 0) > 0
+                ? `
+            <div style="font-size: 15px; color: #1d4ed8; margin-top: 6px; padding: 6px 10px; background: #eff6ff; border-radius: 6px;">
+              <strong style="font-weight: 600;">${t(
+                'Email.keyMomentsActions'
+              )}:</strong> ${(moment.action_items ?? []).join(', ')}
+            </div>`
+                : ''
+            }
+          </div>
+        `
+          )
+          .join('')}
+      </div>
+    </div>
+    `
+        : ''
+    }
+    
+    <hr style="margin-top: 32px; border: none; border-top: 1px solid #eee;">
+    <p style="text-align: center; font-size: 12px; color: #999; margin-top: 20px;">
+      ${t('Email.footerText')} • RibotFlow
+    </p>
+  </div>
+  `
+  return html
 }
 
 /**
- * ✅ HELPER 2.5 (TEXT PLA CORREGIT): Construeix el cos en Text Pla més net.
- */
+ * ✅ HELPER 2.5 (TEXT PLA CORREGIT): Construeix el cos en Text Pla més net.
+ */
 function buildPlainTextBody(
-  job: AudioJob,
-  t: (key: string) => string
+  job: AudioJob,
+  t: (key: string) => string
 ): string {
-  const assignedTasks =
-    (job.assigned_tasks_summary as {
-      assignee_name: string
-      tasks: string[]
-    }[]) || []
-  const keyMoments =
-    (job.key_moments as {
-      topic: string
-      summary: string
-      decisions: string[]
-      action_items: string[]
-    }[]) || []
+  const assignedTasks =
+    (job.assigned_tasks_summary as {
+      assignee_name: string
+      tasks: string[]
+    }[]) || []
+  
+  // ✅ CORRECCIÓ 4: Definim les propietats com a opcionals (?)
+  const keyMoments =
+    (job.key_moments as {
+      topic: string
+      summary: string
+      decisions?: string[]
+      action_items?: string[]
+      participants_involved?: string[]
+    }[]) || []
 
-  let text = `*** ${t('Email.summaryTitle')} ***\n`
-  text += `--------------------------------------------------\n\n`
-  text += `${job.summary || t('summaryEmpty')}\n\n`
+  let text = `*** ${t('Email.summaryTitle')} ***\n`
+  text += `--------------------------------------------------\n\n`
+  text += `${job.summary || t('summaryEmpty')}\n\n`
 
-  if (assignedTasks.length > 0) {
-    text += `*** ${t('Email.assignedTasksTitle')} ***\n`
-    text += `--------------------------------------------------\n\n`
-    assignedTasks.forEach((group, index) => {
-      // Afegeix un salt de línia ABANS del següent usuari, però no del primer
-      if (index > 0) text += `\n`
-      text += `👤 ${group.assignee_name}:\n`
-      group.tasks.forEach((task) => {
-        text += `   - ${task}\n` // Més indentació
-      })
-    })
-    text += `\n` // Un salt de línia al final del bloc
-  }
+  if (assignedTasks.length > 0) {
+    text += `*** ${t('Email.assignedTasksTitle')} ***\n`
+    text += `--------------------------------------------------\n\n`
+    assignedTasks.forEach((group, index) => {
+      if (index > 0) text += `\n`
+      text += `👤 ${group.assignee_name}:\n`
+      group.tasks.forEach((task) => {
+        text += `   - ${task}\n`
+      })
+    })
+    text += `\n`
+  }
 
-  if (keyMoments.length > 0) {
-    text += `*** ${t('keyMomentsTitle')} ***\n`
-    text += `--------------------------------------------------\n\n`
-    keyMoments.forEach((moment, index) => {
-      if (index > 0) text += `\n`
-      text += `🟢 ${moment.topic}\n`
-      text += `${moment.summary}\n`
-      if (moment.decisions.length > 0) {
-        text += `   -> ${t('keyMomentsDecisions')}: ${moment.decisions.join(
-          ', '
-        )}\n`
-      }
-      if (moment.action_items.length > 0) {
-        text += `   -> ${t(
-          'Email.keyMomentsActions'
-        )}: ${moment.action_items.join(', ')}\n`
-      }
-    })
-    text += `\n`
-  }
+  if (keyMoments.length > 0) {
+    text += `*** ${t('keyMomentsTitle')} ***\n`
+    text += `--------------------------------------------------\n\n`
+    keyMoments.forEach((moment, index) => {
+      if (index > 0) text += `\n`
+      text += `🟢 ${moment.topic}\n`
+      text += `${moment.summary}\n`
+      
+      // ✅ CORRECCIÓ 5: Aplicar optional chaining (?.) i nullish coalescing (??)
+      if ((moment.decisions?.length ?? 0) > 0) {
+        text += `   -> ${t('keyMomentsDecisions')}: ${(moment.decisions ?? []).join(
+          ', '
+        )}\n`
+      }
+      
+      // ✅ CORRECCIÓ 6: Aplicar el mateix aquí
+      if ((moment.action_items?.length ?? 0) > 0) {
+        text += `   -> ${t(
+          'Email.keyMomentsActions'
+        )}: ${(moment.action_items ?? []).join(', ')}\n`
+      }
+    })
+    text += `\n`
+  }
 
-  text += `\n--\n${t('Email.footerText')} • RibotFlow\n`
-  return text
+  text += `\n--\n${t('Email.footerText')} • RibotFlow\n`
+  return text
 }
 
 
 /**
- * ✅ HELPER 3 (CORREGIT): Construeix el missatge MIME amb Node.js Buffer
- */
+ * ✅ HELPER 3 (CORREGIT): Construeix el missatge MIME amb Node.js Buffer
+ */
 function buildTranscriptionMimeMessage(
-  recipients: string[],
-  ccRecipient: string,
-  fromEmail: string,
-  fromName: string, 
-  subject: string,
-  htmlBody: string,
-  plainTextBody: string 
+  recipients: string[],
+  ccRecipient: string,
+  fromEmail: string,
+  fromName: string, 
+  subject: string,
+  htmlBody: string,
+  plainTextBody: string 
 ): string {
-  const boundary = `----=${Math.random().toString(16).substring(2)}`
-  
-  // Utilitzem Buffer.from(text).toString('base64')
-  // 'Buffer' és natiu de Node.js i gestiona UTF-8 correctament.
-  const encodedSubject = Buffer.from(subject).toString('base64');
-  const encodedPlainText = Buffer.from(plainTextBody).toString('base64');
-  const encodedHtml = Buffer.from(htmlBody).toString('base64');
+  const boundary = `----=${Math.random().toString(16).substring(2)}`
+  
+  const encodedSubject = Buffer.from(subject).toString('base64');
+  const encodedPlainText = Buffer.from(plainTextBody).toString('base64');
+  const encodedHtml = Buffer.from(htmlBody).toString('base64');
 
-  let message = `From: ${fromName} <${fromEmail}>\r\n`
-  message += `To: ${recipients.join(', ')}\r\n`
-  message += `Cc: ${ccRecipient}\r\n`
-  message += `Subject: =?UTF-8?B?${encodedSubject}?=\r\n`
-  message += `Content-Type: multipart/alternative; boundary=${boundary}\r\n\r\n`
+  let message = `From: ${fromName} <${fromEmail}>\r\n`
+  message += `To: ${recipients.join(', ')}\r\n`
+  message += `Cc: ${ccRecipient}\r\n`
+  message += `Subject: =?UTF-8?B?${encodedSubject}?=\r\n`
+  message += `Content-Type: multipart/alternative; boundary=${boundary}\r\n\r\n`
 
-  // --- PART 1: TEXT PLA ---
-  message += `--${boundary}\r\n`
-  message += `Content-Type: text/plain; charset=UTF-8\r\n`
-  message += `Content-Transfer-Encoding: base64\r\n\r\n` 
-  message += `${encodedPlainText}\r\n\r\n`
+  // --- PART 1: TEXT PLA ---
+  message += `--${boundary}\r\n`
+  message += `Content-Type: text/plain; charset=UTF-8\r\n`
+  message += `Content-Transfer-Encoding: base64\r\n\r\n` 
+  message += `${encodedPlainText}\r\n\r\n`
 
-  // --- PART 2: HTML ---
-  message += `--${boundary}\r\n`
-  message += `Content-Type: text/html; charset=UTF-8\r\n`
-  message += `Content-Transfer-Encoding: base64\r\n\r\n`
-  message += `${encodedHtml}\r\n\r\n` 
+  // --- PART 2: HTML ---
+  message += `--${boundary}\r\n`
+  message += `Content-Type: text/html; charset=UTF-8\r\n`
+  message += `Content-Transfer-Encoding: base64\r\n\r\n`
+  message += `${encodedHtml}\r\n\r\n` 
 
-  message += `--${boundary}--`
+  message += `--${boundary}--`
 
-  return message
+  return message
 }
 
 
 // --- Lògica principal (EXPORTADA) ---
-
-/**
- * Orquestra l'enviament d'un resum de transcripció per email.
- */
+// (Sense canvis, ja que les correccions eren a 'buildHtmlBody' i 'buildPlainTextBody')
 export async function sendTranscriptionSummaryEmail(
-  supabase: SupabaseClient<Database>,
-  user: User,
-  activeTeamId: string,
-  jobId: string,
-  t: (key: string) => string 
+  supabase: SupabaseClient<Database>,
+  user: User,
+  activeTeamId: string,
+  jobId: string,
+  t: (key: string) => string
 ) {
-  try {
-    // 1. Obtenir Dades de la Feina I EL NOM DE L'EQUIP
-    console.log(`[EmailService] Obtenint dades de la feina ${jobId}...`)
-    const { data: jobAndTeamData, error: jobError } = await supabase
-      .from('audio_jobs')
-      .select('*, team:teams(name)') 
-      .eq('id', jobId)
-      .eq('team_id', activeTeamId)
-      .single()
+  try {
+    // 1. Obtenir Dades de la Feina I EL NOM DE L'EQUIP
+    console.log(`[EmailService] Obtenint dades de la feina ${jobId}...`)
+    const { data: jobAndTeamData, error: jobError } = await supabase
+      .from('audio_jobs')
+      .select('*, team:teams(name)')
+      .eq('id', jobId)
+      .eq('team_id', activeTeamId)
+      .single()
 
-    if (jobError) throw new Error(`Error obtenint la feina: ${jobError.message}`)
+    if (jobError) throw new Error(`Error obtenint la feina: ${jobError.message}`)
 
-    const job = jobAndTeamData as AudioJob & {
-      team: { name: string | null } | null
-    }
-    const companyName = job.team?.name || 'RibotFlow'
+    const job = jobAndTeamData as AudioJob & {
+      team: { name: string | null } | null
+    }
+    const companyName = job.team?.name || 'RibotFlow'
 
-    // 2. Obtenir Emails dels Participants
-    const participantIds =
-      (job.participants as { contact_id: number | null }[])
-        ?.map((p) => p.contact_id)
-        .filter((id): id is number => id != null) || []
+    // 2. Obtenir Emails dels Participants
+    
+    // (Aquesta correcció ja la tenies aplicada, perfecte)
+    const participantIds =
+      (job.participants as ({ contact_id: number | null }[] | null | undefined))
+        ?.map((p) => p.contact_id)
+        .filter((id): id is number => id != null) 
+      ?? [] 
 
-    const recipientEmails = await transcripcioService.getParticipantEmails(
-      supabase,
-      participantIds,
-      activeTeamId
-    )
+    const recipientEmails = await transcripcioService.getParticipantEmails(
+      supabase,
+      participantIds,
+      activeTeamId
+    )
 
-    if (recipientEmails.length === 0) {
-      console.warn(
-        `[EmailService] No s'han trobat destinataris per a la feina ${jobId}. S'enviarà només a l'usuari en CC.`
-      )
-    }
+    if ((recipientEmails?.length ?? 0) === 0) {
+      console.warn(
+        `[EmailService] No s'han trobat destinataris per a la feina ${jobId}. S'enviarà només a l'usuari en CC.`
+      )
+    }
 
-    // 3. Obtenir Autenticació de Google
-    const { accessToken, userEmail } = await getGoogleAccessToken(
-      supabase,
-      user.id
-    )
+    // 3. Obtenir Autenticació de Google
+    const { accessToken, userEmail } = await getGoogleAccessToken(
+      supabase,
+      user.id
+    )
 
-    // 4. Traduïm els texts i construïm ELS DOS COSSOS
-    const emailSubject = `Resum de la reunió: ${
-      job.summary || `Transcripció ${job.id.substring(0, 8)}`
-    }`
-    
-    const htmlBody = buildHtmlBody(job, t)
-    const plainTextBody = buildPlainTextBody(job, t) 
+    // 4. Traduïm els texts i construïm ELS DOS COSSOS
+    const emailSubject = `Resum de la reunió: ${
+      job.summary || `Transcripció ${job.id.substring(0, 8)}`
+    }`
+    
+    // Ara aquestes funcions són segures
+    const htmlBody = buildHtmlBody(job, t)
+    const plainTextBody = buildPlainTextBody(job, t) 
 
-    // 5. Construir Missatge MIME
-    const mimeMessage = buildTranscriptionMimeMessage(
-      recipientEmails,
-      user.email ?? '', // CC
-      userEmail, // FROM
-      companyName, 
-      emailSubject,
-      htmlBody,
-      plainTextBody 
-    )
+    // 5. Construir Missatge MIME
+    const mimeMessage = buildTranscriptionMimeMessage(
+      recipientEmails ?? [], 
+      user.email ?? '', // CC
+      userEmail, // FROM
+      companyName, 
+      emailSubject,
+      htmlBody,
+      plainTextBody 
+    )
 
-    // 6. Codificar per a la URL de l'API de GMAIL
-    const rawEmail = Buffer.from(mimeMessage).toString('base64url');
+    // 6. Codificar per a la URL de l'API de GMAIL
+    const rawEmail = Buffer.from(mimeMessage).toString('base64url');
 
-    console.log(
-      `[EmailService] Enviant email via Gmail API com a ${userEmail}...`
-    )
-    const gmailRes = await fetch(
-      'https://www.googleapis.com/gmail/v1/users/me/messages/send',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ raw: rawEmail }),
-      }
-    )
+    console.log(
+      `[EmailService] Enviant email via Gmail API com a ${userEmail}...`
+    )
+    const gmailRes = await fetch(
+      'https://www.googleapis.com/gmail/v1/users/me/messages/send',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ raw: rawEmail }),
+      }
+    )
 
-    if (!gmailRes.ok) {
-      const errorData = await gmailRes.json()
-      console.error('Error enviant Gmail:', errorData)
-      throw new Error(`Error de l'API de Gmail: ${errorData.error.message}`)
-    }
+    if (!gmailRes.ok) {
+      const errorData = await gmailRes.json()
+      console.error('Error enviant Gmail:', errorData)
+      throw new Error(`Error de l'API de Gmail: ${errorData.error.message}`)
+    }
 
-    const allRecipients = [...recipientEmails, user.email].join(', ')
-    console.log(
-      `[EmailService] Email enviat correctament a ${allRecipients}.`
-    )
+    const allRecipients = [...(recipientEmails ?? []), user.email].join(', ')
+    console.log(
+      `[EmailService] Email enviat correctament a ${allRecipients}.`
+    )
 
-    return { success: true, message: t('Email.sendSuccess') }
-  
-  } catch (error: unknown) {
-    const message = (error as Error).message
-    console.error('Error enviant email de resum (servei):', message)
-    throw new Error(message)
-  }
+    return { success: true, message: t('Email.sendSuccess') }
+  
+  } catch (error: unknown) {
+    const message = (error as Error).message
+    console.error('Error enviant email de resum (servei):', message)
+    throw new Error(message) // <-- Això és correcte, llança l'error
+  }
 }
 
 // =================== FILE: src/lib/services/crm/activities/activities.service.ts ===================
@@ -58270,12 +58731,12 @@ export async function getClientsForFilterService(teamId: string): Promise<{ id: 
 
 // =================== FILE: src/lib/services/finances/invoices/invoicesDetail.service.ts ===================
 
-"use server"; // Afegit per si de cas, tot i que ja hi era implícitament
+"use server"; 
 
 import { type SupabaseClient } from "@supabase/supabase-js";
-import { type Database } from "@/types/supabase";
+import { type Database } from "@/types/supabase"; // ✅ 1. Importem DbTableInsert
+import { DbTableInsert } from "@/types/db";
 import { createAdminClient } from "@/lib/supabase/admin";
-// ✅ 1. IMPORTEM EL MÒDUL 'crypto' Natiu (ja hi era)
 import crypto from "crypto";
 import {
     type InvoiceAttachment,
@@ -58286,14 +58747,9 @@ import {
     type InvoiceRow,
 } from "@/types/finances/invoices";
 import { type ActionResult } from "@/types/shared/index";
-import { Resend } from "resend";
 import { generateInvoicePdfBuffer } from "@/lib/pdf/generateInvoicePDF";
 import { type CompanyProfile } from '@/types/settings/team'
 
-// ❗ 2. ELIMINEM LA IMPORTACIÓ DEL SERVEI QUE FALLA
-// import { registerInvoiceWithHacienda } from '@/lib/verifactu/service';
-
-// Importem serveis que ja tenim
 import { getCompanyProfile } from "@/lib/services/settings/team/team.service";
 import { getContactById } from "@/lib/services/crm/contacts/contacts.service";
 import { fetchInvoiceDetail } from "@/app/[locale]/(app)/finances/invoices/[invoiceId]/_hooks/fetchInvoiceDetail";
@@ -58303,7 +58759,7 @@ type Contact = Database["public"]["Tables"]["contacts"]["Row"] | null;
 
 // --- Funcions Internes del Servei (No exportades) ---
 // ... (Totes les funcions _upsertInvoiceHeader, _syncInvoiceItems,
-// _updateInvoiceTotals, _getInvoiceContext SÓN IDÈNTIQUES a l'última versió) ...
+// _updateInvoiceTotals, _getInvoiceContext SÓN IDÈNTIQUES) ...
 
 async function _upsertInvoiceHeader(
     supabase: SupabaseClient,
@@ -58527,14 +58983,15 @@ async function _getInvoiceContext(
 
     let contact: Contact = null;
     if (contactId) {
-        // Aquesta funció hauria de seleccionar els nous camps (tax_id, street, city, etc.)
         contact = await getContactById(supabase, teamId, contactId);
     }
 
     return { companyProfile, contact };
 }
 
+
 // --- Serveis Principals (Exportats per a les Accions) ---
+// ... (saveInvoice, deleteInvoice, uploadAttachment, getAttachmentSignedUrl, deleteAttachment, finalizeInvoice SÓN IDÈNTIQUES) ...
 
 export async function saveInvoice(
     supabase: SupabaseClient,
@@ -58544,7 +59001,6 @@ export async function saveInvoice(
     teamId: string,
 ): Promise<ActionResult<{ id: number }>> {
     const { invoice_items, ...invoiceData } = formData;
-
     const invoiceResult = await _upsertInvoiceHeader(
         supabase,
         invoiceData,
@@ -58552,7 +59008,6 @@ export async function saveInvoice(
         userId,
         teamId,
     );
-
     if (invoiceResult.error || !invoiceResult.id) {
         return {
             success: false,
@@ -58560,7 +59015,6 @@ export async function saveInvoice(
         };
     }
     const resultingInvoiceId = invoiceResult.id;
-
     const itemsResult = await _syncInvoiceItems(
         supabase,
         resultingInvoiceId,
@@ -58568,7 +59022,6 @@ export async function saveInvoice(
         userId,
         teamId,
     );
-
     if (itemsResult.error) {
         return {
             success: false,
@@ -58576,9 +59029,7 @@ export async function saveInvoice(
             data: { id: resultingInvoiceId },
         };
     }
-
     const { calculatedSubtotal, calculatedTotalLineDiscount } = itemsResult;
-
     const totalsResult = await _updateInvoiceTotals(
         supabase,
         resultingInvoiceId,
@@ -58588,13 +59039,11 @@ export async function saveInvoice(
         Number(invoiceData.tax_rate),
         Number(invoiceData.shipping_cost),
     );
-
     if (totalsResult.error) {
         console.warn(
             `Factura ${resultingInvoiceId} desada, però error actualitzant totals: ${totalsResult.error}`,
         );
     }
-
     return {
         success: true,
         message: "Factura desada correctament.",
@@ -58613,14 +59062,12 @@ export async function deleteInvoice(
         .eq("id", invoiceId)
         .eq("team_id", teamId)
         .single();
-
     if (statusError) {
         return {
             success: false,
             message: "Factura no trobada o accés denegat.",
         };
     }
-
     if (invoiceStatus.status !== "Draft") {
         return {
             success: false,
@@ -58628,20 +59075,17 @@ export async function deleteInvoice(
                 "No es pot esborrar una factura que ja ha estat emesa. Només esborranys.",
         };
     }
-
     const supabaseAdmin = createAdminClient();
     const { data: attachments, error: attachError } = await supabase
         .from("invoice_attachments")
         .select("id, file_path")
         .eq("invoice_id", invoiceId);
-
     if (attachError) {
         console.error(
             "Error obtenint adjunts per esborrar:",
             attachError.message,
         );
     }
-
     if (attachments && attachments.length > 0) {
         const filePaths = attachments.map((a) => a.file_path).filter((
             p,
@@ -58658,20 +59102,17 @@ export async function deleteInvoice(
             }
         }
     }
-
     const { error: deleteError } = await supabase
         .from("invoices")
         .delete()
         .eq("id", invoiceId)
         .eq("team_id", teamId);
-
     if (deleteError) {
         return {
             success: false,
             message: `Error esborrant factura: ${deleteError.message}`,
         };
     }
-
     return { success: true, message: "Factura esborrada." };
 }
 
@@ -58685,21 +59126,18 @@ export async function uploadAttachment(
     if (!file) {
         return { success: false, message: "No s'ha proporcionat cap fitxer." };
     }
-
     const { data: invoiceCheckData, error: invoiceCheckError } = await supabase
         .from("invoices")
         .select("id")
         .eq("id", invoiceId)
         .eq("team_id", teamId)
         .maybeSingle();
-
     if (invoiceCheckError || !invoiceCheckData) {
         return {
             success: false,
             message: "Factura no trobada o accés denegat.",
         };
     }
-
     const filePath =
         `${teamId}/invoices/${invoiceId}/${Date.now()}-${file.name}`;
     const { error: uploadError } = await supabase.storage.from(
@@ -58711,20 +59149,17 @@ export async function uploadAttachment(
             message: `Error pujant a Storage: ${uploadError.message}`,
         };
     }
-
     const attachmentData: Partial<InvoiceAttachmentRow> = {
         invoice_id: invoiceId,
         file_path: filePath,
         filename: file.name,
         mime_type: file.type,
     };
-
     const { data: dbData, error: dbError } = await supabase
         .from("invoice_attachments")
         .insert(attachmentData)
         .select()
         .single();
-
     if (dbError) {
         await supabase.storage.from("factures-adjunts").remove([filePath]);
         return {
@@ -58732,7 +59167,6 @@ export async function uploadAttachment(
             message: `Error desant adjunt a BD: ${dbError.message}`,
         };
     }
-
     return {
         success: true,
         message: "Adjunt pujat correctament.",
@@ -58753,19 +59187,16 @@ export async function getAttachmentSignedUrl(
             message: "Ruta de fitxer invàlida o accés denegat.",
         };
     }
-
     const supabaseAdmin = createAdminClient();
     const { data, error } = await supabaseAdmin.storage
         .from("factures-adjunts")
-        .createSignedUrl(filePath, 300); // 5 minuts de validesa
-
+        .createSignedUrl(filePath, 300); 
     if (error) {
         return {
             success: false,
             message: `Error generant URL signada: ${error.message}`,
         };
     }
-
     return {
         success: true,
         message: "URL signada generada.",
@@ -58782,22 +59213,18 @@ export async function deleteAttachment(
     if (!attachmentId) {
         return { success: false, message: "Falta l'ID de l'adjunt." };
     }
-
     const { data: attachment, error: fetchError } = await supabase
         .from("invoice_attachments")
         .select("id, file_path, team_id, invoice_id")
         .eq("id", attachmentId)
         .single();
-
     if (fetchError || !attachment) {
         return { success: false, message: "Adjunt no trobat." };
     }
     if (attachment.team_id !== teamId) {
         return { success: false, message: "Accés denegat." };
     }
-
     const finalFilePath = filePath || attachment.file_path;
-
     const { error: dbError } = await supabase.from("invoice_attachments")
         .delete().eq("id", attachmentId);
     if (dbError) {
@@ -58806,7 +59233,6 @@ export async function deleteAttachment(
             message: `Error esborrant adjunt de BD: ${dbError.message}`,
         };
     }
-
     if (finalFilePath) {
         const supabaseAdmin = createAdminClient();
         const { error: storageError } = await supabaseAdmin.storage.from(
@@ -58818,27 +59244,20 @@ export async function deleteAttachment(
             );
         }
     }
-
     return { success: true, message: "Adjunt eliminat correctament." };
 }
 
-/**
- * SERVEI: Finalitza una factura (VeriFactu).
- * * ✅ *** MODIFICAT AMB LA NOVA ESTRUCTURA DE BBDD ***
- */
 export async function finalizeInvoice(
     supabase: SupabaseClient,
     invoiceId: number,
     teamId: string,
 ): Promise<ActionResult<{ signature: string }>> {
-    // 1. Obtenir factura
     const { data: invoiceData, error: invoiceError } = await supabase
         .from("invoices")
         .select("*, invoice_items (*)")
         .eq("id", invoiceId)
         .eq("team_id", teamId)
         .single();
-
     if (invoiceError) return { success: false, message: "Factura no trobada." };
     if (invoiceData.status !== "Draft") {
         return {
@@ -58846,8 +59265,6 @@ export async function finalizeInvoice(
             message: "Aquesta factura ja ha estat emesa.",
         };
     }
-
-    // 2. Obtenir signatura anterior
     const { data: lastSignatureData, error: lastSignatureError } =
         await supabase
             .from("invoices")
@@ -58857,7 +59274,6 @@ export async function finalizeInvoice(
             .order("sent_at", { ascending: false })
             .limit(1)
             .maybeSingle();
-
     if (lastSignatureError) {
         return {
             success: false,
@@ -58865,14 +59281,11 @@ export async function finalizeInvoice(
         };
     }
     const previousSignature = lastSignatureData?.verifactu_signature || null;
-
-    // 3. Obtenir context (Emissor i Receptor)
     const { companyProfile, contact } = await _getInvoiceContext(
         supabase,
         teamId,
         invoiceData.contact_id,
     );
-
     if (!companyProfile) {
         return {
             success: false,
@@ -58885,62 +59298,48 @@ export async function finalizeInvoice(
             message: "No s'ha pogut trobar el contacte de la factura.",
         };
     }
-
-    // 3b. Construir adreça completa del client
     const clientAddressParts = [
-        contact.street, // Sense 'as any'
-        contact.city, // Sense 'as any'
-        contact.postal_code, // Sense 'as any'
-        contact.country, // Sense 'as any'
+        contact.street, 
+        contact.city, 
+        contact.postal_code, 
+        contact.country, 
     ];
     const fullClientAddress = clientAddressParts.filter(Boolean).join(", ");
-
-    // 3c. Preparar dades "bloquejades"
     const lockedInvoiceData = {
         company_name: companyProfile.company_name,
         company_address: companyProfile.company_address,
         company_tax_id: companyProfile.company_tax_id,
         company_email: companyProfile.company_email,
         company_logo_url: companyProfile.logo_url,
-
         client_name: contact.nom,
         client_address: fullClientAddress || contact.ubicacio || null,
         client_email: contact.email,
-        client_tax_id: contact.tax_id || null, // Sense 'as any'
+        client_tax_id: contact.tax_id || null, 
     };
-
-    // 4. ✅ Crida a VeriFactu (SIMULACIÓ)
     console.warn(
         `[finalizeInvoice] SIMULACIÓ VeriFactu per a factura ID: ${invoiceId}`,
     );
-
-    // ✅✅✅ CORRECCIÓ: Generem un UUID real, sense prefix. ✅✅✅
     const uuid = crypto.randomUUID();
-
     const signaturePayload = `${invoiceId}|${new Date().toISOString()}|${
         previousSignature || "START"
     }`;
     const signature = crypto.createHash("sha256").update(signaturePayload)
         .digest("hex");
-
     const qrData = `https://www.agenciatributaria.es/qr?id=${uuid}&nif_em=${
         lockedInvoiceData.company_tax_id || "SIN_NIF"
     }&nif_re=${lockedInvoiceData.client_tax_id || "SIN_NIF"}&i=${
         invoiceData.invoice_number || invoiceId
     }&f=${invoiceData.issue_date}&t=${invoiceData.total_amount}`;
-
     const verifactuResult = {
         success: true,
         data: { uuid, qrData, signature },
     };
-
-    // 5. Actualització final a BBDD
     const { error: updateError } = await supabase
         .from("invoices")
         .update({
             status: "Sent",
             sent_at: new Date().toISOString(),
-            verifactu_uuid: verifactuResult.data.uuid, // Ara és un UUID vàlid
+            verifactu_uuid: verifactuResult.data.uuid, 
             verifactu_signature: verifactuResult.data.signature,
             verifactu_previous_signature: previousSignature,
             verifactu_qr_data: verifactuResult.data.qrData,
@@ -58949,20 +59348,17 @@ export async function finalizeInvoice(
         .eq("id", invoiceId)
         .eq("team_id", teamId)
         .eq("status", "Draft");
-
     if (updateError) {
         console.error(
             "Error crític actualitzant BBDD post-VeriFactu:",
             updateError,
         );
-        // L'error 22P02 (invalid input syntax for type uuid) hauria d'estar solucionat.
         return {
             success: false,
             message:
                 `Error crític: La factura s'ha registrat (simuladament) (ID: ${verifactuResult.data.uuid}) però no s'ha pogut guardar a la BBDD. Detall: ${updateError.message}`,
         };
     }
-
     return {
         success: true,
         message: "Factura emesa i registrada (Simulació).",
@@ -58970,15 +59366,26 @@ export async function finalizeInvoice(
     };
 }
 
+
 /**
- * SERVEI: Envia la factura per email (PDF + Resend).
+ * SERVEI: Envia la factura per email (PDF + Edge Function).
+ * ✅ *** ADAPTAT AMB LA LÒGICA DE L'INBOX I QUOTES ***
  */
 export async function sendInvoiceByEmail(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient, 
     invoiceId: number,
     teamId: string,
-    recipientEmail: string,
+    recipientEmail: string, // L'email del diàleg
+    messageBody: string,
 ): Promise<ActionResult> {
+    
+    // Obtenim el ID de l'usuari de la sessió actual
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+         return { success: false, message: "Usuari no autenticat." };
+    }
+    const userId = user.id;
+
     // 1. Obtenir factura
     const invoiceData = (await fetchInvoiceDetail(invoiceId)) as InvoiceDetail;
     if (!invoiceData) return { success: false, message: "Factura no trobada." };
@@ -58989,71 +59396,125 @@ export async function sendInvoiceByEmail(
         return { success: false, message: "No es pot enviar un esborrany." };
     }
 
-    // 2. Obtenir context (Emissor i Receptor)
+    // 2. Obtenir context (Emissor)
     const companyProfileResult = await getCompanyProfile(supabase, teamId);
     if (!companyProfileResult) {
         return { success: false, message: "No s'ha pogut trobar el perfil de la teva empresa." };
     }
     const companyProfile: CompanyProfile = companyProfileResult;
 
-    // Obtenir el contacte complet de la base de dades
-    const contact: Contact = invoiceData.contact_id !== null
+    // ✅ 3. LÒGICA DE CONTACTE (copiada de 'inbox.service.ts')
+    // Hem de trobar el contactId basat en el 'recipientEmail' que ens arriba,
+    // o crear el contacte si no existeix.
+    let finalContactId: number;
+    const email = recipientEmail.trim().toLowerCase();
+    
+    const { data: existingContact } = await supabase
+      .from('contacts')
+      .select('id, nom, email')
+      .eq('email', email)
+      .eq('team_id', teamId)
+      .maybeSingle();
+
+    if (existingContact) {
+      finalContactId = existingContact.id;
+    } else {
+      // Si no existeix, el creem (com fa l'inbox)
+      const newContactData: DbTableInsert<'contacts'> = {
+        team_id: teamId,
+        email: email,
+        nom: email.split('@')[0] || 'Nou Contacte (Factura)',
+        user_id: userId 
+      };
+      const { data: newContact, error: createError } = await supabase
+        .from('contacts')
+        .insert(newContactData)
+        .select('id')
+        .single();
+        
+      if (createError) {
+        console.error("Error creant contacte manualment (invoice.service):", createError);
+        throw new Error(`No s'ha pogut crear el contacte: ${createError.message}`);
+      }
+      finalContactId = newContact.id;
+    }
+    // --- Fi lògica de contacte
+
+    // 4. Generar PDF
+    // Obtenim el contacte (el que acabem de trobar/crear o l'original de la factura)
+    // És millor fer servir el contacte original de la factura pel PDF,
+    // ja que té les dades fiscals correctes, independentment de a qui s'enviï l'email.
+    const contactForPdf: Contact = invoiceData.contact_id !== null
         ? await getContactById(supabase, teamId, invoiceData.contact_id)
         : null;
 
-    // 3. Generar PDF
     let pdfBuffer: Buffer;
     try {
         pdfBuffer = await generateInvoicePdfBuffer(
             invoiceData,
             companyProfile,
-            contact
+            contactForPdf // Fem servir el contacte original per les dades del PDF
         );
     } catch (error) {
         console.error("Error generant el PDF al servidor:", error);
         return {
             success: false,
-            message: (error as Error).message ||
-                "No s'ha pogut generar el PDF.",
+            message: (error as Error).message || "No s'ha pogut generar el PDF.",
         };
     }
 
-    // 4. Enviar Email
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    // 5. Lògica d'enviament (adaptada)
     const fileName = `factura-${
         invoiceData.invoice_number || invoiceData.id
     }.pdf`;
+    
+    const emailSubject = `Nova Factura: ${invoiceData.invoice_number || invoiceId} de ${companyProfile.company_name || 'la teva empresa'}`;
+
+    const pdfBase64 = pdfBuffer.toString('base64');
 
     try {
-        await resend.emails.send({
-            from: "facturacio@ribotflow.com",
-            to: recipientEmail,
-            subject: `Nova Factura: ${invoiceData.invoice_number || invoiceId}`,
-            html: `<p>Adjunt trobaràs la factura ${
-                invoiceData.invoice_number || invoiceId
-            }.</p>`,
+        // ✅ Invoquem la Edge Function amb el PAYLOAD CORRECTE
+        const { error: invokeError } = await supabase.functions.invoke('send-email', {
+          body: {
+            contactId: finalContactId, // <-- L'ID del contacte a qui enviem
+            subject: emailSubject,
+            htmlBody: messageBody,
             attachments: [{
-                filename: fileName,
-                content: pdfBuffer,
-                contentType: "application/pdf",
-            }],
+              filename: fileName,
+              content: pdfBase64,
+              contentType: "application/pdf",
+              encoding: 'base64'
+            }]
+          }
         });
+
+        if (invokeError) {
+             console.error("Error invocant la Edge Function 'send-email':", invokeError);
+             return { 
+                success: false, 
+                // Donem un missatge més clar si la funció falla per credencials
+                message: invokeError.message.includes('credentials') 
+                  ? "Error d'autenticació. Si us plau, reconnecta el teu compte de correu a la secció d'Integracions."
+                  : `Error en el servei d'enviament: ${invokeError.message}` 
+            };
+        }
+
     } catch (error) {
-        console.error("Error enviant email amb Resend:", error);
+        console.error("Error catastròfic invocant 'send-email':", error);
         return {
             success: false,
             message: "Error en el servei d'enviament d'email.",
         };
     }
 
-    // 5. Registrar lliurament
+    // 6. Registrar lliurament
     if (process.env.NODE_ENV !== "development") {
         try {
             await supabase.from("invoice_deliveries").insert({
                 invoice_id: invoiceId,
                 team_id: teamId,
                 method: "email",
-                recipient: recipientEmail,
+                recipient: recipientEmail, // Guardem l'email on s'ha enviat
             });
         } catch (dbError) {
             console.warn("No s'ha pogut registrar el lliurament:", dbError);
@@ -59062,7 +59523,6 @@ export async function sendInvoiceByEmail(
 
     return { success: true, message: `Factura enviada a ${recipientEmail}.` };
 }
-
 
 // =================== FILE: src/lib/services/finances/products/products.service.ts ===================
 

@@ -65,7 +65,7 @@ export function MainSidebar({
     <aside
       className={cn(
         'hidden lg:flex w-24 h-full border-r border-border p-4 flex-col items-center z-20',
-        'bg-slate-50 dark:glass-effect',
+        'bg-card dark:glass-effect',
       )}
     >
       {/* Logo a la part superior */}
