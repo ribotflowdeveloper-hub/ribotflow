@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Plus, Save, FileText, AlertTriangle, ArrowLeft, TriangleAlert } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-
 // Tipus
-import { type ExpenseDetail, type ExpenseAttachment} from '@/types/finances/expenses';
+import { type ExpenseDetail, type ExpenseAttachment } from '@/types/finances/expenses';
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
-
+import { ExpenseAIAnalyzer } from './ExpenseAIAnalyzer'; // 👈 AFEGIR NOU COMPONENT
+import { type ExpenseItem } from '@/types/finances/expenses';
 // Hooks i Components
 import { useExpenseDetail } from '../_hooks/useExpenseDetail';
 import { ExpenseItemsEditor } from './ExpenseItemsEditor';
@@ -22,9 +22,10 @@ import { ExpenseAttachmentCard } from './ExpenseAttachmentCard';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { SupplierCombobox } from './SupplierCombobox';
 import { ExpenseAttachmentUploader } from './ExpenseAttachmentUploader';
-import {  AlertDialog, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui';
+import { type ExpensesAnalysisData, AnalyzedExpenseItem } from '@/types/finances/expenses';
 
 // Interfície de Props (correcta de la resposta anterior)
 interface ExpenseDetailClientProps {
@@ -37,14 +38,14 @@ interface ExpenseDetailClientProps {
     limitStatus: UsageCheckResult | null;
 }
 
-export function ExpenseDetailClient({ 
-    initialData, 
+export function ExpenseDetailClient({
+    initialData,
     isNew,
     userId,
     teamId,
     title,
     description,
-    limitStatus 
+    limitStatus
 }: ExpenseDetailClientProps) {
 
     const router = useRouter();
@@ -63,6 +64,7 @@ export function ExpenseDetailClient({
         handleItemChange,
         handleAddItem,
         handleRemoveItem,
+        setFormData, // 👈 EXPOSAR setFormData DES DEL HOOK
     } = useExpenseDetail({ initialData, isNew, userId, teamId });
 
     const [attachments, setAttachments] = useState<ExpenseAttachment[]>(
@@ -91,10 +93,62 @@ export function ExpenseDetailClient({
             router.push('/finances/expenses');
         }
     };
+  
 
+    // ✅ AFEGIR: Funció que rep les dades de la IA
+    const handleAnalysisComplete = (data: ExpensesAnalysisData) => {
+
+        // ✅ CORRECCIÓ: Canviem 'item: any' per 'item: AnalyzedExpenseItem'
+        const newItems: ExpenseItem[] = (data.items || []).map((item: AnalyzedExpenseItem, index: number) => ({
+            id: Date.now() + index, // ID temporal pel client
+            expense_id: 0, // Ho assignarem al desar
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            unit_price: item.unit_price || 0,
+            total: (item.quantity || 1) * (item.unit_price || 0),
+        }));
+
+        setFormData(prev => {
+            // Recalculem totals basant-nos en les dades de la IA
+            const subtotal = newItems.reduce((acc, item) => acc + item.total, 0);
+            const discount = prev.discount_amount || 0;
+            const effectiveSubtotal = subtotal - discount;
+            
+            // Prioritzem dades de l'IA
+            const taxRate = (data.tax_rate !== null && data.tax_rate !== undefined)
+                ? data.tax_rate
+                : prev.tax_rate; // Mantenim el valor per defecte (21) o l'existent
+
+            const taxAmount = (data.tax_amount !== null && data.tax_amount !== undefined)
+                ? data.tax_amount
+                : (effectiveSubtotal * ((taxRate ?? 0) / 100));
+
+            const totalAmount = (data.total_amount !== null && data.total_amount !== undefined)
+                ? data.total_amount
+                : (effectiveSubtotal + taxAmount);
+
+            return {
+                ...prev,
+                // Omplim els camps del formulari
+                description: data.supplier_name ? `Factura de ${data.supplier_name}` : (prev.description || ''),
+                supplier_id: data.supplier_id || prev.supplier_id, // ID ja resolt!
+                expense_date: data.invoice_date || prev.expense_date,
+                invoice_number: data.invoice_number || prev.invoice_number,
+
+                // Actualitzem totals
+                total_amount: totalAmount,
+                tax_amount: taxAmount,
+                tax_rate: taxRate,
+                subtotal: subtotal,
+
+                // Actualitzem conceptes (només si l'IA n'ha trobat)
+                expense_items: newItems.length > 0 ? newItems : prev.expense_items,
+            };
+        });
+    };
     return (
         <div className="flex flex-col gap-4 h-full">
-            
+
             {/* Alerta de límit (només en edició) */}
             {isLimitExceeded && (
                 <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900">
@@ -112,12 +166,12 @@ export function ExpenseDetailClient({
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-                
+
                 {/* ✅ CORRECCIÓ AQUÍ: Eliminem 'showBackButton' i afegim el botó com a 'child' */}
-                <PageHeader 
-                    title={expenseTitle} 
-                    description={description} 
-                    // ❗ 'showBackButton' eliminat
+                <PageHeader
+                    title={expenseTitle}
+                    description={description}
+                // ❗ 'showBackButton' eliminat
                 >
                     {/* ✅ Aquest és el botó de tornar correcte */}
                     <Button
@@ -130,7 +184,7 @@ export function ExpenseDetailClient({
                     >
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
-                    
+
                     {/* Botó de desar */}
                     <Button type="submit" disabled={isSaving}>
                         {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
@@ -140,9 +194,24 @@ export function ExpenseDetailClient({
 
                 {/* Contingut Principal: Grid (2/3 + 1/3) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    
+
                     {/* Columna Esquerra (Formulari Principal) - 2/3 */}
                     <div className="lg:col-span-2 space-y-4">
+                        {/* ✅ Targeta 0: ASSISTENT IA (L'afegim aquí) */}
+                        {/* Només el mostrem si estem creant o si no hi ha items */}
+                        {(isNew || (formData.expense_items || []).length === 0) && (
+                            <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                                <CardContent className="pt-6">
+                                    <ExpenseAIAnalyzer
+                                        isSaving={isSaving}
+                                        onAnalysisComplete={handleAnalysisComplete}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                                        {t('aiHelperText') || 'Puja una imatge (PNG/JPEG) i omplirem la despesa per tu.'}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
                         {/* Targeta 1: Detalls Bàsics */}
                         <Card>
                             <CardHeader><CardTitle>{t('card.generalDetails')}</CardTitle></CardHeader>
@@ -170,14 +239,14 @@ export function ExpenseDetailClient({
                                         />
                                     </div>
                                 </div>
-                                 <div className="space-y-2">
-                                     <Label htmlFor="invoice_number">{t('field.invoiceNumber')}</Label>
-                                     <Input id="invoice_number" value={formData.invoice_number || ''} onChange={(e) => handleFieldChange('invoice_number', e.target.value)} disabled={isSaving} placeholder={t('placeholder.invoiceNumber')} />
-                                 </div>
-                                 <div className="space-y-2">
-                                     <Label htmlFor="description">{t('field.description')}</Label>
-                                     <Textarea id="description" value={formData.description} onChange={(e) => handleFieldChange('description', e.target.value)} disabled={isSaving} rows={3} placeholder={t('placeholder.description')} />
-                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="invoice_number">{t('field.invoiceNumber')}</Label>
+                                    <Input id="invoice_number" value={formData.invoice_number || ''} onChange={(e) => handleFieldChange('invoice_number', e.target.value)} disabled={isSaving} placeholder={t('placeholder.invoiceNumber')} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">{t('field.description')}</Label>
+                                    <Textarea id="description" value={formData.description} onChange={(e) => handleFieldChange('description', e.target.value)} disabled={isSaving} rows={3} placeholder={t('placeholder.description')} />
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -203,14 +272,14 @@ export function ExpenseDetailClient({
                         <Card>
                             <CardHeader><CardTitle>{t('card.notes')}</CardTitle></CardHeader>
                             <CardContent>
-                            <Textarea
-                                id="notes"
-                                value={formData.notes || ''}
-                                onChange={(e) => handleFieldChange('notes', e.target.value)}
-                                disabled={isSaving}
-                                rows={4}
-                                placeholder={t('placeholder.notes')}
-                            />
+                                <Textarea
+                                    id="notes"
+                                    value={formData.notes || ''}
+                                    onChange={(e) => handleFieldChange('notes', e.target.value)}
+                                    disabled={isSaving}
+                                    rows={4}
+                                    placeholder={t('placeholder.notes')}
+                                />
                             </CardContent>
                         </Card>
                     </div>
@@ -221,39 +290,39 @@ export function ExpenseDetailClient({
                         <Card>
                             <CardHeader><CardTitle>{t('card.totals')}</CardTitle></CardHeader>
                             <CardContent className="space-y-3">
-                            <div className="flex justify-between items-center">
-                                <Label>{t('label.subtotal')}</Label>
-                                <span className="font-medium">{formatCurrency(formData.subtotal, 'EUR', locale)}</span>
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="discount_amount">{t('field.discount')}</Label>
-                                <Input
-                                id="discount_amount"
-                                type="number"
-                                value={formData.discount_amount || 0}
-                                onChange={(e) => handleFieldChange('discount_amount', parseFloat(e.target.value) || 0)}
-                                disabled={isSaving}
-                                step="0.01"
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="tax_rate">{t('field.taxRate')}</Label>
-                                <div className="flex items-center space-x-2">
-                                <Input
-                                    id="tax_rate"
-                                    type="number"
-                                    value={formData.tax_rate || 0}
-                                    onChange={(e) => handleFieldChange('tax_rate', parseFloat(e.target.value) || 0)}
-                                    disabled={isSaving}
-                                    step="0.01"
-                                />
-                                <span className='font-mono text-sm text-muted-foreground'>({formatCurrency(formData.tax_amount, 'EUR', locale)})</span>
+                                <div className="flex justify-between items-center">
+                                    <Label>{t('label.subtotal')}</Label>
+                                    <span className="font-medium">{formatCurrency(formData.subtotal, 'EUR', locale)}</span>
                                 </div>
-                            </div>
-                            <div className="pt-2 border-t mt-4 flex justify-between items-center">
-                                <Label className="text-lg font-bold">{t('label.total')}</Label>
-                                <span className="text-xl font-extrabold text-primary">{formatCurrency(formData.total_amount, 'EUR', locale)}</span>
-                            </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="discount_amount">{t('field.discount')}</Label>
+                                    <Input
+                                        id="discount_amount"
+                                        type="number"
+                                        value={formData.discount_amount || 0}
+                                        onChange={(e) => handleFieldChange('discount_amount', parseFloat(e.target.value) || 0)}
+                                        disabled={isSaving}
+                                        step="0.01"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label htmlFor="tax_rate">{t('field.taxRate')}</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <Input
+                                            id="tax_rate"
+                                            type="number"
+                                            value={formData.tax_rate || 0}
+                                            onChange={(e) => handleFieldChange('tax_rate', parseFloat(e.target.value) || 0)}
+                                            disabled={isSaving}
+                                            step="0.01"
+                                        />
+                                        <span className='font-mono text-sm text-muted-foreground'>({formatCurrency(formData.tax_amount, 'EUR', locale)})</span>
+                                    </div>
+                                </div>
+                                <div className="pt-2 border-t mt-4 flex justify-between items-center">
+                                    <Label className="text-lg font-bold">{t('label.total')}</Label>
+                                    <span className="text-xl font-extrabold text-primary">{formatCurrency(formData.total_amount, 'EUR', locale)}</span>
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -261,47 +330,47 @@ export function ExpenseDetailClient({
                         <Card>
                             <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />{t('card.attachments')}</CardTitle></CardHeader>
                             <CardContent className="space-y-3">
-                            {attachments.length > 0 ? (
-                                attachments.map(attachment => (
-                                <ExpenseAttachmentCard
-                                    key={attachment.id}
-                                    attachment={attachment}
-                                    onDeleteSuccess={handleDeleteSuccess}
-                                />
-                                ))
-                            ) : (
-                                !isNew && <p className="text-sm text-muted-foreground">No hi ha adjunts.</p>
-                            )}
-                            
-                            {isNew ? (
-                                <AlertDialog>
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertDialogTitle>Desa la despesa</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        Primer has de desar la despesa abans de poder pujar adjunts.
-                                    </AlertDialogDescription>
-                                </AlertDialog>
-                            ) : (
-                                <ExpenseAttachmentUploader
-                                expenseId={initialData!.id} 
-                                onUploadSuccess={handleUploadSuccess}
-                                />
-                            )}
+                                {attachments.length > 0 ? (
+                                    attachments.map(attachment => (
+                                        <ExpenseAttachmentCard
+                                            key={attachment.id}
+                                            attachment={attachment}
+                                            onDeleteSuccess={handleDeleteSuccess}
+                                        />
+                                    ))
+                                ) : (
+                                    !isNew && <p className="text-sm text-muted-foreground">No hi ha adjunts.</p>
+                                )}
+
+                                {isNew ? (
+                                    <AlertDialog>
+                                        <AlertTriangle className="h-4 w-4" />
+                                        <AlertDialogTitle>Desa la despesa</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            Primer has de desar la despesa abans de poder pujar adjunts.
+                                        </AlertDialogDescription>
+                                    </AlertDialog>
+                                ) : (
+                                    <ExpenseAttachmentUploader
+                                        expenseId={initialData!.id}
+                                        onUploadSuccess={handleUploadSuccess}
+                                    />
+                                )}
                             </CardContent>
                         </Card>
 
                         {/* Targeta 6: Informació de Creació (Solo mode Edició) */}
                         {!isNew && initialData && (
                             <Card>
-                            <CardHeader><CardTitle>{t('card.metadata')}</CardTitle></CardHeader>
-                            <CardContent className="space-y-2 text-sm text-muted-foreground">
-                                <p><strong>{t('metadata.id')}:</strong> {initialData.id}</p>
-                                <p><strong>{t('metadata.createdBy')}:</strong> {initialData.user_id}</p>
-                                <p><strong>{t('metadata.createdAt')}:</strong> {formatDate(initialData.created_at, locale)}</p>
-                            </CardContent>
+                                <CardHeader><CardTitle>{t('card.metadata')}</CardTitle></CardHeader>
+                                <CardContent className="space-y-2 text-sm text-muted-foreground">
+                                    <p><strong>{t('metadata.id')}:</strong> {initialData.id}</p>
+                                    <p><strong>{t('metadata.createdBy')}:</strong> {initialData.user_id}</p>
+                                    <p><strong>{t('metadata.createdAt')}:</strong> {formatDate(initialData.created_at, locale)}</p>
+                                </CardContent>
                             </Card>
                         )}
-                        </div>
+                    </div>
                 </div>
             </form>
         </div>

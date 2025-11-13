@@ -13,46 +13,50 @@ export type ContactRow = Database['public']['Tables']['contacts']['Row'];
 export type TeamRow = Database['public']['Tables']['teams']['Row'];
 
 // --- Tipus de la Funció RPC (Contracte Manual) ---
-// Aquest és el tipus que la BD retorna de la funció 'search_paginated_quotes'
-// INCLOU camps de la taula 'quotes' + camps extra (currency, language, joins, etc.)
+// ✅ CORREGIT: També actualitzem la RPC per reflectir la FASE 1
+// (Assumint que has actualitzat la teva funció SQL 'search_paginated_quotes' 
+// per seleccionar 'tax_rate' en lloc de 'tax_percent', etc.)
 export interface RpcQuoteRow {
-  id: QuoteId;
-  quote_number: string | null;
-  issue_date: string;
-  expiry_date: string | null;
-  total: number | null;
-  status: QuoteStatus;
-  contact_id: number | null;
-  currency: string | null; // ✅ Aquest camp NO està a Tables<'quotes'>
-  terms: string | null; // ✅ Aquest camp NO està a Tables<'quotes'>
-  language: string | null; // ✅ Aquest camp NO està a Tables<'quotes'>
-  created_at: string;
-  updated_at: string | null;
-  subtotal: number | null;
-  tax_percent: number | null;
-  show_quantity: boolean | null;
-  discount: number | null;
-  tax: number | null;
-  opportunity_id: number | null;
-  send_at: string | null;
-  secure_id: string | null;
-  sent_at: string | null;
-  notes: string | null;
-  rejection_reason: string | null;
-  theme_color: string | null;
-  sequence_number: number | null;
-  user_id: string;
-  team_id: string;
-  verifactu_uuid: string | null;
-  
-  // Camps del JOIN
-  contact_nom: string | null;
-  contact_empresa: string | null;
-  
-  // Camp Calculat
-  total_count: number;
+  id: QuoteId;
+  quote_number: string | null;
+  issue_date: string;
+  expiry_date: string | null;
+  // total: number | null; // ❌ ELIMINAT
+  total_amount: number | null; // ✅ AFEGIT
+  status: QuoteStatus;
+  contact_id: number | null;
+  currency: string | null; 
+  terms: string | null; 
+  language: string | null; 
+  created_at: string;
+  updated_at: string | null;
+  subtotal: number | null;
+  // tax_percent: number | null; // ❌ ELIMINAT
+  tax_rate: number | null; // ✅ AFEGIT
+  show_quantity: boolean | null;
+  // discount: number | null; // ❌ ELIMINAT
+  discount_amount: number | null; // ✅ AFEGIT
+  // tax: number | null; // ❌ ELIMINAT
+  tax_amount: number | null; // ✅ AFEGIT
+  opportunity_id: number | null;
+  send_at: string | null;
+  secure_id: string | null;
+  sent_at: string | null;
+  notes: string | null;
+  rejection_reason: string | null;
+  theme_color: string | null;
+  sequence_number: number | null;
+  user_id: string;
+  team_id: string;
+  verifactu_uuid: string | null;
+  
+  // Camps del JOIN
+  contact_nom: string | null;
+  contact_empresa: string | null;
+  
+  // Camp Calculat
+  total_count: number;
 }
-
 // --- Tipus Enriquit per la UI (El "View Model") ---
 // Aquest és el tipus que el client (QuotesClient) espera.
 // És el resultat de 'mapRpcRowToQuote'.

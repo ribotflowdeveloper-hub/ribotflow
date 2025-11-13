@@ -1,98 +1,219 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.42.0";
+// supabase/functions/processar-factura/index.ts
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import OpenAI from 'https://esm.sh/openai@4.40.1';
+import { corsHeaders } from '../_shared/cors.ts';
 
-// Variables d'entorn per a la connexió amb l'API de Mindee.
-const MINDEE_API_KEY = Deno.env.get('MINDEE_API_KEY');
-const MINDEE_API_URL = 'https://api.mindee.net/v1/products/mindee/invoices/v4/predict';
-const corsHeaders = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
+// Tipus per a les dades extretes (bona pràctica)
+interface ExtractedExpenseData {
+  supplier_name: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null; // Format YYYY-MM-DD
+  total_amount: number | null;
+  tax_amount: number | null;
+  currency: string | null;
+}
 
-/**
- * Aquesta Edge Function processa un arxiu de factura (PDF o imatge) utilitzant
- * un servei d'OCR (Reconeixement Òptic de Caràcters) anomenat Mindee.
- * Extreu les dades clau de la factura (proveïdor, dates, imports, conceptes)
- * i les retorna en un format JSON estructurat.
- */
-serve(async (req) => {
-  if (req.method === 'OPTIONS') { return new Response('ok', { headers: corsHeaders }); }
+// Inicialitza el client d'OpenAI
+const openai = new OpenAI({
+  apiKey: Deno.env.get('OPENAI_API_KEY'),
+});
 
-try {
-    // Aquesta funció utilitza la 'SERVICE_ROLE_KEY' per actuar com a administrador,
-    // ja que necessita buscar i potencialment crear contactes/proveïdors a la base de dades.
-    const supabaseAdmin = createClient(cookies())
-;
-    
-    // Verifiquem l'usuari que fa la petició a través del seu token JWT.
-    const { data: { user } } = await supabaseAdmin.auth.getUser(req.headers.get('Authorization')!.replace('Bearer ', ''));
-    if (!user) throw new Error("Usuari no autenticat.");
-    if (!MINDEE_API_KEY) throw new Error("La clau API de Mindee no està configurada.");
+// Funció auxiliar per crear l'esborrany de despesa
+async function createDraftExpense(
+  supabaseAdmin: import('@supabase/supabase-js').SupabaseClient,
+  data: ExtractedExpenseData,
+  teamId: string,
+  userId: string,
+  filePath: string,
+  fileName: string,
+) {
+  // 1. Cercar o crear proveïdor
+  let supplierId = null;
+  if (data.supplier_name) {
+    // Intentem trobar un proveïdor existent amb un nom similar
+    const { data: existingSupplier, error: findError } = await supabaseAdmin
+      .from('suppliers')
+      .select('id')
+      .eq('team_id', teamId)
+      .ilike('name', `%${data.supplier_name}%`)
+      .maybeSingle();
 
-    // El client envia l'arxiu com a 'FormData'.
-    const formData = await req.formData();
-    const file = formData.get('document');
-    if (!file) throw new Error("No s'ha proporcionat cap arxiu al camp 'document'.");
+    if (findError) {
+      console.warn('Error buscant proveïdor:', findError.message);
+    }
 
-    // Enviem l'arxiu directament a l'API de Mindee per al seu processament.
-    const mindeeResponse = await fetch(MINDEE_API_URL, { method: 'POST', headers: { 'Authorization': `Token ${MINDEE_API_KEY}` }, body: formData });
-    if (!mindeeResponse.ok) throw new Error(`Error de Mindee: ${JSON.stringify(await mindeeResponse.json())}`);
-    
-    const result = await mindeeResponse.json();
-    const prediction = result.document.inference.prediction; // Les dades extretes per la IA.
-
-    let contactId = null;
-    let supplierId = null;
-    const customerName = prediction.customer_name?.value;
-    const supplierName = prediction.supplier_name?.value;
-// Lògica per buscar si el client extret ja existeix com a contacte.
-    // Si no existeix, el crea. Això enriqueix automàticament el CRM.
-    if (customerName) {
-      const { data: foundContact } = await supabaseAdmin.from('contacts').select('id').eq('user_id', user.id).ilike('nom', `%${customerName}%`).limit(1).single();
-      if (foundContact) contactId = foundContact.id;
-      else {
-        const { data: newContact } = await supabaseAdmin.from('contacts').insert({ user_id: user.id, nom: customerName, estat: 'Client' }).select('id').single();
-        if (newContact) contactId = newContact.id;
+    if (existingSupplier) {
+      supplierId = existingSupplier.id;
+    } else {
+      // Si no existeix, el creem
+      const { data: newSupplier, error: createError } = await supabaseAdmin
+        .from('suppliers')
+        .insert({
+          name: data.supplier_name,
+          team_id: teamId,
+        })
+        .select('id')
+        .single();
+      
+      if (createError) {
+        console.warn('Error creant proveïdor:', createError.message);
+      } else if (newSupplier) {
+        supplierId = newSupplier.id;
       }
     }
-    // Lògica similar per al proveïdor.
-    if (supplierName) {
-        const { data: foundSupplier } = await supabaseAdmin.from('suppliers').select('id').eq('user_id', user.id).ilike('nom', `%${supplierName}%`).limit(1).single();
-        if (foundSupplier) {
-            supplierId = foundSupplier.id;
-        } else {
-            const { data: newSupplier } = await supabaseAdmin.from('suppliers').insert({ user_id: user.id, nom: supplierName }).select('id').single();
-            if (newSupplier) supplierId = newSupplier.id;
-        }
-    }
-    // Mapegem els conceptes (línies de la factura) extrets per Mindee al nostre format de dades.
-    
-    const lineItems = (prediction.line_items || []).map(item => ({
-      description: item.description || '',
-      quantity: item.quantity || 1,
-      unit_price: item.unit_price || 0,
-    }));
-    // Lògica per calcular el descompte si Mindee no el proporciona explícitament.
+  }
 
-    const lineItemsSubtotal = lineItems.reduce((acc, item) => acc + (item.quantity * item.unit_price), 0);
-    const mindeeSubtotal = prediction.total_net?.value || lineItemsSubtotal;
-    const discountAmount = parseFloat((lineItemsSubtotal - mindeeSubtotal).toFixed(2));
-// Construïm l'objecte final amb totes les dades extretes i processades.
-    const extractedData = {
-      contact_id: contactId,
+  // 2. Inserir la despesa (esborrany)
+  const { data: newExpense, error: expenseError } = await supabaseAdmin
+    .from('expenses')
+    .insert({
+      team_id: teamId,
+      user_id: userId,
       supplier_id: supplierId,
-      invoice_number: prediction.invoice_number?.value || null,
-      issue_date: prediction.date?.value || null,
-      due_date: prediction.due_date?.value || null,
-      description: supplierName ? `Compra a ${supplierName}` : null,
-      notes: prediction.supplier_name?.value ? `Factura de: ${prediction.supplier_name.value}` : '',
-      subtotal: prediction.total_net?.value || 0,
-      tax_amount: prediction.total_tax?.value || 0,
-      total_amount: prediction.total_amount?.value || 0,
-      discount_amount: discountAmount > 0 ? discountAmount : null,
-      expense_items: lineItems.length > 0 ? lineItems : [{ description: '', quantity: 1, unit_price: 0 }],
-    };
-     // Retornem les dades extretes al client perquè pugui pre-omplir el formulari de despeses.
-    return new Response(JSON.stringify(extractedData), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
+      expense_date: data.invoice_date || new Date().toISOString().split('T')[0],
+      total_amount: data.total_amount || 0,
+      tax_amount: data.tax_amount || 0,
+      status: 'pending', // -> ESTAT ESBORRANY
+      description: `Factura ${data.invoice_number || 'sense número'} de ${data.supplier_name || 'proveïdor desconegut'}`,
+      currency: (data.currency || 'EUR').toUpperCase(),
+    })
+    .select('id')
+    .single();
+
+  if (expenseError) {
+    console.error('Error greu creant despesa:', expenseError);
+    throw new Error(`Error creant despesa: ${expenseError.message}`);
+  }
+
+  if (!newExpense) {
+    throw new Error('No s\'ha pogut crear la despesa.');
+  }
+
+  // 3. Enllaçar l'adjunt a la nova despesa
+  const { error: attachmentError } = await supabaseAdmin
+    .from('expense_attachments')
+    .insert({
+      expense_id: newExpense.id,
+      file_path: filePath,
+      file_name: fileName,
+      team_id: teamId,
+      uploaded_by: userId,
+    });
+
+  if (attachmentError) {
+    // Això no és tan greu com per revertir-ho, només ho registrem
+    console.error('Error enllaçant adjunt:', attachmentError.message);
+  }
+
+  return { expenseId: newExpense.id };
+}
+
+// Handler principal de l'Edge Function
+Deno.serve(async (req: Request) => {
+  // Gestionar la petició OPTIONS (preflight) per a CORS
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { filePath, teamId, userId, fileName } = await req.json();
+
+    if (!filePath || !teamId || !userId || !fileName) {
+      return new Response(JSON.stringify({ error: 'Paràmetres invàlids: filePath, teamId, userId i fileName són requerits' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Crear un client Supabase (amb rol 'service_role') per a operacions d'admin
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    );
+
+    // 1. Descarregar el fitxer de Storage
+    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+      .from('expense-uploads') // Assegura't que el bucket existeix
+      .download(filePath);
+
+    if (downloadError) {
+      throw new Error(`Error descarregant fitxer: ${downloadError.message}`);
+    }
+
+    // 2. Convertir el Blob a Base64 per enviar a OpenAI
+    const fileBuffer = await fileData.arrayBuffer();
+    const fileBase64 = btoa(
+      new Uint8Array(fileBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+    const mimeType = fileData.type;
+
+    // 3. Crida a GPT-4o (Vision)
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `
+                Analitza aquesta factura (PDF/PNG) i extreu les següents dades.
+                Retorna ÚNICAMENT un objecte JSON vàlid.
+                Els camps són: 
+                - supplier_name: Nom del proveïdor (string)
+                - invoice_number: Número de factura (string)
+                - invoice_date: Data d'emissió (string, format YYYY-MM-DD)
+                - total_amount: Import total (number)
+                - tax_amount: Import d'impostos (number)
+                - currency: Moneda (string, codi ISO 3 lletres, ex: "EUR")
+                
+                Si una dada no es pot extreure, posa 'null'.
+                El format de la data ha de ser estrictament YYYY-MM-DD.
+                El nom del proveïdor ha de ser el nom legal o comercial, no una persona de contacte.
+              `,
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${fileBase64}`,
+              },
+            },
+          ],
+        },
+      ],
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error('Resposta buida d\'OpenAI');
+    }
+
+    const extractedData: ExtractedExpenseData = JSON.parse(content);
+
+    // 4. Crear l'esborrany a la base de dades
+    const { expenseId } = await createDraftExpense(
+      supabaseAdmin,
+      extractedData,
+      teamId,
+      userId,
+      filePath,
+      fileName
+    );
+
+    // Retornar èxit
+    return new Response(JSON.stringify({ success: true, expenseId }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    });
   } catch (error) {
-    console.error('[ERROR PROCESSAR-FACTURA]', error.message);
-    return new Response(JSON.stringify({ error: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+    console.error('Error a processar-factura:', error);
+    const errorMessage = typeof error === 'object' && error !== null && 'message' in error
+      ? (error as { message: string }).message
+      : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500,
+    });
   }
 });

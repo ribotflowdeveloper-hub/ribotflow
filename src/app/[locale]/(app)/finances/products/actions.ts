@@ -1,11 +1,11 @@
+// /src/app/[locale]/(app)/finances/products/actions.ts (CORREGIT)
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from 'next/navigation';
-// ✅ 1. Importem els guardians
 import { 
-  validateSessionAndPermission,
-  validateActionAndUsage
+  validateSessionAndPermission,
+  validateActionAndUsage
 } from "@/lib/permissions/permissions";
 import { PERMISSIONS } from "@/lib/permissions/permissions.config";
 import { type PlanLimit } from "@/config/subscriptions";
@@ -13,83 +13,96 @@ import { type PlanLimit } from "@/config/subscriptions";
 import { type PaginatedActionParams } from '@/hooks/usePaginateResource';
 import * as productService from '@/lib/services/finances/products/products.service';
 import type { 
-  ProductPageFilters, 
-  FormState, 
-  PaginatedProductsData,
+  ProductPageFilters, 
+  FormState, 
+  PaginatedProductsData,
 } from '@/lib/services/finances/products/products.service';
 
-// --- Acció per Obtenir Dades Paginades ---
+// ... (fetchPaginatedProducts i getUniqueProductCategories es queden igual) ...
+
 export async function fetchPaginatedProducts(
-  params: PaginatedActionParams<ProductPageFilters>
+  params: PaginatedActionParams<ProductPageFilters>
 ): Promise<PaginatedProductsData> {
-
-  // ✅ 2. Validació de VISTA
-  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
-  if ("error" in session) {
-    return { data: [], count: 0 };
-  }
-  const { supabase, activeTeamId } = session;
-
-  return await productService.getPaginatedProducts(supabase, activeTeamId, params);
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+  if ("error" in session) {
+    return { data: [], count: 0 };
+  }
+  const { supabase, activeTeamId } = session;
+  return await productService.getPaginatedProducts(supabase, activeTeamId, params);
 }
-
-// --- Acció per Obtenir Categories Úniques (Cache) ---
 export async function getUniqueProductCategories(): Promise<string[]> {
-  // ✅ 3. Validació de VISTA
-  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
-  if ("error" in session) return [];
-  
-  // Passem 'activeTeamId' que ve de la sessió validada
-  return productService.getUniqueProductCategories(session.activeTeamId);
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+  if ("error" in session) return [];
+  return productService.getUniqueProductCategories(session.activeTeamId);
 }
 
 // --- Funcions CRUD (per a useFormState) ---
 
 export async function createProduct(
-  prevState: FormState,
-  formData: FormData
+  prevState: FormState,
+  formData: FormData
 ): Promise<FormState> {
-  // ✅ 4. Validació de CREACIÓ (Permís + Límit)
-  const limitToCheck: PlanLimit = 'maxProducts';
-  const session = await validateActionAndUsage(
-    PERMISSIONS.MANAGE_PRODUCTS,
-    limitToCheck
-  );
-  if ('error' in session) {
-    return { success: false, message: session.error.message };
-  }
-  const { supabase, user, activeTeamId } = session;
+  const limitToCheck: PlanLimit = 'maxProducts';
+  const session = await validateActionAndUsage(
+    PERMISSIONS.MANAGE_PRODUCTS,
+    limitToCheck
+  );
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, user, activeTeamId } = session;
 
-  const result = await productService.createProduct(supabase, user.id, activeTeamId, formData);
+  // ✅✅✅ INICI DE LA CORRECCIÓ ✅✅✅
+  // El 'ProductSelector' només envia 'name' i 'price'.
+  // El nostre 'productSchema' espera 'tax_rate'.
+  // L'assignem aquí un valor per defecte abans de validar,
+  // per evitar l'error "Introdueix un número."
+  
+  // 1. Comprovem si 'tax_rate' ve del formulari.
+  const taxRateFromForm = formData.get('tax_rate');
 
-  if (result.success) {
-    revalidatePath('/crm/products'); // Compte! La ruta és /crm/products
-  }
+  // 2. Si no ve (és el cas del ProductSelector), li posem '0' (o 0.21 si prefereixes).
+  // '0' és més segur. '0.21' és el valor per defecte a Espanya. Tria tu.
+  // Jo posaré '0' (com a string, ja que és FormData) per a més seguretat.
+  if (taxRateFromForm === null) {
+    formData.set('tax_rate', '0'); 
+  }
+  // ✅✅✅ FI DE LA CORRECCIÓ ✅✅✅
 
-  return result;
+  // Ara la validació de 'productService.createProduct' rebrà el 'tax_rate'
+  // i 'z.coerce.number()' funcionarà correctament.
+  const result = await productService.createProduct(supabase, user.id, activeTeamId, formData);
+
+  if (result.success) {
+    // Hem de revalidar tant 'crm' com 'finances' si les rutes conviuen
+    revalidatePath('/crm/products'); 
+    revalidatePath('/finances/products');
+    // Important: També revalidem l'editor de 'quotes' perquè
+    // el 'ProductSelector' tingui la nova llista!
+    revalidatePath('/crm/quotes/[id]', 'page');
+    revalidatePath('/finances/quotes/[id]', 'page');
+  }
+
+  return result;
 }
 
-/**
- * ACCIÓ: Elimina un producte.
- */
+// ... (deleteProduct es queda igual) ...
 export async function deleteProduct(productId: number): Promise<FormState> {
-  // ✅ 5. Validació de GESTIÓ
-  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_PRODUCTS);
-  if ('error' in session) {
-    return { success: false, message: session.error.message };
-  }
-  const { supabase } = session;
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_PRODUCTS);
+  if ('error' in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase } = session;
 
-  const result = await productService.deleteProduct(supabase, productId);
+  const result = await productService.deleteProduct(supabase, productId);
 
-  if (result.success) {
-    // La teva ruta de revalidació és /finances/products, però l'acció és a /crm/products
-    // Assegura't que sigui la correcta. Deixaré la que tenies.
-    revalidatePath('/finances/products'); 
-  } else {
-    return { success: false, message: result.message };
-  }
-
-  // La teva ruta de redirecció és /finances/products
-  redirect(`/finances/products`);
+  if (result.success) {
+    revalidatePath('/finances/products');
+    revalidatePath('/crm/products'); // Revalidem les dues
+  } else {
+    return { success: false, message: result.message };
+  }
+  
+  // Redirigim a la llista principal
+  redirect(`/finances/products`);
 }

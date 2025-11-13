@@ -133,5 +133,6 @@ export function useExpenseDetail({
         handleAddItem,
         handleRemoveItem,
         t,
+        setFormData, // 👈 AFEGIR AQUESTA LÍNIA
     };
 }

@@ -2,7 +2,7 @@
 
 import type { Contact } from "@/types/db"; 
 // import { Database } from '@/types/supabase'; // Si l'SDK ho genera automàticament
-
+import type { ActionResult } from '../shared/actionResult'; // Tipus genèric per a resultats d'accions
 // --- 1. Tipus d'Elements (Basats en les teves definicions) ---
 
 export type ExpenseItem = {
@@ -86,3 +86,38 @@ export const EXPENSE_STATUS_MAP = [
     { dbValue: 'reimbursed', key: 'reimbursed', colorClass: 'bg-blue-100' },
     { dbValue: 'rejected', key: 'rejected', colorClass: 'bg-red-600' },
 ];
+
+// src/types/finances/expenses.ts
+
+// ... (els teus altres tipus com ExpenseDetail, ExpenseItem, etc.)
+
+/**
+ * Tipus per a les dades d'un concepte extretes per l'IA.
+ */
+export interface AnalyzedExpenseItem {
+  description: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+}
+
+/**
+ * L'objecte de dades complet que retorna l'IA,
+ * enriquit amb el supplier_id de la nostra BD.
+ */
+export interface ExpensesAnalysisData {
+  supplier_name: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null; // YYYY-MM-DD
+  total_amount: number | null;
+  tax_amount: number | null;
+  tax_rate: number | null; // <-- Camp obligatori (pot ser null)
+  currency: string | null;
+  items: AnalyzedExpenseItem[];
+  supplier_id: string | null; // L'ID resolt de la nostra BD
+}
+
+/**
+ * El tipus de retorn complet de la nostra Server Action,
+ * utilitzant el teu 'ActionResult' genèric.
+ */
+export type ExpensesAnalysisActionResult = ActionResult<ExpensesAnalysisData>;

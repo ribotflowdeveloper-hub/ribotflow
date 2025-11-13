@@ -1421,6 +1421,27 @@ export type Database = {
           },
         ]
       }
+      platform_documents: {
+        Row: {
+          content: string
+          embedding: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          content: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          content?: string
+          embedding?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
       prices: {
         Row: {
           active: boolean | null
@@ -1471,9 +1492,9 @@ export type Database = {
           discount: number | null
           id: number
           is_active: boolean
-          iva: number | null
           name: string
           price: number
+          tax_rate: number | null
           team_id: string | null
           unit: string | null
           user_id: string
@@ -1485,9 +1506,9 @@ export type Database = {
           discount?: number | null
           id?: number
           is_active?: boolean
-          iva?: number | null
           name: string
           price: number
+          tax_rate?: number | null
           team_id?: string | null
           unit?: string | null
           user_id: string
@@ -1499,9 +1520,9 @@ export type Database = {
           discount?: number | null
           id?: number
           is_active?: boolean
-          iva?: number | null
           name?: string
           price?: number
+          tax_rate?: number | null
           team_id?: string | null
           unit?: string | null
           user_id?: string
@@ -1708,7 +1729,8 @@ export type Database = {
         Row: {
           contact_id: number | null
           created_at: string | null
-          discount: number | null
+    
+          discount_amount: number | null
           expiry_date: string | null
           id: number
           issue_date: string
@@ -1723,17 +1745,21 @@ export type Database = {
           show_quantity: boolean
           status: Database["public"]["Enums"]["quote_status"] | null
           subtotal: number
-          tax: number | null
-          tax_percent: number | null
+     
+          tax_amount: number | null
+     
+          tax_rate: number | null
           team_id: string | null
           theme_color: string | null
-          total: number
+   
+          total_amount: number | null
           user_id: string
         }
         Insert: {
           contact_id?: number | null
           created_at?: string | null
           discount?: number | null
+          discount_amount?: number | null
           expiry_date?: string | null
           id?: number
           issue_date: string
@@ -1749,16 +1775,20 @@ export type Database = {
           status?: Database["public"]["Enums"]["quote_status"] | null
           subtotal: number
           tax?: number | null
+          tax_amount?: number | null
           tax_percent?: number | null
+          tax_rate?: number | null
           team_id?: string | null
           theme_color?: string | null
           total: number
+          total_amount?: number | null
           user_id: string
         }
         Update: {
           contact_id?: number | null
           created_at?: string | null
           discount?: number | null
+          discount_amount?: number | null
           expiry_date?: string | null
           id?: number
           issue_date?: string
@@ -1774,10 +1804,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["quote_status"] | null
           subtotal?: number
           tax?: number | null
+          tax_amount?: number | null
           tax_percent?: number | null
+          tax_rate?: number | null
           team_id?: string | null
           theme_color?: string | null
           total?: number
+          total_amount?: number | null
           user_id?: string
         }
         Relationships: [
@@ -2998,6 +3031,19 @@ export type Database = {
       }
       longtransactionsenabled: { Args: never; Returns: boolean }
       match_documents: {
+        Args: {
+          match_count: number
+          match_threshold: number
+          query_embedding: string
+        }
+        Returns: {
+          content: string
+          id: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
+      match_platform_documents: {
         Args: {
           match_count: number
           match_threshold: number
