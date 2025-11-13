@@ -86,7 +86,7 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
 
           <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
             <LabelText label={t('table.price')}>{formatCurrency(product.price ?? 0)}</LabelText>
-            <LabelText label={t('table.vat')}>{product.iva !== null ? `${product.iva}%` : '-'}</LabelText>
+            <LabelText label={t('table.vat')}>{product.tax_rate !== null ? `${product.tax_rate}%` : '-'}</LabelText>
             <LabelText label={t('form.discountLabel')}>{product.discount !== null ? `${product.discount}%` : '-'}</LabelText>
             <LabelText label={t('table.unit')}>{product.unit}</LabelText>
             <LabelText label={t('table.created')}>{product.created_at ? formatDate(product.created_at) : '-'}</LabelText>

@@ -96,14 +96,7 @@ export async function QuoteEditorData({
       tax_amount: 0,        // 👈 Nom correcte
       tax_rate: 0.21,       // 👈 VALOR CORRECTE (decimal)
       total_amount: 0,      // 👈 Nom correcte
-      // --- Fi Canvis FASE 1 ---
 
-      // --- Add missing fields for type compatibility ---
-      discount: 0,
-      tax: 0,
-      tax_percent: 0,
-      total: 0,
-      // --- End missing fields ---
 
       show_quantity: true,
       created_at: new Date().toISOString(),

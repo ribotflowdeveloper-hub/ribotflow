@@ -25,7 +25,7 @@ export function QuoteDetailDialog({ quote, open, onOpenChange }: Props) {
         </DialogHeader>
         <div className="space-y-2 py-4">
           <p><strong>Client:</strong> {quote.contacts?.nom || 'N/A'}</p>
-          <p><strong>Total:</strong> {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(quote.total)}</p>
+          <p><strong>Total:</strong> {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(quote.total_amount ?? 0)}</p>
           <p><strong>Estat:</strong> {quote.status}</p>
         </div>
         {/* ✅ NOU: Peu del diàleg amb el botó de redirecció */}

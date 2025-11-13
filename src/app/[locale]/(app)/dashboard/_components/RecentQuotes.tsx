@@ -47,7 +47,7 @@ const QuoteItem = ({ quote }: { quote: EnrichedQuote }) => {
           </p>
         </div>
         <div className="text-right">
-          <p className="font-bold text-sm">€{quote.total?.toLocaleString('es-ES') || '0'}</p>
+          <p className="font-bold text-sm">€{quote.total_amount?.toLocaleString('es-ES') || '0'}</p>
           <div className={cn("flex items-center justify-end gap-1 text-xs font-semibold", statusConfig[currentStatus]?.className)}>
             <Icon className="w-3 h-3" />
             <span>{quote.status}</span>

@@ -10,9 +10,12 @@ import { searchSuppliers } from "@/app/[locale]/(app)/finances/suppliers/actions
 // Tipus local
 type MinimalSupplier = Pick<Supplier, 'id' | 'nom'>;
 
+// ✅ CORRECCIÓ: Afegim 'name' i 'defaultValue' a les props
 interface SupplierComboboxProps {
-    value: string | null;
-    onChange: (value: string | null) => void;
+    value?: string | null; // És opcional si s'usa 'defaultValue'
+    onChange?: (value: string | null) => void; // És opcional si s'usa 'name'
+    name?: string;
+    defaultValue?: string | null;
     initialSupplier: MinimalSupplier | null;
     disabled?: boolean;
 }
@@ -20,6 +23,8 @@ interface SupplierComboboxProps {
 export function SupplierCombobox({ 
     value, 
     onChange, 
+    name, 
+    defaultValue, 
     initialSupplier, 
     disabled 
 }: SupplierComboboxProps) {
@@ -27,11 +32,13 @@ export function SupplierCombobox({
 
     return (
       <EntitySelector<MinimalSupplier>
-        // --- Props del Selector ---
+        // --- Props del Selector (Controlades i No Controlades) ---
         value={value}
         onChange={onChange}
+        name={name} // ✅ Passat a EntitySelector
+        defaultValue={defaultValue} // ✅ Passat a EntitySelector
         disabled={disabled}
-        initialItem={initialSupplier} // Passa l'item inicial
+        initialItem={initialSupplier}
         
         // --- Gestió de Dades (Dinàmica) ---
         searchAction={searchSuppliers}

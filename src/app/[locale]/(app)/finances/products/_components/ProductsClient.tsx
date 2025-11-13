@@ -102,7 +102,7 @@ export function ProductsClient({
        accessorKey: 'iva',
        header: t('table.vat'),
        enableSorting: false,
-       cell: (product) => (product.iva !== null ? `${product.iva}%` : '-'),
+       cell: (product) => (product.tax_rate !== null ? `${product.tax_rate}%` : '-'),
      },
      {
        accessorKey: 'unit',
