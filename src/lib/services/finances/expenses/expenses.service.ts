@@ -36,7 +36,7 @@ type RpcSearchResult = {
   is_billable: boolean;
   project_id: string | null;
 };
-type RpcArgs = Database['public']['Functions']['search_expenses']['Args'];
+type RpcArgs = Database['public']['Functions']['get_filtered_expenses']['Args'];
 // ---
 // ⚙️ FUNCIONS DE SERVEI (LLISTA)
 // ---
@@ -70,7 +70,7 @@ export async function fetchPaginatedExpenses(
 
   // Els teus logs són perfectes
   console.log(
-    "expenses.service.ts: Trucant RPC 'search_expenses' amb paràmetres:",
+    "expenses.service.ts: Trucant RPC 'get_filtered_expenses' amb paràmetres:",
     JSON.stringify(rpcParams, null, 2),
   );
 
@@ -79,14 +79,14 @@ export async function fetchPaginatedExpenses(
   // 👇 AQUESTA ÉS L'ÚNICA LÍNIA MODIFICADA 👇
   // Afegim 'as any' per saltar la comprovació de tipus incorrecta de Supabase (ts(2345))
   const { data: rpcData, error: rpcError } = await supabase.rpc(
-    "search_expenses",
+    "get_filtered_expenses",
     rpcParams as unknown as RpcArgs,
   );
   // 👆 AQUESTA ÉS L'ÚNICA LÍNIA MODIFICADA 👆
 
   if (rpcError) {
     console.error(
-      "Error calling RPC search_expenses (service):",
+      "Error calling RPC get_filtered_expenses (service):",
       rpcError.message,
     );
     throw new Error("Error en carregar les dades de despeses.");
@@ -94,7 +94,7 @@ export async function fetchPaginatedExpenses(
 
   // LOG 2
   console.log(
-    `expenses.service.ts: RPC 'search_expenses' ha retornat ${
+    `expenses.service.ts: RPC 'get_filtered_expenses' ha retornat ${
       rpcData?.length || 0
     } files.`,
   );

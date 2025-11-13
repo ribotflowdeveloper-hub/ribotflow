@@ -4,14 +4,17 @@ import type { Contact } from "@/types/db";
 // import { Database } from '@/types/supabase'; // Si l'SDK ho genera automàticament
 import type { ActionResult } from '../shared/actionResult'; // Tipus genèric per a resultats d'accions
 // --- 1. Tipus d'Elements (Basats en les teves definicions) ---
+import { TaxRate } from './taxes'; // Importem el tipus TaxRate
 
+// MODIFICAT: ExpenseItem ara inclou els impostos per a l'estat del formulari
 export type ExpenseItem = {
-    id?: number; // bigint (opcional per a la creació, present per a l'actualització)
-    expense_id: number; // Clau forana, afegida aquí per claredat en la sincronització
+    id?: number | string; // ID temporal (Date.now()) o real (UUID/number)
+    expense_id: number;
     description: string;
     quantity: number;
     unit_price: number;
-    total: number; // Afegit per consistència amb el càlcul
+    total: number; // (quantity * unit_price)
+    taxes: TaxRate[]; // Llista d'impostos seleccionats per aquest item
 };
 
 export type ExpenseAttachment = {
@@ -37,22 +40,50 @@ export interface Expense {
     category: string | null;
     created_at: string;
     invoice_number: string | null;
-    tax_amount: number | null;
+    
+    // --- NOUS CAMPS DE TOTALS ---
     subtotal: number | null;
     discount_amount: number | null;
-    notes: string | null;
-    tax_rate: number | null;
-    supplier_id: string | null;
+    tax_amount: number; // Suma de 'vat' (IVA)
+    retention_amount: number; // Suma de 'retention' (IRPF)
     
-    // ✅ NOU: Camps afegits
-    status: ExpenseStatus;
-    payment_date: string | null; // format YYYY-MM-DD
+    notes: string | null;
+    
+    // --- CAMPS ANTICS (LEGACY) ---
+    legacy_tax_rate: number | null; // <-- El camp reanomenat
+    legacy_tax_amount: number | null; // <-- El camp reanomenat
+
+    // --- NOUS CAMPS DE LA MIGRACIÓ ---
+    currency: string;
+    due_date: string | null;
+
+    // --- CAMPS DE GESTIÓ ---
+    supplier_id: string | null;
+    status: ExpenseStatus; // Assegura't que 'ExpenseStatus' estigui definit
+    payment_date: string | null; 
     payment_method: string | null;
     is_billable: boolean;
     project_id: string | null;
     is_reimbursable: boolean;
+    
+    // ❌ EL CAMP 'tax_rate' JA NO EXISTEIX AQUÍ
 }
-// --- 3. Tipus Compostos (per a les vistes i accions) ---
+
+// ... (la resta dels teus tipus: ExpenseWithContact, ExpenseDetail, ExpenseFormDataForAction)
+// Assegura't que 'ExpenseFormDataForAction' OMET els camps 'legacy_'
+export type ExpenseFormDataForAction = Omit<
+  Expense,
+  | 'id' 
+  | 'created_at' 
+  | 'user_id' 
+  | 'team_id' 
+  // | 'suppliers' // Afegeix 'suppliers' si el tenies al Omit
+  | 'legacy_tax_rate' // 👈 Important
+  | 'legacy_tax_amount' // 👈 Important
+> & {
+  id?: string | number | null; 
+  expense_items: ExpenseItem[]; 
+};
 
 // Tipus usat a la llista (només amb el nom del proveïdor)
 export type ExpenseWithContact = Expense & {
@@ -67,16 +98,6 @@ export type ExpenseDetail = ExpenseWithContact & {
 };
 
 
-// Tipus que s'envia a `saveExpenseAction`
-// Exclou camps de DB auto-generats/gestionats per la sessió (user_id, team_id, created_at)
-// Exclou camps de relació que no van a la taula principal (suppliers, attachments)
-export type ExpenseFormDataForAction = Omit<
-  Expense,
-  'id' | 'created_at' | 'user_id' | 'team_id' | 'suppliers' // 'suppliers' s'elimina
-> & {
-    id?: string | number | null; // L'ID pot ser opcional o string/number
-    expense_items?: ExpenseItem[]; // Els ítems venen separats
-};
 
 
 // Mapeig d'Estatus de Despeses (configuració d'UI, utilitzat a ExpensesClient)
@@ -121,3 +142,5 @@ export interface ExpensesAnalysisData {
  * utilitzant el teu 'ActionResult' genèric.
  */
 export type ExpensesAnalysisActionResult = ActionResult<ExpensesAnalysisData>;
+
+

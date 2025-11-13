@@ -1111,7 +1111,7 @@
     "editTitle": "Editar Despesa #{number}",
     "createTitle": "Crear Nova Despesa",
     "aiHelperText": "Utilitza l'assistent d'IA per omplir automàticament els detalls de la despesa a partir de la factura.",
-    
+    "aiHelperTitle": "Assistent d'IA per a Despeses",
     "title": {
       "new": "Nova Despesa",
       "edit": "Editar Despesa"
@@ -1153,7 +1153,15 @@
     },
     "label": {
       "subtotal": "Subtotal",
-      "total": "Total"
+      "total": "Total",
+      "tax": "Impostos",
+      "discount": "Descompte",
+      "retention": "Retenció"
+
+    },
+    "alert": {
+      "aiAnalysisFailed": "L'anàlisi amb IA ha fallat. Si us plau, prova-ho de nou més tard.",
+      "saveToUpload": "Desa la despesa per poder pujar els adjunts."
     },
     "upload": {
       "dragAndDrop": "Arrossega aquí un fitxer o fes clic per pujar-lo."
@@ -1172,6 +1180,12 @@
       "quantity": "Quant.",
       "unitPrice": "Preu Unit.",
       "total": "Total",
+      "taxes": "Impostos",
+      "searchTax": "Cerca tipus d'impost...",
+      "noTaxFound": "No s'ha trobat cap tipus d'impost.",
+      "addManualItem": "Afegeix línia manual",
+      "addTax": "Afegeix nou impost",
+      "multipleTaxes": "Impostos Múltiples",
       "placeholder": {
         "description": "Concepte del servei o producte"
       },
@@ -1980,7 +1994,8 @@
       "title": "Accions",
       "cancel": "Cancel·lar",
       "back" : "Enrere",
-      "save": "Desar"
+      "save": "Desar",
+      "saving": "Desant..."
     },
     "deleteDialog": {
       "title": "Estàs segur?",

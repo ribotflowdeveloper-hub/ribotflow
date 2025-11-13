@@ -619,6 +619,58 @@ export type Database = {
           },
         ]
       }
+      expense_item_taxes: {
+        Row: {
+          amount: number
+          expense_item_id: string
+          id: string
+          name: string
+          rate: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Insert: {
+          amount: number
+          expense_item_id: string
+          id?: string
+          name: string
+          rate: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Update: {
+          amount?: number
+          expense_item_id?: string
+          id?: string
+          name?: string
+          rate?: number
+          tax_rate_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_item_taxes_expense_item_id_fkey"
+            columns: ["expense_item_id"]
+            isOneToOne: false
+            referencedRelation: "expense_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_item_taxes_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_item_taxes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_items: {
         Row: {
           created_at: string | null
@@ -667,23 +719,27 @@ export type Database = {
         Row: {
           category: string | null
           created_at: string
+          currency: string
           description: string
           discount_amount: number | null
+          due_date: string | null
           expense_date: string
           extra_data: Json | null
           id: number
           invoice_number: string | null
           is_billable: boolean
           is_reimbursable: boolean
+          legacy_tax_amount: number | null
+          legacy_tax_rate: number | null
           notes: string | null
           payment_date: string | null
           payment_method: string | null
           project_id: string | null
+          retention_amount: number
           status: Database["public"]["Enums"]["expense_status"]
           subtotal: number | null
           supplier_id: string | null
-          tax_amount: number | null
-          tax_rate: number | null
+          tax_amount: number
           team_id: string | null
           total_amount: number
           user_id: string
@@ -691,23 +747,27 @@ export type Database = {
         Insert: {
           category?: string | null
           created_at?: string
+          currency?: string
           description: string
           discount_amount?: number | null
+          due_date?: string | null
           expense_date: string
           extra_data?: Json | null
           id?: number
           invoice_number?: string | null
           is_billable?: boolean
           is_reimbursable?: boolean
+          legacy_tax_amount?: number | null
+          legacy_tax_rate?: number | null
           notes?: string | null
           payment_date?: string | null
           payment_method?: string | null
           project_id?: string | null
+          retention_amount?: number
           status?: Database["public"]["Enums"]["expense_status"]
           subtotal?: number | null
           supplier_id?: string | null
-          tax_amount?: number | null
-          tax_rate?: number | null
+          tax_amount?: number
           team_id?: string | null
           total_amount: number
           user_id: string
@@ -715,23 +775,27 @@ export type Database = {
         Update: {
           category?: string | null
           created_at?: string
+          currency?: string
           description?: string
           discount_amount?: number | null
+          due_date?: string | null
           expense_date?: string
           extra_data?: Json | null
           id?: number
           invoice_number?: string | null
           is_billable?: boolean
           is_reimbursable?: boolean
+          legacy_tax_amount?: number | null
+          legacy_tax_rate?: number | null
           notes?: string | null
           payment_date?: string | null
           payment_method?: string | null
           project_id?: string | null
+          retention_amount?: number
           status?: Database["public"]["Enums"]["expense_status"]
           subtotal?: number | null
           supplier_id?: string | null
-          tax_amount?: number | null
-          tax_rate?: number | null
+          tax_amount?: number
           team_id?: string | null
           total_amount?: number
           user_id?: string
@@ -1729,7 +1793,6 @@ export type Database = {
         Row: {
           contact_id: number | null
           created_at: string | null
-    
           discount_amount: number | null
           expiry_date: string | null
           id: number
@@ -1745,20 +1808,16 @@ export type Database = {
           show_quantity: boolean
           status: Database["public"]["Enums"]["quote_status"] | null
           subtotal: number
-     
           tax_amount: number | null
-     
           tax_rate: number | null
           team_id: string | null
           theme_color: string | null
-   
           total_amount: number | null
           user_id: string
         }
         Insert: {
           contact_id?: number | null
           created_at?: string | null
-          discount?: number | null
           discount_amount?: number | null
           expiry_date?: string | null
           id?: number
@@ -1774,20 +1833,16 @@ export type Database = {
           show_quantity?: boolean
           status?: Database["public"]["Enums"]["quote_status"] | null
           subtotal: number
-          tax?: number | null
           tax_amount?: number | null
-          tax_percent?: number | null
           tax_rate?: number | null
           team_id?: string | null
           theme_color?: string | null
-          total: number
           total_amount?: number | null
           user_id: string
         }
         Update: {
           contact_id?: number | null
           created_at?: string | null
-          discount?: number | null
           discount_amount?: number | null
           expiry_date?: string | null
           id?: number
@@ -1803,13 +1858,10 @@ export type Database = {
           show_quantity?: boolean
           status?: Database["public"]["Enums"]["quote_status"] | null
           subtotal?: number
-          tax?: number | null
           tax_amount?: number | null
-          tax_percent?: number | null
           tax_rate?: number | null
           team_id?: string | null
           theme_color?: string | null
-          total?: number
           total_amount?: number | null
           user_id?: string
         }
@@ -2133,6 +2185,44 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "team_members_with_profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      tax_rates: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          rate: number
+          team_id: string
+          type: Database["public"]["Enums"]["tax_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          rate: number
+          team_id: string
+          type?: Database["public"]["Enums"]["tax_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          rate?: number
+          team_id?: string
+          type?: Database["public"]["Enums"]["tax_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_rates_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2889,6 +2979,46 @@ export type Database = {
           total_value: number
         }[]
       }
+      get_filtered_expenses: {
+        Args: {
+          p_category: string
+          p_limit: number
+          p_offset: number
+          p_search_term: string
+          p_sort_by: string
+          p_sort_order: string
+          p_status: string
+          p_team_id: string
+        }
+        Returns: {
+          category: string
+          created_at: string
+          currency: string
+          description: string
+          discount_amount: number
+          due_date: string
+          expense_date: string
+          extra_data: Json
+          full_count: number
+          id: number
+          invoice_number: string
+          is_billable: boolean
+          is_reimbursable: boolean
+          notes: string
+          payment_date: string
+          payment_method: string
+          project_id: string
+          retention_amount: number
+          status: Database["public"]["Enums"]["expense_status"]
+          subtotal: number
+          supplier_id: string
+          supplier_nom: string
+          tax_amount: number
+          team_id: string
+          total_amount: number
+          user_id: string
+        }[]
+      }
       get_financial_summary: {
         Args: never
         Returns: {
@@ -3111,23 +3241,27 @@ export type Database = {
         Returns: {
           category: string | null
           created_at: string
+          currency: string
           description: string
           discount_amount: number | null
+          due_date: string | null
           expense_date: string
           extra_data: Json | null
           id: number
           invoice_number: string | null
           is_billable: boolean
           is_reimbursable: boolean
+          legacy_tax_amount: number | null
+          legacy_tax_rate: number | null
           notes: string | null
           payment_date: string | null
           payment_method: string | null
           project_id: string | null
+          retention_amount: number
           status: Database["public"]["Enums"]["expense_status"]
           subtotal: number | null
           supplier_id: string | null
-          tax_amount: number | null
-          tax_rate: number | null
+          tax_amount: number
           team_id: string | null
           total_amount: number
           user_id: string
@@ -3233,8 +3367,8 @@ export type Database = {
       }
       search_paginated_quotes: {
         Args: {
-          limit_param: number
-          offset_param: number
+          limit_param?: number
+          offset_param?: number
           search_term_param?: string
           sort_by_param?: string
           sort_order_param?: string
@@ -3246,7 +3380,7 @@ export type Database = {
           contact_id: number
           contact_nom: string
           created_at: string
-          discount: number
+          discount_amount: number
           expiry_date: string
           id: number
           issue_date: string
@@ -3261,11 +3395,11 @@ export type Database = {
           show_quantity: boolean
           status: Database["public"]["Enums"]["quote_status"]
           subtotal: number
-          tax: number
-          tax_percent: number
+          tax_amount: number
+          tax_rate: number
           team_id: string
           theme_color: string
-          total: number
+          total_amount: number
           total_count: number
           user_id: string
         }[]
@@ -3886,23 +4020,27 @@ export type Database = {
         Returns: {
           category: string | null
           created_at: string
+          currency: string
           description: string
           discount_amount: number | null
+          due_date: string | null
           expense_date: string
           extra_data: Json | null
           id: number
           invoice_number: string | null
           is_billable: boolean
           is_reimbursable: boolean
+          legacy_tax_amount: number | null
+          legacy_tax_rate: number | null
           notes: string | null
           payment_date: string | null
           payment_method: string | null
           project_id: string | null
+          retention_amount: number
           status: Database["public"]["Enums"]["expense_status"]
           subtotal: number | null
           supplier_id: string | null
-          tax_amount: number | null
-          tax_rate: number | null
+          tax_amount: number
           team_id: string | null
           total_amount: number
           user_id: string
@@ -3941,6 +4079,7 @@ export type Database = {
         | "Perdut"
       quote_status: "Draft" | "Sent" | "Accepted" | "Declined" | "Invoiced"
       task_priority: "Baixa" | "Mitjana" | "Alta"
+      tax_type: "vat" | "retention"
       ticket_filter: "tots" | "rebuts" | "enviats" | "noLlegits"
       ticket_status:
         | "Obert"
@@ -4101,6 +4240,7 @@ export const Constants = {
       ],
       quote_status: ["Draft", "Sent", "Accepted", "Declined", "Invoiced"],
       task_priority: ["Baixa", "Mitjana", "Alta"],
+      tax_type: ["vat", "retention"],
       ticket_filter: ["tots", "rebuts", "enviats", "noLlegits"],
       ticket_status: [
         "Obert",

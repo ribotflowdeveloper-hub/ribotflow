@@ -7,14 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Save, FileText, AlertTriangle, ArrowLeft, TriangleAlert } from 'lucide-react';
+import { Loader2, Plus, Save, FileText, AlertTriangle, ArrowLeft, TriangleAlert, Sparkles } from 'lucide-react'; // ✅ Importem Sparkles
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 // Tipus
-import { type ExpenseDetail, type ExpenseAttachment } from '@/types/finances/expenses';
+import { 
+    type ExpenseDetail, 
+    type ExpenseAttachment,
+    type ExpenseItem,
+    type ExpensesAnalysisData, 
+    type AnalyzedExpenseItem
+} from '@/types/finances/index'; // ✅ Importem des de l'index
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
-import { ExpenseAIAnalyzer } from './ExpenseAIAnalyzer'; // 👈 AFEGIR NOU COMPONENT
-import { type ExpenseItem } from '@/types/finances/expenses';
+
 // Hooks i Components
 import { useExpenseDetail } from '../_hooks/useExpenseDetail';
 import { ExpenseItemsEditor } from './ExpenseItemsEditor';
@@ -22,12 +27,10 @@ import { ExpenseAttachmentCard } from './ExpenseAttachmentCard';
 import { formatCurrency, formatDate } from '@/lib/utils/formatters';
 import { SupplierCombobox } from './SupplierCombobox';
 import { ExpenseAttachmentUploader } from './ExpenseAttachmentUploader';
-import { AlertDialog, AlertDialogTitle, AlertDialogDescription } from "@/components/ui/alert-dialog";
 import { PageHeader } from '@/components/shared/PageHeader';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui';
-import { type ExpensesAnalysisData, AnalyzedExpenseItem } from '@/types/finances/expenses';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // ✅ Corregit import
+import { ExpenseAIAnalyzer } from './ExpenseAIAnalyzer';
 
-// Interfície de Props (correcta de la resposta anterior)
 interface ExpenseDetailClientProps {
     initialData: ExpenseDetail | null;
     isNew: boolean;
@@ -56,15 +59,20 @@ export function ExpenseDetailClient({
     const tShared = useTranslations('Shared');
     const t_billing = useTranslations('Shared.limits');
 
+    // ✅ 1. DESESTRUCTURACIÓ DEL HOOK (ACTUALITZADA)
+    // Recollim els nous valors del hook
     const {
         isPending,
         formData,
+        availableTaxes,      // 👈 NOU
+        isLoadingTaxes,      // 👈 NOU
         handleFieldChange,
         handleSubmit,
         handleItemChange,
+        handleItemTaxesChange, // 👈 NOU
         handleAddItem,
         handleRemoveItem,
-        setFormData, // 👈 EXPOSAR setFormData DES DEL HOOK
+        setFormData,
     } = useExpenseDetail({ initialData, isNew, userId, teamId });
 
     const [attachments, setAttachments] = useState<ExpenseAttachment[]>(
@@ -72,8 +80,7 @@ export function ExpenseDetailClient({
     );
 
     const isSaving = isPending;
-    const expenseTitle = title;
-    const locale = 'ca'; // O idealment `useLocale()`
+    const locale = 'ca'; 
 
     const isLimitExceeded = !isNew && limitStatus && !limitStatus.allowed;
 
@@ -85,7 +92,6 @@ export function ExpenseDetailClient({
         setAttachments((prev) => prev.filter(att => att.id !== attachmentId));
     };
 
-    // ✅ AQUESTA ÉS LA FUNCIÓ QUE ARA S'UTILITZARÀ
     const handleBackOrCancel = () => {
         if (fromUrl) {
             router.push(fromUrl);
@@ -93,63 +99,67 @@ export function ExpenseDetailClient({
             router.push('/finances/expenses');
         }
     };
-  
 
-    // ✅ AFEGIR: Funció que rep les dades de la IA
+    // ✅ 2. LÒGICA DE L'IA (ACTUALITZADA)
+    // Ara assigna els impostos per defecte
     const handleAnalysisComplete = (data: ExpensesAnalysisData) => {
 
-        // ✅ CORRECCIÓ: Canviem 'item: any' per 'item: AnalyzedExpenseItem'
         const newItems: ExpenseItem[] = (data.items || []).map((item: AnalyzedExpenseItem, index: number) => ({
-            id: Date.now() + index, // ID temporal pel client
-            expense_id: 0, // Ho assignarem al desar
+            id: Date.now() + index,
+            expense_id: 0,
             description: item.description || '',
             quantity: item.quantity || 1,
             unit_price: item.unit_price || 0,
             total: (item.quantity || 1) * (item.unit_price || 0),
+            taxes: availableTaxes.filter(t => t.is_default), // 👈 Assignem impostos per defecte
         }));
 
         setFormData(prev => {
-            // Recalculem totals basant-nos en les dades de la IA
-            const subtotal = newItems.reduce((acc, item) => acc + item.total, 0);
-            const discount = prev.discount_amount || 0;
-            const effectiveSubtotal = subtotal - discount;
+            // Calculem els totals basant-nos en els nous items i impostos
+            let subtotal = 0;
+            let totalVat = 0;
+            let totalRetention = 0;
+
+            newItems.forEach(item => {
+                const itemBase = (item.quantity || 0) * (item.unit_price || 0);
+                subtotal += itemBase;
+                (item.taxes || []).forEach(tax => {
+                    const taxAmount = itemBase * (tax.rate / 100);
+                    if (tax.type === 'vat') totalVat += taxAmount;
+                    else if (tax.type === 'retention') totalRetention += taxAmount;
+                });
+            });
+
+            const effectiveSubtotal = subtotal - (prev.discount_amount || 0);
             
-            // Prioritzem dades de l'IA
-            const taxRate = (data.tax_rate !== null && data.tax_rate !== undefined)
-                ? data.tax_rate
-                : prev.tax_rate; // Mantenim el valor per defecte (21) o l'existent
-
-            const taxAmount = (data.tax_amount !== null && data.tax_amount !== undefined)
-                ? data.tax_amount
-                : (effectiveSubtotal * ((taxRate ?? 0) / 100));
-
-            const totalAmount = (data.total_amount !== null && data.total_amount !== undefined)
-                ? data.total_amount
-                : (effectiveSubtotal + taxAmount);
+            // Prioritzem els totals de l'IA si existeixen
+            const finalTaxAmount = data.tax_amount ?? totalVat;
+            const finalTotalAmount = data.total_amount ?? (effectiveSubtotal + finalTaxAmount - totalRetention);
 
             return {
                 ...prev,
-                // Omplim els camps del formulari
                 description: data.supplier_name ? `Factura de ${data.supplier_name}` : (prev.description || ''),
-                supplier_id: data.supplier_id || prev.supplier_id, // ID ja resolt!
+                supplier_id: data.supplier_id || prev.supplier_id,
                 expense_date: data.invoice_date || prev.expense_date,
                 invoice_number: data.invoice_number || prev.invoice_number,
-
-                // Actualitzem totals
-                total_amount: totalAmount,
-                tax_amount: taxAmount,
-                tax_rate: taxRate,
+                
+                // Assignem els nous totals calculats
+                total_amount: finalTotalAmount,
+                tax_amount: finalTaxAmount, // Total IVA
+                retention_amount: totalRetention, // Total IRPF
                 subtotal: subtotal,
-
-                // Actualitzem conceptes (només si l'IA n'ha trobat)
+                
                 expense_items: newItems.length > 0 ? newItems : prev.expense_items,
+                
+                // Eliminem la dependència del 'tax_rate' antic
+                // legacy_tax_rate: data.tax_rate ?? prev.legacy_tax_rate, 
             };
         });
     };
+
     return (
         <div className="flex flex-col gap-4 h-full">
 
-            {/* Alerta de límit (només en edició) */}
             {isLimitExceeded && (
                 <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900">
                     <TriangleAlert className="h-4 w-4 text-yellow-900" />
@@ -167,13 +177,10 @@ export function ExpenseDetailClient({
 
             <form onSubmit={handleSubmit} className="space-y-4">
 
-                {/* ✅ CORRECCIÓ AQUÍ: Eliminem 'showBackButton' i afegim el botó com a 'child' */}
                 <PageHeader
-                    title={expenseTitle}
+                    title={title}
                     description={description}
-                // ❗ 'showBackButton' eliminat
                 >
-                    {/* ✅ Aquest és el botó de tornar correcte */}
                     <Button
                         type="button"
                         variant="outline"
@@ -185,39 +192,39 @@ export function ExpenseDetailClient({
                         <ArrowLeft className="h-4 w-4" />
                     </Button>
 
-                    {/* Botó de desar */}
                     <Button type="submit" disabled={isSaving}>
                         {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                         {isSaving ? tShared('actions.saving') : tShared('actions.save')}
                     </Button>
                 </PageHeader>
 
-                {/* Contingut Principal: Grid (2/3 + 1/3) */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-                    {/* Columna Esquerra (Formulari Principal) - 2/3 */}
                     <div className="lg:col-span-2 space-y-4">
-                        {/* ✅ Targeta 0: ASSISTENT IA (L'afegim aquí) */}
-                        {/* Només el mostrem si estem creant o si no hi ha items */}
                         {(isNew || (formData.expense_items || []).length === 0) && (
                             <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
-                                <CardContent className="pt-6">
+                                <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                                     <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                                        <Sparkles className="h-4 w-4" />
+                                        {t('aiHelperTitle') || 'Assistent IA'}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-xs text-muted-foreground mb-4">
+                                        {t('aiHelperText') || 'Puja una imatge (PNG/JPEG) i omplirem la despesa per tu.'}
+                                    </p>
                                     <ExpenseAIAnalyzer
                                         isSaving={isSaving}
                                         onAnalysisComplete={handleAnalysisComplete}
                                     />
-                                    <p className="text-xs text-muted-foreground mt-2 text-center">
-                                        {t('aiHelperText') || 'Puja una imatge (PNG/JPEG) i omplirem la despesa per tu.'}
-                                    </p>
                                 </CardContent>
                             </Card>
                         )}
-                        {/* Targeta 1: Detalls Bàsics */}
+                        
                         <Card>
                             <CardHeader><CardTitle>{t('card.generalDetails')}</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Proveïdor (Selector) */}
                                     <div className="space-y-2">
                                         <Label htmlFor="supplier_id">{t('field.supplier')}</Label>
                                         <SupplierCombobox
@@ -227,7 +234,6 @@ export function ExpenseDetailClient({
                                             disabled={isSaving}
                                         />
                                     </div>
-                                    {/* Data de la Despesa */}
                                     <div className="space-y-2">
                                         <Label htmlFor="expense_date">{t('field.expenseDate')}</Label>
                                         <Input
@@ -245,12 +251,13 @@ export function ExpenseDetailClient({
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="description">{t('field.description')}</Label>
-                                    <Textarea id="description" value={formData.description} onChange={(e) => handleFieldChange('description', e.target.value)} disabled={isSaving} rows={3} placeholder={t('placeholder.description')} />
+                                    <Textarea id="description" value={formData.description || ''} onChange={(e) => handleFieldChange('description', e.target.value)} disabled={isSaving} rows={3} placeholder={t('placeholder.description')} />
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Targeta 2: Conceptes/Línies d'Article */}
+                        {/* ✅ 3. EDITOR D'ITEMS (ACTUALITZAT) */}
+                        {/* Passem les noves props al component fill */}
                         <Card>
                             <CardHeader className='flex-row justify-between items-center'>
                                 <CardTitle>{t('card.expenseItems')}</CardTitle>
@@ -261,14 +268,16 @@ export function ExpenseDetailClient({
                             <CardContent>
                                 <ExpenseItemsEditor
                                     items={formData.expense_items || []}
+                                    availableTaxes={availableTaxes}
+                                    isLoadingTaxes={isLoadingTaxes}
                                     onItemChange={handleItemChange}
+                                    onItemTaxesChange={handleItemTaxesChange}
                                     onRemoveItem={handleRemoveItem}
                                     isSaving={isSaving}
                                 />
                             </CardContent>
                         </Card>
 
-                        {/* Targeta 3: Notes Adicionals */}
                         <Card>
                             <CardHeader><CardTitle>{t('card.notes')}</CardTitle></CardHeader>
                             <CardContent>
@@ -284,9 +293,10 @@ export function ExpenseDetailClient({
                         </Card>
                     </div>
 
-                    {/* Columna Dreta (Metadades i Totals) - 1/3 */}
                     <div className="lg:col-span-1 space-y-4">
-                        {/* Targeta 4: Totals i Impostos */}
+                        
+                        {/* ✅ 4. TARGETA DE TOTALS (ACTUALITZADA) */}
+                        {/* Mostrem els nous camps 'tax_amount' i 'retention_amount' */}
                         <Card>
                             <CardHeader><CardTitle>{t('card.totals')}</CardTitle></CardHeader>
                             <CardContent className="space-y-3">
@@ -305,28 +315,36 @@ export function ExpenseDetailClient({
                                         step="0.01"
                                     />
                                 </div>
-                                <div className="space-y-1">
-                                    <Label htmlFor="tax_rate">{t('field.taxRate')}</Label>
-                                    <div className="flex items-center space-x-2">
-                                        <Input
-                                            id="tax_rate"
-                                            type="number"
-                                            value={formData.tax_rate || 0}
-                                            onChange={(e) => handleFieldChange('tax_rate', parseFloat(e.target.value) || 0)}
-                                            disabled={isSaving}
-                                            step="0.01"
-                                        />
-                                        <span className='font-mono text-sm text-muted-foreground'>({formatCurrency(formData.tax_amount, 'EUR', locale)})</span>
-                                    </div>
+
+                                {/* Total IVA */}
+                                <div className="flex justify-between items-center text-sm">
+                                    <Label>{t('label.tax') || 'Impostos (IVA)'}</Label>
+                                    <span className="font-medium">
+                                        {formatCurrency(formData.tax_amount, 'EUR', locale)}
+                                    </span>
                                 </div>
+
+                                {/* Total Retencions */}
+                                <div className="flex justify-between items-center text-sm">
+                                    <Label>{t('label.retention') || 'Retencions (IRPF)'}</Label>
+                                    <span className="font-medium text-red-600">
+                                        -{formatCurrency(formData.retention_amount, 'EUR', locale)}
+                                    </span>
+                                </div>
+                                
+                                {/* Eliminem el camp antic de 'tax_rate' */}
+
                                 <div className="pt-2 border-t mt-4 flex justify-between items-center">
                                     <Label className="text-lg font-bold">{t('label.total')}</Label>
-                                    <span className="text-xl font-extrabold text-primary">{formatCurrency(formData.total_amount, 'EUR', locale)}</span>
+                                    <span className="text-xl font-extrabold text-primary">
+                                        {formatCurrency(formData.total_amount, 'EUR', locale)}
+                                    </span>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* Targeta 5: Adjunts (Documents) */}
+                        {/* ✅ 5. TARGETA D'ADJUNTS (ACTUALITZADA) */}
+                        {/* Petita correcció: 'initialData!.id' només si no és 'isNew' */}
                         <Card>
                             <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="w-5 h-5" />{t('card.attachments')}</CardTitle></CardHeader>
                             <CardContent className="space-y-3">
@@ -341,25 +359,21 @@ export function ExpenseDetailClient({
                                 ) : (
                                     !isNew && <p className="text-sm text-muted-foreground">No hi ha adjunts.</p>
                                 )}
-
+                                
                                 {isNew ? (
-                                    <AlertDialog>
-                                        <AlertTriangle className="h-4 w-4" />
-                                        <AlertDialogTitle>Desa la despesa</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Primer has de desar la despesa abans de poder pujar adjunts.
-                                        </AlertDialogDescription>
-                                    </AlertDialog>
+                                    <div className="text-sm text-muted-foreground p-4 text-center border-dashed border rounded-lg">
+                                        <AlertTriangle className="h-4 w-4 mx-auto mb-2" />
+                                        <p>{t('alert.saveToUpload') || 'Primer has de desar la despesa per poder pujar adjunts.'}</p>
+                                    </div>
                                 ) : (
                                     <ExpenseAttachmentUploader
-                                        expenseId={initialData!.id}
+                                        expenseId={initialData!.id} 
                                         onUploadSuccess={handleUploadSuccess}
                                     />
                                 )}
                             </CardContent>
                         </Card>
 
-                        {/* Targeta 6: Informació de Creació (Solo mode Edició) */}
                         {!isNew && initialData && (
                             <Card>
                                 <CardHeader><CardTitle>{t('card.metadata')}</CardTitle></CardHeader>
@@ -370,7 +384,7 @@ export function ExpenseDetailClient({
                                 </CardContent>
                             </Card>
                         )}
-                    </div>
+                        </div>
                 </div>
             </form>
         </div>

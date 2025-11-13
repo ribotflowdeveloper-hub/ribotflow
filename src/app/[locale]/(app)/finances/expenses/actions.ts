@@ -172,3 +172,4 @@ export async function getUniqueExpenseCategories(): Promise<string[]> {
   console.log("expenses/actions.ts (getUniqueExpenseCategories): Cridant al servei...");
   return await expensesListService.getUniqueExpenseCategories(activeTeamId);
 }
+
