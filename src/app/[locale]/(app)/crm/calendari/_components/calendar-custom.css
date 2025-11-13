@@ -34,3 +34,12 @@
 .rbc-time-view .rbc-current-time-indicator {
     z-index: 1;
 }
+
+/* * 🎯 NOU: Ocultar la columna d'hores (gutter)
+ *
+ * Amaguem la columna lateral d'hores a les vistes 'week' i 'day'.
+ * Això només afecta les vistes de graella de temps i no les vistes 'month' o 'agenda'.
+ */
+.rbc-time-gutter {
+  display: none !important;
+}
