@@ -3,7 +3,6 @@
 
 import { type SupabaseClient, type User } from '@supabase/supabase-js';
 import { type Database } from '@/types/supabase';
-import type { Role } from '@/lib/permissions/permissions.config'; // Assegurem que el tipus Role existeix
 
 // --- Tipus Públics del Servei ---
 

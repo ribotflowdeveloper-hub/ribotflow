@@ -20,6 +20,7 @@ import { updateSimpleTask, getSignedUrlForFile } from "@/app/actions/tasks/actio
 import { toast } from "sonner";
 import { Tables, Json } from '@/types/supabase';
 import { Skeleton } from "@/components/ui/skeleton"; // ✅ AFEGEIX AQUEST
+import Image from "next/image";
 // --- Helpers ---
 
 // Tipus explícit per a les entrades del log
@@ -123,8 +124,19 @@ function PrivateImage({ src, alt }: { src: string; alt: string }) {
     if (!imageUrl) {
         return <Skeleton className="w-full h-32 rounded-md my-2" />;
     }
+    // Use Next.js Image for optimized loading
+    return (
+        <Image
+            src={imageUrl}
+            alt={alt}
+            className="rounded-md"
+            width={400}
+            height={128}
+            style={{ width: '100%', height: 'auto' }}
+            unoptimized // Remove if you want Next.js optimization for external URLs
+        />
+    );
 
-    return <img src={imageUrl} alt={alt} className="rounded-md" />;
 }
 // --- Funció Helper per Comptar Checkboxes ---
 function countCheckboxesFromHtml(html: string): { total: number; completed: number } {

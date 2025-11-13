@@ -25,6 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 type LogEntry = { timestamp: string; action: 'actiu' | 'inactiu'; user_id: string; status?: 'active' | 'inactive' };
 
+import Image from 'next/image';
+
 function PrivateImage({ src, alt }: { src: string; alt: string }) {
     const [imageUrl, setImageUrl] = useState<string | null>(null);
 
@@ -45,7 +47,16 @@ function PrivateImage({ src, alt }: { src: string; alt: string }) {
         return <Skeleton className="w-full h-32 rounded-md my-2" />;
     }
 
-    return <img src={imageUrl} alt={alt} className="rounded-md" />;
+    return (
+        <Image
+            src={imageUrl}
+            alt={alt}
+            className="rounded-md"
+            width={400}
+            height={128}
+            style={{ width: '100%', height: 'auto' }}
+        />
+    );
 }
 function countCheckboxesFromHtml(html: string): { total: number; completed: number } {
     if (!html) return { total: 0, completed: 0 };

@@ -1,6 +1,6 @@
 // /src/lib/services/limits/ai.limits.ts (FITXER NOU)
 import 'server-only';
-import type { LimitCheckFunction, LimitCheckResult } from './team.limits'; // Importem la signatura
+import type { LimitCheckFunction } from './team.limits'; // Importem la signatura
 
 /**
  * ✅ NOU: Comprova el límit de maxAIActionsPerMonth

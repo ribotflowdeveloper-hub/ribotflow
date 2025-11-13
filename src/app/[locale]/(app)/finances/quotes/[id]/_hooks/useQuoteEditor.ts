@@ -173,9 +173,7 @@ export function useQuoteEditor({
             computedTotalAmount: total,
         };
     }, [
-        state.quote.items,
-        state.quote.discount_percent_input,
-        state.quote.tax_percent_input,
+        state.quote,
     ]);
 
     const onQuoteChange = useCallback(

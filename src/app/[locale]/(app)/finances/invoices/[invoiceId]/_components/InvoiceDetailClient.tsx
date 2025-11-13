@@ -51,7 +51,7 @@ export function InvoiceDetailClient({
 
   const {
     formData,
-    setFormData, // ✅ 3. Ara 'setFormData' existeix al hook
+
     isPending,
     isFinalizing,
     isLocked,

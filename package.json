@@ -69,7 +69,7 @@
     "@tiptap/extension-youtube": "^3.7.2",
     "@tiptap/pm": "^3.10.6",
     "@tiptap/react": "^3.10.6",
-    "@tiptap/starter-kit": "^3.10.6",
+    "@tiptap/starter-kit": "^3.10.7",
     "ai": "^5.0.89",
     "airtable": "^0.12.2",
     "class-variance-authority": "^0.7.1",

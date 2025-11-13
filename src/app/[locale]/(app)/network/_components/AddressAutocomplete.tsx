@@ -19,7 +19,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { cn } from '@/lib/utils/utils';
 
 // Les props de react-hook-form
 interface AddressAutocompleteProps {

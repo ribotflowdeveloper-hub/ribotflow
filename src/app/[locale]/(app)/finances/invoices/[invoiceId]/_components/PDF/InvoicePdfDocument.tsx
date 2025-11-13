@@ -384,7 +384,7 @@ export function InvoicePdfDocument({
           </View>
           {qrCodeDataUrl && (
             <View style={styles.verifactuContainer}>
-              <Image style={styles.qrCode} src={qrCodeDataUrl} />
+              <Image style={styles.qrCode} src={qrCodeDataUrl}/>
               {invoice.verifactu_uuid && (
                 <Text style={styles.verifactuText}>
                   Factura verificable en la sede electrónica de la AEAT. ID:{' '}

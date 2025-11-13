@@ -1,7 +1,6 @@
 // src/app/[locale]/(app)/settings/profile/_components/ProfileData.tsx (FITXER CORREGIT I NET)
 import { validatePageSession } from '@/lib/supabase/session';
 import { ProfileForm } from "./ProfileForm";
-import type { Role } from '@/lib/permissions/permissions.config';
 
 // ✅ 1. Importem el NOU servei i els tipus de domini
 import * as profileService from '@/lib/services/settings/profile/profile.service';

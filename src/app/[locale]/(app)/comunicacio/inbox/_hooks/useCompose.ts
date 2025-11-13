@@ -23,7 +23,6 @@ interface UseComposeProps {
 }
 
 export function useCompose({ templates, contacts, initialData, onClose, onEmailSent }: UseComposeProps) {
-  const t = useTranslations('InboxPage');
   const t_toast = useTranslations('InboxPage.toast'); 
   const [isSending, startSendTransition] = useTransition();
 

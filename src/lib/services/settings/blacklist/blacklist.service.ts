@@ -2,7 +2,7 @@
 "use server";
 
 import { type SupabaseClient, type User } from '@supabase/supabase-js';
-import { type Database, type Tables } from '@/types/supabase';
+import { type Database } from '@/types/supabase';
 import { hasPermission, PERMISSIONS, type Role } from '@/lib/permissions/permissions.config';
 import type { BlacklistRule } from '@/types/settings';
 
