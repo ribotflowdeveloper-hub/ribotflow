@@ -1,16 +1,9 @@
+// @/app/[locale]/(app)/excel/ExcelDropdownButton.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { FileSpreadsheet } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
-/**
- * Defineix la forma d'una opció del desplegable.
- * Ara inclou una icona i un 'label' que actuarà com a tooltip.
- */
-export interface DropdownOption {
-  value: string;
-  label: string;
-  icon: React.ElementType;
-}
+// 💡 1. Importem el tipus des del nou fitxer
+import { type DropdownOption } from './types'; 
 
 /**
  * Defineix les propietats (props) que rep el component DropdownButton.
@@ -20,65 +13,56 @@ interface DropdownButtonProps {
   options: DropdownOption[];
   /** Funció que s'executa quan l'usuari selecciona una opció. */
   onSelect: (selectedOption: DropdownOption) => void;
-
-  disabled?: boolean; // ⬅️ AFEGEIX AQUESTA LÍNIA
-
+  /** Indica si el botó ha d'estar desactivat. */
+  disabled?: boolean;
 }
 
 /**
  * Un component de UI per a un botó desplegable que mostra una llista d'opcions.
  */
-const DropdownButton: React.FC<DropdownButtonProps> = ({ options, onSelect }) => {
-  // Estat per controlar si el menú està obert o tancat.
+const DropdownButton: React.FC<DropdownButtonProps> = ({ 
+  options, 
+  onSelect, 
+  disabled = false 
+}) => {
   const [isOpen, setIsOpen] = useState(false);
-
-  // Ref per al contenidor principal del desplegable.
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  /**
-   * Canvia l'estat d'obertura del menú.
-   */
   const toggleDropdown = () => {
+    if (disabled) return;
     setIsOpen(prevIsOpen => !prevIsOpen);
   };
 
-  /**
-   * Gestiona el clic en una de les opcions.
-   * Crida la funció onSelect i tanca el menú.
-   */
   const handleOptionClick = (option: DropdownOption) => {
     onSelect(option);
     setIsOpen(false);
   };
 
-  // Efecte per tancar el menú si l'usuari fa clic fora del component.
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
-
-    // Afegim l'event listener quan el component es munta.
     document.addEventListener('mousedown', handleClickOutside);
-
-    // Netegem l'event listener quan el component es desmunta.
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []); // L'array buit assegura que l'efecte només s'executa un cop.
+  }, []); 
 
   return (
     <div className="relative inline-block font-sans" ref={dropdownRef}>
       <button
-        onClick={toggleDropdown} // Canviem l'estil per a que sigui un botó d'icona
-        className="flex items-center justify-center h-9 px-3 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500"
+        onClick={toggleDropdown}
+        disabled={disabled} 
+        className="flex items-center justify-center h-9 px-3 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
         aria-label="Opcions d'Excel"
       >
         <FileSpreadsheet className="h-6 w-6" />
       </button>
       {isOpen && (
-        <ul className="absolute block list-none p-1 m-0 mt-2 bg-green-700/25 backdrop-blur-sm border border-green-600 rounded-md shadow-lg z-10">
+        // 💡 2. CORRECCIÓ DE Z-INDEX: Canviat de z-10 a z-50
+        <ul className="absolute block list-none p-1 m-0 mt-2 bg-green-700/25 backdrop-blur-sm border border-green-600 rounded-md shadow-lg z-50">
           <TooltipProvider delayDuration={100}>
             {options.map((option) => (
               <Tooltip key={option.value}>

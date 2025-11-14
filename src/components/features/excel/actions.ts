@@ -7,17 +7,32 @@ import { getTranslations } from "next-intl/server";
 import { Readable } from "stream";
 import { revalidatePath } from "next/cache";
 
+// 💡 1. Importem el sistema de límits real i els tipus
+import { getUsageLimitStatus } from "@/lib/subscription/subscription";
+import { type PlanLimit } from "@/config/subscriptions";
+import { Infinity } from "@/lib/utils/utils";
+
 // --- TIPUS COMPARTITS ---
 export interface ColumnInfo {
   column_name: string;
   data_type: string;
 }
 
-// ... (TableDataResult i ErrorResponse es queden igual) ...
-
 type RowToInsert<T extends Record<string, unknown>> = T & {
   team_id: string;
   user_id: string;
+};
+
+// 💡 2. Mapa de noms de taula a claus de LÍMIT (actualitzat amb els teus noms de config)
+// Aquests noms han de coincidir exactament amb les claus de 'PLAN_LIMITS'
+const resourceKeyMap: { [key: string]: PlanLimit | null } = {
+  contacts: "maxContacts",
+  invoices: "maxInvoicesPerMonth",
+  expenses: "maxExpensesPerMonth",
+  quotes: "maxQuotesPerMonth",
+  products: "maxProducts",
+  suppliers: "maxSuppliers",
+  // ... afegeix altres taules si tenen límits
 };
 
 // ... (getTableColumns i getTableRecords es queden igual) ...
@@ -71,7 +86,6 @@ async function getTableRecords<T>(
 
   return (data ?? []) as T[];
 }
-
 
 // ... (exportToExcel es queda igual) ...
 export async function exportToExcel<T extends Record<string, unknown>>(
@@ -152,6 +166,9 @@ export async function exportToExcel<T extends Record<string, unknown>>(
   }
 }
 
+// 💡 3. S'HA ELIMINAT LA FUNCIÓ 'checkImportLimit' PERSONALITZADA.
+// Ja no la necessitem, fem servir 'getUsageLimitStatus'
+
 // ... (validateColumns es queda igual) ...
 export async function validateColumns(
   excelColumns: string[],
@@ -180,22 +197,20 @@ export async function validateColumns(
   return true;
 }
 
-
-// 💡 AFEGIT: Mapa de transformació per als estats
+// ... (statusMap i parseCellValue es queden igual) ...
 const statusMap: { [key: string]: string } = {
-  'client': 'C',
-  'lead': 'L',
-  'proveïdor': 'P',
-  'actiu': 'A',
-  'inactiu': 'I',
-  'perdut': 'X',
-  // Afegim també els codis per si l'usuari no canvia res
-  'c': 'C',
-  'l': 'L',
-  'p': 'P',
-  'a': 'A',
-  'i': 'I',
-  'x': 'X',
+  "client": "C",
+  "lead": "L",
+  "proveïdor": "P",
+  "actiu": "A",
+  "inactiu": "I",
+  "perdut": "X",
+  "c": "C",
+  "l": "L",
+  "p": "P",
+  "a": "A",
+  "i": "I",
+  "x": "X",
 };
 
 function parseCellValue(
@@ -209,21 +224,17 @@ function parseCellValue(
   if (typeof cellValue === "string") {
     const trimmedValue = cellValue.trim();
     if (trimmedValue === "") {
-      return null; // Retornem null per a strings buides
+      return null;
     }
 
-    // 💡💡💡 INICI DE LA CORRECCIÓ 2 (Estat) 💡💡💡
-    // Transformem la columna 'estat'
-    if (columnInfo.column_name === 'estat') {
+    if (columnInfo.column_name === "estat") {
       const normalizedValue = trimmedValue.toLowerCase();
       const mappedValue = statusMap[normalizedValue];
       if (mappedValue) {
-        return mappedValue; // Retorna 'C', 'L', 'P', etc.
+        return mappedValue;
       }
-      // Si no troba map, retorna el valor original (potser és un codi)
       return trimmedValue.toUpperCase();
     }
-    // 💡💡💡 FI DE LA CORRECCIÓ 2 (Estat) 💡💡💡
 
     try {
       if (columnInfo.data_type === "ARRAY") {
@@ -238,8 +249,8 @@ function parseCellValue(
       );
       return trimmedValue;
     }
-    
-    return trimmedValue; // Retorna la string normal si no és cap tipus especial
+
+    return trimmedValue;
   }
 
   if (cellValue instanceof Date) {
@@ -250,8 +261,7 @@ function parseCellValue(
       return cellValue.toISOString().split("T")[0];
     }
   }
-  
-  // Per a números, booleans, etc.
+
   return cellValue;
 }
 
@@ -265,6 +275,7 @@ export async function importFromExcel<T extends Record<string, unknown>>(
     if ("error" in session) {
       return { success: false, message: session.error.message };
     }
+    // Important: necessitem 'supabase' d'aquí per passar-ho als checkers
     const { supabase, user, activeTeamId } = session;
 
     // 2. Obtenim TOTES les columnes de la BBDD per mapejar tipus
@@ -298,7 +309,7 @@ export async function importFromExcel<T extends Record<string, unknown>>(
     const workbook = new ExcelJS.Workbook();
 
     if (file.type === "text/csv" || file.name.endsWith(".csv")) {
-      const nodeBuffer = Buffer.from(buffer); 
+      const nodeBuffer = Buffer.from(buffer);
       const stream = Readable.from(nodeBuffer);
       await workbook.csv.read(stream);
     } else if (
@@ -346,24 +357,25 @@ export async function importFromExcel<T extends Record<string, unknown>>(
     // 7. Processar les dades
     const dataToInsert: RowToInsert<T>[] = [];
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return; // Saltem la capçalera
+      if (rowNumber === 1) return;
 
       const rowData: Partial<T> = {};
 
       expectedColumns.forEach((colInfo, index) => {
-        const cell = row.getCell(index + 1); 
-
+        const cell = row.getCell(index + 1);
         const columnInfo = columnTypeMap.get(colInfo.column_name);
         const parsedValue: unknown = parseCellValue(cell.value, columnInfo);
 
-        // Ara comparem amb 'null' enlloc de '""'
         if (parsedValue !== null && parsedValue !== undefined) {
           rowData[colInfo.column_name as keyof Partial<T>] =
             parsedValue as T[keyof T];
         }
       });
 
-      // Afegim les dades d'equip i usuari
+      if (Object.keys(rowData).length === 0) {
+        return;
+      }
+
       const completeRow: RowToInsert<T> = {
         ...rowData,
         team_id: activeTeamId,
@@ -378,6 +390,50 @@ export async function importFromExcel<T extends Record<string, unknown>>(
         success: false,
         message: "El fitxer no conté dades per importar.",
       };
+    }
+
+    // 💡 4. LA NOVA LÒGICA DE VALIDACIÓ DE LÍMITS
+    // Fem servir el sistema centralitzat que JA TENS.
+    const t_billing = await getTranslations("Billing");
+    const resourceKey = resourceKeyMap[tableName];
+
+    if (resourceKey) {
+      console.log(`[importFromExcel] Comprovant límit per a: ${resourceKey}`);
+
+      // Cridem a la funció que ja s'encarrega de tot
+      // Aquesta funció SÍ que funciona, ja que la fas servir a 'validateActionAndUsage'
+      const limitCheck = await getUsageLimitStatus(resourceKey);
+
+      // limitCheck retorna { allowed, current, max, error }
+
+      if (limitCheck.max !== Infinity) { // Ignorem si és il·limitat
+        // Calculem la quota disponible
+        const availableQuota = limitCheck.max - limitCheck.current;
+
+        if (dataToInsert.length > availableQuota) {
+          // Generem el missatge d'error detallat (aquesta part ja la teníem bé)
+          const message = t_billing("importLimitExceeded", {
+            newRecordsCount: dataToInsert.length,
+            availableQuota: availableQuota > 0 ? availableQuota : 0,
+            planLimit: limitCheck.max,
+            currentCount: limitCheck.current,
+          });
+          console.error(`[importFromExcel] Límit superat: ${message}`);
+          return { success: false, message: message };
+        }
+
+        console.log(
+          `[importFromExcel] Comprovació de límit superada per a ${resourceKey}. (Nous: ${dataToInsert.length}, Quota: ${availableQuota})`,
+        );
+      } else {
+        console.log(
+          `[importFromExcel] El recurs ${resourceKey} és il·limitat. S'permet la importació.`,
+        );
+      }
+    } else {
+      console.warn(
+        `[importFromExcel] No s'ha trobat 'resourceKey' per a la taula '${tableName}'. S'permet la importació.`,
+      );
     }
 
     // 8. Inserir les dades a Supabase en lots
@@ -395,11 +451,15 @@ export async function importFromExcel<T extends Record<string, unknown>>(
       }
       recordsInserted += batch.length;
     }
-    
-    // Invalidem la cau (ja ho tenies, està perfecte)
+
+    // 9. REVALIDACIÓ DE LA CAU
     if (tableName === "contacts") {
-      revalidatePath("/crm/contactes");
+      revalidatePath("/[locale]/crm/contactes", "layout");
     }
+    // if (tableName === "invoices") {
+    //   revalidatePath("/[locale]/finances/invoices", "layout");
+    // }
+
     return {
       success: true,
       message: `S'han importat ${recordsInserted} registres correctament.`,

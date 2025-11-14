@@ -2,7 +2,7 @@
 "use client";
 
 // 💡 1. Importem useEffect
-import React, { useState, useMemo, useTransition, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Plus, Search, LayoutGrid, List, FilePlus2, Upload, Download, Lock } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plus, Search, LayoutGrid, List,Lock } from 'lucide-react';
 
 import { type ContactWithOpportunities } from './ContactsData';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
@@ -23,8 +22,10 @@ import { useContactFilters } from '../_hooks/useContactFilters';
 import { ContactDialog } from './ContactDialog';
 import ContactCard from './ContactCard';
 import ContactTable from './ContactTable';
-import ExcelDropdownButton, { DropdownOption } from '@/app/[locale]/(app)/excel/ExcelDropdownButton';
-import { exportToExcel, importFromExcel } from '@/app/[locale]/(app)/excel/actions';
+// 💡 3. Importem el botó i accions d'Excel
+import ExcelDropdownButton from '@/components/features/excel/ExcelDropdownButton';
+import { useExcelActions } from '@/components/features/excel/useExelActions';
+
 
 
 interface ContactsClientProps {
@@ -43,20 +44,30 @@ export function ContactsClient({
     limitStatus
 }: ContactsClientProps) {
     const t = useTranslations('ContactsClient');
-    const t2 = useTranslations('excel');
     const t_billing = useTranslations('Billing');
     const router = useRouter();
     const searchParams = useSearchParams();
-    // Renombrat per claredat
-    const [isPending, startTransition] = useTransition();
-
     const { sortBy, statusFilter, viewMode, handleFilterChange } = useContactFilters(initialViewMode);
 
     const [contacts, setContacts] = useState<ContactWithOpportunities[]>(initialContacts);
     const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
 
     const isLimitReached = !limitStatus.allowed;
-
+    // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
+    const {
+        isPending: isExcelPending, // Renombrem per claredat
+        excelOptions,
+        handleExcelAction
+    } = useExcelActions({
+        tableName: 'contacts',
+        limitStatus: limitStatus, // Passem l'objecte de límit
+        translationKeys: {
+            create: 'contacts.create',
+            load: 'contacts.load',
+            download: 'contacts.download',
+            limit: 'contacts', // Clau de Shared.limits
+        }
+    });
     // 💡 2. AFEGIM AQUEST 'useEffect'
     // Això és el que fa que la pàgina s'actualitzi visualment després
     // del router.refresh() (tant a l'importar com al crear).
@@ -74,106 +85,6 @@ export function ContactsClient({
         router.push(`/crm/contactes/${contact.id}`);
     };
 
-    const excelOptions: DropdownOption[] = [
-        { value: 'create', label: t2('contacts.create'), icon: FilePlus2 },
-        { value: 'load', label: t2('contacts.load'), icon: Upload },
-        { value: 'download', label: t2('contacts.download'), icon: Download },
-    ];
-
-
-    async function handleExportAndDownload(shouldDownload: boolean) {
-        toast.info(t2('contacts.startingexport'));
-        try {
-            const result = await exportToExcel('contacts', shouldDownload);
-
-            if (result.success && result.fileBuffer) {
-                const byteCharacters = atob(result.fileBuffer);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = result.fileName || 'export.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-
-                toast.success(t2('successexport'));
-            } else {
-                toast.error(t2('errorexport'), { description: result.message });
-            }
-        } catch (error) {
-            toast.error(t2('unexpectederror'), { description: (error as Error).message });
-            console.error(error);
-        }
-    }
-
-    function handleImport() {
-        if (isLimitReached) {
-            toast.error(t_billing('limitReachedTitle'), {
-                description: limitStatus.error || t_billing('limitReachedDefault')
-            });
-            return;
-        }
-
-        const input = document.createElement('input');
-        input.type = 'file';
-        // Acceptem també CSV
-        input.accept = '.xlsx, .xls, .csv';
-
-        input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) {
-                toast.error(t2('nofileselected'));
-                return;
-            }
-
-            toast.info(t2('processingfile'));
-
-            const formData = new FormData();
-            formData.append('file', file);
-
-            startTransition(async () => {
-                try {
-                    const result = await importFromExcel('contacts', formData);
-
-                    if (result.success) {
-                        toast.success(result.message);
-                        // Aquesta línia (que ja tenies) ara dispararà
-                        // l'useEffect de dalt i refrescarà la UI.
-                        router.refresh();
-                    } else {
-                        toast.error(t2('errorloadingdata'), { description: result.message });
-                    }
-                } catch (error) {
-                    toast.error(t2('unexpectederrorloadingfile'), { description: (error as Error).message });
-                }
-            });
-        };
-
-        input.click();
-    }
-
-    const handleExcelAction = (option: DropdownOption) => {
-        switch (option.value) {
-            case 'download':
-                startTransition(() => handleExportAndDownload(true));
-                break;
-            case 'create':
-                startTransition(() => handleExportAndDownload(false));
-                break;
-            case 'load':
-                handleImport();
-                break;
-            default:
-                break;
-        }
-    };
-
     return (
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
             {/* CAPÇALERA */}
@@ -183,7 +94,7 @@ export function ContactsClient({
                 {/* Controls */}
                 <div className="flex flex-wrap gap-2 w-full items-center">
                     {/* Cercador */}
-                    <div className="relative flex-grow min-w-[160px]">
+                    <div className="relative flex-grow min-w-[160px]">  
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                             placeholder={t('searchPlaceholder')}
@@ -241,7 +152,7 @@ export function ContactsClient({
                     <ExcelDropdownButton
                         options={excelOptions}
                         onSelect={handleExcelAction}
-                        disabled={isPending}
+                        disabled={isExcelPending}
                     />
 
                     {/* Nou contacte (amb límit) */}
@@ -251,7 +162,7 @@ export function ContactsClient({
                                 <span tabIndex={isLimitReached ? 0 : -1}>
                                     <ContactDialog
                                         trigger={
-                                            <Button className="flex-shrink-0 w-full sm:w-auto" disabled={isLimitReached || isPending}>
+                                            <Button className="flex-shrink-0 w-full sm:w-auto" disabled={isLimitReached || isExcelPending}>
                                                 {isLimitReached ? (
                                                     <Lock className="w-4 h-4 mr-1" />
                                                 ) : (

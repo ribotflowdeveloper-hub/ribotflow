@@ -4,21 +4,25 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
-import { Plus, Edit, TriangleAlert } from 'lucide-react'; // ✅ Importem 'TriangleAlert'
+import { Plus, Edit, TriangleAlert } from 'lucide-react'; // 💡 2. Importem icones d'Excel
 import { useRouter } from 'next/navigation'; // ✅ Importem 'useRouter'
 
 // Tipus i Accions
 import { type Product } from "./ProductsData";
 import { type ActionResult } from '@/types/shared/actionResult';
-import { fetchPaginatedProducts, deleteProduct} from '../actions';
+import { fetchPaginatedProducts, deleteProduct } from '../actions';
 import type { ProductPageFilters } from '@/lib/services/finances/products/products.service';
 import { type UsageCheckResult } from '@/lib/subscription/subscription'; // ✅ Importem tipus de límit
-
 // Components Compartits
 import { Button } from "@/components/ui/button";
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
 import { ColumnToggleButton } from '@/components/shared/ColumnToggleButton';
 import { PageHeader } from '@/components/shared/PageHeader';
+
+// 💡 3. Importem el botó i accions d'Excel
+import ExcelDropdownButton from '@/components/features/excel/ExcelDropdownButton';
+import { useExcelActions } from '@/components/features/excel/useExelActions';
+
 // ✅ 2. Importem els components d'Alerta i Modal
 import {
   AlertDialog,
@@ -36,7 +40,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { ProductsFilters } from './ProductsFilters';
 
 // Hook Genèric
-import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource'; 
+import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource';
 
 // Utilitats
 import { formatCurrency } from '@/lib/utils/formatters';
@@ -53,8 +57,8 @@ interface ProductsClientProps {
   productLimitStatus: UsageCheckResult | null; // <-- NOVA PROP
 }
 
-export function ProductsClient({ 
-  initialData, 
+export function ProductsClient({
+  initialData,
   categoriesForFilter,
   productLimitStatus // ✅ 4. Rebem la prop
 }: ProductsClientProps) {
@@ -64,7 +68,22 @@ export function ProductsClient({
   const locale = useLocale();
   const router = useRouter(); // Per al modal i el botó
 
-  // ✅ 5. Estat per al modal i comprovació del límit
+  // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
+  const {
+    isPending: isExcelPending, // Renombrem per claredat
+    excelOptions,
+    handleExcelAction
+  } = useExcelActions({
+    tableName: 'products',
+    limitStatus: productLimitStatus,
+    translationKeys: {
+      create: 'products.create',
+      load: 'products.load',
+      download: 'products.download',
+      limit: 'products', // Clau de Shared.limits
+    }
+  });
+
   const [showLimitModal, setShowLimitModal] = useState(false);
   const isLimitExceeded = productLimitStatus && !productLimitStatus.allowed;
 
@@ -72,79 +91,79 @@ export function ProductsClient({
   const allColumns = useMemo<ColumnDef<Product>[]>(() => [
     // ... (El teu codi de columnes és correcte)
     {
-       accessorKey: 'name',
-       header: t('table.name'),
-       enableSorting: true,
-       cell: (product) => (
-         <Link
-           // ✅ Compte! La ruta és /finances/products/[id]
-           href={`/${locale}/finances/products/${product.id}`}
-           className="font-medium cursor-pointer hover:underline"
-           title={`${tShared('actions.view')}: ${product.name}`}
-         >
-           {product.name}
-         </Link>
-       ),
-     },
-     {
-       accessorKey: 'category',
-       header: t('table.category'),
-       enableSorting: true,
-       cell: (product) => product.category || '-',
-     },
-     {
-       accessorKey: 'price',
-       header: t('table.price'),
-       enableSorting: true,
-       cell: (product) => formatCurrency(product.price ?? 0),
-     },
-     {
-       accessorKey: 'iva',
-       header: t('table.vat'),
-       enableSorting: false,
-       cell: (product) => (product.tax_rate !== null ? `${product.tax_rate}%` : '-'),
-     },
-     {
-       accessorKey: 'unit',
-       header: t('table.unit'),
-       enableSorting: false,
-       cell: (product) => product.unit || '-',
-     },
-     {
-       accessorKey: 'is_active',
-       header: t('table.active'),
-       enableSorting: true,
-       cell: (product) => (
-         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product.is_active
-           ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-           : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-           }`}>
-           {product.is_active ? t('active') : t('inactive')}
-         </span>
-       ),
-     },
-     {
-       accessorKey: "actions_view_edit",
-       header: "",
-       enableSorting: false,
-       cell: (product) => (
-         <Link
-           // ✅ Compte! La ruta és /finances/products/[id]
-           href={`/${locale}/finances/products/${product.id}`}
-           title={tShared('actions.edit')}
-         >
-           <Button variant="ghost" size="icon">
-             <Edit className="w-4 h-4" />
-           </Button>
-         </Link>
-       ),
-       cellClassName: "text-right",
-     }
+      accessorKey: 'name',
+      header: t('table.name'),
+      enableSorting: true,
+      cell: (product) => (
+        <Link
+          // ✅ Compte! La ruta és /finances/products/[id]
+          href={`/${locale}/finances/products/${product.id}`}
+          className="font-medium cursor-pointer hover:underline"
+          title={`${tShared('actions.view')}: ${product.name}`}
+        >
+          {product.name}
+        </Link>
+      ),
+    },
+    {
+      accessorKey: 'category',
+      header: t('table.category'),
+      enableSorting: true,
+      cell: (product) => product.category || '-',
+    },
+    {
+      accessorKey: 'price',
+      header: t('table.price'),
+      enableSorting: true,
+      cell: (product) => formatCurrency(product.price ?? 0),
+    },
+    {
+      accessorKey: 'tax_rate',
+      header: t('table.vat'),
+      enableSorting: false,
+      cell: (product) => (product.tax_rate !== null ? `${product.tax_rate}%` : '-'),
+    },
+    {
+      accessorKey: 'unit',
+      header: t('table.unit'),
+      enableSorting: false,
+      cell: (product) => product.unit || '-',
+    },
+    {
+      accessorKey: 'is_active',
+      header: t('table.active'),
+      enableSorting: true,
+      cell: (product) => (
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${product.is_active
+          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+          }`}>
+          {product.is_active ? t('active') : t('inactive')}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "actions_view_edit",
+      header: "",
+      enableSorting: false,
+      cell: (product) => (
+        <Link
+          // ✅ Compte! La ruta és /finances/products/[id]
+          href={`/${locale}/finances/products/${product.id}`}
+          title={tShared('actions.edit')}
+        >
+          <Button variant="ghost" size="icon">
+            <Edit className="w-4 h-4" />
+          </Button>
+        </Link>
+      ),
+      cellClassName: "text-right",
+    }
   ], [t, tShared, locale]);
 
   // --- Generic Hook (Sense canvis) ---
   const {
-    isPending,
+    isPending: isTablePending, // 💡 6. Renombrem per evitar conflicte amb 'isPending' d'Excel    
     data: products,
     itemToDelete: productToDelete,
     setItemToDelete: setProductToDelete,
@@ -201,13 +220,11 @@ export function ProductsClient({
       {tShared('deleteDialog.description2')}
     </>
   );
-
-  // ✅ 6. Gestor pel botó "Nou Producte"
   const handleNewProductClick = () => {
     if (isLimitExceeded) {
-      setShowLimitModal(true); // Mostra el modal si se supera el límit
+      setShowLimitModal(true);
     } else {
-      router.push(`/${locale}/finances/products/new`); // Navega si tot està bé
+      router.push(`/${locale}/finances/products/new`);
     }
   };
 
@@ -215,24 +232,29 @@ export function ProductsClient({
   return (
     <div className="h-full flex flex-col gap-4">
       <PageHeader title={t('title')}>
-        
+
         {/* ✅ 7. Alerta de límit (només si se supera) */}
         {isLimitExceeded && (
-            <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
-              <TriangleAlert className="h-4 w-4 text-yellow-900" />
-              <AlertTitle className="font-semibold text-xs mb-0">
-                {t_billing('modalTitle', { default: 'Límit assolit' })}
-              </AlertTitle>
-              <AlertDescription className="text-xs">
-                {/* Assegura't que 'products' existeix a 'Shared.limits' */}
-                {productLimitStatus.error || t_billing('products', { current: productLimitStatus.current, max: productLimitStatus.max })}
-                <Button asChild variant="link" size="sm" className="p-0 h-auto ml-1 text-yellow-900 font-semibold underline">
-                  <Link href={`/${locale}/settings/billing`}>{t_billing('upgradeButton')}</Link>
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-
+          <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
+            <TriangleAlert className="h-4 w-4 text-yellow-900" />
+            <AlertTitle className="font-semibold text-xs mb-0">
+              {t_billing('modalTitle', { default: 'Límit assolit' })}
+            </AlertTitle>
+            <AlertDescription className="text-xs">
+              {/* Assegura't que 'products' existeix a 'Shared.limits' */}
+              {productLimitStatus.error || t_billing('products', { current: productLimitStatus.current, max: productLimitStatus.max })}
+              <Button asChild variant="link" size="sm" className="p-0 h-auto ml-1 text-yellow-900 font-semibold underline">
+                <Link href={`/${locale}/settings/billing`}>{t_billing('upgradeButton')}</Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+        {/* 💡 5. Botó d'Excel afegit i connectat al hook */}
+        <ExcelDropdownButton
+          options={excelOptions}
+          onSelect={handleExcelAction}
+          disabled={isExcelPending || isTablePending}
+        />
         {/* ✅ 8. Botó ara utilitza el gestor onClick */}
         <Button onClick={handleNewProductClick}>
           <Plus className="w-4 h-4 mr-1" /> {t('newProductButton')}
@@ -260,7 +282,7 @@ export function ProductsClient({
         className="flex-grow overflow-hidden"
         columns={visibleColumns}
         data={products}
-        isPending={isPending}
+        isPending={isExcelPending || isTablePending} // 💡 6. Combinem els 'pending'        
         onSort={handleSort}
         currentSortColumn={currentSortColumn}
         currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
@@ -273,7 +295,7 @@ export function ProductsClient({
         deleteItem={productToDelete}
         setDeleteItem={setProductToDelete}
         onDelete={handleDelete}
-        deleteTitleKey="deleteDialog.title" 
+        deleteTitleKey="deleteDialog.title"
         deleteDescription={deleteDescription}
         emptyStateMessage={t('noProductsFound')}
       />
@@ -287,9 +309,9 @@ export function ProductsClient({
               {t_billing('modalTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t_billing('products', { 
-                current: productLimitStatus?.current ?? 0, 
-                max: productLimitStatus?.max ?? 0 
+              {t_billing('products', {
+                current: productLimitStatus?.current ?? 0,
+                max: productLimitStatus?.max ?? 0
               })}
               <br />
               {t_billing('upgradePlan')}

@@ -1112,6 +1112,7 @@
     "createTitle": "Crear Nova Despesa",
     "aiHelperText": "Utilitza l'assistent d'IA per omplir automàticament els detalls de la despesa a partir de la factura.",
     "aiHelperTitle": "Assistent d'IA per a Despeses",
+    "loading": "Carregant dades de la despesa...",
     "title": {
       "new": "Nova Despesa",
       "edit": "Editar Despesa"
@@ -1138,18 +1139,40 @@
       "invoiceNumber": "Número de Factura (Opcional)",
       "description": "Descripció General",
       "discount": "Descompte (€)",
-      "taxRate": "Impostos (%)"
+      "taxRate": "Impostos (%)",
+      "category": "Categoria de la Despesa",
+      "name":"Nom de la Categoria"
     },
     "placeholder": {
       "invoiceNumber": "Ex: F-2024-123",
       "description": "Descripció breu de la despesa...",
-      "notes": "Qualsevol detall addicional..."
+      "notes": "Qualsevol detall addicional...",
+      "selectCategory": "Selecciona una categoria...",
+      "searchCategory": "Cerca una categoria..."
     },
     "select": {
       "selectSupplier": "Selecciona un proveïdor...",
       "searchSupplier": "Cerca un proveïdor...",
       "noSupplierFound": "No s'ha trobat cap proveïdor.",
       "noSupplier": "Sense proveïdor"
+    },
+    "categories": {
+      "selectCategory": "Selecciona una categoria...",
+      "searchCategory": "Cerca una categoria...",
+      "noCategoryFound": "No s'ha trobat cap categoria.",
+      "noCategory": "Sense categoria",
+      "manageLink": "Gestiona les categories",
+      "manageTitle": "Gestió de Categories de Despeses",
+      "managePrompt": "Crea, edita o elimina categories de despeses per organitzar millor les teves despeses.",
+      "newCategoryButton": "Nova Categoria",
+      "createNew": "Crea nova categoria",
+      "editCategoryTitle": "Editar Categoria",
+      "newTitle": "Nova Categoria",
+      "newDescription": "Descripció de la categoria...",
+      "placeholder": {
+        "name": "Nom de la Categoria",
+        "description": "Descripció de la categoria..."
+      }
     },
     "label": {
       "subtotal": "Subtotal",
@@ -1953,6 +1976,7 @@
     "processingfile": "Processant el fitxer Excel...",
     "errorloadingdata": "Error en carregar les dades.",
     "unexpectederrorloadingfile": "S'ha produït un error inesperat en carregar el fitxer.",
+    "startingexport": "Iniciant l'exportació...",
     "contacts": {
       "create": "Crear plantilla",
       "load": "Carregar contactes",
@@ -1995,7 +2019,8 @@
       "cancel": "Cancel·lar",
       "back" : "Enrere",
       "save": "Desar",
-      "saving": "Desant..."
+      "saving": "Desant...",
+      "create": "Crear"
     },
     "deleteDialog": {
       "title": "Estàs segur?",
@@ -2061,6 +2086,19 @@
       "deleteDialog": {
         "title": "Vols esborrar aquest pressupost?"
       }
+    },
+    "fields": {
+      "name": "Nom",
+      "email": "Email",
+      "phone": "Telèfon",
+      "created": "Creat",
+      "status": "Estat",
+      "amount": "Import",
+      "dueDate": "Data de venciment",
+      "description": "Descripció",
+      "date": "Data",
+      "subject": "Assumpte",
+      "lastActivity": "Última activitat"
     }
   },
   "SuppliersPage": {
@@ -2510,7 +2548,10 @@
     "accessDenied": "Accés Denegat",
     "permissionDenied": "No tens permís per accedir a aquesta secció de facturació.",
     "aiActionsUsed": "Accions d'IA Utilitzades",
-    "aiActionsLimit": "Límit d'Accions d'IA"
+    "aiActionsLimit": "Límit d'Accions d'IA",
+    "subscriptionCheckFailed": "Error en verificar la teva subscripció. No s'ha pogut iniciar la importació.",
+    "countCheckFailed": "Error en comptar els registres actuals. No s'ha pogut iniciar la importació.",
+    "importLimitExceeded": "No s'ha pogut importar. El teu pla té un límit de {planLimit} registres. Ja en tens {currentCount}, de manera que només pots afegir-ne {availableQuota} més. El fitxer que has pujat en conté {newRecordsCount}."
   },
   "Transcripcio": {
     "listTitle": "Transcripcions d'Àudio",
