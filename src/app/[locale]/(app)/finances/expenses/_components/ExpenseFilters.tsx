@@ -1,12 +1,14 @@
+// src/app/[locale]/(app)/finances/expenses/_components/ExpenseFilters.tsx
 'use client';
 
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTranslations } from 'next-intl';
 import { Search } from "lucide-react";
+import { type ExpenseCategory } from "@/types/finances/index"; // ✅ AFEGIR
 
 export interface ExpensePageFilters {
-  category: string;
+  category: string; // 'all' o un UUID
   status: string;
 }
 
@@ -15,7 +17,7 @@ interface ExpenseFiltersProps {
   onSearchChange: (value: string) => void;
   filters: ExpensePageFilters;
   onFilterChange: (key: keyof ExpensePageFilters, value: string) => void;
-  categories: string[];
+  categories: ExpenseCategory[]; // 👈 CANVIAT: Ara és un array d'objectes
 }
 
 export function ExpenseFilters({
@@ -48,7 +50,7 @@ export function ExpenseFilters({
           </SelectContent>
         </Select>
 
-        {/* Categoria */}
+        {/* ✅ Categoria (MODIFICAT) */}
         <Select
           value={filters.category}
           onValueChange={(value) => onFilterChange('category', value)}
@@ -59,23 +61,21 @@ export function ExpenseFilters({
           <SelectContent>
             <SelectItem value="all">{t('filter.allCategories')}</SelectItem>
             {categories.map(c => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+              // El 'value' ara és l'ID (UUID), el text és el 'name'
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* 🔹 Buscador a sota (en mòbil) o al costat (en desktop) */}
+      {/* 🔹 Buscador */}
       <div className="relative w-full sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={t('filter.searchPlaceholder') || "Busca..."}
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="
-            pl-9 w-full h-9 text-sm bg-card border border-input 
-            focus-visible:ring-green-500 focus-visible:ring-1
-          "
+          className="pl-9 w-full h-9 text-sm bg-card border border-input"
         />
       </div>
     </div>

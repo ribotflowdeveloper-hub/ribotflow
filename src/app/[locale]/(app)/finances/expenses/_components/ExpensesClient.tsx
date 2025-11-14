@@ -20,7 +20,7 @@ import {
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ExpenseFilters } from './ExpenseFilters';
 import { fetchPaginatedExpenses } from '../actions';
-import type { ExpenseWithContact } from '@/types/finances/expenses';
+import type { ExpenseWithContact, ExpenseCategory } from '@/types/finances/expenses';
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
 import { type ActionResult } from '@/types/shared/actionResult';
 
@@ -43,17 +43,19 @@ import { type UsageCheckResult } from '@/lib/subscription/subscription';
 // ✅ 4. Actualitzem les Props
 interface ExpensesClientProps {
   initialData: PaginatedExpensesResponse;
-  filterOptions: { categories: string[] };
-  expenseLimitStatus: UsageCheckResult | null; // <-- NOVA PROP
+  filterOptions: {
+    categories: ExpenseCategory[] // 👈 CANVIAT: Ara és un array d'objectes
+  };
+  expenseLimitStatus: UsageCheckResult | null;
 }
 
 type PaginatedExpensesResponse = PaginatedResponse<ExpenseWithContact>;
 type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 const EXPENSE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-export function ExpensesClient({ 
-  initialData, 
-  filterOptions, 
+export function ExpensesClient({
+  initialData,
+  filterOptions,
   expenseLimitStatus // ✅ 5. Rebem la prop
 }: ExpensesClientProps) {
   const locale = useLocale();
@@ -68,94 +70,97 @@ export function ExpensesClient({
 
   const allColumns = useMemo<ColumnDef<ExpenseWithContact>[]>(() => [
     // ... (columnes sense canvis, com les has definit)
-     {
-       accessorKey: "invoice_number",
-       header: t('table.number'),
-       enableSorting: true,
-       cell: (row) => {
-         const displayNumber = row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`;
-         return (
-           <Link
-             href={`/${locale}/finances/expenses/${row.id}`}
-             className="text-green-600 hover:underline font-medium"
-             title={`${tShared('actions.view')}: ${displayNumber}`}
-           >
-             {displayNumber}
-           </Link>
-         );
-       },
-     },
-     {
-       accessorKey: "suppliers.nom",
-       header: t('table.supplier'),
-       enableSorting: true,
-       cell: (row) => {
-         if (row.suppliers) {
-           return (
-             <Link
-               href={`/${locale}/finances/suppliers/${row.suppliers.id}`}
-               className="text-primary hover:underline font-medium"
-               title={`${tShared('actions.view')}: ${row.suppliers.nom}`}
-             >
-               {row.suppliers.nom}
-             </Link>
-           );
-         }
-         return <span className="text-muted-foreground italic">{t('noSupplier')}</span>;
-       },
-     },
-     {
-       accessorKey: "description",
-       header: t('table.description'),
-       enableSorting: false,
-       cell: (row) => <span className="max-w-[150px] truncate">{row.description}</span>,
-     },
-     {
-       accessorKey: "expense_date",
-       header: t('table.date'),
-       enableSorting: true,
-       cell: (row) => formatLocalizedDate(row.expense_date, "PPP", locale),
-     },
-     {
-       accessorKey: "total_amount",
-       header: t('table.total'),
-       enableSorting: true,
-       cell: (row) => formatCurrency(row.total_amount),
-     },
-     {
-       accessorKey: "category",
-       header: t('table.category'),
-       enableSorting: true,
-       cell: (row) => row.category || t('noCategory'),
-     },
-     {
-       accessorKey: 'status',
-       header: t('table.status'),
-       enableSorting: true,
-       cell: (row) => (
-         <Badge
-           variant={row.status === 'paid'
-             ? 'success'
-             : row.status === 'overdue'
-               ? 'destructive'
-               : 'secondary'} className={undefined}
-         >
-           {t(`status.${row.status}`)}
-         </Badge>
-       ),
-     },
-     {
-       accessorKey: "actions_edit",
-       header: "",
-       enableSorting: false,
-       cell: (row) => (
-         <Link href={`/${locale}/finances/expenses/${row.id}`} title={tShared('actions.edit')}>
-           <Button variant="ghost" size="icon">
-             <Edit className="w-4 h-4" />
-           </Button>
-         </Link>
-       ),
-     },
+    {
+      accessorKey: "invoice_number",
+      header: t('table.number'),
+      enableSorting: true,
+      cell: (row) => {
+        const displayNumber = row.invoice_number || `EXP-${String(row.id).substring(0, 6)}`;
+        return (
+          <Link
+            href={`/${locale}/finances/expenses/${row.id}`}
+            className="text-green-600 hover:underline font-medium"
+            title={`${tShared('actions.view')}: ${displayNumber}`}
+          >
+            {displayNumber}
+          </Link>
+        );
+      },
+    },
+    {
+      accessorKey: "suppliers.nom",
+      header: t('table.supplier'),
+      enableSorting: true,
+      cell: (row) => {
+        if (row.suppliers) {
+          return (
+            <Link
+              href={`/${locale}/finances/suppliers/${row.suppliers.id}`}
+              className="text-primary hover:underline font-medium"
+              title={`${tShared('actions.view')}: ${row.suppliers.nom}`}
+            >
+              {row.suppliers.nom}
+            </Link>
+          );
+        }
+        return <span className="text-muted-foreground italic">{t('noSupplier')}</span>;
+      },
+    },
+    {
+      accessorKey: "description",
+      header: t('table.description'),
+      enableSorting: false,
+      cell: (row) => <span className="max-w-[150px] truncate">{row.description}</span>,
+    },
+    {
+      accessorKey: "expense_date",
+      header: t('table.date'),
+      enableSorting: true,
+      cell: (row) => formatLocalizedDate(row.expense_date, "PPP", locale),
+    },
+    {
+      accessorKey: "total_amount",
+      header: t('table.total'),
+      enableSorting: true,
+      cell: (row) => formatCurrency(row.total_amount),
+    },
+    {
+      // ✅ CANVIAT: El 'accessorKey' ara és 'category_name' (o el que retorni l'RPC)
+      // Si el teu tipus 'ExpenseWithContact' no té 'category_name', 
+      // utilitza 'category' (que vam mapejar al servei)
+      accessorKey: "category",
+      header: t('table.category'),
+      enableSorting: true, // Hauríem d'ordenar per 'category_name' a l'RPC
+      cell: (row) => row.category || t('noCategory'), // 'category' ara conté el nom
+    },
+    {
+      accessorKey: 'status',
+      header: t('table.status'),
+      enableSorting: true,
+      cell: (row) => (
+        <Badge
+          variant={row.status === 'paid'
+            ? 'success'
+            : row.status === 'overdue'
+              ? 'destructive'
+              : 'secondary'} className={undefined}
+        >
+          {t(`status.${row.status}`)}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "actions_edit",
+      header: "",
+      enableSorting: false,
+      cell: (row) => (
+        <Link href={`/${locale}/finances/expenses/${row.id}`} title={tShared('actions.edit')}>
+          <Button variant="ghost" size="icon">
+            <Edit className="w-4 h-4" />
+          </Button>
+        </Link>
+      ),
+    },
   ], [locale, t, tShared]);
 
   const {
@@ -223,7 +228,7 @@ export function ExpensesClient({
 
       <div className="sticky top-0 z-10 bg-background border-b shadow-sm py-3 px-4 sm:px-0">
         <PageHeader title={t('title')}>
-          
+
           {/* ✅ 8. Alerta de límit (només si se supera) */}
           {isLimitExceeded && (
             <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
@@ -239,7 +244,7 @@ export function ExpensesClient({
               </AlertDescription>
             </Alert>
           )}
-          
+
           {/* ✅ 9. Botó ara utilitza el gestor onClick */}
           <Button onClick={handleNewExpenseClick} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
@@ -254,8 +259,8 @@ export function ExpensesClient({
           onSearchChange={handleSearchChange}
           filters={filters}
           onFilterChange={handleFilterChange}
-          categories={filterOptions.categories}
-        />
+          categories={filterOptions.categories} />
+        
         <ColumnToggleButton
           allColumns={allColumns}
           columnVisibility={columnVisibility}
@@ -295,9 +300,9 @@ export function ExpensesClient({
               {t_billing('modalTitle')}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t_billing('expensesPerMonth', { 
-                current: expenseLimitStatus?.current ?? 0, 
-                max: expenseLimitStatus?.max ?? 0 
+              {t_billing('expensesPerMonth', {
+                current: expenseLimitStatus?.current ?? 0,
+                max: expenseLimitStatus?.max ?? 0
               })}
               <br />
               {t_billing('upgradePlan')}

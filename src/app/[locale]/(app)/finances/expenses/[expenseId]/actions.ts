@@ -9,7 +9,8 @@ import {
   // ✅ 1. Importem els tipus correctes (amb 'Expenses')
   type ExpensesAnalysisActionResult,
   type ExpensesAnalysisData,
-  type TaxRate
+  type TaxRate,
+  type ExpenseCategory
 } from "@/types/finances/index";
 import { type ActionResult } from "@/types/shared/index";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -374,6 +375,35 @@ export async function fetchTaxRatesAction(): Promise<ActionResult<TaxRate[]>> {
   } catch (error: unknown) {
     const message = (error as Error).message;
     console.error("Error fetching tax rates (action):", message);
+    return { success: false, message };
+  }
+}
+/**
+ * ACCIÓ: Obté el catàleg de categories de despesa per a l'equip.
+ */
+export async function fetchExpenseCategoriesAction(): Promise<ActionResult<ExpenseCategory[]>> {
+  const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+  if ("error" in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, activeTeamId } = session;
+
+  try {
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .select('*')
+      .eq('team_id', activeTeamId)
+      .order('name');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { success: true, data: data as ExpenseCategory[] };
+
+  } catch (error: unknown) {
+    const message = (error as Error).message;
+    console.error("Error fetching expense categories (action):", message);
     return { success: false, message };
   }
 }

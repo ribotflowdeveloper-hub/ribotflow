@@ -619,6 +619,35 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          description: string | null
+          id: string
+          name: string
+          team_id: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          name: string
+          team_id: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_categories_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_item_taxes: {
         Row: {
           amount: number
@@ -717,11 +746,12 @@ export type Database = {
       }
       expenses: {
         Row: {
-          category: string | null
+          category_id: string | null
           created_at: string
           currency: string
           description: string
           discount_amount: number | null
+          discount_rate: number | null
           due_date: string | null
           expense_date: string
           extra_data: Json | null
@@ -729,6 +759,7 @@ export type Database = {
           invoice_number: string | null
           is_billable: boolean
           is_reimbursable: boolean
+          legacy_category_name: string | null
           legacy_tax_amount: number | null
           legacy_tax_rate: number | null
           notes: string | null
@@ -745,11 +776,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          category?: string | null
+          category_id?: string | null
           created_at?: string
           currency?: string
           description: string
           discount_amount?: number | null
+          discount_rate?: number | null
           due_date?: string | null
           expense_date: string
           extra_data?: Json | null
@@ -757,6 +789,7 @@ export type Database = {
           invoice_number?: string | null
           is_billable?: boolean
           is_reimbursable?: boolean
+          legacy_category_name?: string | null
           legacy_tax_amount?: number | null
           legacy_tax_rate?: number | null
           notes?: string | null
@@ -773,11 +806,12 @@ export type Database = {
           user_id: string
         }
         Update: {
-          category?: string | null
+          category_id?: string | null
           created_at?: string
           currency?: string
           description?: string
           discount_amount?: number | null
+          discount_rate?: number | null
           due_date?: string | null
           expense_date?: string
           extra_data?: Json | null
@@ -785,6 +819,7 @@ export type Database = {
           invoice_number?: string | null
           is_billable?: boolean
           is_reimbursable?: boolean
+          legacy_category_name?: string | null
           legacy_tax_amount?: number | null
           legacy_tax_rate?: number | null
           notes?: string | null
@@ -801,6 +836,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "expenses_project_id_fkey"
             columns: ["project_id"]
@@ -2981,17 +3023,18 @@ export type Database = {
       }
       get_filtered_expenses: {
         Args: {
-          p_category: string
-          p_limit: number
-          p_offset: number
-          p_search_term: string
-          p_sort_by: string
-          p_sort_order: string
-          p_status: string
+          p_category_id?: string
+          p_limit?: number
+          p_offset?: number
+          p_search_term?: string
+          p_sort_by?: string
+          p_sort_order?: string
+          p_status?: string
           p_team_id: string
         }
         Returns: {
-          category: string
+          category_id: string
+          category_name: string
           created_at: string
           currency: string
           description: string
@@ -3239,11 +3282,12 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
-          category: string | null
+          category_id: string | null
           created_at: string
           currency: string
           description: string
           discount_amount: number | null
+          discount_rate: number | null
           due_date: string | null
           expense_date: string
           extra_data: Json | null
@@ -3251,6 +3295,7 @@ export type Database = {
           invoice_number: string | null
           is_billable: boolean
           is_reimbursable: boolean
+          legacy_category_name: string | null
           legacy_tax_amount: number | null
           legacy_tax_rate: number | null
           notes: string | null
@@ -4018,11 +4063,12 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
-          category: string | null
+          category_id: string | null
           created_at: string
           currency: string
           description: string
           discount_amount: number | null
+          discount_rate: number | null
           due_date: string | null
           expense_date: string
           extra_data: Json | null
@@ -4030,6 +4076,7 @@ export type Database = {
           invoice_number: string | null
           is_billable: boolean
           is_reimbursable: boolean
+          legacy_category_name: string | null
           legacy_tax_amount: number | null
           legacy_tax_rate: number | null
           notes: string | null

@@ -50,7 +50,7 @@ export const PLAN_LIMITS = {
     maxTeams: Infinity,
     maxTeamMembers: 3,
     maxStorageMB: 10 * 1024, // 10 GB
-    maxContacts: 20,//300
+    maxContacts: 30,//300
     maxPipelines: 15,
     maxQuotesPerMonth: 60,
     maxProducts: Infinity,

@@ -11,15 +11,23 @@ import { Loader2, Plus, Save, FileText, AlertTriangle, ArrowLeft, TriangleAlert,
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 // Tipus
-import { 
-    type ExpenseDetail, 
+import {
+    type ExpenseDetail,
     type ExpenseAttachment,
     type ExpenseItem,
-    type ExpensesAnalysisData, 
+    type ExpensesAnalysisData,
     type AnalyzedExpenseItem
 } from '@/types/finances/index'; // ✅ Importem des de l'index
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
-
+// ✅ AFEGIR Imports per al nou 'Select'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+    SelectGroup, // 👈 AFEGIR
+} from "@/components/ui/select";
 // Hooks i Components
 import { useExpenseDetail } from '../_hooks/useExpenseDetail';
 import { ExpenseItemsEditor } from './ExpenseItemsEditor';
@@ -30,6 +38,7 @@ import { ExpenseAttachmentUploader } from './ExpenseAttachmentUploader';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // ✅ Corregit import
 import { ExpenseAIAnalyzer } from './ExpenseAIAnalyzer';
+import { CreateCategoryDialog } from './CreateCategoryDialog'; // 👈 AFEGIR
 
 interface ExpenseDetailClientProps {
     initialData: ExpenseDetail | null;
@@ -66,6 +75,8 @@ export function ExpenseDetailClient({
         formData,
         availableTaxes,      // 👈 NOU
         isLoadingTaxes,      // 👈 NOU
+        availableCategories, // 👈 NOU
+        isLoadingCategories, // 👈 NOU
         handleFieldChange,
         handleSubmit,
         handleItemChange,
@@ -73,6 +84,7 @@ export function ExpenseDetailClient({
         handleAddItem,
         handleRemoveItem,
         setFormData,
+        handleCategoryCreated, // 👈 NOU
     } = useExpenseDetail({ initialData, isNew, userId, teamId });
 
     const [attachments, setAttachments] = useState<ExpenseAttachment[]>(
@@ -80,8 +92,8 @@ export function ExpenseDetailClient({
     );
 
     const isSaving = isPending;
-    const locale = 'ca'; 
-
+    const locale = 'ca';
+    const [isCategoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const isLimitExceeded = !isNew && limitStatus && !limitStatus.allowed;
 
     const handleUploadSuccess = (newAttachment: ExpenseAttachment) => {
@@ -131,7 +143,7 @@ export function ExpenseDetailClient({
             });
 
             const effectiveSubtotal = subtotal - (prev.discount_amount || 0);
-            
+
             // Prioritzem els totals de l'IA si existeixen
             const finalTaxAmount = data.tax_amount ?? totalVat;
             const finalTotalAmount = data.total_amount ?? (effectiveSubtotal + finalTaxAmount - totalRetention);
@@ -142,15 +154,15 @@ export function ExpenseDetailClient({
                 supplier_id: data.supplier_id || prev.supplier_id,
                 expense_date: data.invoice_date || prev.expense_date,
                 invoice_number: data.invoice_number || prev.invoice_number,
-                
+
                 // Assignem els nous totals calculats
                 total_amount: finalTotalAmount,
                 tax_amount: finalTaxAmount, // Total IVA
                 retention_amount: totalRetention, // Total IRPF
                 subtotal: subtotal,
-                
+
                 expense_items: newItems.length > 0 ? newItems : prev.expense_items,
-                
+
                 // Eliminem la dependència del 'tax_rate' antic
                 // legacy_tax_rate: data.tax_rate ?? prev.legacy_tax_rate, 
             };
@@ -204,7 +216,7 @@ export function ExpenseDetailClient({
                         {(isNew || (formData.expense_items || []).length === 0) && (
                             <Card className="bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
                                 <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                                     <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-800 dark:text-blue-300">
+                                    <CardTitle className="text-sm font-medium flex items-center gap-2 text-blue-800 dark:text-blue-300">
                                         <Sparkles className="h-4 w-4" />
                                         {t('aiHelperTitle') || 'Assistent IA'}
                                     </CardTitle>
@@ -220,11 +232,13 @@ export function ExpenseDetailClient({
                                 </CardContent>
                             </Card>
                         )}
-                        
+
+                        {/* ✅ 2. TARGETA DETALLS (ACTUALITZADA) */}
                         <Card>
                             <CardHeader><CardTitle>{t('card.generalDetails')}</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Proveïdor */}
                                     <div className="space-y-2">
                                         <Label htmlFor="supplier_id">{t('field.supplier')}</Label>
                                         <SupplierCombobox
@@ -234,6 +248,7 @@ export function ExpenseDetailClient({
                                             disabled={isSaving}
                                         />
                                     </div>
+                                    {/* Data */}
                                     <div className="space-y-2">
                                         <Label htmlFor="expense_date">{t('field.expenseDate')}</Label>
                                         <Input
@@ -245,10 +260,55 @@ export function ExpenseDetailClient({
                                         />
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="invoice_number">{t('field.invoiceNumber')}</Label>
-                                    <Input id="invoice_number" value={formData.invoice_number || ''} onChange={(e) => handleFieldChange('invoice_number', e.target.value)} disabled={isSaving} placeholder={t('placeholder.invoiceNumber')} />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* N. Factura */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="invoice_number">{t('field.invoiceNumber')}</Label>
+                                        <Input id="invoice_number" value={formData.invoice_number || ''} onChange={(e) => handleFieldChange('invoice_number', e.target.value)} disabled={isSaving} placeholder={t('placeholder.invoiceNumber')} />
+                                    </div>
+
+                                    {/* ✅ AFEGIT: Categoria (ara amb Diàleg) */}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="category_id">{t('field.category')}</Label>
+                                        <Select
+                                            value={formData.category_id || ''}
+                                            onValueChange={(value) => {
+                                                if (value === 'create_new') {
+                                                    setCategoryDialogOpen(true);
+                                                } else {
+                                                    handleFieldChange('category_id', value || null);
+                                                }
+                                            }}
+                                            disabled={isSaving || isLoadingCategories}
+                                        >
+                                            <SelectTrigger id="category_id">
+                                                <SelectValue placeholder={
+                                                    isLoadingCategories 
+                                                    ? t('loading') || 'Carregant...' 
+                                                    : t('placeholder.selectCategory') || 'Selecciona una categoria'
+                                                } />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="create_new" className="text-blue-600">
+                                                    <Plus className="mr-2 h-4 w-4" />
+                                                    {t('categories.createNew') || 'Crear nova categoria...'}
+                                                </SelectItem>
+                                                <SelectGroup>
+                                                    {availableCategories.map(category => (
+                                                        <SelectItem key={category.id} value={category.id}>
+                                                            {category.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectGroup>
+                                            </SelectContent>
+                                        </Select>
+                                        
+                                    </div>
                                 </div>
+
+
+
                                 <div className="space-y-2">
                                     <Label htmlFor="description">{t('field.description')}</Label>
                                     <Textarea id="description" value={formData.description || ''} onChange={(e) => handleFieldChange('description', e.target.value)} disabled={isSaving} rows={3} placeholder={t('placeholder.description')} />
@@ -294,9 +354,8 @@ export function ExpenseDetailClient({
                     </div>
 
                     <div className="lg:col-span-1 space-y-4">
-                        
-                        {/* ✅ 4. TARGETA DE TOTALS (ACTUALITZADA) */}
-                        {/* Mostrem els nous camps 'tax_amount' i 'retention_amount' */}
+
+                        {/* ✅ 3. TARGETA TOTALS (ACTUALITZADA) */}
                         <Card>
                             <CardHeader><CardTitle>{t('card.totals')}</CardTitle></CardHeader>
                             <CardContent className="space-y-3">
@@ -304,16 +363,29 @@ export function ExpenseDetailClient({
                                     <Label>{t('label.subtotal')}</Label>
                                     <span className="font-medium">{formatCurrency(formData.subtotal, 'EUR', locale)}</span>
                                 </div>
+
+                                {/* Descompte (Percentatge) */}
                                 <div className="space-y-1">
-                                    <Label htmlFor="discount_amount">{t('field.discount')}</Label>
-                                    <Input
-                                        id="discount_amount"
-                                        type="number"
-                                        value={formData.discount_amount || 0}
-                                        onChange={(e) => handleFieldChange('discount_amount', parseFloat(e.target.value) || 0)}
-                                        disabled={isSaving}
-                                        step="0.01"
-                                    />
+                                    <Label htmlFor="discount_rate">{t('field.discount')}</Label>
+                                    <div className="flex items-center space-x-2">
+                                        <Input
+                                            id="discount_rate"
+                                            type="number"
+                                            // ✅ CORRECCIÓ:
+                                            // Si el valor és 0, mostra '', altrament mostra el valor.
+                                            // Això evita el '0' inicial i permet que el placeholder es vegi.
+                                            value={formData.discount_rate === 0 ? '' : formData.discount_rate || ''}
+                                            placeholder="0" // Placeholder per quan estigui buit
+                                            onChange={(e) => handleFieldChange('discount_rate', parseFloat(e.target.value) || 0)}
+                                            disabled={isSaving}
+                                            step="0.01"
+                                            className="w-2/3"
+                                        />
+                                        <span className='font-mono text-sm text-muted-foreground w-1/3 text-right'>
+                                            %
+                                            ({formatCurrency(formData.discount_amount, 'EUR', locale)})
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {/* Total IVA */}
@@ -331,8 +403,6 @@ export function ExpenseDetailClient({
                                         -{formatCurrency(formData.retention_amount, 'EUR', locale)}
                                     </span>
                                 </div>
-                                
-                                {/* Eliminem el camp antic de 'tax_rate' */}
 
                                 <div className="pt-2 border-t mt-4 flex justify-between items-center">
                                     <Label className="text-lg font-bold">{t('label.total')}</Label>
@@ -359,7 +429,7 @@ export function ExpenseDetailClient({
                                 ) : (
                                     !isNew && <p className="text-sm text-muted-foreground">No hi ha adjunts.</p>
                                 )}
-                                
+
                                 {isNew ? (
                                     <div className="text-sm text-muted-foreground p-4 text-center border-dashed border rounded-lg">
                                         <AlertTriangle className="h-4 w-4 mx-auto mb-2" />
@@ -367,7 +437,7 @@ export function ExpenseDetailClient({
                                     </div>
                                 ) : (
                                     <ExpenseAttachmentUploader
-                                        expenseId={initialData!.id} 
+                                        expenseId={initialData!.id}
                                         onUploadSuccess={handleUploadSuccess}
                                     />
                                 )}
@@ -384,9 +454,15 @@ export function ExpenseDetailClient({
                                 </CardContent>
                             </Card>
                         )}
-                        </div>
+                    </div>
                 </div>
-            </form>
-        </div>
+            </form >
+            {/* ✅ NOU: Component del Diàleg (fora del form) */}
+            <CreateCategoryDialog
+                open={isCategoryDialogOpen}
+                onOpenChange={setCategoryDialogOpen}
+                onCategoryCreated={handleCategoryCreated}
+            />
+        </div >
     );
 }

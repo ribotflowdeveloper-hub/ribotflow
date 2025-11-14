@@ -1,15 +1,17 @@
 'use server';
 
-import { type ExpenseWithContact } from "@/types/finances/expenses";
+import { 
+  type ExpenseWithContact,
+  type ExpenseCategory // ✅ AFEGIR
+} from "@/types/finances/index"; 
 import { type ActionResult } from "@/types/shared/index";
-import { type Expense } from "@/types/finances/expenses";
+import { type Expense } from "@/types/finances/index"; 
 import { revalidatePath } from "next/cache";
 import { 
   type PaginatedActionParams, 
   type PaginatedResponse 
 } from '@/hooks/usePaginateResource';
 
-// ✅ 1. Importem els nous guardians, permisos i límits
 import { 
   validateSessionAndPermission, 
   validateActionAndUsage 
@@ -19,7 +21,7 @@ import { type PlanLimit } from "@/config/subscriptions";
 
 import * as expensesListService from '@/lib/services/finances/expenses/expenses.service';
 import * as expensesDetailService from '@/lib/services/finances/expenses/expenseDetail.service';
-
+import { getTranslations } from 'next-intl/server';
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
 
 // Tipus
@@ -33,7 +35,6 @@ export type ExpenseForSupplier = Partial<Expense>;
 export async function fetchPaginatedExpenses(
   params: FetchExpensesParams,
 ): Promise<PaginatedExpensesData> {
-  // ✅ 2. Validació de PERMÍS DE VISTA
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) {
     console.error("Session error in fetchPaginatedExpenses:", session.error);
@@ -41,11 +42,8 @@ export async function fetchPaginatedExpenses(
   }
   const { supabase, activeTeamId } = session;
 
-  console.log("expenses/actions.ts (fetchPaginatedExpenses): Paràmetres rebuts:", JSON.stringify(params, null, 2));
-
   try {
     const result = await expensesListService.fetchPaginatedExpenses(supabase, activeTeamId, params);
-    console.log(`expenses/actions.ts (fetchPaginatedExpenses): Retornant ${result.data.length} files i un count de ${result.count}`);
     return result;
   } catch (error: unknown) {
     const message = (error as Error).message;
@@ -60,7 +58,6 @@ export async function fetchPaginatedExpenses(
 export async function processOcrAction(
   formData: FormData,
 ): Promise<ActionResult<Record<string, unknown>>> {
-  // ✅ 3. Validació de CREACIÓ (PERMÍS + LÍMIT)
   const limitToCheck: PlanLimit = 'maxExpensesPerMonth';
   const session = await validateActionAndUsage(
     PERMISSIONS.MANAGE_EXPENSES,
@@ -83,7 +80,6 @@ export async function processOcrAction(
  * ACCIÓ: Obté despeses per a un proveïdor.
  */
 export async function fetchExpensesForSupplier(supplierId: string) {
-  // ✅ 4. Validació de PERMÍS DE VISTA
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return [];
   const { supabase, activeTeamId } = session;
@@ -99,7 +95,6 @@ export async function searchExpensesForLinking(
 ): Promise<
   Pick<Expense, "id" | "description" | "expense_date" | "total_amount">[]
 > {
-  // ✅ 5. Validació de PERMÍS DE VISTA
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) return [];
   const { supabase, activeTeamId } = session;
@@ -114,7 +109,6 @@ export async function linkExpenseToSupplier(
   expenseId: number,
   supplierId: string,
 ): Promise<ActionResult<Expense>> {
-  // ✅ 6. Validació de PERMÍS DE GESTIÓ
   const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) {
     return { success: false, message: session.error.message };
@@ -139,7 +133,6 @@ export async function unlinkExpenseFromSupplier(
   expenseId: number,
   supplierId: string, // Per revalidar
 ): Promise<ActionResult> {
-  // ✅ 7. Validació de PERMÍS DE GESTIÓ
   const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
   if ("error" in session) {
     return { success: false, message: session.error.message };
@@ -157,19 +150,83 @@ export async function unlinkExpenseFromSupplier(
   }
 }
 
+// ❌❌❌
+// ESBORRA L'ACCIÓ ANTIGA 'getUniqueExpenseCategories'
+// ❌❌❌
+
+// ✅ AFEGIR L'ACCIÓ NOVA (la mateixa que vam fer per al detall)
 /**
- * ACCIÓ: Obté categories úniques (gestiona la sessió).
+ * ACCIÓ: Obté el catàleg de categories de despesa per a l'equip.
  */
-export async function getUniqueExpenseCategories(): Promise<string[]> {
-  // ✅ 8. Validació de PERMÍS DE VISTA
+export async function fetchExpenseCategoriesAction(): Promise<ActionResult<ExpenseCategory[]>> {
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
   if ("error" in session) {
-    console.error("Session error in getUniqueExpenseCategories:", session.error);
-    return [];
+    return { success: false, message: session.error.message };
   }
-  const { activeTeamId } = session;
+  const { supabase, activeTeamId } = session;
 
-  console.log("expenses/actions.ts (getUniqueExpenseCategories): Cridant al servei...");
-  return await expensesListService.getUniqueExpenseCategories(activeTeamId);
+  try {
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .select('*')
+      .eq('team_id', activeTeamId)
+      .order('name');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    
+    return { success: true, data: data as ExpenseCategory[] };
+
+  } catch (error: unknown) {
+    const message = (error as Error).message;
+    console.error("Error fetching expense categories (action):", message);
+    return { success: false, message };
+  }
 }
+/**
+ * ACCIÓ: Crea una nova categoria de despesa
+ */
+export async function createExpenseCategoryAction(
+  name: string,
+  description: string | null
+): Promise<ActionResult<ExpenseCategory>> {
+  
+  // ✅ 2. INICIALITZEM LES TRADUCCIONS
+  const tShared = await getTranslations('Shared'); 
+  
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES); // Hem canviat el permís a MANAGE_EXPENSES
+  if ("error" in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, activeTeamId } = session;
 
+  try {
+    const { data, error } = await supabase
+      .from('expense_categories')
+      .insert({
+        team_id: activeTeamId,
+        name: name,
+        description: description,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === '23505') { // Error de 'unique_constraint'
+        // ✅ 3. ARA 'tShared' EXISTEIX
+        throw new Error(tShared('errors.categoryExists') || 'Ja existeix una categoria amb aquest nom.');
+      }
+      throw error;
+    }
+    
+    revalidatePath('/finances/expenses');
+    
+    return { success: true, data: data as ExpenseCategory };
+
+  } catch (error: unknown) {
+    const message = (error as Error).message;
+    console.error("Error creating expense category (action):", message);
+    return { success: false, message };
+  }
+}
