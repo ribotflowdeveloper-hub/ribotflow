@@ -10,11 +10,15 @@ import { TaxRate } from "./taxes"; // Importem el tipus TaxRate
 export type ExpenseItem = {
   id?: number | string; // ID temporal (Date.now()) o real (UUID/number)
   expense_id: number;
+  user_id: string;
+  team_id: string;
+  category_id: string | null;
   description: string;
   quantity: number;
   unit_price: number;
   total: number; // (quantity * unit_price)
   taxes: TaxRate[]; // Llista d'impostos seleccionats per aquest item
+  legacy_category_name?: string | null; // Antic camp de text (per migració)
 };
 
 export type ExpenseAttachment = {

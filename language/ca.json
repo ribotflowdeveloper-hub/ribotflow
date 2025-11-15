@@ -1988,6 +1988,12 @@
       "load": "Carregar conceptes",
       "download": "Descarregar conceptes",
       "startingexport": "Iniciant l'exportació de conceptes..."
+    },
+    "quotes": {
+      "create": "Crear plantilla",
+      "load": "Carregar pressupostos",
+      "download": "Descarregar pressupostos",
+      "startingexport": "Iniciant l'exportació de pressupostos..."
     }
   },
   "Shared": {

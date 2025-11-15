@@ -1032,6 +1032,58 @@ export type Database = {
           },
         ]
       }
+      invoice_item_taxes: {
+        Row: {
+          amount: number
+          id: string
+          invoice_item_id: string
+          name: string
+          rate: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          invoice_item_id: string
+          name: string
+          rate: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          invoice_item_id?: string
+          name?: string
+          rate?: number
+          tax_rate_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_item_taxes_invoice_item_id_fkey"
+            columns: ["invoice_item_id"]
+            isOneToOne: false
+            referencedRelation: "invoice_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_item_taxes_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_item_taxes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_items: {
         Row: {
           created_at: string | null
@@ -1129,18 +1181,20 @@ export type Database = {
           invoice_number: string | null
           issue_date: string
           language: string
+          legacy_tax_amount: number | null
+          legacy_tax_rate: number | null
           notes: string | null
           paid_at: string | null
           payment_details: string | null
           project_id: string | null
           quote_id: number | null
+          retention_amount: number
           sent_at: string | null
           shipping_cost: number | null
           status: string
           subtotal: number | null
           tax: number | null
-          tax_amount: number | null
-          tax_rate: number | null
+          tax_amount: number
           team_id: string | null
           terms: string | null
           total_amount: number
@@ -1174,18 +1228,20 @@ export type Database = {
           invoice_number?: string | null
           issue_date: string
           language?: string
+          legacy_tax_amount?: number | null
+          legacy_tax_rate?: number | null
           notes?: string | null
           paid_at?: string | null
           payment_details?: string | null
           project_id?: string | null
           quote_id?: number | null
+          retention_amount?: number
           sent_at?: string | null
           shipping_cost?: number | null
           status: string
           subtotal?: number | null
           tax?: number | null
-          tax_amount?: number | null
-          tax_rate?: number | null
+          tax_amount?: number
           team_id?: string | null
           terms?: string | null
           total_amount: number
@@ -1219,18 +1275,20 @@ export type Database = {
           invoice_number?: string | null
           issue_date?: string
           language?: string
+          legacy_tax_amount?: number | null
+          legacy_tax_rate?: number | null
           notes?: string | null
           paid_at?: string | null
           payment_details?: string | null
           project_id?: string | null
           quote_id?: number | null
+          retention_amount?: number
           sent_at?: string | null
           shipping_cost?: number | null
           status?: string
           subtotal?: number | null
           tax?: number | null
-          tax_amount?: number | null
-          tax_rate?: number | null
+          tax_amount?: number
           team_id?: string | null
           terms?: string | null
           total_amount?: number

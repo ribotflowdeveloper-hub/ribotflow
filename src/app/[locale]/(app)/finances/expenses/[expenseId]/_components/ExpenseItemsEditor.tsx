@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'; // 👈 IMPORTAR
 import { Loader2, Trash2 } from 'lucide-react';
 import { type ExpenseItem, type TaxRate } from '@/types/finances/index'; // 👈 AFEGIR TaxRate
 import { useTranslations } from 'next-intl';
-import { ItemTaxSelector } from './ItemTaxSelector'; // 👈 IMPORTAR NOU COMPONENT
+import { ItemTaxSelector } from '../../../../../../../components/features/taxs/ItemTaxSelector'; // 👈 IMPORTAR NOU COMPONENT
 
 // ✅ MODIFICAT: Noves props
 interface ExpenseItemsEditorProps {

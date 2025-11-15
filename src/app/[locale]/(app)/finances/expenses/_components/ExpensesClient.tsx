@@ -36,7 +36,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
+// 💡 3. Importem el botó i accions d'Excel
+import ExcelDropdownButton from '@/components/features/excel/ExcelDropdownButton';
+import { useExcelActions } from '@/components/features/excel/useExelActions';
 // ✅ 3. Importem el tipus del límit
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
 
@@ -63,10 +65,25 @@ export function ExpensesClient({
   const tShared = useTranslations('Shared');
   const t_billing = useTranslations('Shared.limits');
   const router = useRouter(); // Per al modal i el botó
-
+  // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
+  const {
+    isPending: isExcelPending, // Renombrem per claredat
+    excelOptions,
+    handleExcelAction
+  } = useExcelActions({
+    tableName: 'expenses',
+    limitStatus: expenseLimitStatus,
+    translationKeys: {
+      create: 'expenses.create',
+      load: 'expenses.load',
+      download: 'expenses.download',
+      limit: 'expenses', // Clau de Shared.limits
+    }
+  });
   // ✅ 6. Estat per al modal i comprovació del límit
   const [showLimitModal, setShowLimitModal] = useState(false);
   const isLimitExceeded = expenseLimitStatus && !expenseLimitStatus.allowed;
+
 
   const allColumns = useMemo<ColumnDef<ExpenseWithContact>[]>(() => [
     // ... (columnes sense canvis, com les has definit)
@@ -164,7 +181,7 @@ export function ExpensesClient({
   ], [locale, t, tShared]);
 
   const {
-    isPending,
+    isPending: isTablePending,
     data: expenses,
     itemToDelete: expenseToDelete,
     setItemToDelete: setExpenseToDelete,
@@ -244,7 +261,12 @@ export function ExpensesClient({
               </AlertDescription>
             </Alert>
           )}
-
+          {/* 💡 5. Botó d'Excel afegit i connectat al hook */}
+          <ExcelDropdownButton
+            options={excelOptions}
+            onSelect={handleExcelAction}
+            disabled={isExcelPending || isTablePending}
+          />
           {/* ✅ 9. Botó ara utilitza el gestor onClick */}
           <Button onClick={handleNewExpenseClick} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
@@ -260,7 +282,7 @@ export function ExpensesClient({
           filters={filters}
           onFilterChange={handleFilterChange}
           categories={filterOptions.categories} />
-        
+
         <ColumnToggleButton
           allColumns={allColumns}
           columnVisibility={columnVisibility}
@@ -275,7 +297,7 @@ export function ExpensesClient({
           onSort={handleSort}
           currentSortColumn={currentSortColumn}
           currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
-          isPending={isPending}
+          isPending={isExcelPending || isTablePending} // 💡 6. Combinem els 'pending'        
           onDelete={handleDelete}
           deleteItem={expenseToDelete}
           setDeleteItem={setExpenseToDelete}

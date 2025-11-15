@@ -21,7 +21,7 @@ const baseLimits = {
   // CRM
   maxContacts: 10, //100
   maxPipelines: 5,
-  maxQuotesPerMonth: 1,
+  maxQuotesPerMonth: 10,
   maxProducts: 10,
   maxCalendarAccounts: 1,
   maxTasks: 25,
