@@ -1,137 +1,144 @@
-// src/app/[locale]/(app)/finances/invoices/[invoiceId]/_components/InvoiceItemsEditor.tsx
 "use client";
 
-import { Button } from '@/components/ui/button';
+import React from 'react';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Trash2 } from 'lucide-react';
-import { type InvoiceItem } from '@/types/finances/invoices'; // Ajusta la ruta
-import { formatCurrency } from '@/lib/utils/formatters'; // Per mostrar totals
-// Opcional: Si vols un selector de productes
-// import { ProductCombobox } from '@/components/shared/ProductCombobox';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Loader2, Trash2 } from 'lucide-react';
+import { 
+  type InvoiceItem,
+  type TaxRate 
+} from '@/types/finances/index';
+import { useTranslations } from 'next-intl';
+// ✅ 1. Importem el selector d'impostos. 
+// Assegura't que la ruta és correcta (l'hem creat dins de 'expenses' però és genèric)
+import { ItemTaxSelector } from '../../../../../../../components/features/taxs/ItemTaxSelector'; 
+import { formatCurrency } from '@/lib/utils/formatters';
 
+// ✅ 2. AQUESTA ÉS LA INTERFÍCIE DE PROPS CORRECTA
 interface InvoiceItemsEditorProps {
     items: InvoiceItem[];
-    onItemChange: <K extends keyof InvoiceItem>(index: number, field: K, value: InvoiceItem[K]) => void;
+    availableTaxes: TaxRate[];
+    isLoadingTaxes: boolean;
+    onItemChange: (index: number, field: keyof InvoiceItem, value: string | number) => void;
+    onItemTaxesChange: (index: number, taxes: TaxRate[]) => void;
     onRemoveItem: (index: number) => void;
     isSaving: boolean;
-    // Opcional: Passa productes si tens un selector
-    // products: { id: number | string; name: string; price: number }[];
     currency?: string;
     locale?: string;
 }
 
 export function InvoiceItemsEditor({
     items,
+    availableTaxes,
+    isLoadingTaxes,
     onItemChange,
+    onItemTaxesChange,
     onRemoveItem,
     isSaving,
-    // products,
     currency = 'EUR',
     locale = 'ca',
 }: InvoiceItemsEditorProps) {
 
-    // Funció auxiliar per gestionar canvis numèrics
-    const handleNumericChange = (index: number, field: 'quantity' | 'unit_price', value: string) => {
-        const numericValue = parseFloat(value);
-        // Permetem 0 però no NaN o negatius (ajusta segons necessitats)
-        if (!isNaN(numericValue) && numericValue >= 0) {
-            onItemChange(index, field, numericValue);
-        } else if (value === '') {
-             onItemChange(index, field, 0); // O null si prefereixes
-        }
-        // Si no és vàlid, no fem res (mantenim valor anterior)
-    };
+    const t = useTranslations('InvoiceDetailPage.items');
 
     return (
-        <div className="overflow-x-auto">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                        {/* Opcional: Capçalera per a selector de Producte */}
-                        {/* <TableHead className="w-[200px]">Producte</TableHead> */}
-                        <TableHead>Descripció</TableHead>
-                        <TableHead className="w-[100px] text-right">Quantitat</TableHead>
-                        <TableHead className="w-[120px] text-right">Preu Unitari</TableHead>
-                        <TableHead className="w-[120px] text-right">Total</TableHead>
-                        <TableHead className="w-[50px]"><span className="sr-only">Esborrar</span></TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {items.map((item, index) => (
-                        // ✅ CORRECCIÓ: Els comentaris s'han tret d'aquí
-                        <TableRow key={item.id}> 
-                            {/* Opcional: Cel·la per a selector de Producte */}
-                            {/* <TableCell>
-                                <ProductCombobox
-                                    value={item.product_id}
-                                    onChange={(productId, product) => {
-                                        // Omple automàticament descripció i preu
-                                        onItemChange(index, 'product_id', productId);
-                                        onItemChange(index, 'description', product?.name || item.description);
-                                        onItemChange(index, 'unit_price', product?.price || item.unit_price);
-                                    }}
-                                    products={products}
-                                    disabled={isSaving}
-                                />
-                            </TableCell> 
-                            */}
-                            <TableCell>
-                                <Input
-                                    value={item.description || ''}
-                                    onChange={(e) => onItemChange(index, 'description', e.target.value)}
-                                    placeholder="Descripció del servei o producte"
-                                    disabled={isSaving}
-                                    className="min-w-[200px]" // Amplada mínima per a descripció
-                                />
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <Input
-                                    type="number"
-                                    value={item.quantity}
-                                    onChange={(e) => handleNumericChange(index, 'quantity', e.target.value)}
-                                    disabled={isSaving}
-                                    className="text-right"
-                                    step="any" // Permet decimals si cal
-                                    min="0"
-                                />
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <Input
-                                    type="number"
-                                    value={item.unit_price}
-                                    onChange={(e) => handleNumericChange(index, 'unit_price', e.target.value)}
-                                    disabled={isSaving}
-                                    className="text-right"
-                                    step="0.01" // Precisió de cèntims
-                                    min="0"
-                                />
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                                {formatCurrency(item.quantity * item.unit_price, currency, locale)}
-                            </TableCell>
-                            <TableCell>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => onRemoveItem(index)}
-                                    disabled={isSaving}
-                                    className="text-muted-foreground hover:text-destructive h-8 w-8"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Esborrar línia</span>
-                                </Button>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-            {items.length === 0 && (
-                 <p className="text-center text-sm text-muted-foreground py-4">
-                    No hi ha cap línia afegida. Fes clic a "+ Afegir Línia" per començar.
-                 </p>
+        <div className="space-y-4">
+            {/* Capçalera de la taula (per a 'md' i més grans) */}
+            <div className="hidden md:grid grid-cols-12 gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                <span className="col-span-4">{t('description')}</span>
+                <span className="col-span-1 text-right">{t('quantity')}</span>
+                <span className="col-span-2 text-right">{t('unitPrice')}</span>
+                <span className="col-span-3">{t('taxes')}</span>
+                <span className="col-span-2 text-right">{t('total')}</span>
+            </div>
+
+            {(items || []).length === 0 && (
+                <p className="text-center text-muted-foreground py-4">{t('emptyState')}</p>
             )}
+
+            {/* Llista d'items */}
+            {(items || []).map((item, index) => (
+                <div key={item.id || index} className="space-y-2 md:space-y-0 md:grid md:grid-cols-12 md:gap-2 md:items-start border-b pb-2">
+                    
+                    {/* Descripció */}
+                    <div className="md:col-span-4">
+                        <Label className="md:hidden text-xs font-medium">{t('description')}</Label>
+                        <Input
+                            placeholder={t('placeholder.description')}
+                            value={item.description}
+                            onChange={(e) => onItemChange(index, 'description', e.target.value)}
+                            disabled={isSaving}
+                            className="h-9"
+                        />
+                    </div>
+
+                    {/* Quantitat */}
+                    <div className="md:col-span-1">
+                        <Label className="md:hidden text-xs font-medium">{t('quantity')}</Label>
+                        <Input
+                            type="number"
+                            placeholder="0"
+                            value={item.quantity || 0}
+                            onChange={(e) => onItemChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                            disabled={isSaving}
+                            className="text-right h-9"
+                            step="any"
+                        />
+                    </div>
+
+                    {/* Preu Unitari */}
+                    <div className="md:col-span-2">
+                        <Label className="md:hidden text-xs font-medium">{t('unitPrice')}</Label>
+                        <Input
+                            type="number"
+                            placeholder="0.00"
+                            value={item.unit_price || 0}
+                            onChange={(e) => onItemChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                            disabled={isSaving}
+                            className="text-right h-9"
+                            step="0.01"
+                        />
+                    </div>
+
+                    {/* ✅ 3. Selector d'Impostos */}
+                    <div className="md:col-span-3">
+                        <Label className="md:hidden text-xs font-medium">{t('taxes')}</Label>
+                        {isLoadingTaxes ? (
+                          <Button variant="outline" className="w-full h-9" disabled>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          </Button>
+                        ) : (
+                          <ItemTaxSelector
+                              availableTaxes={availableTaxes}
+                              selectedTaxes={item.taxes || []} 
+                              onChange={(newTaxes) => onItemTaxesChange(index, newTaxes)}
+                              disabled={isSaving}
+                          />
+                        )}
+                    </div>
+                    
+                    {/* Total (Lectura) i Botó Esborrar */}
+                    <div className="md:col-span-2">
+                      <Label className="md:hidden text-xs font-medium">{t('total')}</Label>
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-right flex-1 pt-2">
+                            {formatCurrency(item.total, currency, locale)}
+                        </span>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => onRemoveItem(index)}
+                            disabled={isSaving}
+                            className="w-8 h-8 text-red-500 hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }

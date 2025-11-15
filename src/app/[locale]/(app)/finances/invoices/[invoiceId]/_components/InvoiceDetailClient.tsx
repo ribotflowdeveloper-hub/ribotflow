@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-// ✅ 1. Importem 'useRouter' per refrescar
-import { useSearchParams, useRouter } from 'next/navigation'; 
+import { useSearchParams, useRouter } from 'next/navigation';
 import { type InvoiceDetail } from '@/types/finances';
 import { useInvoiceDetail } from '../_hooks/useInvoiceDetail';
 import { type CompanyProfile } from '@/types/settings/team';
@@ -10,12 +9,11 @@ import { type Database } from '@/types/supabase';
 import { toast } from 'sonner'; 
 import { sendInvoiceByEmailAction } from '../actions'; 
 
-// Nous components fills importats
+// Components fills
 import { InvoiceDetailHeader } from './client/InvoiceDetailHeader';
 import { InvoiceMetaGrid } from './client/InvoiceMetaGrid';
 import { InvoiceMainContent } from './client/InvoiceMainContent';
 
-// Definim el tipus 'Contact' correcte
 type Contact = Database['public']['Tables']['contacts']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 
@@ -45,13 +43,13 @@ export function InvoiceDetailClient({
   description,
 }: InvoiceDetailClientProps) {
 
-  const router = useRouter(); // ✅ 2. Instanciem el router
+  const router = useRouter();
   const searchParams = useSearchParams();
   const fromUrl = searchParams.get('from');
 
+  // ✅ 1. DESESTRUCTURACIÓ (ACTUALITZADA)
   const {
     formData,
-
     isPending,
     isFinalizing,
     isLocked,
@@ -61,8 +59,11 @@ export function InvoiceDetailClient({
     handleAddProductFromLibrary, 
     handleRemoveItem,
     handleSubmit,
-    handleFinalize: hookHandleFinalize, // ✅ 4. Renombrem la funció del hook
+    handleFinalize: hookHandleFinalize,
     t,
+    availableTaxes,      // 👈 NOU
+    isLoadingTaxes,      // 👈 NOU
+    handleItemTaxesChange, // 👈 NOU
   } = useInvoiceDetail({ 
         initialData, 
         isNew, 
@@ -70,13 +71,11 @@ export function InvoiceDetailClient({
         teamId 
     });
 
-  // 'isSaving' i 'formIsDisabled' es mantenen igual
   const isSaving = isPending || isFinalizing;
   const formIsDisabled = isSaving || isLocked;
 
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(contact);
-
   const [isSendEmailDialogOpen, setIsSendEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
@@ -88,6 +87,7 @@ export function InvoiceDetailClient({
     }
   };
 
+  // ... (handleContactIdChange, handleSendEmail, handleFinalizeWrapper es queden igual)
   const handleContactIdChange = (contactId: number | null) => {
     if (contactId === null) {
       setSelectedContact(null);
@@ -105,22 +105,14 @@ export function InvoiceDetailClient({
   };
 
   const handleSendEmail = async (recipientEmail: string, messageBody: string) => {
-    // Obtenim l'ID correcte (pot ser que initialData sigui null si és nova)
     const invoiceId = formData.id || initialData?.id;
-
     if (!invoiceId || !recipientEmail) {
       toast.error(t('errors.missingEmailData') || "Falten dades per enviar l'email.");
       return;
     }
-    
     setIsSendingEmail(true);
-    const result = await sendInvoiceByEmailAction(
-      invoiceId, 
-      recipientEmail, 
-      messageBody
-    );
+    const result = await sendInvoiceByEmailAction(invoiceId, recipientEmail, messageBody);
     setIsSendingEmail(false);
-
     if (result.success) {
       toast.success(result.message || "Email enviat correctament.");
       setIsSendEmailDialogOpen(false); 
@@ -129,20 +121,11 @@ export function InvoiceDetailClient({
     }
   };
 
-  // ✅ 5. Wrapper per a 'handleFinalize'
   const handleFinalizeWrapper = async () => {
-    
-    // Cridem la funció del hook, que ara retorna el resultat
     const result = await hookHandleFinalize(); 
-
-    // ✅ 6. Aquesta comprovació ARA FUNCIONARÀ
     if (result && result.success) {
-      // El hook ja ha actualitzat l'estat local ('setFormData' i 'setIsLocked')
-      // i ha cridat a 'router.refresh()',
-      // així que aquí no cal fer res més.
       console.log("Finalize successful, state updated by hook.");
     } else {
-      // El hook ja ha mostrat el toast d'error
       console.log("Finalize failed, error handled by hook.");
     }
   };
@@ -169,9 +152,7 @@ export function InvoiceDetailClient({
           isLocked={isLocked}
           isPending={isPending}
           isNew={isNew}
-          
-          handleFinalize={handleFinalizeWrapper} // ✅ Passem el nou wrapper
-          
+          handleFinalize={handleFinalizeWrapper}
           isFinalizing={isFinalizing}
           isSendEmailDialogOpen={isSendEmailDialogOpen}
           setIsSendEmailDialogOpen={setIsSendEmailDialogOpen}
@@ -191,6 +172,7 @@ export function InvoiceDetailClient({
           isNew={isNew}
         />
 
+        {/* ✅ 2. PASSAR LES NOVES PROPS A 'InvoiceMainContent' */}
         <InvoiceMainContent
           formData={formData} 
           handleFieldChange={handleFieldChange} 
@@ -201,6 +183,10 @@ export function InvoiceDetailClient({
           handleAddProductFromLibrary={handleAddProductFromLibrary} 
           handleItemChange={handleItemChange}
           handleRemoveItem={handleRemoveItem}
+          
+          availableTaxes={availableTaxes}
+          isLoadingTaxes={isLoadingTaxes}
+          handleItemTaxesChange={handleItemTaxesChange}
         />
         
       </form>

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { PlusCircle, Edit, TriangleAlert } from 'lucide-react'; 
+import { PlusCircle, Edit, TriangleAlert } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 // Tipus i Accions
@@ -40,7 +40,9 @@ import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParam
 // Utilitats
 import { formatDate, formatCurrency } from '@/lib/utils/formatters';
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
-
+// 💡 3. Importem el botó i accions d'Excel
+import ExcelDropdownButton from '@/components/features/excel/ExcelDropdownButton';
+import { useExcelActions } from '@/components/features/excel/useExelActions';
 // Alias per claredat
 type PaginatedInvoicesResponse = PaginatedResponse<InvoiceListRow>;
 type FetchInvoicesParams = PaginatedActionParams<InvoicePageFilters>;
@@ -51,13 +53,13 @@ const INVOICE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50];
 interface InvoicesClientProps {
   initialData: PaginatedInvoicesResponse;
   clientsForFilter?: { id: number; nom: string | null }[];
-  invoiceLimitStatus: UsageCheckResult | null; 
+  invoiceLimitStatus: UsageCheckResult | null;
 }
 
 export function InvoicesClient({
   initialData,
   clientsForFilter = [],
-  invoiceLimitStatus 
+  invoiceLimitStatus
 }: InvoicesClientProps) {
 
   const t = useTranslations('InvoicesPage');
@@ -66,13 +68,27 @@ export function InvoicesClient({
   const router = useRouter();
   const locale = useLocale();
   const pathname = usePathname();
-
+  // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
+  const {
+    isPending: isExcelPending, // Renombrem per claredat
+    excelOptions,
+    handleExcelAction
+  } = useExcelActions({
+    tableName: 'invoices',
+    limitStatus: invoiceLimitStatus,
+    translationKeys: {
+      create: 'invoices.create',
+      load: 'invoices.load',
+      download: 'invoices.download',
+      limit: 'invoices', // Clau de Shared.limits
+    }
+  });
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   // --- Definició de Columnes (No canvia) ---
   const allColumns = useMemo<ColumnDef<InvoiceListRow>[]>(() => [
     // ... (les teves columnes) ...
-     {
+    {
       accessorKey: 'invoice_number',
       header: t('table.number'),
       enableSorting: true,
@@ -144,7 +160,7 @@ export function InvoicesClient({
 
   // --- Hook Genèric (No canvia) ---
   const {
-    isPending,
+    isPending: isTablePending, // Renombrem per claredat
     data: invoices,
     itemToDelete: invoiceToDelete,
     setItemToDelete: setInvoiceToDelete,
@@ -164,24 +180,24 @@ export function InvoicesClient({
     rowsPerPage,
     handleRowsPerPageChange,
   } = usePaginatedResource<InvoiceListRow, InvoicePageFilters>({
-      // ... (configuració del hook sense canvis)
-       initialData,
-       initialFilters: { status: 'all', contactId: 'all' },
-       initialSort: { column: 'issue_date', order: 'desc' },
-       allColumns,
-       fetchAction: fetchPaginatedInvoices as (params: FetchInvoicesParams) => Promise<PaginatedInvoicesResponse>,
-       deleteAction: async (id: string | number): Promise<ActionResult> => {
-         if (typeof id !== 'number') {
-           const msg = tShared('errors.invalidId');
-           return { success: false, message: msg };
-         }
-         return deleteInvoiceAction(id);
-       },
-       initialRowsPerPage: INVOICE_ROWS_PER_PAGE_OPTIONS[0],
-       rowsPerPageOptions: INVOICE_ROWS_PER_PAGE_OPTIONS,
-       toastMessages: {
-         deleteSuccess: t('toast.deleteSuccess'),
-       }
+    // ... (configuració del hook sense canvis)
+    initialData,
+    initialFilters: { status: 'all', contactId: 'all' },
+    initialSort: { column: 'issue_date', order: 'desc' },
+    allColumns,
+    fetchAction: fetchPaginatedInvoices as (params: FetchInvoicesParams) => Promise<PaginatedInvoicesResponse>,
+    deleteAction: async (id: string | number): Promise<ActionResult> => {
+      if (typeof id !== 'number') {
+        const msg = tShared('errors.invalidId');
+        return { success: false, message: msg };
+      }
+      return deleteInvoiceAction(id);
+    },
+    initialRowsPerPage: INVOICE_ROWS_PER_PAGE_OPTIONS[0],
+    rowsPerPageOptions: INVOICE_ROWS_PER_PAGE_OPTIONS,
+    toastMessages: {
+      deleteSuccess: t('toast.deleteSuccess'),
+    }
   });
 
   // --- Columnes Visibles i Descripció Esborrat (No canvien) ---
@@ -213,10 +229,10 @@ export function InvoicesClient({
   // --- Renderització ---
   return (
     <div className="flex flex-col gap-4 h-full">
-      
+
       {/* ✅ AQUEST ÉS EL CANVI PRINCIPAL */}
       <PageHeader title={t('title')}>
-        
+
         {/* 1. L'Alerta ara és un fill del PageHeader */}
         {isLimitExceeded && (
           <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
@@ -232,12 +248,17 @@ export function InvoicesClient({
             </AlertDescription>
           </Alert>
         )}
-
+        {/* 💡 5. Botó d'Excel afegit i connectat al hook */}
+        <ExcelDropdownButton
+          options={excelOptions}
+          onSelect={handleExcelAction}
+          disabled={isExcelPending || isTablePending}
+        />
         {/* 2. El Botó ara és un "germà" de l'Alerta */}
         <Button onClick={handleNewInvoiceClick}>
           <PlusCircle className="mr-2 h-4 w-4" /> {t('newButton')}
         </Button>
-      
+
       </PageHeader>
 
       {/* ❗ Eliminem l'Alert que hi havia aquí abans */}
@@ -245,18 +266,18 @@ export function InvoicesClient({
       {/* Barra de Filtres / Accions (sense canvis) */}
       <div className="flex justify-between items-center">
         {/* ... (InvoiceFilters i ColumnToggleButton) ... */}
-         <InvoiceFilters
-           searchTerm={searchTerm}
-           onSearchChange={handleSearchChange}
-           filters={filters}
-           onFilterChange={handleFilterChange}
-           clients={clientsForFilter}
-         />
-         <ColumnToggleButton
-           allColumns={allColumns}
-           columnVisibility={columnVisibility}
-           toggleColumnVisibility={toggleColumnVisibility}
-         />
+        <InvoiceFilters
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          clients={clientsForFilter}
+        />
+        <ColumnToggleButton
+          allColumns={allColumns}
+          columnVisibility={columnVisibility}
+          toggleColumnVisibility={toggleColumnVisibility}
+        />
       </div>
 
       {/* Taula Genèrica (sense canvis) */}
@@ -265,7 +286,7 @@ export function InvoicesClient({
         className="flex-grow overflow-hidden"
         columns={visibleColumns}
         data={invoices}
-        isPending={isPending}
+        isPending={isExcelPending || isTablePending} // 💡 6. Combinem els 'pending'        
         onSort={handleSort}
         currentSortColumn={currentSortColumn}
         currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
@@ -286,28 +307,28 @@ export function InvoicesClient({
       {/* Modal d'avís de límit (sense canvis) */}
       <AlertDialog open={showLimitModal} onOpenChange={setShowLimitModal}>
         {/* ... (contingut del modal) ... */}
-         <AlertDialogContent>
-           <AlertDialogHeader>
-             <AlertDialogTitle className="flex items-center gap-2">
-               <TriangleAlert className="text-destructive" /> 
-               {t_billing('modalTitle')}
-             </AlertDialogTitle>
-             <AlertDialogDescription>
-               {t_billing('invoicesPerMonth', {
-                 current: invoiceLimitStatus?.current ?? 0,
-                 max: invoiceLimitStatus?.max ?? 0
-               })}
-               <br />
-               {t_billing('upgradePlan')}
-             </AlertDialogDescription>
-           </AlertDialogHeader>
-           <AlertDialogFooter>
-             <AlertDialogCancel>{tShared('actions.cancel')}</AlertDialogCancel>
-             <AlertDialogAction onClick={() => router.push(`/${locale}/settings/billing`)}>
-               {t_billing('upgradeButton')}
-             </AlertDialogAction>
-           </AlertDialogFooter>
-         </AlertDialogContent>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <TriangleAlert className="text-destructive" />
+              {t_billing('modalTitle')}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t_billing('invoicesPerMonth', {
+                current: invoiceLimitStatus?.current ?? 0,
+                max: invoiceLimitStatus?.max ?? 0
+              })}
+              <br />
+              {t_billing('upgradePlan')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tShared('actions.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push(`/${locale}/settings/billing`)}>
+              {t_billing('upgradeButton')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
 
     </div>
