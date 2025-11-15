@@ -7,18 +7,19 @@ export type Product = Database["public"]["Tables"]["products"]["Row"];
 
 // Esquema de Zod per al formulari
 export const productSchema = z.object({
-  name: z.string().min(3, "El nom ha de tenir almenys 3 caràcters."),
-  price: z.coerce.number().positive("El preu ha de ser un número positiu."),
-  tax_rate: z.coerce
-    .number({ invalid_type_error: "Introdueix un número." })
-    .min(0, { message: "La taxa no pot ser negativa." })
-    .max(1, { message: "La taxa ha de ser un decimal (ex: 0.21 per a 21%)." })
-    .nullable()
-    .transform((val) => (val === 0 ? null : val)), // Opcional: desar 0 com a null
-  description: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
-  unit: z.string().optional().nullable(),
+  name: z.string().min(1, { message: "El nom és obligatori." }),
+  description: z.string().nullable().optional(),
+  price: z.coerce.number().min(0, { message: "El preu ha de ser positiu." }),
+  sku: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
   is_active: z.boolean().default(true),
+  
+  // 🚫 ELIMINAT: tax_rate: z.coerce.number().nullable().optional(),
+  // 🚫 ELIMINAT: discount: z.coerce.number().nullable().optional(),
+
+  // ✅ NOU: Acceptarem els impostos com un string separat per comes
+  tax_ids: z.string().optional(), 
 });
 
 // Tipus per a l'estat de retorn de les accions de formulari

@@ -35,7 +35,7 @@ function LabelText({ label, children }: { label: string; children: React.ReactNo
 }
 
 export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailViewProps) {
-  const t = useTranslations('ProductDetalilPage'); // Canviat a 'ProductDetailPage' (detall)
+  const t = useTranslations('ProductDetailPage'); // Canviat a 'ProductDetailPage' (detall)
   const router = useRouter();
 
   return (
@@ -86,7 +86,7 @@ export function ProductDetailView({ product, onEdit, onDelete }: ProductDetailVi
 
           <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
             <LabelText label={t('table.price')}>{formatCurrency(product.price ?? 0)}</LabelText>
-            <LabelText label={t('table.vat')}>{product.tax_rate !== null ? `${product.tax_rate}%` : '-'}</LabelText>
+            <LabelText label={t('table.vat')}>{product.legacy_tax_rate !== null ? `${product.legacy_tax_rate}%` : '-'}</LabelText>
             <LabelText label={t('form.discountLabel')}>{product.discount !== null ? `${product.discount}%` : '-'}</LabelText>
             <LabelText label={t('table.unit')}>{product.unit}</LabelText>
             <LabelText label={t('table.created')}>{product.created_at ? formatDate(product.created_at) : '-'}</LabelText>

@@ -121,7 +121,7 @@ export function ProductsClient({
       accessorKey: 'tax_rate',
       header: t('table.vat'),
       enableSorting: false,
-      cell: (product) => (product.tax_rate !== null ? `${product.tax_rate}%` : '-'),
+      cell: (product) => (product.legacy_tax_rate !== null ? `${product.legacy_tax_rate}%` : '-'),
     },
     {
       accessorKey: 'unit',

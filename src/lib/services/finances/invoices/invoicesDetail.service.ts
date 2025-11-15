@@ -1,17 +1,16 @@
 "use server"; 
 
 import { type SupabaseClient } from "@supabase/supabase-js";
-import { type Database } from "@/types/supabase"; // ✅ 1. Importem DbTableInsert
-import { DbTableInsert } from "@/types/db";
+import { type Database } from "@/types/supabase";
+import { type DbTableInsert, type DbTableUpdate } from "@/types/db";
 import { createAdminClient } from "@/lib/supabase/admin";
 import crypto from "crypto";
 import {
     type InvoiceAttachment,
-    type InvoiceAttachmentRow,
     type InvoiceDetail,
     type InvoiceFormDataForAction,
     type InvoiceItem,
-    type InvoiceRow,
+    // 🚫 'InvoiceRow' i 'TaxRate' no s'utilitzen directament aquí
 } from "@/types/finances/invoices";
 import { type ActionResult } from "@/types/shared/index";
 import { generateInvoicePdfBuffer } from "@/lib/pdf/generateInvoicePDF";
@@ -24,29 +23,34 @@ import { fetchInvoiceDetail } from "@/app/[locale]/(app)/finances/invoices/[invo
 // Tipus locals
 type Contact = Database["public"]["Tables"]["contacts"]["Row"] | null;
 
-// --- Funcions Internes del Servei (No exportades) ---
-// ... (Totes les funcions _upsertInvoiceHeader, _syncInvoiceItems,
-// _updateInvoiceTotals, _getInvoiceContext SÓN IDÈNTIQUES) ...
+// ✅ Helper (necessari)
+function isValidUuid(id: unknown): id is string {
+  if (typeof id !== 'string') return false;
+  const regex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  return regex.test(id);
+}
+
+
+// --- Funcions Internes del Servei ---
 
 async function _upsertInvoiceHeader(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     invoiceData: InvoiceFormDataForAction,
     invoiceId: number | null,
     userId: string,
     teamId: string,
 ): Promise<{ id: number; error: string | null }> {
-    const dataToUpsert: Partial<InvoiceRow> = {
+    
+    // ✅ CORREGIT: 'InvoiceFormDataForAction' ja OMET
+    // els camps denormalitzats (client_name, etc.)
+    const dataToUpsert: Omit<DbTableInsert<'invoices'>, 'id' | 'team_id' | 'user_id' | 'created_at' | 'subtotal' | 'tax_amount' | 'total_amount' | 'retention_amount' | 'legacy_tax_rate' | 'legacy_tax_amount' | 'tax' | 'discount'> = {
         contact_id: invoiceData.contact_id || null,
         budget_id: invoiceData.budget_id || null,
         quote_id: invoiceData.quote_id || null,
         project_id: invoiceData.project_id || null,
         invoice_number: invoiceData.invoice_number,
-        issue_date: invoiceData.issue_date
-            ? new Date(invoiceData.issue_date).toISOString().split("T")[0]
-            : undefined,
-        due_date: invoiceData.due_date
-            ? new Date(invoiceData.due_date).toISOString().split("T")[0]
-            : null,
+        issue_date: invoiceData.issue_date ? new Date(invoiceData.issue_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        due_date: invoiceData.due_date ? new Date(invoiceData.due_date).toISOString().split("T")[0] : null,
         status: invoiceData.status,
         notes: invoiceData.notes,
         terms: invoiceData.terms,
@@ -55,85 +59,111 @@ async function _upsertInvoiceHeader(
         currency: invoiceData.currency || "EUR",
         language: invoiceData.language || "ca",
         discount_amount: Number(invoiceData.discount_amount) || 0,
-        tax_rate: Number(invoiceData.tax_rate) || 0,
         shipping_cost: Number(invoiceData.shipping_cost) || 0,
         extra_data: invoiceData.extra_data,
+        
+        // 🚫 Camps denormalitzats (client_name, etc.) NO S'HAN D'INCLOURE AQUÍ.
+        // S'afegeixen només al 'finalizeInvoice'
+        client_name: null,
+        client_tax_id: null,
+        client_address: null,
+        client_email: null,
+        company_name: null,
+        company_tax_id: null,
+        company_address: null,
+        company_email: null,
+        company_logo_url: null,
+
+        // Camps Verifactu (null al crear/editar)
+        verifactu_uuid: null,
+        verifactu_qr_data: null,
+        verifactu_signature: null,
+        verifactu_previous_signature: null,
+        sent_at: null,
+        paid_at: null,
     };
 
     let query;
     if (invoiceId) {
-        query = supabase.from("invoices").update(dataToUpsert).eq(
-            "id",
-            invoiceId,
-        ).eq("team_id", teamId);
+        query = supabase.from("invoices").update(dataToUpsert as DbTableUpdate<"invoices">).eq("id", invoiceId).eq("team_id", teamId);
     } else {
         query = supabase.from("invoices").insert({
             ...dataToUpsert,
             user_id: userId,
             team_id: teamId,
-            total_amount: 0,
+            total_amount: 0, 
             subtotal: 0,
             tax_amount: 0,
-        });
+            retention_amount: 0,
+        } as DbTableInsert<'invoices'>);
     }
 
     const { data, error } = await query.select("id").single();
-
     if (error) {
         console.error("Error upserting invoice header:", error);
-        return {
-            id: 0,
-            error: `Error desant capçalera: ${
-                error.message ?? "Error desconegut"
-            }`,
-        };
-    }
-    if (!data?.id) {
-        return { id: 0, error: "No s'ha pogut obtenir l'ID de la factura." };
+        return { id: 0, error: `Error desant capçalera: ${error.message ?? "Error desconegut"}` };
     }
     return { id: data.id, error: null };
 }
 
+// ✅ REESCRIT: _syncInvoiceItems (Copiat de 'expenses' i adaptat)
 async function _syncInvoiceItems(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     invoiceId: number,
     items: InvoiceItem[],
     userId: string,
     teamId: string,
-): Promise<
-    {
-        calculatedSubtotal: number;
-        calculatedTotalLineDiscount: number;
-        error: string | null;
-    }
-> {
+): Promise<{
+    calculatedSubtotal: number;
+    calculatedTotalLineDiscount: number;
+    calculatedTotalVat: number;
+    calculatedTotalRetention: number;
+    error: string | null;
+}> {
     let calculatedSubtotal = 0;
     let calculatedTotalLineDiscount = 0;
+    let calculatedTotalVat = 0;
+    let calculatedTotalRetention = 0;
 
-    const { data: existingDbItems, error: fetchError } = await supabase
-        .from("invoice_items")
-        .select("id")
-        .eq("invoice_id", invoiceId)
-        .returns<{ id: string }[]>();
+    // 1. Esborrar items antics
+    const existingValidUuids = items
+        ?.map(item => item.id)
+        .filter(isValidUuid)
+        .map(id => String(id)); 
 
-    if (fetchError) {
-        return {
-            calculatedSubtotal: 0,
-            calculatedTotalLineDiscount: 0,
-            error: `Error obtenint items antics: ${fetchError.message}`,
-        };
+    let deleteQuery = supabase
+        .from('invoice_items')
+        .delete()
+        .eq('invoice_id', invoiceId);
+
+    if (existingValidUuids && existingValidUuids.length > 0) {
+        const filterString = `(${existingValidUuids.join(',')})`;
+        deleteQuery = deleteQuery.not('id', 'in', filterString);
+    }
+    
+    const { error: deleteError } = await deleteQuery;
+    if (deleteError) {
+        return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error esborrant conceptes antics: ${deleteError.message}` };
+    }
+    
+    if (!items || items.length === 0) {
+        return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: null };
     }
 
-    const existingDbItemIds = existingDbItems
-        ? existingDbItems.map((item) => item.id)
-        : [];
+    // 2. Preparar 'items' i 'impostos'
+    const itemsToUpsert: DbTableInsert<'invoice_items'>[] = [];
+    const taxesToInsert: DbTableInsert<'invoice_item_taxes'>[] = [];
+    
+    for (const item of items) {
+        const isNew = !isValidUuid(item.id);
+        const itemId = isNew ? crypto.randomUUID() : String(item.id);
 
-    const itemsToUpsert = items.map((item) => {
         const quantity = Number(item.quantity) || 0;
         const unit_price = Number(item.unit_price) || 0;
         const lineTotal = quantity * unit_price;
         calculatedSubtotal += lineTotal;
 
+        // Descomptes de línia
         let lineDiscount = 0;
         const discountPercentage = Number(item.discount_percentage) || 0;
         const discountAmount = Number(item.discount_amount) || 0;
@@ -143,13 +173,11 @@ async function _syncInvoiceItems(
             lineDiscount = lineTotal * (discountPercentage / 100);
         }
         calculatedTotalLineDiscount += lineDiscount;
+        
+        const itemBase = lineTotal - lineDiscount; // Base per als impostos
 
-        const isNewId = !item.id ||
-            (typeof item.id === "string" &&
-                (item.id.startsWith("temp-") || item.id === "null"));
-
-        return {
-            id: isNewId ? crypto.randomUUID() : item.id,
+        itemsToUpsert.push({
+            id: itemId,
             invoice_id: invoiceId,
             user_id: userId,
             team_id: teamId,
@@ -157,79 +185,92 @@ async function _syncInvoiceItems(
             description: item.description,
             quantity: quantity,
             unit_price: unit_price,
-            total: lineTotal - lineDiscount,
-            tax_rate: Number(item.tax_rate) || null,
-            discount_percentage: discountPercentage > 0
-                ? discountPercentage
-                : null,
+            total: itemBase, // Total de la línia (post-descompte)
+            discount_percentage: discountPercentage > 0 ? discountPercentage : null,
             discount_amount: discountAmount > 0 ? discountAmount : null,
             reference_sku: item.reference_sku || null,
-        };
-    });
+        });
+        
+        // Impostos de línia
+        if (item.taxes && item.taxes.length > 0) {
+            for (const tax of item.taxes) {
+                const taxAmount = itemBase * (tax.rate / 100);
+                
+                if (tax.type === 'vat') {
+                    calculatedTotalVat += taxAmount;
+                } else if (tax.type === 'retention') {
+                    calculatedTotalRetention += taxAmount;
+                }
+                
+                taxesToInsert.push({
+                    team_id: teamId,
+                    invoice_item_id: itemId,
+                    tax_rate_id: tax.id,
+                    name: tax.name,
+                    rate: tax.rate,
+                    amount: taxAmount,
+                });
+            }
+        }
+    }
 
-    const currentFormItemIds = items
-        .map((item) => item.id)
-        .filter((id): id is string =>
-            typeof id === "string" && !id.startsWith("temp-")
-        );
-
-    const itemsToDeleteIds = existingDbItemIds.filter((dbId) =>
-        !currentFormItemIds.includes(dbId)
-    );
-
+    // 3. Executar 'upsert' d'items
     if (itemsToUpsert.length > 0) {
-        const { error: upsertError } = await supabase.from("invoice_items")
-            .upsert(itemsToUpsert, { onConflict: "id" });
+        const { error: upsertError } = await supabase.from('invoice_items').upsert(itemsToUpsert as DbTableInsert<'invoice_items'>[]);
         if (upsertError) {
-            console.error("Error upserting invoice items:", upsertError);
-            return {
-                calculatedSubtotal: 0,
-                calculatedTotalLineDiscount: 0,
-                error: `Error actualitzant línies: ${upsertError.message}`,
-            };
+            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error fent upsert d'items: ${upsertError.message}` };
+        }
+    }
+    
+    // 4. Sincronitzar Impostos
+    // ✅ CORREGIT: (string | undefined)[] no és string[]
+    const allItemIds = itemsToUpsert.map(i => i.id).filter((id): id is string => !!id);
+    if (allItemIds.length > 0) {
+        const { error: deleteTaxesError } = await supabase.from('invoice_item_taxes').delete().in('invoice_item_id', allItemIds);
+        if (deleteTaxesError) {
+            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error netejant impostos antics: ${deleteTaxesError.message}` };
         }
     }
 
-    if (itemsToDeleteIds.length > 0) {
-        const { error: deleteError } = await supabase.from("invoice_items")
-            .delete().in("id", itemsToDeleteIds);
-        if (deleteError) {
-            console.error("Error deleting old invoice items:", deleteError);
-            return {
-                calculatedSubtotal: 0,
-                calculatedTotalLineDiscount: 0,
-                error:
-                    `Error esborrant línies antigues: ${deleteError.message}`,
-            };
+    if (taxesToInsert.length > 0) {
+        const { error: insertTaxesError } = await supabase.from('invoice_item_taxes').insert(taxesToInsert);
+        if (insertTaxesError) {
+            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error inserint nous impostos: ${insertTaxesError.message}` };
         }
     }
 
-    return { calculatedSubtotal, calculatedTotalLineDiscount, error: null };
+    return { 
+        calculatedSubtotal, 
+        calculatedTotalLineDiscount, 
+        calculatedTotalVat, 
+        calculatedTotalRetention,
+        error: null 
+    };
 }
 
+// ✅ REESCRIT: _updateInvoiceTotals (amb els nous camps)
 async function _updateInvoiceTotals(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     invoiceId: number,
     subtotal: number,
     totalLineDiscount: number,
     generalDiscount: number,
-    taxRate: number,
+    totalVat: number, // 👈 NOU
+    totalRetention: number, // 👈 NOU
     shippingCost: number,
 ): Promise<{ error: string | null }> {
+    
     const subtotalAfterLineDiscounts = subtotal - totalLineDiscount;
     const effectiveSubtotal = subtotalAfterLineDiscounts - generalDiscount;
-    const calculatedTaxRate = taxRate || 0;
-    const taxAmount = effectiveSubtotal > 0
-        ? effectiveSubtotal * (calculatedTaxRate / 100)
-        : 0;
-    const totalAmount = effectiveSubtotal + taxAmount + shippingCost;
+    const totalAmount = effectiveSubtotal + totalVat - totalRetention + shippingCost;
 
     const { error } = await supabase
         .from("invoices")
         .update({
-            subtotal: subtotal,
-            tax_amount: taxAmount,
-            total_amount: totalAmount,
+            subtotal: subtotal, // Subtotal brut
+            tax_amount: totalVat, // Total IVA
+            retention_amount: totalRetention, // Total IRPF
+            total_amount: totalAmount, // Total final
             shipping_cost: shippingCost,
         })
         .eq("id", invoiceId);
@@ -242,46 +283,45 @@ async function _updateInvoiceTotals(
 }
 
 async function _getInvoiceContext(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     teamId: string,
     contactId: number | null,
 ) {
-    const companyProfile = await getCompanyProfile(supabase, teamId);
-
-    let contact: Contact = null;
-    if (contactId) {
-        contact = await getContactById(supabase, teamId, contactId);
-    }
-
-    return { companyProfile, contact };
+  const companyProfile = await getCompanyProfile(supabase, teamId);
+  let contact: Contact = null;
+  if (contactId) {
+      contact = await getContactById(supabase, teamId, contactId);
+  }
+  return { companyProfile, contact };
 }
 
 
-// --- Serveis Principals (Exportats per a les Accions) ---
-// ... (saveInvoice, deleteInvoice, uploadAttachment, getAttachmentSignedUrl, deleteAttachment, finalizeInvoice SÓN IDÈNTIQUES) ...
+// --- Serveis Principals (Exportats) ---
 
 export async function saveInvoice(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     formData: InvoiceFormDataForAction & { invoice_items?: InvoiceItem[] },
     invoiceId: number | null,
     userId: string,
     teamId: string,
 ): Promise<ActionResult<{ id: number }>> {
+    
     const { invoice_items, ...invoiceData } = formData;
+    
+    // 1. Desar capçalera
     const invoiceResult = await _upsertInvoiceHeader(
         supabase,
-        invoiceData,
+        invoiceData as InvoiceFormDataForAction,
         invoiceId,
         userId,
         teamId,
     );
     if (invoiceResult.error || !invoiceResult.id) {
-        return {
-            success: false,
-            message: invoiceResult.error || "Error desant la capçalera.",
-        };
+        return { success: false, message: invoiceResult.error || "Error desant la capçalera." };
     }
     const resultingInvoiceId = invoiceResult.id;
+
+    // 2. Sincronitzar línies i impostos
     const itemsResult = await _syncInvoiceItems(
         supabase,
         resultingInvoiceId,
@@ -290,27 +330,31 @@ export async function saveInvoice(
         teamId,
     );
     if (itemsResult.error) {
-        return {
-            success: false,
-            message: itemsResult.error,
-            data: { id: resultingInvoiceId },
-        };
+        return { success: false, message: itemsResult.error, data: { id: resultingInvoiceId } };
     }
-    const { calculatedSubtotal, calculatedTotalLineDiscount } = itemsResult;
+    
+    const { 
+        calculatedSubtotal, 
+        calculatedTotalLineDiscount,
+        calculatedTotalVat,
+        calculatedTotalRetention
+    } = itemsResult;
+
+    // 3. Actualitzar totals
     const totalsResult = await _updateInvoiceTotals(
         supabase,
         resultingInvoiceId,
         calculatedSubtotal,
         calculatedTotalLineDiscount,
         Number(invoiceData.discount_amount),
-        Number(invoiceData.tax_rate),
+        calculatedTotalVat, 
+        calculatedTotalRetention,
         Number(invoiceData.shipping_cost),
     );
     if (totalsResult.error) {
-        console.warn(
-            `Factura ${resultingInvoiceId} desada, però error actualitzant totals: ${totalsResult.error}`,
-        );
+        console.warn(`Factura ${resultingInvoiceId} desada, però error actualitzant totals: ${totalsResult.error}`);
     }
+    
     return {
         success: true,
         message: "Factura desada correctament.",
@@ -318,200 +362,205 @@ export async function saveInvoice(
     };
 }
 
+// ... (la resta de funcions: deleteInvoice, uploadAttachment, etc. es queden igual)
 export async function deleteInvoice(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     invoiceId: number,
     teamId: string,
 ): Promise<ActionResult> {
-    const { data: invoiceStatus, error: statusError } = await supabase
-        .from("invoices")
-        .select("status")
-        .eq("id", invoiceId)
-        .eq("team_id", teamId)
-        .single();
-    if (statusError) {
-        return {
-            success: false,
-            message: "Factura no trobada o accés denegat.",
-        };
-    }
-    if (invoiceStatus.status !== "Draft") {
-        return {
-            success: false,
-            message:
-                "No es pot esborrar una factura que ja ha estat emesa. Només esborranys.",
-        };
-    }
-    const supabaseAdmin = createAdminClient();
-    const { data: attachments, error: attachError } = await supabase
-        .from("invoice_attachments")
-        .select("id, file_path")
-        .eq("invoice_id", invoiceId);
-    if (attachError) {
-        console.error(
-            "Error obtenint adjunts per esborrar:",
-            attachError.message,
-        );
-    }
-    if (attachments && attachments.length > 0) {
-        const filePaths = attachments.map((a) => a.file_path).filter((
-            p,
-        ): p is string => p !== null);
-        if (filePaths.length > 0) {
-            const { error: storageError } = await supabaseAdmin.storage.from(
-                "factures-adjunts",
-            ).remove(filePaths);
-            if (storageError) {
-                console.warn(
-                    "Error esborrant adjunts de Storage:",
-                    storageError.message,
-                );
-            }
-        }
-    }
-    const { error: deleteError } = await supabase
-        .from("invoices")
-        .delete()
-        .eq("id", invoiceId)
-        .eq("team_id", teamId);
-    if (deleteError) {
-        return {
-            success: false,
-            message: `Error esborrant factura: ${deleteError.message}`,
-        };
-    }
-    return { success: true, message: "Factura esborrada." };
+  const { data: invoiceStatus, error: statusError } = await supabase
+      .from("invoices")
+      .select("status")
+      .eq("id", invoiceId)
+      .eq("team_id", teamId)
+      .single();
+  if (statusError) {
+      return {
+          success: false,
+          message: "Factura no trobada o accés denegat.",
+      };
+  }
+  if (invoiceStatus.status !== "Draft") {
+      return {
+          success: false,
+          message:
+              "No es pot esborrar una factura que ja ha estat emesa. Només esborranys.",
+      };
+  }
+  const supabaseAdmin = createAdminClient();
+  const { data: attachments, error: attachError } = await supabase
+      .from("invoice_attachments")
+      .select("id, file_path")
+      .eq("invoice_id", invoiceId);
+  if (attachError) {
+      console.error(
+          "Error obtenint adjunts per esborrar:",
+          attachError.message,
+      );
+  }
+  if (attachments && attachments.length > 0) {
+      const filePaths = attachments.map((a) => a.file_path).filter((
+          p,
+      ): p is string => p !== null);
+      if (filePaths.length > 0) {
+          const { error: storageError } = await supabaseAdmin.storage.from(
+              "factures-adjunts",
+          ).remove(filePaths);
+          if (storageError) {
+              console.warn(
+                  "Error esborrant adjunts de Storage:",
+                  storageError.message,
+              );
+          }
+      }
+  }
+  const { error: deleteError } = await supabase
+      .from("invoices")
+      .delete()
+      .eq("id", invoiceId)
+      .eq("team_id", teamId);
+  if (deleteError) {
+      return {
+          success: false,
+          message: `Error esborrant factura: ${deleteError.message}`,
+      };
+  }
+  return { success: true, message: "Factura esborrada." };
 }
 
 export async function uploadAttachment(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     invoiceId: number,
     teamId: string,
     formData: FormData,
 ): Promise<ActionResult<{ newAttachment: InvoiceAttachment }>> {
-    const file = formData.get("file") as File | null;
-    if (!file) {
-        return { success: false, message: "No s'ha proporcionat cap fitxer." };
-    }
-    const { data: invoiceCheckData, error: invoiceCheckError } = await supabase
-        .from("invoices")
-        .select("id")
-        .eq("id", invoiceId)
-        .eq("team_id", teamId)
-        .maybeSingle();
-    if (invoiceCheckError || !invoiceCheckData) {
-        return {
-            success: false,
-            message: "Factura no trobada o accés denegat.",
-        };
-    }
-    const filePath =
-        `${teamId}/invoices/${invoiceId}/${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase.storage.from(
-        "factures-adjunts",
-    ).upload(filePath, file);
-    if (uploadError) {
-        return {
-            success: false,
-            message: `Error pujant a Storage: ${uploadError.message}`,
-        };
-    }
-    const attachmentData: Partial<InvoiceAttachmentRow> = {
-        invoice_id: invoiceId,
-        file_path: filePath,
-        filename: file.name,
-        mime_type: file.type,
-    };
-    const { data: dbData, error: dbError } = await supabase
-        .from("invoice_attachments")
-        .insert(attachmentData)
-        .select()
-        .single();
-    if (dbError) {
-        await supabase.storage.from("factures-adjunts").remove([filePath]);
-        return {
-            success: false,
-            message: `Error desant adjunt a BD: ${dbError.message}`,
-        };
-    }
-    return {
-        success: true,
-        message: "Adjunt pujat correctament.",
-        data: { newAttachment: dbData as InvoiceAttachment },
-    };
+  const file = formData.get("file") as File | null;
+  if (!file) {
+      return { success: false, message: "No s'ha proporcionat cap fitxer." };
+  }
+  const { data: invoiceCheckData, error: invoiceCheckError } = await supabase
+      .from("invoices")
+      .select("id")
+      .eq("id", invoiceId)
+      .eq("team_id", teamId)
+      .maybeSingle();
+  if (invoiceCheckError || !invoiceCheckData) {
+      return {
+          success: false,
+          message: "Factura no trobada o accés denegat.",
+      };
+  }
+  const filePath =
+      `${teamId}/invoices/${invoiceId}/${Date.now()}-${file.name}`;
+  const { error: uploadError } = await supabase.storage.from(
+      "factures-adjunts",
+  ).upload(filePath, file);
+  if (uploadError) {
+      return {
+          success: false,
+          message: `Error pujant a Storage: ${uploadError.message}`,
+      };
+  }
+  
+  // ✅ CORREGIT: Assegurem que el tipus coincideix amb 'DbTableInsert'
+  const attachmentData: DbTableInsert<'invoice_attachments'> = {
+      invoice_id: invoiceId,
+      file_path: filePath,
+      filename: file.name,
+      mime_type: file.type,
+      team_id: teamId,
+      // user_id: userId, // Afegeix això si la teva taula 'invoice_attachments' té 'user_id'
+  };
+  const { data: dbData, error: dbError } = await supabase
+      .from("invoice_attachments")
+      .insert(attachmentData)
+      .select()
+      .single();
+  if (dbError) {
+      await supabase.storage.from("factures-adjunts").remove([filePath]);
+      return {
+          success: false,
+          message: `Error desant adjunt a BD: ${dbError.message}`,
+      };
+  }
+  return {
+      success: true,
+      message: "Adjunt pujat correctament.",
+      data: { newAttachment: dbData as InvoiceAttachment },
+  };
 }
 
 export async function getAttachmentSignedUrl(
     teamId: string,
     filePath: string,
 ): Promise<ActionResult<{ signedUrl: string }>> {
-    if (
-        !filePath || typeof filePath !== "string" ||
-        !filePath.startsWith(`${teamId}/`)
-    ) {
-        return {
-            success: false,
-            message: "Ruta de fitxer invàlida o accés denegat.",
-        };
-    }
-    const supabaseAdmin = createAdminClient();
-    const { data, error } = await supabaseAdmin.storage
-        .from("factures-adjunts")
-        .createSignedUrl(filePath, 300); 
-    if (error) {
-        return {
-            success: false,
-            message: `Error generant URL signada: ${error.message}`,
-        };
-    }
-    return {
-        success: true,
-        message: "URL signada generada.",
-        data: { signedUrl: data.signedUrl },
-    };
+  if (
+      !filePath || typeof filePath !== "string" ||
+      !filePath.startsWith(`${teamId}/`)
+  ) {
+      return {
+          success: false,
+          message: "Ruta de fitxer invàlida o accés denegat.",
+      };
+  }
+  const supabaseAdmin = createAdminClient();
+  const { data, error } = await supabaseAdmin.storage
+      .from("factures-adjunts")
+      .createSignedUrl(filePath, 300); 
+  if (error) {
+      return {
+          success: false,
+          message: `Error generant URL signada: ${error.message}`,
+      };
+  }
+  return {
+      success: true,
+      message: "URL signada generada.",
+      data: { signedUrl: data.signedUrl },
+  };
 }
 
 export async function deleteAttachment(
-    supabase: SupabaseClient,
+    supabase: SupabaseClient<Database>,
     teamId: string,
     attachmentId: string,
     filePath: string | null,
 ): Promise<ActionResult> {
-    if (!attachmentId) {
-        return { success: false, message: "Falta l'ID de l'adjunt." };
-    }
-    const { data: attachment, error: fetchError } = await supabase
-        .from("invoice_attachments")
-        .select("id, file_path, team_id, invoice_id")
-        .eq("id", attachmentId)
-        .single();
-    if (fetchError || !attachment) {
-        return { success: false, message: "Adjunt no trobat." };
-    }
-    if (attachment.team_id !== teamId) {
-        return { success: false, message: "Accés denegat." };
-    }
-    const finalFilePath = filePath || attachment.file_path;
-    const { error: dbError } = await supabase.from("invoice_attachments")
-        .delete().eq("id", attachmentId);
-    if (dbError) {
-        return {
-            success: false,
-            message: `Error esborrant adjunt de BD: ${dbError.message}`,
-        };
-    }
-    if (finalFilePath) {
-        const supabaseAdmin = createAdminClient();
-        const { error: storageError } = await supabaseAdmin.storage.from(
-            "factures-adjunts",
-        ).remove([finalFilePath]);
-        if (storageError) {
-            console.warn(
-                `Adjunt ${attachmentId} esborrat de BD, però error esborrant de Storage: ${storageError.message}`,
-            );
-        }
-    }
-    return { success: true, message: "Adjunt eliminat correctament." };
+  if (!attachmentId) {
+      return { success: false, message: "Falta l'ID de l'adjunt." };
+  }
+  const { data: attachment, error: fetchError } = await supabase
+      .from("invoice_attachments")
+      .select("id, file_path, team_id, invoice_id")
+      .eq("id", attachmentId)
+      .single();
+  if (fetchError || !attachment) {
+      return { success: false, message: "Adjunt no trobat." };
+  }
+  if (attachment.team_id !== teamId) {
+      return { success: false, message: "Accés denegat." };
+  }
+  const finalFilePath = filePath || attachment.file_path;
+  const { error: dbError } = await supabase.from("invoice_attachments")
+      .delete().eq("id", attachmentId);
+  if (dbError) {
+      return {
+          success: false,
+          message: `Error esborrant adjunt de BD: ${dbError.message}`,
+      };
+  }
+  if (finalFilePath) {
+      const supabaseAdmin = createAdminClient();
+      const { error: storageError } = await supabaseAdmin.storage.from(
+          "factures-adjunts",
+      ).remove([finalFilePath]);
+      if (storageError) {
+          console.warn(
+              `Adjunt ${attachmentId} esborrat de BD, però error esborrant de Storage: ${storageError.message}`,
+          );
+      }
+  }
+  return { success: true, message: "Adjunt eliminat correctament." };
 }
 
 export async function finalizeInvoice(
