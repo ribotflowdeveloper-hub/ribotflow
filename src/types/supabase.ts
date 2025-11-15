@@ -1648,6 +1648,49 @@ export type Database = {
         }
         Relationships: []
       }
+      product_taxes: {
+        Row: {
+          id: string
+          product_id: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Insert: {
+          id?: string
+          product_id: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Update: {
+          id?: string
+          product_id?: number
+          tax_rate_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_taxes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_taxes_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_taxes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
@@ -1656,9 +1699,9 @@ export type Database = {
           discount: number | null
           id: number
           is_active: boolean
+          legacy_tax_rate: number | null
           name: string
           price: number
-          tax_rate: number | null
           team_id: string | null
           unit: string | null
           user_id: string
@@ -1670,9 +1713,9 @@ export type Database = {
           discount?: number | null
           id?: number
           is_active?: boolean
+          legacy_tax_rate?: number | null
           name: string
           price: number
-          tax_rate?: number | null
           team_id?: string | null
           unit?: string | null
           user_id: string
@@ -1684,9 +1727,9 @@ export type Database = {
           discount?: number | null
           id?: number
           is_active?: boolean
+          legacy_tax_rate?: number | null
           name?: string
           price?: number
-          tax_rate?: number | null
           team_id?: string | null
           unit?: string | null
           user_id?: string
