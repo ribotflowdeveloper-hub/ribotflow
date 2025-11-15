@@ -47,19 +47,19 @@ export function QuotesClient({ initialData, limitStatus }: QuotesClientProps) {
 
   // Calculem si s'ha assolit el límit
   const isLimitReached = !limitStatus.allowed;
-  // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
+  // 💡 2. Hook d'Excel (el teu codi era correcte)
   const {
-    isPending: isExcelPending, // Renombrem per claredat
+    isPending: isExcelPending,
     excelOptions,
     handleExcelAction
   } = useExcelActions({
     tableName: 'quotes',
-    limitStatus: limitStatus, // Passem l'objecte de límit
+    limitStatus: limitStatus,
     translationKeys: {
       create: 'quotes.create',
       load: 'quotes.load',
       download: 'quotes.download',
-      limit: 'quotes', // Clau de Shared.limits
+      limit: 'maxQuotesPerMonth', // 💡 Ajustat al nom de límit correcte
     }
   });
   // ... (useMemo per a 'allColumns' no canvia) ...

@@ -705,7 +705,7 @@
       "loadDataFailed": "Error en carregar les dades dels conceptes."
     }
   },
-  "ProductDetalilPage": {
+  "ProductDetailPage": {
     "active": "Actiu",
     "inactive": "Inactiu",
     "backToList": "Tornar a la llista de conceptes",
@@ -721,7 +721,15 @@
     },
     "form": {
       "descriptionLabel": "Descripció",
-      "discountLabel": "Descompte (%)"
+      "discountLabel": "Descompte (%)",
+      "nameLabel": "Nom",
+      "categoryLabel": "Categoria",
+      "categoryPlaceholder": "Selecciona o crea una categoria...",
+      "priceLabel": "Preu",
+      "unitPlaceholder": "Unitat de mesura (ex: unitats, hores...)",
+      "vatLabel": "IVA (%)",
+      "taxesLabel": "Impostos (%)",
+      "activeLabel": "Actiu"
     },
     "deleteDialog": {
       "title": "Estàs segur que vols eliminar aquest producte?",
@@ -1141,7 +1149,7 @@
       "discount": "Descompte (€)",
       "taxRate": "Impostos (%)",
       "category": "Categoria de la Despesa",
-      "name":"Nom de la Categoria"
+      "name": "Nom de la Categoria"
     },
     "placeholder": {
       "invoiceNumber": "Ex: F-2024-123",
@@ -1180,7 +1188,6 @@
       "tax": "Impostos",
       "discount": "Descompte",
       "retention": "Retenció"
-
     },
     "alert": {
       "aiAnalysisFailed": "L'anàlisi amb IA ha fallat. Si us plau, prova-ho de nou més tard.",
@@ -1278,6 +1285,22 @@
       "new": "Nova Factura",
       "invoice": "Factura"
     },
+    "items": {
+      "description": "Descripció",
+      "quantity": "Quant.",
+      "unitPrice": "Preu Unit.",
+      "total": "Total",
+      "taxes": "Impostos",
+      "searchTax": "Cerca tipus d'impost...",
+      "noTaxFound": "No s'ha trobat cap tipus d'impost.",
+      "addManualItem": "Afegeix línia manual",
+      "addTax": "Afegeix nou impost",
+      "multipleTaxes": "Impostos Múltiples",
+      "placeholder": {
+        "description": "Concepte del servei o producte"
+      },
+      "emptyState": "No hi ha cap concepte afegit."
+    },
     "button": {
       "save": "Desar Factura",
       "saving": "Desant...",
@@ -1360,7 +1383,8 @@
       "shipping": "Enviament",
       "shippingApplied": "Cost d'enviament",
       "total": "Total",
-      "none": "Cap"
+      "none": "Cap",
+      "retention": "Retenció"
     },
     "status": {
       "draft": "Esborrany",
@@ -1977,27 +2001,52 @@
     "errorloadingdata": "Error en carregar les dades.",
     "unexpectederrorloadingfile": "S'ha produït un error inesperat en carregar el fitxer.",
     "startingexport": "Iniciant l'exportació...",
+    "successImport": "S'han importat {count} registres correctament.",
+    "errorImport": "Hi ha hagut un error en importar les dades.",
+    "errors": {
+      "validationTitle": "Valor no vàlid",
+      "validationMessage": "Si us plau, selecciona un valor de la llista: {values}",
+      "noFile": "No s'ha trobat el fitxer.",
+      "unsupportedFormat": "Format de fitxer no suportat. Puja un .xlsx o .csv",
+      "fileReadError": "No s'ha pogut llegir el fitxer. Pot estar malmès o en un format incorrecte.",
+      "noSheet": "No s'ha pogut llegir el full de càlcul.",
+      "emptySheet": "El full de càlcul és buit.",
+      "columnMismatch": "Les columnes de l'arxiu no coincideixen amb la plantilla. Descarrega la plantilla de nou.",
+      "noData": "El fitxer no conté dades per importar.",
+      "insertError": "Error en la inserció de dades"
+    },
     "contacts": {
-      "create": "Crear plantilla",
+      "create": "Crear plantilla de contactes",
       "load": "Carregar contactes",
-      "download": "Descarregar contactes",
-      "startingexport": "Iniciant l'exportació de contactes..."
+      "download": "Descarregar contactes"
     },
     "products": {
-      "create": "Crear plantilla",
+      "create": "Crear plantilla de conceptes",
       "load": "Carregar conceptes",
-      "download": "Descarregar conceptes",
-      "startingexport": "Iniciant l'exportació de conceptes..."
+      "download": "Descarregar conceptes"
     },
     "quotes": {
-      "create": "Crear plantilla",
+      "create": "Crear plantilla de pressupostos",
       "load": "Carregar pressupostos",
-      "download": "Descarregar pressupostos",
-      "startingexport": "Iniciant l'exportació de pressupostos..."
+      "download": "Descarregar pressupostos"
+    },
+    "invoices": {
+      "create": "Crear plantilla de factures",
+      "load": "Carregar factures",
+      "download": "Descarregar factures"
+    },
+    "expenses": {
+      "create": "Crear plantilla de despeses",
+      "load": "Carregar despeses",
+      "download": "Descarregar despeses"
+    },
+    "suppliers": {
+      "create": "Crear plantilla de proveïdors",
+      "load": "Carregar proveïdors",
+      "download": "Descarregar proveïdors"
     }
   },
   "Shared": {
-    
     "limits": {
       "modalTitle": "Límit de assolit",
       "invoicesPerMonth": "Has assolit el límit de factures per mes al teu pla actual.",
@@ -2023,7 +2072,7 @@
       "openMenu": "Obrir menú",
       "title": "Accions",
       "cancel": "Cancel·lar",
-      "back" : "Enrere",
+      "back": "Enrere",
       "save": "Desar",
       "saving": "Desant...",
       "create": "Crear"
@@ -2665,6 +2714,160 @@
     "delete": "Esborra",
     "edit": "Edita",
     "deleting": "S'esborra...",
-    "saving": "Desant..."
+    "saving": "Desant...",
+    "save": "Desa"
+  },
+  "ExcelColumns": {
+    "contacts": {
+      "nom": "Nom",
+      "empresa": "Empresa",
+      "email": "Email",
+      "telefon": "Telèfon",
+      "estat": "Estat",
+      "valor": "Valor",
+      "ultim_contacte": "Últim Contacte",
+      "ubicacio": "Ubicació",
+      "created_at": "Data Creació",
+      "last_interaction_at": "Última Interacció",
+      "birthday": "Aniversari",
+      "marital_status": "Estat Civil",
+      "hobbies": "Aficions",
+      "social_media": "Xarxes Socials",
+      "job_title": "Càrrec",
+      "industry": "Indústria",
+      "lead_source": "Origen del Lead",
+      "notes": "Notes",
+      "address": "Adreça (JSON)",
+      "children_count": "Nº Fills",
+      "partner_name": "Nom Parella",
+      "supplier_id": "ID Proveïdor",
+      "gender": "Gènere",
+      "tax_id": "NIF/CIF",
+      "street": "Carrer",
+      "city": "Ciutat",
+      "postal_code": "Codi Postal",
+      "country": "País"
+    },
+    "products": {
+      "name": "Nom",
+      "description": "Descripció",
+      "price": "Preu",
+      "tax_rate": "Impostos (%)",
+      "unit": "Unitat",
+      "category": "Categoria",
+      "is_active": "Està Actiu?",
+      "created_at": "Data Creació"
+    },
+    "quotes": {
+      "title": "Títol del Pressupost",
+      "issue_date": "Data d'Emissió",
+      "valid_until": "Vàlid Fins",
+      "status": "Estat",
+      "notes": "Notes Internes",
+      "terms_and_conditions": "Termes i Condicions",
+      "contact_id": "ID Contacte",
+      "quote_number": "Número Pressupost",
+      "subtotal": "Subtotal",
+      "tax_amount": "Quantitat Impostos",
+      "discount_amount": "Quantitat Descompte",
+      "total_amount": "Total",
+      "items": "Línies (JSON)",
+      "created_at": "Data Creació",
+      "secure_id": "ID Segur",
+      "expiry_date": "Data de Caducitat",
+      "theme_color": "Color del Tema",
+      "opportunity_id": "ID Oportunitat",
+      "send_at": "Data d'Enviament",
+      "sent_at": "Enviat el",
+      "rejection_reason": "Motiu de Rebuig",
+      "show_quantity": "Mostrar Quantitat",
+      "sequence_number": "Número de Seqüència",
+      "tax_rate": "Taxa d'Impostos (%)"
+    },
+    "invoices": {
+      "contact_id": "ID Contacte",
+      "invoice_number": "Número de Factura",
+      "issue_date": "Data d'Emissió",
+      "due_date": "Data de Venciment",
+      "total_amount": "Total",
+      "status": "Estat",
+      "created_at": "Data Creació",
+      "updated_at": "Data Actualització",
+      "notes": "Notes",
+      "subtotal": "Subtotal",
+      "tax_amount": "Quantitat Impostos",
+      "discount_amount": "Quantitat Descompte",
+      "currency": "Moneda",
+      "language": "Idioma",
+      "client_name": "Nom del Client",
+      "client_address": "Adreça del Client",
+      "client_tax_id": "NIF/CIF Client",
+      "client_email": "Email Client",
+      "company_name": "Nom Empresa",
+      "company_address": "Adreça Empresa",
+      "company_tax_id": "NIF/CIF Empresa",
+      "company_email": "Email Empresa",
+      "quote_id": "ID Pressupost",
+      "verifactu_uuid": "UUID VeriFactu",
+      "retention_amount": "Import Retenció",
+      "legacy_tax_rate": "Taxa IVA (Antiga)",
+      "legacy_tax_amount": "Import IVA (Antic)",
+      "extra_data": "Dades Extra (JSON)",
+      "budget_id": "ID Pressupost (Antic)",
+      "tax": "Impostos (Antic)",
+      "discount": "Descompte (Antic)",
+      "project_id": "ID Projecte",
+      "paid_at": "Data Pagament",
+      "sent_at": "Data Enviament",
+      "shipping_cost": "Cost Enviament",
+      "verifactu_qr_data": "QR VeriFactu",
+      "verifactu_signature": "Signatura VeriFactu",
+      "verifactu_previous_signature": "Signatura Prèvia VeriFactu",
+      "payment_details": "Detalls de Pagament",
+      "company_logo_url": "URL Logo Empresa",
+      "client_reference": "Referència Client",
+      "terms": "Termes i Condicions"
+    },
+    "expenses": {
+      "description": "Descripció",
+      "total_amount": "Import Total",
+      "expense_date": "Data Despesa",
+      "invoice_number": "Núm. Factura",
+      "tax_amount": "Import IVA",
+      "extra_data": "Dades Extra",
+      "supplier_id": "Proveïdor (ID)",
+      "subtotal": "Subtotal",
+      "discount_amount": "Import Descompte",
+      "notes": "Notes",
+      "status": "Estat",
+      "payment_date": "Data Pagament",
+      "payment_method": "Mètode Pagament",
+      "is_billable": "És Facturable",
+      "project_id": "Projecte (ID)",
+      "is_reimbursable": "És Reemborsable",
+      "currency": "Moneda",
+      "category_id": "Categoria (ID)",
+      "retention_amount": "Import Retenció",
+      "due_date": "Data Venciment",
+      "discount_rate": "Taxa Dte. (%)",
+      "created_at": "Data Creació",
+      "legacy_tax_amount": "IVA (Antic)",
+      "legacy_tax_rate": "Taxa IVA (Antiga)",
+      "legacy_category_name": "Categoria (Antiga)"
+    },
+    "suppliers": {
+      "name": "Nom",
+      "contact_name": "Nom de Contacte",
+      "email": "Email",
+      "telefon": "Telèfon",
+      "address": "Adreça (JSON)",
+      "tax_id": "NIF/CIF",
+      "notes": "Notes",
+      "created_at": "Data Creació",
+      "updated_at": "Data Actualització",
+      "category": "Categoria",
+      "website": "Lloc Web",
+      "nif": "NIF/CIF"
+    }
   }
 }
