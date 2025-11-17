@@ -2,14 +2,14 @@
   "Metadata": {
     "siteName": "Ribot",
     "defaultTitle": "Ribot - Your Smart CRM",
-    "description": "Efficiently manage your clients, projects, and invoices with Ribot.",
+    "description": "Manage your clients, projects, and invoices efficiently with Ribot.",
     "ogImageAlt": "Ribot CRM Dashboard"
   },
   "RedirectAnimation": {
     "loadingWorkspace": "Preparing your workspace..."
   },
   "Navigation": {
-    "dashboard": "Main Dashboard",
+    "dashboard": "Dashboard",
     "crm": "CRM",
     "finances": "Finances",
     "network": "Professional Network",
@@ -33,7 +33,7 @@
     "logoAlt": "Ribot Logo",
     "comingSoon": "Coming Soon",
     "featureUnavailable": "🚧 This feature is not available yet.",
-    "ai": "Automatic AI",
+    "ai": "Automated AI",
     "signOut": "Sign Out",
     "signOutConfirmTitle": "Are you sure you want to sign out?",
     "signOutConfirmDescription": "You will need to sign in again to access your account.",
@@ -42,26 +42,29 @@
     "menuTitle": "Menu",
     "planner": "Planner",
     "networkTitle": "Professional Network",
-    "listView": "List",
-    "mapView": "Map",
+    "listView": "List View",
+    "mapView": "Map View",
     "excel": "Excel",
-    "CrearTemplate": "Create Template",
-    "LoadFile": "Upload File",
+    "CrearTemplate": "Create template",
+    "LoadFile": "Load file",
     "profile": "Profile",
     "billing": "Billing",
-    "plans": "Plans and Pricing",
+    "plans": "Plans & Pricing",
     "team": "Team",
     "integrations": "Integrations",
     "blacklist": "Blacklist",
     "install": "Install Ribotflow",
-    "permissions": "Application Permissions",
+    "permissions": "App Permissions",
     "brandNameMobile": "Ribotflow",
     "transcription": "Audio Transcription",
-    "pipelinesSettings": "Pipeline Settings"
+    "pipelinesSettings": "Pipeline Settings",
+    "roadmap": "Roadmap"
   },
+  
+  
   "InboxPage": {
     "composeDialogTitle": "Compose Email",
-    "composeDialogDescription": "Select a recipient, write a subject, and compose your message or choose a template.",
+    "composeDialogDescription": "Select a recipient, write a subject and compose your message or choose a template.",
     "subjectPlaceholder": "Subject...",
     "previewTitle": "Preview",
     "recipientLabel": "Recipient",
@@ -76,10 +79,10 @@
     "cancelButton": "Cancel",
     "sendButton": "Send Email",
     "toastSuccessTitle": "Success!",
-    "toastErrorTitle": "Send Error",
-    "requiredFieldsErrorTitle": "Required Fields",
+    "toastErrorTitle": "Sending Error",
+    "requiredFieldsErrorTitle": "Required fields",
     "requiredFieldsErrorDescription": "You must fill in the recipient, subject, and body.",
-    "replyHeader": "--- On {date}, {name} wrote ---",
+    "replyHeader": "--- On {date} {name} wrote ---",
     "inboxUpdatedToast": "Inbox updated",
     "unknownSender": "Unknown",
     "emptyInbox": "Your inbox is empty.",
@@ -90,7 +93,7 @@
     "sentFilter": "Sent",
     "replyButton": "Reply",
     "initialsFallback": "??",
-    "selectConversationTitle": "Select a Conversation",
+    "selectConversationTitle": "Select a conversation",
     "selectConversationDescription": "Choose an email from the list to view it here.",
     "contactDetailsTitle": "Contact Details",
     "emailLabel": "Email:",
@@ -111,20 +114,25 @@
     "unreadFilter": "Unread",
     "hideContactPanel": "Hide contact panel",
     "showContactPanel": "Show contact panel",
-    "closeButton": "Close detailed view",
-    "fromLabel": "Label",
+    "closeButton": "Close detail view",
+    "fromLabel": "From",
     "allInboxes": "All inboxes",
     "myEmails": "My emails",
-    "unknownMailbox": "Unknown inbox",
+    "unknownMailbox": "Unknown mailbox",
     "unnamedUser": "Unnamed user",
     "searchInboxPlaceholder": "Search inbox...",
     "confirmBlacklist": "Are you sure you want to block {email}? Their emails will no longer be downloaded.",
     "viewFullProfile": "View full profile",
-    "valueLabel": "Value: €{value}",
+    "valueLabel": "Value: {value} €",
     "statusLabel": "Status:",
     "blocking": "Blocking...",
     "addToBlacklist": "Add sender to blacklist",
+    "noTicketSelected": "No email selected",
     "limitReached": "You have reached the email limit for your plan.",
+    "createOpportunityLabel": "Create Opportunity",
+    "createOpportunityInPipeline": "Select a pipeline",
+    "selectPipelinePlaceholder": "Select a pipeline...",
+    "doNotCreateOpportunity": "Do not create opportunity",
     "toast": {
       "contactSavedSuccess": "Contact saved successfully",
       "preparingMessage": "Preparing message...",
@@ -134,7 +142,15 @@
       "deleteConfirmDescription": "This action cannot be undone.",
       "cancelButton": "Cancel",
       "confirmDeleteButton": "Yes, delete it",
-      "deleteMultipleConfirm": "Are you sure you want to delete the selected emails? This action cannot be undone."
+      "deleteMultipleConfirm": "Are you sure you want to delete the selected emails? This action cannot be undone.",
+      "existingContact": "Existing Contact",
+      "manualEmail": "Manual Email",
+      "manualEmailPlaceholder": "Enter recipient email...",
+      "manualEmailDescription": "If the contact does not exist, it will be created automatically.",
+      "invalidEmailFormat": "Invalid email format.",
+      "toastSuccessTitle": "Success!",
+      "toastErrorTitle": "Sending Error",
+      "replyHeader": "--- On {date} {name} wrote ---"
     },
     "editor": {
       "bold": "Bold",
@@ -142,7 +158,7 @@
       "strike": "Strikethrough",
       "heading": "Heading",
       "bulletList": "Bullet list",
-      "orderedList": "Numbered list"
+      "orderedList": "Ordered list"
     },
     "emailContentTitle": "Email content",
     "selectMultiple": "Select multiple contacts",
@@ -150,26 +166,26 @@
     "deleteMultipleConfirm": "Are you sure you want to delete the selected emails? This action cannot be undone."
   },
   "AICampaignWizard": {
-    "title": "AI Campaign Wizard",
+    "title": "AI Campaign Assistant",
     "step1Description": "Start by describing your marketing goal. Be specific!",
-    "step1Placeholder": "Ex: I want to gain 3 new clients for my consulting service this month through Instagram.",
+    "step1Placeholder": "Ex: I want to get 3 new clients for my consulting service this month via Instagram.",
     "generateStrategiesButton": "Generate Strategies",
-    "step2Description": "We've generated some ideas for you. Pick the one you like most to develop the content.",
+    "step2Description": "We have generated some ideas for you. Choose the one you like best to develop the content.",
     "creatingMagic": "Creating magic...",
     "backButton": "Back",
-    "step3Description": "Perfect! Here’s a draft. You can edit it before saving the campaign.",
+    "step3Description": "Perfect! Here is a draft. You can edit it before saving the campaign.",
     "saveCampaignButton": "Save Campaign",
     "toastErrorAI": "AI Error",
     "toastErrorSave": "Error",
-    "toastErrorSaveDescription": "The campaign could not be saved.",
+    "toastErrorSaveDescription": "Could not save the campaign.",
     "toastSuccessSave": "Campaign Created!",
-    "toastSuccessSaveDescription": "Your new campaign is in the list.",
+    "toastSuccessSaveDescription": "Your new campaign is on the list.",
     "toast": {
       "errorAI": "AI Error",
-      "errorSave": "Error Saving",
-      "errorSaveDescription": "The campaign could not be saved.",
+      "errorSave": "Save Error",
+      "errorSaveDescription": "Could not save the campaign.",
       "successSave": "Campaign Created!",
-      "successSaveDescription": "Your new campaign is now in the list."
+      "successSaveDescription": "Your new campaign is already on the list."
     }
   },
   "CampaignCalendar": {
@@ -184,18 +200,18 @@
     }
   },
   "Marketing": {
-    "title": "Marketing Center",
+    "title": "Marketing Hub",
     "createCampaignButton": "Create Campaign with AI",
     "kpiNewContacts": "New Contacts (Month)",
     "kpiConversionRate": "Conversion Rate",
     "kpiInteraction": "Interaction (Coming Soon)",
     "yourCampaignsTitle": "Your Campaigns",
-    "noCampaignsMessage": "You haven't created any campaigns yet. Click \"Create Campaign with AI\" to get started.",
+    "noCampaignsMessage": "You haven't created any campaigns yet. Click \"Create Campaign with AI\" to start.",
     "campaignListHeader": "Campaign",
     "typeListHeader": "Type",
     "statusListHeader": "Status",
     "dateListHeader": "Date",
-    "detailDialogTitle": "Campaign Details",
+    "detailDialogTitle": "Campaign Detail",
     "detailDialogScheduledFor": "Scheduled for",
     "detailDialogNameLabel": "Campaign Name",
     "detailDialogAudienceLabel": "Target Audience",
@@ -207,13 +223,13 @@
     "campaignStatus": {
       "Completat": "Completed",
       "Actiu": "Active",
-      "Planificat": "Planned"
+      "Planificat": "Scheduled"
     }
   },
   "Planificador": {
     "viewPostTitle": "Post Preview",
-    "returnToDraft": "Return to Draft",
-    "deleteDraft": "Delete Draft",
+    "returnToDraft": "Return to draft",
+    "deleteDraft": "Delete draft",
     "close": "Close",
     "like": "Like",
     "comment": "Comment",
@@ -221,7 +237,7 @@
     "yourTextPlaceholder": "Your text will appear here...",
     "publishingTo": "Publishing to:",
     "yourPage": "Your Page",
-    "noConnectionsMessage": "You don’t have any connections set up. You can",
+    "noConnectionsMessage": "You don't have any connections configured. You can",
     "connectHere": "connect them here",
     "createPost": "Create post",
     "pendingDrafts": "Pending drafts",
@@ -244,19 +260,19 @@
     "postToLinkedIn": "Post to LinkedIn",
     "mediaContentAlt": "Media content",
     "createDialogTitle": "Create New Post",
-    "whatsOnYourMind": "What would you like to share today?",
+    "whatsOnYourMind": "What do you want to share today?",
     "preview": "Preview (LinkedIn)",
     "textWillAppearHere": "Your text will appear here...",
     "previewAlt": "Preview",
     "saveDraft": "Save Draft",
     "saving": "Saving...",
     "published": "Published",
-    "failed": "Failed",
+    "failed": "Error",
     "noContent": "No text",
     "deleteDraftAria": "Delete draft",
-    "publishTo": "Publishing to:",
+    "publishTo": "Publish to:",
     "partialSuccess": "Partial Success",
-    "errorNotAuthenticated": "User not authenticated. Please log in again.",
+    "errorNotAuthenticated": "User not authenticated. Please sign in again.",
     "errorMediaUpload": "Could not start file upload.",
     "errorPostCreation": "Could not save the post.",
     "successDraftCreated": "Draft created successfully.",
@@ -268,7 +284,7 @@
     "successPostDeleted": "Post deleted successfully.",
     "imagePreviewAlt": "Image preview",
     "toasts": {
-      "errorNotAuthenticated": "User not authenticated. Please log in again.",
+      "errorNotAuthenticated": "User not authenticated. Please sign in again.",
       "errorMediaUpload": "Could not start file upload.",
       "errorPostCreation": "Could not save the post.",
       "successDraftCreated": "Draft created successfully.",
@@ -280,10 +296,10 @@
       "successPostDeleted": "Post deleted successfully.",
       "invalidAspectRatioTitle": "Invalid image format",
       "invalidAspectRatioDescription": "The image does not have the correct aspect ratio.",
-      "errorMediaMix": "You cannot mix images and videos in the same selection.",
+      "errorMediaMix": "Cannot mix images and videos in the same selection.",
       "errorMultipleVideos": "Only one video can be uploaded at a time.",
-      "errorFileTooLarge": "The file is too large.",
-      "errorUnsupportedFormat": "The file format is not supported."
+      "errorFileTooLarge": "File is too large.",
+      "errorUnsupportedFormat": "File format is not supported."
     }
   },
   "TemplatesPage": {
@@ -303,26 +319,31 @@
     "toastCopiedTitle": "Copied!",
     "toastCopiedDescription": "Variable {{variable}} copied.",
     "newTemplateName": "New Template",
-    "newTemplateBody": "<h1>Hello {{contact_name}},</h1>\n<p>Your email content...</p>",
+    "newTemplateBody": "<h1>Hello {{contact_name}},</h1><p>Content of your email...</p>",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
     "toastSaveSuccessDescription": "Template saved successfully.",
     "toastDeleteSuccessDescription": "Template deleted.",
     "deleteConfirmTitle": "Are you sure?",
-    "deleteConfirmDescription": "This action cannot be undone. It will permanently delete the template.",
+    "deleteConfirmDescription": "This action cannot be undone. This will permanently delete the template.",
     "cancelButton": "Cancel",
     "deletingButton": "Deleting...",
-    "confirmDeleteButton": "Yes, delete it"
+    "confirmDeleteButton": "Yes, delete it",
+    "tabVariables": "Variables",
+    "tabEditor": "Editor",
+    "tabSettings": "Settings",
+    "tabList": "List",
+    "newTemplate": "New Template"
   },
   "ActivitiesClient": {
     "title": "Activity History",
-    "deletedContact": "Contact deleted",
-    "noActivities": "No activities have been recorded yet.",
-    "dateFormat": "d MMM yyyy 'at' HH:mm"
+    "deletedContact": "Deleted contact",
+    "noActivities": "No activities recorded yet.",
+    "dateFormat": "MMM d, yyyy 'at' HH:mm"
   },
   "Calendar": {
     "allDay": "All day",
-    "previous": "Back",
+    "previous": "Previous",
     "next": "Next",
     "today": "Today",
     "month": "Month",
@@ -332,7 +353,7 @@
     "date": "Date",
     "time": "Time",
     "event": "Event",
-    "noEventsInRange": "There are no events in this range.",
+    "noEventsInRange": "No events in this range.",
     "more": "more",
     "newTask": "New Task",
     "filters": {
@@ -356,8 +377,8 @@
     "searchPlaceholder": "Search...",
     "newContactButton": "New Contact",
     "dialogTitle": "New Contact",
-    "dialogDescription": "Add the details of the new contact.",
-    "namePlaceholder": "Full Name",
+    "dialogDescription": "Add the new contact's details.",
+    "namePlaceholder": "Full name",
     "companyPlaceholder": "Company",
     "emailPlaceholder": "Email",
     "phonePlaceholder": "Phone",
@@ -367,7 +388,7 @@
     "noContactsFound": "No contacts found.",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
-    "toastSuccessDescription": "The contact has been saved successfully.",
+    "toastSuccessDescription": "Contact saved successfully.",
     "noCompany": "No company",
     "notSpecified": "Not specified",
     "savingButton": "Saving...",
@@ -407,7 +428,7 @@
       "title": "Delete contact?",
       "description1": "This action",
       "irreversible": "cannot be undone",
-      "description2": "All information related to this contact, including activities, quotes, and invoices, will be lost."
+      "description2": "All information related to this contact will be lost, including activities, quotes, and invoices."
     },
     "tabs": {
       "activities": "Activities",
@@ -429,11 +450,11 @@
     },
     "activities": {
       "title": "Activity History",
-      "empty": "There are no activities for this contact."
+      "empty": "No activities for this contact."
     },
     "opportunities": {
       "title": "Opportunities",
-      "empty": "No opportunities available.",
+      "empty": "No opportunities.",
       "table": {
         "name": "Name",
         "status": "Status",
@@ -442,7 +463,7 @@
     },
     "quotes": {
       "title": "Quotes",
-      "empty": "No quotes available.",
+      "empty": "No quotes.",
       "table": {
         "number": "Number",
         "status": "Status",
@@ -451,7 +472,7 @@
     },
     "invoices": {
       "title": "Invoices",
-      "empty": "No invoices available.",
+      "empty": "No invoices.",
       "table": {
         "number": "Number",
         "status": "Status",
@@ -466,8 +487,8 @@
       "noData": "--",
       "noNotes": "No notes for this contact.",
       "labels": {
-        "name": "Full Name",
-        "nom": "Full Name",
+        "name": "Full name",
+        "nom": "Full name",
         "email": "Email",
         "phone": "Phone",
         "status": "Status",
@@ -501,7 +522,7 @@
       "errorTitle": "Error",
       "successTitle": "Success!",
       "updateSuccess": "Contact updated.",
-      "deleteSuccess": "The contact has been deleted successfully."
+      "deleteSuccess": "The contact has been successfully deleted."
     }
   },
   "ComposeEmailDialog": {
@@ -516,71 +537,82 @@
     "sendButton": "Send with Gmail"
   },
   "CrmGeneralPage": {
+    "keyMetrics": "Key Metrics",
     "recentAlerts": "Recent Alerts ({count})",
-    "totalContacts": "Total Contacts",
-    "totalContactsTooltip": "All contacts in your CRM",
-    "newThisMonth": "New This Month",
-    "newThisMonthTooltip": "Contacts added in the last 30 days",
-    "opportunities": "Opportunities",
-    "opportunitiesTooltip": "Active business opportunities",
-    "pipelineValue": "Pipeline Value",
-    "pipelineValueTooltip": "Sum of all active opportunities",
     "customerLifecycle": "Customer Lifecycle",
-    "leads": "Leads",
-    "quoted": "Quoted",
-    "clients": "Clients",
-    "topClients": "Top Clients (Revenue)",
-    "noRevenueData": "No revenue data available yet.",
-    "healthRadar": "Health Radar",
-    "lastContactOn": "Last contact on {date}",
-    "allContactsWarm": "All contacts are active!",
-    "keyStatistics": "Key Statistics",
-    "bestMonths": "Best Months (Revenue)",
-    "noRevenueHistory": "No revenue history available.",
-    "overallPerformance": "Overall Performance",
-    "avgRevenuePerClient": "Average Revenue / Client",
-    "avgConversionTime": "Average Conversion Time",
-    "replyTooltip": "Reply",
-    "markAsReadTooltip": "Mark as read",
     "leadSourceAnalysis": "Lead Source Analysis",
-    "tooltips": {
-      "totalContacts": "Total number of contacts registered in your CRM.",
-      "newContactsThisMonth": "Contacts created since the start of this month.",
-      "opportunities": "Number of currently active business opportunities.",
-      "pipelineValue": "Total value of ongoing opportunities.",
-      "avgRevenuePerClient": "Average revenue generated per client.",
-      "avgConversionTimeDays": "Average time it takes for a lead to become a client."
+    "topClients": "Top Clients (Revenue)",
+    "healthRadar": "Health Radar",
+    "revenueForecast": "Revenue Forecast",
+    "salesActivityLast7d": "Sales Activity (Last 7 days)",
+    "opportunityAgingByStage": "Opportunity Aging by Stage",
+    "leadConversionBySource": "Conversion by Lead Source",
+    "noOpportunityData": "No active opportunity data to analyze.",
+    "campaignPerformance": {
+      "title": "Campaign Performance (ROI)"
     },
-    "toast": {
-      "errorTitle": "Error",
-      "markAsReadError": "Failed to mark as read.",
-      "replySubject": "Re: Your quote",
-      "fetchError": "Failed to load CRM data."
+    "dailySummary": {
+      "title": "Today's Summary",
+      "tasks": "Completed Tasks",
+      "emails": "Sent Emails",
+      "quotes": "Sent Quotes",
+      "meetings": "Meetings Held"
     },
+    "noCampaignData": "No marketing campaign data.",
     "stats": {
       "totalContacts": "Total Contacts",
-      "newContactsThisMonth": "New Contacts This Month",
+      "newContactsThisMonth": "New Contacts (Month)",
       "opportunities": "Active Opportunities",
       "pipelineValue": "Pipeline Value",
-      "avgRevenuePerClient": "Average Revenue per Client",
-      "avgConversionTimeDays": "Average Conversion Time (days)"
+      "avgRevenuePerClient": "Avg Revenue / Client",
+      "avgConversionTimeDays": "Avg Conversion Time",
+      "conversionRate": "Conversion Rate",
+      "salesVelocity": "Sales Velocity"
     },
-    "replyBody": "\n\n\n--- In response to your feedback on {date} ---\n>{content}"
+    "tooltips": {
+      "totalContacts": "Total number of contacts registered in your CRM.",
+      "newContactsThisMonth": "Contacts created since the beginning of the current month.",
+      "opportunities": "Number of currently active business opportunities.",
+      "pipelineValue": "Total monetary value of all your ongoing opportunities.",
+      "avgRevenuePerClient": "Average revenue generated by each billing client.",
+      "avgConversionTimeDays": "Average number of days it takes for a lead to convert into a won opportunity.",
+      "conversionRate": "Percentage of won opportunities compared to total created opportunities. A key indicator of your sales process efficiency.",
+      "salesVelocity": "Metric measuring how fast your pipeline generates revenue. A higher number means you make money faster."
+    },
+    "funnel": {
+      "leads": "Leads",
+      "quoted": "Quoted",
+      "clients": "Clients"
+    },
+    "noRevenueData": "No revenue data yet.",
+    "noLeadSourceData": "No data on lead sources.",
+    "lastContactOn": "Last contact on {date}",
+    "allContactsWarm": "All contacts are active!",
+    "replyTooltip": "Reply",
+    "markAsReadTooltip": "Mark as read",
+    "toast": {
+      "errorTitle": "Error",
+      "markAsReadError": "Could not mark as read.",
+      "replySubject": "Re: Your message",
+      "fetchError": "Could not load CRM data."
+    },
+    "replyBody": "\n\n\n--- In response to your message from {date} ---\n>{content}"
   },
   "PipelinePage": {
     "title": "Sales Pipeline",
     "addOpportunity": "New Opportunity",
-    "noContact": "No assigned contact",
+    "noContact": "No contact assigned",
     "opportunityCount": "{count, plural, =0 {No opportunities} one {# opportunity} other {# opportunities}}",
     "noOpportunitiesInStage": "Drag an opportunity here or create a new one.",
-    "columnViewLabel": "Column view",
-    "rowViewLabel": "Row view",
+    "columnViewLabel": "Column View",
+    "rowViewLabel": "Row View",
     "loadingError": "Error loading opportunities.",
     "newOpportunityButton": "New Opportunity",
     "toastMoved": "Opportunity moved to \"{stageName}\".",
     "add": "Add",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
+    "selectPipeline": "Select a pipeline",
     "toast": {
       "errorTitle": "Error",
       "successTitle": "Success!",
@@ -604,23 +636,106 @@
     "noContactFound": "No contact found.",
     "selectStagePlaceholder": "Select a stage",
     "valueLabel": "Value (€)",
-    "closeDateLabel": "Closing Date",
+    "closeDateLabel": "Close Date",
     "pickDate": "Pick a date",
     "descriptionPlaceholder": "Description and notes...",
     "cancelButton": "Cancel",
     "saveButton": "Save",
     "toastErrorTitle": "Error",
     "toastSuccessTitle": "Success!",
-    "toastSuccessDescription": "The opportunity has been saved successfully.",
-    "toastDeleteErrorTitle": "Error deleting",
+    "toastSuccessDescription": "Opportunity saved successfully.",
+    "toastDeleteErrorTitle": "Delete Error",
     "toastDeleteSuccessTitle": "Opportunity Deleted",
     "confirmDeleteTitle": "Are you sure you want to delete?",
-    "confirmDeleteDescription": "This action cannot be undone. The opportunity \"{name}\" will be permanently deleted.",
+    "confirmDeleteDescription": "This action cannot be undone. Opportunity \"{name}\" will be permanently deleted.",
     "noContact": "No contact assigned",
     "Common": {
       "delete": "Delete",
       "cancel": "Cancel",
       "deleteConfirmation": "Yes, delete"
+    }
+  },
+  "ProductsPage": {
+    "title": "Concepts",
+    "description": "Manage your list of reusable products and services.",
+    "newConceptButton": "New Concept",
+    "searchPlaceholder": "Search by name...",
+    "categoryFilterPlaceholder": "Filter by category",
+    "allCategories": "All",
+    "listView": "List view",
+    "cardView": "Card view",
+    "noProductsFound": "No products found with these filters.",
+    "uncategorized": "Uncategorized",
+    "noDescription": "No description.",
+    "unitLabel": "Unit: {unit}",
+    "vatLabel": "VAT: {iva}%",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "active": "Active",
+    "inactive": "Inactive",
+    "newProductButton": "New Concept",
+    "table": {
+      "name": "Name",
+      "category": "Category",
+      "price": "Price",
+      "vat": "VAT (%)",
+      "unit": "Unit",
+      "active": "Status",
+      "actions": "Actions"
+    },
+    "toast": {
+      "success": "Success!",
+      "error": "Error",
+      "requiredFields": "Required fields",
+      "requiredFieldsDesc": "Name and price are required.",
+      "productCreated": "Product created!",
+      "productCreatedDesc": "It has been added to your product list.",
+      "productDeleted": "Product successfully deleted.",
+      "deleteSuccess": "Deleted!",
+      "productUpdated": "Product successfully updated."
+    },
+    "deleteDialog": {
+      "title": "Are you sure?",
+      "description": "This action cannot be undone. The product will be permanently deleted.",
+      "cancelButton": "Cancel",
+      "confirmButton": "Yes, delete it"
+    },
+    "errors": {
+      "loadDataFailed": "Error loading concepts data."
+    }
+  },
+  "ProductDetailPage": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "backToList": "Back to concepts list",
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "table": {
+      "price": "Price",
+      "vat": "VAT",
+      "unit": "Unit",
+      "created": "Created"
+    },
+    "form": {
+      "descriptionLabel": "Description",
+      "discountLabel": "Discount (%)",
+      "nameLabel": "Name",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Select or create a category...",
+      "priceLabel": "Price",
+      "unitPlaceholder": "Unit of measure (e.g., units, hours...)",
+      "vatLabel": "VAT (%)",
+      "taxesLabel": "Taxes (%)",
+      "activeLabel": "Active"
+    },
+    "deleteDialog": {
+      "title": "Are you sure you want to delete this product?",
+      "description": "This action cannot be undone. The product will be permanently deleted from the database."
+    },
+    "editDialog": {
+      "title": "Edit Product"
     }
   },
   "QuotesPage": {
@@ -629,7 +744,7 @@
     "toast": {
       "successTitle": "Success!",
       "errorTitle": "Error",
-      "deleteSuccess": "Quote deleted successfully."
+      "deleteSuccess": "Quote successfully deleted."
     },
     "status": {
       "Draft": "Draft",
@@ -673,13 +788,13 @@
   },
   "QuoteEditor": {
     "companyProfileDialog": {
-      "title": "Your Company Details",
+      "title": "Your Company Data",
       "description": "This information will appear on your quotes and invoices.",
       "logoLabel": "Company Logo",
       "logoAlt": "Logo",
       "uploadButton": "Upload Logo",
       "nameLabel": "Company Name",
-      "taxIdLabel": "Tax ID (NIF/CIF)",
+      "taxIdLabel": "Tax ID",
       "addressLabel": "Address",
       "emailLabel": "Email",
       "phoneLabel": "Phone",
@@ -687,7 +802,7 @@
     },
     "quoteEditor": {
       "backButton": "Back",
-      "companyDataTooltip": "Company Data",
+      "companyDataTooltip": "Company data",
       "deleteTooltip": "Delete",
       "createButton": "Create Quote",
       "saveButton": "Save Changes",
@@ -697,28 +812,29 @@
       "resendButton": "Resend",
       "sendButton": "Send Quote",
       "sentOn": "Quote sent on {date}.",
-      "clientOpportunitiesLabel": "Client Opportunities",
-      "noOpportunityAssociated": "No associated opportunity",
+      "clientOpportunitiesLabel": "Client opportunities",
+      "noOpportunityAssociated": "No opportunity associated",
       "noOpenOpportunities": "This client has no open opportunities.",
       "additionalNotesLabel": "Additional Notes",
       "deleteDialogTitle": "Are you sure?",
       "deleteDialogDescription": "This action will permanently delete this quote.",
-      "downloadPDF": "Download PDF"
+      "downloadPDF": "Download PDF",
+      "pdfNotAvailableYet": "PDF is not available yet."
     },
     "toast": {
       "errorTitle": "Error",
       "successTitle": "Success!",
       "logoUploadError": "Could not upload logo.",
-      "missingProfileData": "Essential profile data is missing.",
-      "saveFirst": "Save the quote before sending.",
+      "missingProfileData": "Essential profile data missing.",
+      "saveFirst": "Save the quote before sending it.",
       "previewNotFound": "Preview element not found.",
       "unauthenticated": "User not authenticated.",
-      "sendError": "Sending error",
+      "sendError": "Send error",
       "deletedSuccess": "Deleted!",
       "validation": {
         "missingContact": "A client must be selected.",
-        "minOneItem": "The quote must have at least one item.",
-        "invalidItem": "One or more items contain invalid data (empty description or quantity 0)."
+        "minOneItem": "The quote must have at least one concept.",
+        "invalidItem": "One or more concepts have invalid data (empty description or quantity 0)."
       }
     },
     "buttons": {
@@ -726,29 +842,40 @@
       "saveChanges": "Save Changes",
       "editDetails": "Edit Details",
       "delete": "Delete",
-      "confirmDelete": "Yes, permanently delete"
+      "confirmDelete": "Yes, delete permanently"
     },
     "items": {
-      "title": "Items",
-      "empty": "Add the first item to the quote.",
-      "placeholderDescription": "Service or product description",
-      "placeholderQty": "Qty",
-      "placeholderPrice": "Price",
-      "addButton": "Add Item",
-      "newProductTitle": "Create and save new item",
-      "newProductNamePlaceholder": "Item name",
-      "newProductPricePlaceholder": "Price (€)",
-      "cancelButton": "Cancel",
-      "saveAndAddButton": "Save and Add",
-      "searchPlaceholder": "Search item...",
-      "emptySearch": "No item found.",
-      "addManualItem": "Add manual item",
-      "createNewItem": "Create and save new item",
-      "toast": {
-        "requiredFields": "Required fields",
-        "requiredFieldsDesc": "Name and price are mandatory.",
-        "productCreated": "Product created!",
-        "productCreatedDesc": "It has been added to your product list."
+      "title": "Concepts",
+      "empty": "You haven't added any concepts yet.",
+      "placeholderDescription": "Concept description...",
+      "addButton": "Add Concept",
+      "quantityPlaceholder": "Quantity",
+      "searchPlacehholder": "Search existing product...",
+      "pricePlaceholder": "Price",
+      "emptySearch": "No products found.",
+      "vatPlaceholder": "VAT %",
+      "addManualItem": "Add manual line",
+      "removeItemTooltip": "Remove concept",
+      "createNewItem": "Create and save product",
+      "productSelector": {
+        "addButton": "Add concept",
+        "newProductTitle": "Create new product",
+        "newProductNamePlaceholder": "Product name (e.g., Web Design)",
+        "newProductPricePlaceholder": "Price (e.g., 1200)",
+        "cancelButton": "Cancel",
+        "saveAndAddButton": "Save and Add",
+        "searchPlaceholder": "Search existing product...",
+        "emptySearch": "No products found.",
+        "addManualItem": "Add manual line",
+        "createNewItem": "Create and save product",
+        "newProductDescPlaceholder": "Product description (optional)",
+        "toast": {
+          "requiredFields": "Required fields",
+          "requiredFieldsDesc": "Name and price are required.",
+          "productCreated": "Product created",
+          "productCreatedDesc": "The new product has been added to the list.",
+          "genericError": "There was an error saving the product."
+        }
       }
     },
     "meta": {
@@ -775,7 +902,7 @@
       "unselectedClient": "Client not selected",
       "issueDate": "Issue Date:",
       "expiryDate": "Expiry Date:",
-      "itemHeader": "Item",
+      "itemHeader": "Concept",
       "totalHeader": "Total",
       "discountLine": "Discount:",
       "taxesLine": "VAT:",
@@ -787,64 +914,7 @@
     "options": {
       "title": "Display Options",
       "showQuantitiesLabel": "Show quantities and unit prices",
-      "showQuantitiesDescription": "Enable this to display the quantity and unit price columns in the PDF."
-    }
-  },
-  "ProductsPage": {
-    "title": "Items",
-    "description": "Manage your list of reusable products and services.",
-    "newConceptButton": "New Item",
-    "searchPlaceholder": "Search by name...",
-    "categoryFilterPlaceholder": "Filter by category",
-    "allCategories": "All",
-    "listView": "List View",
-    "cardView": "Card View",
-    "noProductsFound": "No products found with these filters.",
-    "uncategorized": "Uncategorized",
-    "noDescription": "No description.",
-    "unitLabel": "Unit: {unit}",
-    "vatLabel": "VAT: {iva}%",
-    "editButton": "Edit",
-    "deleteButton": "Delete",
-    "table": {
-      "name": "Name",
-      "category": "Category",
-      "price": "Base Price",
-      "unit": "Unit",
-      "actions": "Actions"
-    },
-    "form": {
-      "editTitle": "Edit Item",
-      "createTitle": "Create New Item",
-      "activeLabel": "Active product",
-      "activeDescription": "(If inactive, it will not appear to add to new quotes)",
-      "nameLabel": "Item name",
-      "categoryLabel": "Category",
-      "categoryPlaceholder": "E.g.: Web Design",
-      "descriptionLabel": "Description",
-      "descriptionPlaceholder": "Detailed description of the service or product...",
-      "priceLabel": "Base Price (€)",
-      "unitLabel": "Unit",
-      "unitPlaceholder": "hours, units...",
-      "vatLabel": "VAT (%)",
-      "saving": "Saving...",
-      "saveChanges": "Save Changes",
-      "createConcept": "Create Item"
-    },
-    "toast": {
-      "success": "Success!",
-      "error": "Error",
-      "requiredFields": "Required fields",
-      "requiredFieldsDesc": "Name and price are mandatory.",
-      "productCreated": "Product created!",
-      "productCreatedDesc": "It has been added to your product list.",
-      "productDeleted": "Product successfully deleted."
-    },
-    "deleteDialog": {
-      "title": "Are you sure?",
-      "description": "This action cannot be undone. The product will be permanently deleted.",
-      "cancelButton": "Cancel",
-      "confirmButton": "Yes, delete it"
+      "showQuantitiesDescription": "Enable this to show quantity and unit price columns in the PDF."
     }
   },
   "DashboardClient": {
@@ -857,7 +927,7 @@
     "goalCompleted": "% completed",
     "invoicedMonth": "Invoiced (month)",
     "expensesMonth": "Expenses (month)",
-    "netProfit": "Net Profit (est.)",
+    "netProfit": "Net profit (est.)",
     "recentActivities": "Recent Activities",
     "noActivities": "No activities yet.",
     "quickAccess": "Quick Access",
@@ -874,14 +944,14 @@
     "newTask": "New Task",
     "noPendingTasks": "You have no pending tasks.",
     "radar": "Radar",
-    "allInOrder": "All in order.",
+    "allInOrder": "Everything in order.",
     "overdueInvoice": "Overdue invoice from {clientName}",
     "dueDate": "Due on {dueDate}",
     "taskCompleted": "Task completed: {taskTitle}",
     "taskCreated": "Task created: {taskTitle}",
     "newContact": "New contact: {contactName}",
-    "coolingContact": "Cooling contact: {contactName}",
-    "noInteraction7Days": "No interactions in +7 days",
+    "coolingContact": "Contact cooling down: {contactName}",
+    "noInteraction7Days": "No interaction in 7+ days",
     "taskCreatedToast": "Task created!",
     "taskUpdateErrorToast": "Could not update the task.",
     "actionRequired": "Action required",
@@ -891,20 +961,20 @@
     "recentQuotes": "Recent Quotes",
     "inbox": {
       "title": "Priority Inbox",
-      "emptyTitle": "Inbox Clear",
+      "emptyTitle": "Clean inbox",
       "emptySubtitle": "You have no new emails to review."
     },
-    "viewAll": "View All",
+    "viewAll": "View all",
     "agenda": {
       "title": "Agenda",
       "newTask": "New Task",
       "pending": "Pending",
       "completed": "Completed",
-      "noPendingTasks": "No pending tasks. Great job!",
-      "noCompletedTasks": "You haven’t completed any tasks yet.",
+      "noPendingTasks": "No pending tasks. Good job!",
+      "noCompletedTasks": "You haven't completed any tasks yet.",
       "assigned": "Assigned",
       "searchPlaceholder": "Search tasks by title...",
-      "noTasksFound": "No tasks found with the current filters.",
+      "noTasksFound": "No tasks found with current filters.",
       "viewAll": "View All",
       "filter": {
         "assignedAria": "Filter by assigned tasks",
@@ -922,23 +992,23 @@
       "deleteConfirmDescription": "This action cannot be undone. The task will be permanently deleted.",
       "deleteConfirmAction": "Yes, delete",
       "toast": {
-        "deleteSuccessTitle": "Task deleted",
+        "deleteSuccessTitle": "Task Deleted",
         "deleteErrorTitle": "Error deleting task",
         "sendGoogle": "Google Calendar",
         "syncingGoogle": "Syncing with Google...",
         "syncError": "Error syncing with Google Calendar",
-        "updateGoogle": "Update Google Calendar"
+        "updateGoogle": "Update on Google Calendar"
       }
     },
     "addTaskDialog": {
       "title": "Create New Task",
-      "description": "Add a new task to your daily routine. You can assign it to a contact if you wish.",
+      "description": "Add a new task to your daily routine. You can assign it to a contact if you want.",
       "taskTitleLabel": "Task Title",
-      "taskTitlePlaceholder": "Ex: Follow up on the proposal with...",
+      "taskTitlePlaceholder": "Ex: Follow up on proposal with...",
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Add more details about the task...",
       "dueDateLabel": "Due Date",
-      "dueDatePlaceholder": "Choose a date",
+      "dueDatePlaceholder": "Pick a date",
       "priorityLabel": "Priority",
       "priorityPlaceholder": "Select a priority",
       "durationLabel": "Duration",
@@ -946,7 +1016,7 @@
       "assignmentDateLabel": "Assignment date",
       "selectTeamMemberPlaceholder": "Select a team member",
       "noTeamMembersFound": "No team members found",
-      "durationPlaceholder": "Hours (ex: 1.5)",
+      "durationPlaceholder": "Hours (e.g., 1.5)",
       "dptPlaceholder": "Select a department",
       "priority": {
         "baixa": "Low",
@@ -965,9 +1035,9 @@
         "errorTitle": "Error",
         "unauthenticated": "User not authenticated.",
         "emptyTitle": "The task title cannot be empty.",
-        "saveError": "Error saving the task",
+        "saveError": "Error saving task",
         "successTitle": "Success!",
-        "successDescription": "The task was created successfully.",
+        "successDescription": "Task created successfully.",
         "taskCreatedToast": "Task created!",
         "taskUpdateErrorToast": "Could not update the task.",
         "taskCreationError": "Could not create the task."
@@ -977,11 +1047,11 @@
       "title": "AI Oracle",
       "summary": "Summary",
       "suggestion": "Suggestion",
-      "button": "Talk to the assistant",
+      "button": "Speak with assistant",
       "noSummary": "Could not load summary.",
       "noSuggestion": "Try again later.",
       "errorTitle": "Error",
-      "loadError": "Could not contact the AI Oracle."
+      "loadError": "Could not contact AI Oracle."
     },
     "taskDetails": {
       "title": "Task Details",
@@ -990,13 +1060,14 @@
       "deleteButton": "Delete",
       "markAsPendingButton": "Mark as pending",
       "markAsCompletedButton": "Mark as completed",
-      "limitDay": "Limit date:",
-      "cancelButton": "Cancel"
+      "limitDay": "Due date: ",
+      "cancelButton": "Cancel",
+      "startTask": "Start task"
     },
     "time": {
-      "now": "Just now",
-      "minutesAgo": "{count, plural, =1 {1 minute ago} other {# minutes ago}}",
-      "hoursAgo": "{count, plural, =1 {1 hour ago} other {# hours ago}}",
+      "now": "Right now",
+      "minutesAgo": "{count, plural, =1 {1 minute} other {# minutes}} ago",
+      "hoursAgo": "{count, plural, =1 {1 hour} other {# hours}} ago",
       "yesterday": "Yesterday",
       "daysAgo": "{count} days ago"
     }
@@ -1004,11 +1075,11 @@
   "ExpensesPage": {
     "title": "Expense Management",
     "newExpenseButton": "New Expense",
-    "emptyState": "You haven’t recorded any expenses yet. Start by creating a new one.",
+    "emptyState": "You haven't recorded any expenses yet. Start by creating a new one.",
     "noSupplier": "No supplier",
     "noCategory": "No category",
     "table": {
-      "number": "Invoice Nº",
+      "number": "Invoice No.",
       "supplier": "Supplier",
       "description": "Description",
       "date": "Date",
@@ -1025,10 +1096,30 @@
       "cancelled": "Cancelled"
     },
     "filter": {
-      "allStatuses": "All statuses"
+      "allStatuses": "All statuses",
+      "searchPlaceholder": "Search by description...",
+      "allCategories": "All categories"
+    },
+    "errors": {
+      "loadDataFailed": "Error loading expenses"
+    },
+    "toast": {
+      "deleteSuccess": "Expense successfully deleted.",
+      "deleteError": "Error deleting expense."
+    },
+    "deleteDialog": {
+      "title": "Are you sure?",
+      "description": "This action cannot be undone."
     }
   },
   "ExpenseDetailPage": {
+    "createDescription": "Complete the details to register a new expense.",
+    "editDescription": "Modify expense details.",
+    "editTitle": "Edit Expense #{number}",
+    "createTitle": "Create New Expense",
+    "aiHelperText": "Use the AI assistant to automatically fill in expense details from the invoice.",
+    "aiHelperTitle": "AI Assistant for Expenses",
+    "loading": "Loading expense data...",
     "title": {
       "new": "New Expense",
       "edit": "Edit Expense"
@@ -1037,11 +1128,13 @@
       "saving": "Saving...",
       "save": "Save",
       "cancel": "Cancel",
-      "addItem": "Add Item"
+      "addItem": "Add concept",
+      "analyzeAI": "Analyze with AI",
+      "analyzingAI": "Analyzing..."
     },
     "card": {
       "generalDetails": "General Details",
-      "expenseItems": "Expense Items",
+      "expenseItems": "Expense Concepts",
       "notes": "Additional Notes",
       "totals": "Totals",
       "attachments": "Attachments",
@@ -1053,22 +1146,51 @@
       "invoiceNumber": "Invoice Number (Optional)",
       "description": "General Description",
       "discount": "Discount (€)",
-      "taxRate": "Taxes (%)"
+      "taxRate": "Taxes (%)",
+      "category": "Expense Category",
+      "name": "Category Name"
     },
     "placeholder": {
       "invoiceNumber": "Ex: F-2024-123",
-      "description": "Brief description of the expense...",
-      "notes": "Any additional details..."
+      "description": "Short description of the expense...",
+      "notes": "Any additional details...",
+      "selectCategory": "Select a category...",
+      "searchCategory": "Search a category..."
     },
     "select": {
       "selectSupplier": "Select a supplier...",
-      "searchSupplier": "Search for a supplier...",
+      "searchSupplier": "Search a supplier...",
       "noSupplierFound": "No supplier found.",
       "noSupplier": "No supplier"
     },
+    "categories": {
+      "selectCategory": "Select a category...",
+      "searchCategory": "Search a category...",
+      "noCategoryFound": "No category found.",
+      "noCategory": "No category",
+      "manageLink": "Manage categories",
+      "manageTitle": "Expense Category Management",
+      "managePrompt": "Create, edit or delete expense categories to better organize your expenses.",
+      "newCategoryButton": "New Category",
+      "createNew": "Create new category",
+      "editCategoryTitle": "Edit Category",
+      "newTitle": "New Category",
+      "newDescription": "Category description...",
+      "placeholder": {
+        "name": "Category Name",
+        "description": "Category description..."
+      }
+    },
     "label": {
       "subtotal": "Subtotal",
-      "total": "Total"
+      "total": "Total",
+      "tax": "Taxes",
+      "discount": "Discount",
+      "retention": "Retention"
+    },
+    "alert": {
+      "aiAnalysisFailed": "AI analysis failed. Please try again later.",
+      "saveToUpload": "Save the expense to upload attachments."
     },
     "upload": {
       "dragAndDrop": "Drag a file here or click to upload."
@@ -1080,17 +1202,28 @@
     },
     "toast": {
       "saveSuccess": "Expense saved successfully!",
-      "saveError": "An error occurred while saving the expense."
+      "saveError": "There was an error saving the expense."
     },
     "items": {
       "description": "Description",
       "quantity": "Qty.",
       "unitPrice": "Unit Price",
       "total": "Total",
+      "taxes": "Taxes",
+      "searchTax": "Search tax type...",
+      "noTaxFound": "No tax type found.",
+      "addManualItem": "Add manual line",
+      "addTax": "Add new tax",
+      "multipleTaxes": "Multiple Taxes",
       "placeholder": {
         "description": "Service or product concept"
       },
-      "emptyState": "No items added."
+      "emptyState": "No concepts added."
+    },
+    "errors": {
+      "loadDataFailed": "Error loading expense data.",
+      "limitReachedTitle": "Expense limit reached",
+      "limitReachedDescription": "You have reached the expense limit for your current plan. Upgrade your plan to add more expenses."
     }
   },
   "ExpenseDetail": {
@@ -1098,7 +1231,7 @@
       "title": "Attachments",
       "description": "Files associated with this expense.",
       "uploadButton": "Upload File",
-      "empty": "No attachments available.",
+      "empty": "No attached files.",
       "deleteConfirmTitle": "Do you want to delete this attachment?",
       "deleteConfirmDescription": "This action cannot be undone.",
       "fileSize": "Size",
@@ -1106,96 +1239,66 @@
       "download": "Download"
     }
   },
-  "InvoicingPage": {
+  "InvoicesPage": {
     "title": "Invoicing",
-    "newDraftButton": "New Draft",
-    "filterByStatus": "Filter by status",
-    "allStatuses": "All statuses",
-    "searchProductPlaceholder": "Search for a product...",
-    "noProductFound": "No product found.",
-    "table": {
-      "invoiceNo": "Invoice No.",
-      "client": "Client",
-      "issueDate": "Issue Date",
-      "amount": "Amount",
-      "status": "Status",
-      "actions": "Actions"
-    },
-    "statuses": {
-      "issued": "Issued",
-      "paid": "Paid",
-      "overdue": "Overdue",
-      "draft": "Draft",
-      "unknown": "Unknown"
-    },
-    "noClient": "N/A",
+    "description": "Manage your issued invoices.",
+    "newButton": "Create Invoice",
+    "searchPlaceholder": "Search by number or client...",
     "emptyState": "You haven't created any invoices yet.",
-    "issueButton": "Issue",
-    "deleteDialog": {
-      "title": "Are you sure?",
-      "description": "This action cannot be undone.",
-      "cancelButton": "Cancel",
-      "confirmButton": "Yes, delete it"
-    },
-    "issueDialog": {
-      "title": "Issue Legal Invoice?",
-      "description": "This action is irreversible. A legal invoice with an official number will be generated. Once issued, you cannot edit or delete it.",
-      "confirmButton": "Yes, issue invoice"
-    },
-    "formDialog": {
-      "editTitle": "Edit Draft",
-      "createTitle": "Create New Draft",
-      "description": "Add or modify the invoice details.",
-      "clientLabel": "Client",
-      "selectClientPlaceholder": "Select...",
-      "noClientFound": "Not found.",
-      "issueDateLabel": "Issue Date",
-      "dueDateLabel": "Due Date",
-      "pickDate": "Pick date",
-      "itemsTitle": "Items",
-      "itemDescriptionPlaceholder": "Item description",
-      "itemQtyPlaceholder": "Qty",
-      "itemPricePlaceholder": "Price",
-      "addItemButton": "Add item",
-      "notesLabel": "Additional Notes",
-      "notesPlaceholder": "Payment terms, thank you notes, etc.",
-      "subtotal": "Subtotal",
-      "vat": "VAT (21%)",
+    "table": {
+      "number": "Number",
+      "client": "Client",
+      "invoiceDate": "Invoice Date",
+      "dueDate": "Due Date",
       "total": "Total",
-      "saveChanges": "Save Changes",
-      "createDraft": "Create Draft",
-      "cancelButton": "Cancel",
-      "searchProductPlaceholder": "Search for a product...",
-      "noProductFound": "No product found.",
-      "itemDescriptionLabel": "Description",
-      "itemQtyLabel": "Quantity",
-      "itemTaxLabel": "Tax",
-      "itemPriceLabel": "Price",
-      "itemTotalLabel": "Total",
-      "error": "An error has occurred",
-      "success": "Success!"
+      "status": "Status"
+    },
+    "deleteDialog": {
+      "title": "Delete Invoice?"
     },
     "toast": {
-      "notAllowed": "Action not allowed",
-      "notAllowedDesc": "Issued or paid invoices cannot be edited.",
-      "issueSuccess": "Invoice Issued Successfully!",
-      "issueSuccessDesc": "Legal invoice {invoiceNumber} has been generated.",
-      "issueError": "Error issuing invoice",
-      "deleteSuccess": "Success!",
-      "deleteError": "Error deleting",
-      "missingData": "Missing data",
-      "missingDataDesc": "Please select a client and an issue date.",
-      "error": "An error has occurred"
+      "deleteSuccess": "Invoice successfully deleted.",
+      "deleteError": "Error deleting invoice."
+    },
+    "filters": {
+      "searchPlaceholder": "Number or client...",
+      "statusLabel": "Status",
+      "statusPlaceholder": "All statuses",
+      "allStatuses": "All statuses",
+      "searchLabel": "Search",
+      "statuses": {
+        "draft": "Draft",
+        "sent": "Sent",
+        "paid": "Paid",
+        "overdue": "Overdue",
+        "cancelled": "Cancelled"
+      }
     }
   },
   "InvoiceDetailPage": {
     "createTitle": "Create New Invoice",
     "editTitle": "Edit Invoice {number}",
-    "createDescription": "Fill in the details to generate a new invoice.",
-    "editDescription": "Modify the invoice details.",
+    "createDescription": "Complete the details to generate a new invoice.",
+    "editDescription": "Modify invoice details.",
     "title": {
       "new": "New Invoice",
       "invoice": "Invoice"
+    },
+    "items": {
+      "description": "Description",
+      "quantity": "Qty.",
+      "unitPrice": "Unit Price",
+      "total": "Total",
+      "taxes": "Taxes",
+      "searchTax": "Search tax type...",
+      "noTaxFound": "No tax type found.",
+      "addManualItem": "Add manual line",
+      "addTax": "Add new tax",
+      "multipleTaxes": "Multiple Taxes",
+      "placeholder": {
+        "description": "Service or product concept"
+      },
+      "emptyState": "No concepts added."
     },
     "button": {
       "save": "Save Invoice",
@@ -1203,15 +1306,20 @@
       "addItem": "Add Line",
       "options": "Options",
       "preview": "Preview PDF",
-      "goBack": "Go Back",
+      "goBack": "Back",
       "close": "Close",
-      "saveDraft": "Save draft",
-      "issueInvoice": "Issue invoice",
-      "issuing": "Issuing..."
+      "saveDraft": "Save Draft",
+      "issueInvoice": "Issue Invoice",
+      "issuing": "Issuing...",
+      "addFromLibrary": "Add concept",
+      "sendByEmail": "Send Email",
+      "sending": "Sending...",
+      "send": "Send",
+      "cancel": "Cancel"
     },
     "card": {
-      "customerDetails": "Customer Details",
-      "invoiceItems": "Invoice Items",
+      "customerDetails": "Client Data",
+      "invoiceItems": "Invoice Concepts",
       "invoiceMeta": "Invoice Details",
       "paymentTerms": "Terms and Payment",
       "notes": "Notes / Comments",
@@ -1220,7 +1328,7 @@
       "additionalInfo": "Additional Information"
     },
     "field": {
-      "customer": "Customer",
+      "customer": "Client",
       "clientReference": "Client Reference",
       "invoiceNumber": "Invoice Number",
       "invoiceDate": "Issue Date",
@@ -1231,21 +1339,39 @@
       "terms": "Payment Terms",
       "paymentDetails": "Payment Details",
       "project": "Project",
-      "selectCustomer": "Select a customer...",
-      "searchCustomer": "Search for a customer...",
+      "selectCustomer": "Select a client...",
+      "searchCustomer": "Search a client...",
       "clientName": "Client Name",
       "email": "Email",
       "phone": "Phone",
       "address": "Address"
     },
     "placeholder": {
-      "autoGenerated": "(auto-generated)",
+      "autoGenerated": "(automatically generated)",
       "clientReference": "Ex: Order number...",
-      "terms": "Ex: Payment within 30 days of invoice date...",
+      "terms": "Ex: Payment 30 days invoice date...",
       "paymentDetails": "Ex: IBAN ESXX...",
       "notes": "Add internal notes or additional comments...",
       "selectStatus": "Select a status",
       "selectProject": "Select a project"
+    },
+    "productSelector": {
+      "newProductTitle": "Create new product",
+      "newProductNamePlaceholder": "Product name (e.g., Web Design)",
+      "newProductPricePlaceholder": "Price (e.g., 1200)",
+      "cancelButton": "Cancel",
+      "saveAndAddButton": "Save and Add",
+      "searchPlaceholder": "Search existing product...",
+      "emptySearch": "No products found.",
+      "addManualItem": "Add manual line",
+      "createNewItem": "Create and save product",
+      "toast": {
+        "requiredFields": "Required fields",
+        "requiredFieldsDesc": "Name and price are required.",
+        "productCreated": "Product created",
+        "productCreatedDesc": "The new product has been added to the list.",
+        "genericError": "There was an error saving the product."
+      }
     },
     "label": {
       "subtotal": "Subtotal",
@@ -1256,7 +1382,8 @@
       "shipping": "Shipping",
       "shippingApplied": "Shipping cost",
       "total": "Total",
-      "none": "None"
+      "none": "None",
+      "retention": "Retention"
     },
     "status": {
       "draft": "Draft",
@@ -1269,13 +1396,13 @@
     },
     "toast": {
       "saveSuccess": "Invoice saved successfully.",
-      "saveError": "Error saving the invoice.",
-      "validationError": "Please review the highlighted fields.",
-      "cannotEditSentInvoice": "You cannot modify an invoice that has already been issued.",
-      "mustSaveDraftFirst": "You must save the invoice as a draft first.",
+      "saveError": "Error saving invoice.",
+      "validationError": "Please review marked fields.",
+      "cannotEditSentInvoice": "Cannot modify an invoice that has already been issued.",
+      "mustSaveDraftFirst": "You must first save the invoice as a draft.",
       "alreadySent": "This invoice has already been issued.",
-      "finalizeSuccess": "Invoice issued and recorded successfully.",
-      "finalizeError": "Error issuing the invoice."
+      "finalizeSuccess": "Invoice issued and registered successfully.",
+      "finalizeError": "Error issuing invoice."
     },
     "preview": {
       "title": "Invoice Preview",
@@ -1283,26 +1410,41 @@
       "invoiceTitle": "Invoice",
       "pending": "(Pending)",
       "notApplicable": "(N/A)",
-      "billTo": "Bill To:",
+      "billTo": "Bill to:",
       "noClient": "(Client not specified)",
       "itemDescription": "Description",
       "itemQuantity": "Qty.",
       "itemUnitPrice": "Unit Price",
       "itemDiscount": "Disc.",
       "itemTotal": "Total",
-      "noItems": "No items"
-    }
+      "noItems": "No concepts"
+    },
+    "errors": {
+      "loadDataFailed": "Error loading invoices.",
+      "limitReachedTitle": "Invoice limit reached",
+      "limitReachedDescription": "You have reached the invoice limit for your plan.",
+      "missingEmailData": "Missing data (Invoice ID or email) to send the mail."
+    },
+    "sendEmailDialog": {
+      "title": "Send Invoice to Client",
+      "description": "An email with the invoice PDF attached will be sent to the client.",
+      "recipient": "Recipient",
+      "message": "Custom Message",
+      "messagePlaceholder": "Write your message here...",
+      "defaultMessage": "Good morning,\n\nPlease find attached invoice {invoiceNumber}.\n\nThank you for your trust.\n\nBest regards,\n{companyName}"
+    },
+    "yourCompany": "your company"
   },
   "NetworkPage": {
-    "mapboxError": "Error: The Mapbox API key is not configured correctly.",
-    "logoAltText": "Logo of {companyName}",
+    "mapboxError": "Error: Mapbox API key is not configured correctly.",
+    "logoAltText": "{companyName} Logo",
     "visitWebsite": "Visit website",
     "loadingNetwork": "Loading professional network...",
     "title": "Professional Network",
     "searchPlaceholder": "Search by name or service...",
     "noResults": "No results found.",
-    "errorLoading": "Error loading network data.",
-    "loadingMap": "Loading Map...",
+    "errorLoading": "Error loading network data",
+    "loadingMap": "Loading map...",
     "unknownCompany": "Unknown company",
     "networkTitle": "Professional Network",
     "listView": "List",
@@ -1318,18 +1460,18 @@
       "blacklist": "Inbox Filter",
       "customization": "Customization",
       "permissions": "Permissions",
-      "install": "Installations App"
+      "install": "Install App"
     },
     "billing": {
       "notImplemented": "Feature not implemented",
-      "notImplementedDesc": "Soon you'll be able to switch to the {planName} plan.",
+      "notImplementedDesc": "Soon you will be able to switch to the {planName} plan.",
       "redirecting": "Redirecting...",
-      "redirectingDesc": "Soon you'll be able to manage your billing details via Stripe.",
-      "cancellationPage": "Cancellation Page",
-      "cancellationDesc": "Soon you'll be able to cancel your subscription here.",
+      "redirectingDesc": "Soon you will be able to manage your billing details via Stripe.",
+      "cancellationPage": "Cancellation page",
+      "cancellationDesc": "Soon you will be able to cancel your subscription from here.",
       "currentPlan": "Your Current Plan: {planName}",
       "renewsOn": "Renews on {date}",
-      "clickForDetails": "Click to see details.",
+      "clickForDetails": "Click for details.",
       "planLabel": "Plan",
       "statusLabel": "Status",
       "statusValue": "Active",
@@ -1337,35 +1479,35 @@
       "manageButton": "Manage Billing",
       "cancelButton": "Cancel Subscription",
       "monthlyBilling": "Monthly Billing",
-      "yearlyBilling": "Yearly Billing",
+      "yearlyBilling": "Annual Billing",
       "yearlySave": "(Save 2 months)",
       "mostPopular": "MOST POPULAR",
       "pricePerMonth": "/month",
-      "billedAs": "Billed as €{price} yearly",
+      "billedAs": "Billed as €{price} annually",
       "contactUs": "Contact Us",
       "yourCurrentPlan": "Your Current Plan",
       "selectPlan": "Select Plan",
       "contactSales": "Contact Sales",
       "metaTitle": "Billing & Plans",
       "pageTitle": "Billing & Plans",
-      "pageDescription": "Manage your subscription and choose the plan that best suits you.",
+      "pageDescription": "Manage your subscription and choose the plan that suits you best.",
       "plans": {
         "plan_free": {
           "name": "Free",
-          "description": "Perfect for getting started and exploring basic features.",
+          "description": "Perfect to start and explore basic features.",
           "features": [
             "Manage up to 100 contacts",
-            "Basic CRM functionalities",
+            "Basic CRM features",
             "1 Sales pipeline",
             "Email support"
           ]
         },
         "plan_pro": {
           "name": "Pro",
-          "description": "Ideal for professionals and small teams looking to grow.",
+          "description": "Ideal for professionals and small teams wanting to grow.",
           "features": [
             "Unlimited contacts",
-            "All CRM functionalities",
+            "All CRM features",
             "3 Sales pipelines",
             "Basic automations",
             "Calendar integration",
@@ -1374,13 +1516,13 @@
         },
         "plan_premium": {
           "name": "Premium",
-          "description": "The complete solution for businesses that need maximum performance.",
+          "description": "The complete solution for companies needing maximum performance.",
           "features": [
-            "Everything in the Pro plan",
+            "Everything in Pro",
             "Unlimited pipelines",
-            "Advanced automations & AI",
+            "Advanced automations and AI",
             "Detailed reports and analytics",
-            "Team management and permissions",
+            "Team and permissions management",
             "Phone and video call support"
           ]
         },
@@ -1388,13 +1530,28 @@
           "name": "Custom",
           "description": "A tailored solution for large companies with specific needs.",
           "features": [
-            "Everything in the Premium plan",
+            "Everything in Premium",
             "Dedicated account manager",
             "Custom integrations (API)",
             "Team training",
-            "Service Level Agreements (SLA)"
+            "Service level agreements (SLA)"
           ]
         }
+      }
+    },
+    "blacklist": {
+      "metaTitle": "Blacklist",
+      "pageTitle": "Manage Blacklist",
+      "pageDescription": "Add domains (e.g., `example.com`) or full email addresses to prevent them from appearing in your inbox.",
+      "placeholder": "example.com or spammer@example.com",
+      "addButton": "Add",
+      "emptyTitle": "Blacklist is empty",
+      "emptyDescription": "When you add rules, they will appear here.",
+      "searchPlaceholder": "Search by domain or email...",
+      "toast": {
+        "error": "Error",
+        "addSuccess": "Rule Added",
+        "deleteSuccess": "Rule Deleted"
       }
     },
     "install": {
@@ -1402,28 +1559,13 @@
       "description": "Install Ribotflow on your device for faster access and an improved experience.",
       "install_button": "Install Ribotflow",
       "desktop_title": "Desktop",
-      "desktop_instructions": "Click the installation button that appears in your browser’s address bar (Chrome, Edge) to add Ribotflow as a desktop application.",
+      "desktop_instructions": "Click the installation button that appears in your browser's address bar (Chrome, Edge) to add Ribotflow as a desktop application.",
       "android_title": "Android",
-      "android_instructions": "Your browser will show a prompt to add Ribotflow to your home screen. You can also do it from the browser menu.",
+      "android_instructions": "Your browser will show a prompt to add Ribotflow to the home screen. You can also do this from the browser menu.",
       "ios_title": "iOS (iPhone/iPad)",
-      "ios_instructions": "To install on iOS, open this page in Safari, tap the 'Share' button, and select 'Add to Home Screen'.",
-      "already_installed": "The app is already installed and running in standalone mode.",
+      "ios_instructions": "To install on iOS, open this page in Safari, tap the 'Share' button and select 'Add to Home Screen'.",
+      "already_installed": "The application is already installed and running in standalone mode.",
       "manual_install_title": "Manual Installation Instructions"
-    },
-    "blacklist": {
-      "metaTitle": "Blacklist",
-      "pageTitle": "Manage Blacklist",
-      "pageDescription": "Add domains (e.g. `example.com`) or full email addresses to prevent them from appearing in your inbox.",
-      "placeholder": "example.com or spammer@example.com",
-      "addButton": "Add",
-      "emptyTitle": "The blacklist is empty",
-      "emptyDescription": "When you add rules, they will appear here.",
-      "searchPlaceholder": "Search rules...",
-      "toast": {
-        "error": "Error",
-        "addSuccess": "Rule Added",
-        "deleteSuccess": "Rule Deleted"
-      }
     },
     "integrations": {
       "pageTitle": "Integrations",
@@ -1436,7 +1578,7 @@
         "error": "Error",
         "success": "Success",
         "genericError": "There was a problem. Please try again.",
-        "connectedSuccess": "The account was successfully connected."
+        "connectedSuccess": "Account connected successfully."
       },
       "googleTitle": "Google",
       "googleDescription": "Connect your Gmail for email management.",
@@ -1449,14 +1591,14 @@
       "linkedinTitle": "LinkedIn",
       "linkedinDescription": "Schedule posts to your profile or company page.",
       "metaTitle": "Meta (Facebook & Instagram)",
-      "metaDescription": "Manage and schedule posts on your pages.",
+      "metaDescription": "Manage and schedule posts to your pages.",
       "customEmail": {
         "title": "Custom Email (IMAP/SMTP)",
         "description": "Connect your business or personal email account."
       },
       "customEmailDialog": {
-        "title": "Set up your email account",
-        "description": "Enter the connection details. This information will be stored securely.",
+        "title": "Configure your email account",
+        "description": "Enter connection details. This information will be stored securely.",
         "emailLabel": "Email",
         "passwordLabel": "Password",
         "imapHostLabel": "IMAP Server",
@@ -1468,14 +1610,14 @@
         "toast": {
           "success": "Success",
           "error": "Error",
-          "genericError": "There was a problem connecting."
+          "genericError": "There was a connection problem."
         }
       }
     },
     "SettingsProfile": {
       "toasts": {
         "logoUploadErrorTitle": "Error",
-        "logoUploadErrorDesc": "Could not upload the logo.",
+        "logoUploadErrorDesc": "Could not upload logo.",
         "logoUploadSuccess": "Logo uploaded successfully!"
       },
       "personalProfile": {
@@ -1489,13 +1631,13 @@
         "savingButton": "Saving..."
       },
       "companyProfile": {
-        "title": "Company Information",
+        "title": "Company Data",
         "description": "This information will be used on your invoices and quotes.",
         "nameLabel": "Company Name",
-        "taxIdLabel": "Tax ID / VAT",
+        "taxIdLabel": "Tax ID",
         "emailLabel": "Company Email",
         "phoneLabel": "Company Phone",
-        "sectorLabel": "Industry",
+        "sectorLabel": "Sector",
         "sectorPlaceholder": "Ex: Technology",
         "countryLabel": "Country",
         "addressLabel": "Address",
@@ -1504,17 +1646,17 @@
         "postalCodeLabel": "Postal Code",
         "websiteLabel": "Website",
         "websitePlaceholder": "https://yourdomain.com",
-        "summaryLabel": "Short Description",
+        "summaryLabel": "Short description",
         "summaryPlaceholder": "A brief description of what your company does.",
         "logoLabel": "Logo",
         "changeLogoButton": "Change",
-        "saveButton": "Save Information",
+        "saveButton": "Save Data",
         "savingButton": "Saving..."
       },
       "preferences": {
         "title": "Preferences",
         "themeTitle": "Visual Theme",
-        "themeDescription": "Choose the appearance of the interface.",
+        "themeDescription": "Choose the interface appearance.",
         "languageTitle": "Language",
         "languageDescription": "Select your preferred language."
       }
@@ -1524,7 +1666,7 @@
       "pipelinesList": "My Pipelines",
       "newPipelineName": "New pipeline name...",
       "errorCreatingPipeline": "Error creating pipeline",
-      "pipelineCreated": "Pipeline successfully created",
+      "pipelineCreated": "Pipeline created successfully",
       "errorUpdatingPipeline": "Error updating pipeline",
       "pipelineUpdated": "Pipeline updated",
       "errorDeletingPipeline": "Error deleting pipeline",
@@ -1533,17 +1675,17 @@
       "selectPipelinePrompt": "Select a pipeline to view its stages.",
       "newStageName": "New stage name...",
       "errorCreatingStage": "Error creating stage",
-      "stageCreated": "Stage successfully created",
+      "stageCreated": "Stage created successfully",
       "errorUpdatingStage": "Error updating stage",
       "stageUpdated": "Stage updated",
       "errorDeletingStage": "Error deleting stage",
       "stageDeleted": "Stage deleted",
       "errorReordering": "Error reordering stages",
-      "orderUpdated": "Stage order updated",
+      "orderUpdated": "Flow order updated",
       "confirmDeletePipelineTitle": "Are you sure you want to delete this pipeline?",
-      "confirmDeletePipelineDesc": "This action cannot be undone. All stages associated with \"{name}\" will be deleted. Opportunities in these stages will not be deleted but will be unassigned.",
+      "confirmDeletePipelineDesc": "This action cannot be undone. All stages associated with \"{name}\" will be deleted. Opportunities within these stages will not be deleted but will become unassigned.",
       "confirmDeleteStageTitle": "Are you sure you want to delete this stage?",
-      "confirmDeleteStageDesc": "This action cannot be undone. Opportunities in this stage \"{name}\" will be unassigned.",
+      "confirmDeleteStageDesc": "This action cannot be undone. Opportunities in stage \"{name}\" will become unassigned.",
       "cancel": "Cancel",
       "delete": "Delete",
       "managePipelines": "Manage pipelines...",
@@ -1568,70 +1710,70 @@
   "CustomizationPage": {
     "languageTitle": "Language",
     "languageDescription": "Select your preferred language.",
-    "themeTitle": "Application Theme",
-    "themeDescription": "Choose how you want to see the interface.",
+    "themeTitle": "App Theme",
+    "themeDescription": "Choose how you want to view the interface.",
     "pipelineTitle": "Customize Pipeline Stages",
     "newStageButton": "New Stage",
     "tagsTitle": "Manage Contact Tags",
     "newTagButton": "New Tag"
   },
   "LanguageSwitcher": {
-    "title": "Change Language",
+    "title": "Change language",
     "catalan": "Catalan",
     "spanish": "Spanish",
     "english": "English"
   },
   "LandingPage": {
     "mainTitle": "Your business, under control.",
-    "subtitle": "Stop wasting time switching between apps. Ribotflow unifies your CRM, sales, and communications so you can focus on what truly matters: growing your business.",
+    "subtitle": "Stop wasting time between apps. Ribotflow unifies your CRM, sales, and communications so you can focus on what really matters: growing your business.",
     "days": "Days",
     "hours": "Hours",
     "minutes": "Minutes",
     "seconds": "Seconds",
     "featuresIntro": "Discover some of Ribotflow's features",
-    "feature1Title": "All-in-One CRM for Freelancers & SMEs",
+    "feature1Title": "All-in-One CRM for Freelancers and SMEs",
     "feature1DataTitle": "All-in-One CRM",
-    "feature1Text": "Simplify your business management with a centralized system. 360° customer view, complete interaction history, and a Kanban sales pipeline to reduce time and errors.",
-    "feature2Title": "Smart Communication & Social Media",
+    "feature1Text": "Simplify your business management with a centralized system. 360° client view, complete interaction history, and Kanban sales pipeline to reduce time and errors.",
+    "feature2Title": "Smart Communication and Social Media",
     "feature2DataTitle": "Communication & Networks",
-    "feature2Text": "Sync your email to automatically convert new contacts into leads. Schedule and automate posts on your social networks to always stay present.",
+    "feature2Text": "Sync your email to automatically convert new contacts into leads. Schedule and automate posts to your social media to always stay present.",
     "feature3Title": "Interactive User Map",
     "feature3DataTitle": "Interactive Community",
-    "feature3Text": "Discover and collaborate with other nearby professionals. The community map allows you to offer services, find collaborators, or share resources within your sector and area.",
+    "feature3Text": "Discover and collaborate with other nearby professionals. The community map allows you to offer services, search for collaborators, or share resources within your sector and area.",
     "feature4Title": "Digital Concierge Linked to Telegram",
     "feature4DataTitle": "Digital Concierge",
-    "feature4Text": "Get an instant summary of pending invoices, tasks, and appointments directly on Telegram. Your assistant keeps you informed without constant logins.",
+    "feature4Text": "Receive an instant summary of pending invoices, tasks, and appointments directly on Telegram. Your assistant keeps you informed without constantly logging in.",
     "feature5Title": "Personalized Daily Alerts",
     "feature5DataTitle": "Grant Alerts",
-    "feature5Text": "Always stay up-to-date on grants available in your sector and location. Don't miss out on funding opportunities for your business.",
-    "feature6Title": "AI Assistant & Advanced Analytics",
+    "feature5Text": "Always up to date with grants available in your sector and location. Don't let funding opportunities for your business slip away.",
+    "feature6Title": "AI Assistant and Advanced Analytics",
     "feature6DataTitle": "AI & Reports",
-    "feature6Text": "The AI scores leads, suggests responses, and detects hidden opportunities. Customizable dashboards show key metrics so you can make decisions with confidence.",
+    "feature6Text": "AI scores leads, suggests responses, and detects hidden opportunities. Customizable dashboards show key metrics so you can make decisions with confidence.",
     "developedBy": "Developed by",
     "logoAlt": "Ribotflow Logo",
     "brandNameNav": "Ribotflow",
-    "accessButton": "Login",
+    "accessButton": "Access",
     "brandNameFooter": " Ribotflow. ",
     "developerName": "DigitAI Studios"
   },
   "CountdownView": {
-    "mainTitle": "El teu negoci, sota control.",
-    "subtitle": "Deixa de perdre el temps entre aplicacions. Ribotflow unifica el teu CRM, vendes i comunicacions perquè et centris en el que realment importa: fer créixer el teu negoci.",
-    "days": "Dies",
-    "hours": "Hores",
-    "minutes": "Minuts",
-    "seconds": "Segons",
-    "featuresIntro": "Descobreix algunes de les funcions de Ribotflow",
-    "feature1DataTitle": "CRM Tot-en-Un",
-    "feature1Text": "Simplifica la gestió del teu negoci amb un sistema centralitzat.",
-    "feature2DataTitle": "Comunicació & Xarxes",
-    "feature2Text": "Sincronitza el teu correu i automatitza publicacions a les xarxes socials.",
-    "feature3DataTitle": "Comunitat Interactiva",
-    "feature3Text": "Descobreix i col·labora amb altres professionals propers al mapa comunitari."
+    "mainTitle": "Your business, under control.",
+    "subtitle": "Stop wasting time between apps. Ribotflow unifies your CRM, sales, and communications so you can focus on what really matters: growing your business.",
+    "days": "Days",
+    "hours": "Hours",
+    "minutes": "Minutes",
+    "seconds": "Seconds",
+    "featuresIntro": "Discover some of Ribotflow's features",
+    "feature1DataTitle": "All-in-One CRM",
+    "feature1Text": "Simplify your business management with a centralized system.",
+    "feature2DataTitle": "Communication & Networks",
+    "feature2Text": "Sync your email and automate posts to social media.",
+    "feature3DataTitle": "Interactive Community",
+    "feature3Text": "Discover and collaborate with other nearby professionals on the community map."
   },
   "MainLandingView": {
-    "title": "The work of your life, powered by our passion.",
-    "subtitle": "Reliable and robust software solutions that improve the way you work. Designed for businesses of all sizes.",
+    "title": "Your life's work, powered by our passion.",
+    "subtitle": "Robust and reliable software solutions that improve the way you work. Designed for businesses of all sizes.",
     "ctaButton": "Start Free Now",
     "bentoGrid": {
       "title": "Everything you need, in one place"
@@ -1640,11 +1782,11 @@
       "title": "Featured Applications",
       "crm": {
         "title": "CRM",
-        "desc": "Comprehensive client tracking."
+        "desc": "Comprehensive customer tracking."
       },
       "finances": {
-        "title": "Finance",
-        "desc": "Manage invoices and expenses."
+        "title": "Finances",
+        "desc": "Invoice and expense management."
       },
       "comunicacio": {
         "title": "Communication",
@@ -1662,10 +1804,10 @@
     "showcase": {
       "dashboard": {
         "title": "Unified Dashboard",
-        "desc": "All your key metrics in real time."
+        "desc": "All your key metrics in real-time."
       },
       "crm": {
-        "title": "Smart CRM",
+        "title": "Intelligent CRM",
         "desc": "Manage clients and opportunities effortlessly."
       },
       "calendari": {
@@ -1677,12 +1819,12 @@
         "desc": "Understand your performance with clear reports."
       },
       "social": {
-        "title": "Social Automation",
-        "desc": "Plan and post to all your social networks from one place, saving time and effort."
+        "title": "Network Automation",
+        "desc": "Plan and publish to all your social networks from one place, saving time and effort."
       },
       "invoicing": {
         "title": "Invoicing Flow",
-        "desc": "Automatically convert accepted quotes into invoices and send them to your clients with one click."
+        "desc": "Automatically convert accepted quotes into invoices and send them to your clients with a single click."
       },
       "network": {
         "title": "Professional Network",
@@ -1690,7 +1832,7 @@
       },
       "inboxDespesa": {
         "title": "Expense Management",
-        "desc": "Automatically register and process emails, without manually entering expenses."
+        "desc": "Record and process emails automatically, without having to enter expenses manually."
       }
     }
   },
@@ -1700,100 +1842,100 @@
     "logoAlt": "Ribotflow Logo",
     "brandName": "Ribotflow",
     "themeSwitcher": {
-      "title": "Switch Theme",
-      "description": "Toggle between light and dark modes.",
+      "title": "Change theme",
+      "description": "Switch between light and dark modes.",
       "light": "Light Mode",
       "dark": "Dark Mode"
     },
     "langSwitcher": {
-      "title": "Change Language"
+      "title": "Change language"
     }
   },
   "SignupPage": {
-    "title": "Create Your Account",
-    "metaTitle": "Sign Up for Ribotflow",
+    "title": "Create your account",
+    "metaTitle": "Sign Up for Ribotflow Free",
     "subtitle": "Already have one?",
     "loginLink": "Log In",
-    "googleButton": "Sign Up with Google",
+    "googleButton": "Sign up with Google",
     "separator": "Or sign up with your email",
-    "emailLabel": "Email Address",
-    "emailPlaceholder": "your.email@example.com",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
     "passwordLabel": "Password",
     "passwordPlaceholder": "Minimum 6 characters",
     "submitButton": "Create Account",
     "toastSuccessTitle": "Registration almost complete!",
-    "toastSuccessDescription": "We’ve sent a verification link to your email.",
+    "toastSuccessDescription": "We've sent a verification link to your email.",
     "toastErrorTitle": "Registration Error",
     "toastErrorDescription": "Could not create the account.",
     "welcomeTitle": "Start transforming your business today.",
-    "welcomeSubtitle": "Join hundreds of professionals already optimizing their time and maximizing their results.",
-    "feature1": "Centralize all your clients and communications.",
-    "feature2": "Automate tasks and save dozens of hours each month.",
-    "feature3": "Make smarter decisions with clear analytics.",
+    "welcomeSubtitle": "Join hundreds of professionals who are already optimizing their time and maximizing their results.",
     "acceptTermsPrefix": "I have read and accept the",
-    "acceptPrivacyPrefix": "I have read and understand the",
-    "acceptMarketing": "I want to receive updates and communications.",
-    "goBackHome": "Back to Home",
+    "acceptPrivacyPrefix": "I have read and understood the",
+    "acceptMarketing": "I want to receive communications and news.",
+    "feature1": "Centralize all your clients and communications.",
+    "feature2": "Automate tasks and save dozens of hours every month.",
+    "feature3": "Make smarter decisions with clear analytics.",
+    "goBackHome": "Go back to the main page",
     "errors": {
-      "password_length": "Password should be at least 6 characters.",
+      "password_length": "Password must be at least 6 characters long.",
       "email_invalid": "Please enter a valid email address.",
       "unknown_error": "Could not complete registration. Please try again."
     }
   },
   "LoginPage": {
-    "welcomeTitle": "Welcome Back",
+    "welcomeTitle": "Welcome back",
     "welcomeSubtitle": "Access your control center and start managing your business like never before.",
     "feature1": "360° view of your clients.",
     "feature2": "Visual and intuitive sales pipeline.",
     "feature3": "Centralized and efficient communication.",
     "title": "Log In",
-    "subtitle": "Don’t have an account yet?",
+    "subtitle": "Don't have an account yet?",
     "signupLink": "Sign Up",
-    "googleButton": "Sign in with Google",
+    "googleButton": "Log in with Google",
     "separator": "Or continue with your email",
     "emailLabel": "Email",
-    "emailPlaceholder": "your.email@example.com",
+    "emailPlaceholder": "you@email.com",
     "passwordLabel": "Password",
-    "forgotPasswordLink": "Forgot your password?",
     "submitButton": "Log In",
     "toastErrorTitle": "Login Error",
     "toastErrorDescription": "The credentials are incorrect. Please try again.",
-    "goBackHome": "Back to Home",
+    "forgotPasswordLink": "Forgot your password?",
+    "goBackHome": "Go back to the main page",
     "forgotPassword": {
       "title": "Reset Password",
       "description": "Enter your email and we'll send you a link to reset your password.",
       "submitButton": "Send Reset Link",
-      "successTitle": "Link Sent!",
-      "successDescription": "We've sent password reset instructions to:",
+      "successTitle": "Link sent!",
+      "successDescription": "We have sent instructions to reset your password to:",
       "spamWarning": "If you don't see it, check your spam folder.",
       "closeButton": "Got it"
     },
     "errors": {
       "invalidCredentials": "Invalid credentials.",
       "authFailed": "Authentication failed.",
-      "inviteFailed": "The invitation could not be sent.",
+      "inviteFailed": "Could not send invitation.",
       "invalid_credentials": "Incorrect credentials.",
-      "validation_failed": "Please review the entered data.",
+      "validation_failed": "Check the entered data.",
       "user_exists": "An account with this email already exists.",
-      "signup_failed": "Error creating the account.",
-      "signup_failed_no_user": "The user could not be created.",
-      "forgot_success": "If the email exists, you’ll receive a link to reset your password.",
-      "forgot_error": "Could not start the password reset process.",
+      "signup_failed": "Error creating account.",
+      "signup_failed_no_user": "Could not create user.",
+      "forgot_success": "If the email exists, you will receive a link to reset your password.",
+      "forgot_error": "Could not start the reset process.",
       "reset_invalid": "The reset link is invalid or has expired.",
-      "reset_success": "Your password has been successfully updated.",
-      "google_failed": "Could not sign in with Google."
+      "reset_success": "Your password has been updated successfully.",
+      "google_failed": "Could not log in with Google."
     },
     "AuthMessages": {
       "invalid_credentials": "Incorrect credentials.",
-      "validation_failed": "Please review the entered data.",
+      "validation_failed": "Check the entered data.",
       "user_exists": "An account with this email already exists.",
-      "signup_failed": "Error creating the account.",
-      "signup_failed_no_user": "The user could not be created.",
-      "forgot_success": "If the email exists, you’ll receive a link to reset your password.",
-      "forgot_error": "Could not start the password reset process.",
+      "signup_failed": "Error creating account.",
+      "signup_failed_no_user": "Could not create user.",
+      "forgot_success": "If the email exists, you will receive a link to reset your password.",
+      "forgot_error": "Could not start the reset process.",
       "reset_invalid": "The reset link is invalid or has expired.",
-      "reset_success": "Your password has been successfully updated.",
-      "google_failed": "Could not sign in with Google."
+      "reset_success": "Your password has been updated successfully.",
+      "google_failed": "Could not log in with Google."
     }
   },
   "AuthMessages": {
@@ -1806,8 +1948,8 @@
     "submitButton": "Update Password",
     "messages": {
       "invalidLink": "The reset link is invalid or has expired.",
-      "updateError": "The password could not be updated.",
-      "updateSuccess": "Your password has been successfully updated."
+      "updateError": "Could not update the password.",
+      "updateSuccess": "Your password has been updated successfully."
     }
   },
   "OnboardingPage": {
@@ -1816,7 +1958,7 @@
       "title": "Who are you?",
       "namePlaceholder": "Your full name",
       "companyPlaceholder": "Company or brand name",
-      "summaryPlaceholder": "Brief description of your business, main services..."
+      "summaryPlaceholder": "Short description of your business, main services..."
     },
     "step2": {
       "title": "Where are you located?",
@@ -1827,20 +1969,21 @@
       "streetLabel": "Street",
       "cityLabel": "City",
       "postcodeLabel": "Postal Code",
-      "regionLabel": "Region",
+      "regionLabel": "Province",
       "errorFetchingSuggestions": "Error fetching Mapbox suggestions:",
-      "errorRetrievingAddress": "Error retrieving Mapbox address:"
+      "errorRetrievingAddress": "Error retrieving address from Mapbox:",
+      "noResults": "No results found."
     },
     "step3": {
-      "title": "Final details",
+      "title": "Last details",
       "phonePlaceholder": "Contact phone",
       "servicesPlaceholder": "Services (separated by commas)",
-      "servicesExample": "E.g.: Web design, SEO, Digital marketing"
+      "servicesExample": "Ex: Web design, SEO, Digital marketing"
     },
     "backButton": "Back",
     "nextButton": "Next",
     "finishButton": "Save and Finish",
-    "toastSuccessTitle": "Profile completed!",
+    "toastSuccessTitle": "Profile complete!",
     "toastSuccessDescription": "Welcome! Redirecting...",
     "toastErrorTitle": "Error saving profile",
     "toastErrorValidation": "Please fill in all required fields.",
@@ -1848,26 +1991,74 @@
   },
   "excel": {
     "template": "Template",
-    "successexport": "The export has been completed successfully.",
-    "errorexport": "There was an error while exporting the data.",
-    "unexpectederror": "An unexpected error has occurred.",
-    "couldnotcomplete": "The action could not be completed.",
+    "successexport": "Export completed successfully.",
+    "errorexport": "There was an error exporting the data.",
+    "unexpectederror": "An unexpected error occurred.",
+    "couldnotcomplete": "Could not complete the action.",
     "nofileselected": "No file selected.",
-    "processingfile": "Processing excel file...",
-    "errorloadingdata": "Error loading data from the file.",
-    "unexpectederrorloadingfile": "An unexpected error has occurred while loading the file.",
+    "processingfile": "Processing Excel file...",
+    "errorloadingdata": "Error loading data.",
+    "unexpectederrorloadingfile": "An unexpected error occurred while loading the file.",
+    "startingexport": "Starting export...",
+    "successImport": "{count} records imported successfully.",
+    "errorImport": "There was an error importing the data.",
+    "errors": {
+      "validationTitle": "Invalid Value",
+      "validationMessage": "Please select a value from the list: {values}",
+      "noFile": "File not found.",
+      "unsupportedFormat": "Unsupported file format. Upload a .xlsx or .csv",
+      "fileReadError": "Could not read the file. It might be damaged or in an incorrect format.",
+      "noSheet": "Could not read the spreadsheet.",
+      "emptySheet": "The spreadsheet is empty.",
+      "columnMismatch": "The file's columns do not match the template. Download the template again.",
+      "noData": "The file contains no data to import.",
+      "insertError": "Error inserting data"
+    },
     "contacts": {
-      "create": "Create template",
+      "create": "Create contacts template",
       "load": "Load contacts",
       "download": "Download contacts"
     },
     "products": {
-      "create": "Create template",
-      "load": "Load concepts",
-      "download": "Download concepts"
+      "create": "Create items template",
+      "load": "Load items",
+      "download": "Download items"
+    },
+    "quotes": {
+      "create": "Create quotes template",
+      "load": "Load quotes",
+      "download": "Download quotes"
+    },
+    "invoices": {
+      "create": "Create invoices template",
+      "load": "Load invoices",
+      "download": "Download invoices"
+    },
+    "expenses": {
+      "create": "Create expenses template",
+      "load": "Load expenses",
+      "download": "Download expenses"
+    },
+    "suppliers": {
+      "create": "Create suppliers template",
+      "load": "Load suppliers",
+      "download": "Download suppliers"
     }
   },
   "Shared": {
+    "limits": {
+      "modalTitle": "Limit Reached",
+      "invoicesPerMonth": "You have reached the monthly invoice limit for your current plan.",
+      "upgradePlan": "Upgrade your plan to increase this limit and unlock additional features.",
+      "upgradeButton": "Upgrade Plan",
+      "contacts": "Contacts",
+      "invoices": "Invoices",
+      "expenses": "Expenses",
+      "suppliers": "Suppliers",
+      "quotes": "Quotes",
+      "products": "Items",
+      "expensesPerMonth": "Expenses per month"
+    },
     "table": {
       "actions": "Actions",
       "view": "View",
@@ -1878,11 +2069,16 @@
       "delete": "Delete",
       "view": "View details",
       "openMenu": "Open menu",
-      "title": "Actions"
+      "title": "Actions",
+      "cancel": "Cancel",
+      "back": "Back",
+      "save": "Save",
+      "saving": "Saving...",
+      "create": "Create"
     },
     "deleteDialog": {
       "title": "Are you sure?",
-      "description1": "This action cannot be undone. The record will be permanently deleted.",
+      "description1": "This action cannot be undone. It will permanently delete the record",
       "description2": "Deleted data cannot be recovered.",
       "confirmButton": "Yes, delete",
       "cancelButton": "Cancel",
@@ -1931,54 +2127,67 @@
     "ExpensesPage": {
       "deleteDialog": {
         "title": "Are you sure?",
-        "description": "This action cannot be undone. The record will be permanently deleted."
+        "description": "This action cannot be undone. It will permanently delete the record"
       }
     },
     "SuppliersPage": {
       "deleteDialog": {
         "title": "Are you sure?",
-        "description": "This action cannot be undone. The record will be permanently deleted."
+        "description": "This action cannot be undone. It will permanently delete the record"
       }
     },
     "QuotesPage": {
       "deleteDialog": {
         "title": "Do you want to delete this quote?"
       }
+    },
+    "fields": {
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "created": "Created",
+      "status": "Status",
+      "amount": "Amount",
+      "dueDate": "Due Date",
+      "description": "Description",
+      "date": "Date",
+      "subject": "Subject",
+      "lastActivity": "Last activity"
     }
   },
   "SuppliersPage": {
     "title": "Suppliers",
     "description": "Manage your suppliers and entities.",
     "newButton": "New Supplier",
-    "searchPlaceholder": "Search by name, VAT ID or email...",
+    "searchPlaceholder": "Search by name, VAT ID, or email...",
     "emptyState": "No suppliers found.",
     "table": {
       "name": "Name",
       "email": "Email",
       "phone": "Phone",
-      "created": "Creation Date"
+      "created": "Creation date"
     },
     "deleteDialog": {
       "title": "Do you want to delete this supplier?"
     },
     "toast": {
       "deleteSuccess": "Supplier deleted successfully.",
-      "deleteError": "Failed to delete the supplier."
+      "deleteError": "Could not delete supplier."
     }
   },
   "SupplierDetailPage": {
     "createTitle": "Create Supplier",
     "editTitle": "Edit Supplier",
     "createDescription": "Add a new supplier (entity) to the system.",
-    "editDescription": "Edit this supplier's details.",
+    "editDescription": "Edit the details of this supplier.",
     "loadingCreate": "Loading supplier creator...",
     "detailsCardTitle": "Supplier Details",
-    "detailsCardDescription": "Main information about the supplier.",
+    "detailsCardDescription": "Main information of the supplier.",
     "form": {
-      "name": "Company Name",
-      "nif": "VAT / Tax ID",
-      "email": "Primary Email (Billing)",
-      "phone": "Primary Phone",
+      "name": "Company name",
+      "nif": "VAT ID / Tax ID",
+      "email": "Main email (billing)",
+      "phone": "Main phone",
       "saving": "Saving...",
       "save": "Save Changes"
     },
@@ -1986,36 +2195,66 @@
       "title": "Contacts",
       "description": "People assigned to this supplier.",
       "newButton": "New Contact",
+      "linkButton": "Link Existing",
       "table": {
         "name": "Name",
         "email": "Email",
         "phone": "Phone"
       },
-      "empty": "No contacts assigned to this supplier yet."
+      "empty": "No contacts assigned to this supplier yet.",
+      "linkDialog": {
+        "title": "Link Existing Contact",
+        "description": "Search for an existing contact to link to this supplier. Only contacts that are not already assigned will appear.",
+        "searchPlaceholder": "Search by name...",
+        "noResults": "No contacts found or all are already linked.",
+        "linkButton": "Link",
+        "cancelButton": "Cancel",
+        "toastSuccess": "Contact linked successfully.",
+        "toastError": "Error linking contact."
+      },
+      "unlinkDialog": {
+        "title": "Unlink Contact",
+        "description": "Are you sure you want to unlink {contactName} from this supplier? The contact will not be deleted, only the association will be broken."
+      }
     },
     "validation": {
-      "nameRequired": "Company name is required."
+      "nameRequired": "The company name is required."
     },
     "toast": {
-      "saveError": "An error occurred while saving the supplier."
+      "saveError": "There was an error saving the supplier."
     },
     "expensesCard": {
       "title": "Expenses",
-      "description": "Expenses recorded for this supplier.",
-      "newButton": "New Expense",
+      "description": "View expenses associated with this supplier.",
+      "newButton": "Create Expense",
+      "linkButton": "Link Existing",
+      "empty": "This supplier has no expenses assigned yet.",
+      "linkDialog": {
+        "title": "Link Existing Expense",
+        "description": "Search for an existing expense to link to this supplier. Only expenses that are not already assigned will appear.",
+        "searchPlaceholder": "Search by description...",
+        "noResults": "No expenses found or all are already linked.",
+        "linkButton": "Link",
+        "cancelButton": "Cancel",
+        "toastSuccess": "Expense linked successfully.",
+        "toastError": "Error linking expense."
+      },
+      "unlinkDialog": {
+        "title": "Unlink Expense",
+        "description": "Are you sure you want to unlink this expense from this supplier? The expense will not be deleted, only the association will be broken."
+      },
       "table": {
         "date": "Date",
         "description": "Description",
         "amount": "Amount",
         "status": "Status"
-      },
-      "empty": "No expenses recorded for this supplier."
+      }
     },
     "ticketsCard": {
       "title": "Communications",
       "description": "Emails and tickets related to this supplier's contacts.",
       "newButton": "New Contact",
-      "searchInboxButton": "Search Inbox",
+      "searchInboxButton": "Search in Inbox",
       "table": {
         "subject": "Subject",
         "lastActivity": "Last Activity",
@@ -2023,6 +2262,10 @@
       },
       "empty": "No related communications found.",
       "noSubject": "(No Subject)"
+    },
+    "errors": {
+      "supplierNotFound": "Supplier not found.",
+      "limitReachedTitle": "Supplier limit reached"
     }
   },
   "LegalPages": {
@@ -2031,33 +2274,33 @@
       "title": "Privacy Policy",
       "lastUpdated": "Last updated: {date}",
       "section1": {
-        "title": "1. Who is responsible for processing your data?",
+        "title": "1. Who is the Controller of your data?",
         "content": {
-          "p1": "The data controller of the personal data collected through the Ribotflow platform is {companyName}, with VAT number {companyVat}, registered address at {companyAddress}, and contact email {companyEmail}."
+          "p1": "The controller for the personal data collected through the Ribotflow platform is {companyName}, with VAT ID {companyVat}, address at {companyAddress}, and contact email {companyEmail}."
         }
       },
       "section2": {
         "title": "2. What data do we process and for what purpose?",
         "content": {
           "p1": "We collect and process different types of personal data depending on your interaction with Ribotflow:",
-          "item1": "Identification and contact data (name, surname, email, phone number) that you provide during registration or when contacting us.",
-          "item2": "Professional data (company name, job position) if provided.",
-          "item3": "Data you enter into the platform about your own clients, suppliers, invoices, quotes, opportunities, expenses, and other business management activities.",
-          "item4": "Technical and usage data (IP address, browser type, pages visited, usage time) automatically collected for the operation and improvement of the service.",
+          "item1": "Identification and contact data (name, surname, email, phone) you provide during registration or when contacting us.",
+          "item2": "Professional data (company name, job title) if you provide them.",
+          "item3": "Data you enter into the platform about your own clients, suppliers, invoices, quotes, opportunities, expenses, and other activities related to managing your business.",
+          "item4": "Technical and usage data (IP address, browser type, pages visited, usage time) collected automatically for the operation and improvement of the service.",
           "item5": "Billing and payment data (if paid subscription plans apply).",
-          "p2": "The main purposes of data processing are:",
+          "p2": "The main purposes of the processing are:",
           "purpose1": "To provide, manage, and maintain the Ribotflow service.",
-          "purpose2": "To communicate with you regarding service-related matters, technical support, or administrative information.",
-          "purpose3": "To improve the platform, analyze usage, and develop new features.",
+          "purpose2": "To communicate with you for matters related to the service, technical support, or administrative information.",
+          "purpose3": "To improve the platform, analyze usage, and develop new functionalities.",
           "purpose4": "To ensure the security of the platform and prevent fraud.",
           "purpose5": "To comply with our legal obligations."
         }
       },
       "section3": {
-        "title": "3. What is the legal basis for processing?",
+        "title": "3. What is the legal basis for the processing?",
         "content": {
-          "p1": "The legal basis that allows us to process your data depends on the purpose:",
-          "basis1": "The execution of the service contract that you accept upon registering and using Ribotflow.",
+          "p1": "The legal basis that allows us to process your data varies depending on the purpose:",
+          "basis1": "The performance of the service contract you accept when you register and use Ribotflow.",
           "basis2": "Your explicit consent for specific purposes, such as sending marketing communications (if applicable).",
           "basis3": "Our legitimate interest in improving the service, ensuring security, or managing inquiries.",
           "basis4": "Compliance with applicable legal obligations (e.g., billing)."
@@ -2066,30 +2309,30 @@
       "section4": {
         "title": "4. Our Role as Data Processor",
         "content": {
-          "p1": "It is important to note that regarding personal data of your own clients, suppliers, or third parties that you enter and manage within Ribotflow (such as names, emails, billing data, etc.), you act as the Data Controller. We act solely as the Data Processor, following your instructions and processing such data exclusively to provide the contracted service.",
-          "p2": "Our obligations as Data Processor are detailed in the [Terms and Conditions of Service](link), which include the Data Processing Agreement (DPA) required under the GDPR."
+          "p1": "It is important to note that regarding the personal data of your own clients, suppliers, or third parties that you enter and manage in Ribotflow (such as names, emails, billing data, etc.), you are the Data Controller. We act solely as Data Processor, following your instructions and processing this data exclusively to provide you with the contracted service.",
+          "p2": "Our obligations as Data Processor are detailed in the [Terms and Conditions of Service](link), which include the Data Processing Agreement (DPA) required by the GDPR."
         }
       },
       "section5": {
         "title": "5. With whom do we share your data?",
         "content": {
-          "p1": "We do not sell or rent your personal data. We only share it with third parties when necessary to provide the service or to comply with legal obligations:",
-          "item1": "Technology service providers: we use {provider} as our cloud infrastructure provider (database, authentication, storage).",
-          "p2": "Some of these providers may be located outside the European Economic Area, but we ensure that adequate safeguards are in place to guarantee an equivalent level of data protection (e.g., Standard Contractual Clauses)."
+          "p1": "We do not sell or rent your personal data. We only share it with third parties when necessary to provide the service or due to legal obligation:",
+          "item1": "Technology service providers: We use {provider} as a cloud infrastructure provider (database, authentication, storage).",
+          "p2": "Some of these providers may be located outside the European Economic Area, but we guarantee that appropriate measures are taken to ensure an equivalent level of protection (e.g., Standard Contractual Clauses)."
         }
       },
       "section6": {
-        "title": "6. How long do we retain your data?",
+        "title": "6. How long do we keep your data?",
         "content": {
-          "p1": "Your personal data will be retained for as long as your Ribotflow account remains active and, thereafter, for the legally required period to address any potential liabilities."
+          "p1": "Your personal data will be kept as long as you maintain an active account in Ribotflow and, subsequently, for the legally established periods to address possible responsibilities."
         }
       },
       "section7": {
         "title": "7. What are your rights and how to exercise them?",
         "content": {
-          "p1": "You have the right to access, rectify, erase your data, as well as to restrict or object to its processing, and to data portability, as established by current legislation.",
-          "p2": "You can exercise these rights by sending an email to {email} and attaching a copy of your ID document.",
-          "p3": "You also have the right to file a complaint with the Spanish Data Protection Agency (www.aepd.es) if you believe your rights have not been properly addressed."
+          "p1": "You have the right to access, rectify, delete your data, as well as to limit or object to its processing, and to data portability, under the terms established by current legislation.",
+          "p2": "You can exercise these rights by sending an email to {email} attaching a copy of your identity document.",
+          "p3": "You also have the right to file a complaint with the Spanish Data Protection Agency (www.aepd.es) if you consider that your rights have not been duly addressed."
         }
       },
       "section8": {
@@ -2101,7 +2344,7 @@
       "section9": {
         "title": "9. Changes to this Policy",
         "content": {
-          "p1": "We may modify this Privacy Policy from time to time. Any changes will be published on this page and, if significant, we will notify you by email or through the platform."
+          "p1": "We may modify this Privacy Policy from time to time. Any changes will be posted on this page and, if significant, we will notify you by email or through the platform."
         }
       }
     },
@@ -2109,11 +2352,11 @@
       "appName": "Ribotflow",
       "lastUpdated": "Last updated: {date}",
       "companyData": {
-        "name": "Your Name or Business Name",
-        "vat": "Your VAT Number",
+        "name": "Your Name or Company Name",
+        "vat": "Your VAT/Tax ID",
         "address": "Your Full Address",
-        "email": "your@email.com",
-        "registry": "(Optional: Commercial Registry Information)"
+        "email": "you@email.com",
+        "registry": "(Optional: Commercial Registry Data)"
       },
       "privacyPolicyTitle": "Privacy Policy",
       "cookiePolicyTitle": "Cookie Policy",
@@ -2129,45 +2372,45 @@
       "metaTitle": "Legal Notice | {appName}",
       "title": "Legal Notice",
       "section1": {
-        "title": "1. Identifying Information of the Owner",
+        "title": "1. Owner Identification Data",
         "content": {
-          "p1": "In compliance with the information duty established in Law 34/2002 on Information Society Services and Electronic Commerce (LSSI-CE), the following details are provided: The owner of this website and the Ribotflow application is {companyName}, with VAT number {companyVat}, registered address at {companyAddress}, and contact email {companyEmail}. {companyRegistry}"
+          "p1": "In compliance with the duty of information stipulated in Law 34/2002 on Information Society Services and Electronic Commerce (LSSI-CE), the following data is provided: The owner of this website and the Ribotflow application is {companyName}, with VAT ID {companyVat}, address at {companyAddress}, and contact email {companyEmail}. {companyRegistry}"
         }
       },
       "section2": {
-        "title": "2. Purpose",
+        "title": "2. Object",
         "content": {
-          "p1": "This Legal Notice governs the access and use of the {appName} website and application (hereinafter, the 'Platform'), which {companyName} makes available to Internet users."
+          "p1": "This Legal Notice regulates access to and use of the website and the {appName} application (hereinafter, the \"Platform\"), which {companyName} makes available to Internet users."
         }
       },
       "section3": {
         "title": "3. Intellectual and Industrial Property",
         "content": {
-          "p1": "All intellectual and industrial property rights of the {appName} Platform, including but not limited to its source code, graphic design, interfaces, texts, images, videos, sounds, trademarks, logos, and trade names, are the exclusive property of {companyName} or third parties who have authorized their use.",
-          "p2": "The user acknowledges that the data and information entered by them on the Platform are their sole property and responsibility. {companyName} acts solely as a custodian of this information within the framework of the service provision."
+          "p1": "All intellectual and industrial property rights of the Platform ({appName}), including, but not limited to, its source code, graphic design, interfaces, texts, images, videos, sounds, trademarks, logos, and trade names, are the exclusive property of {companyName} or third parties who have authorized their use.",
+          "p2": "The user acknowledges that the data and information entered by them into the Platform are their exclusive property and responsibility. {companyName} acts as a mere depository of this information within the framework of providing the service."
         }
       },
       "section4": {
-        "title": "4. Terms of Use",
+        "title": "4. Conditions of Use",
         "content": {
-          "p1": "Access to and/or use of the Platform confers the status of User, who accepts, from that access and/or use, the general terms of use set forth herein.",
-          "p2": "The User agrees to make appropriate use of the content and services that {companyName} offers through its Platform and, by way of example but not limitation, not to use them to:",
-          "obligation1": "Engage in illegal activities or those contrary to good faith and public order.",
-          "obligation2": "Disseminate content or propaganda of a racist, xenophobic, pornographic-illegal nature, that promotes terrorism, or violates human rights.",
-          "obligation3": "Cause damage to the physical and logical systems of {companyName}, its suppliers, or third parties, introduce or spread computer viruses or any other physical or logical systems that could cause such damage."
+          "p1": "Access and/or use of the Platform attributes the condition of User, who accepts, from said access and/or use, the general conditions of use reflected here.",
+          "p2": "The User agrees to make appropriate use of the content and services that {companyName} offers through its Platform and, by way of example but not limitation, not to use them for:",
+          "obligation1": "Engaging in illicit, illegal, or activities contrary to good faith and public order.",
+          "obligation2": "Disseminating content or propaganda of a racist, xenophobic, pornographic-illegal nature, advocating terrorism, or violating human rights.",
+          "obligation3": "Causing damage to the physical and logical systems of {companyName}, its suppliers, or third parties, introducing or spreading computer viruses or any other physical or logical systems that are likely to cause the aforementioned damage."
         }
       },
       "section5": {
-        "title": "5. Disclaimer of Liability",
+        "title": "5. Exclusion of Liability",
         "content": {
-          "p1": "{companyName} shall not be held liable, under any circumstances, for damages of any kind that may arise, including but not limited to: errors or omissions in content, lack of availability of the Platform, or the transmission of viruses or malicious or harmful programs in the content, despite having taken all necessary technological measures to prevent it.",
-          "p2": "The use that users may make of the data and information provided through the Platform is their sole and exclusive responsibility."
+          "p1": "{companyName} is not responsible, in any case, for damages of any kind that may be caused, by way of example: errors or omissions in the content, lack of availability of the Platform, or the transmission of viruses or malicious or harmful programs in the content, despite having adopted all necessary technological measures to prevent it.",
+          "p2": "The use that users may make of the data and information supplied through the Platform is done under their sole and exclusive responsibility."
         }
       },
       "section6": {
         "title": "6. Links",
         "content": {
-          "p1": "In the event that the Platform contains links or hyperlinks to other Internet sites, {companyName} will not exercise any control over such sites and content. Under no circumstances shall {companyName} assume any responsibility for the content of any link belonging to an external website."
+          "p1": "In the event that the Platform provides links or hyperlinks to other Internet sites, {companyName} will not exercise any type of control over said sites and content. In no case will {companyName} assume any responsibility for the content of any link belonging to a third-party website."
         }
       },
       "section7": {
@@ -2179,13 +2422,13 @@
       "section8": {
         "title": "8. Modifications",
         "content": {
-          "p1": "{companyName} reserves the right to make any modifications it deems appropriate to its Platform without prior notice, including changing, deleting, or adding content and services provided through it, as well as the manner in which they are presented or located."
+          "p1": "{companyName} reserves the right to make, without prior notice, the modifications it deems appropriate to its Platform, and may change, delete, or add both the content and services provided through it and the way in which they are presented or located."
         }
       },
       "section9": {
         "title": "9. Applicable Law and Jurisdiction",
         "content": {
-          "p1": "The relationship between {companyName} and the User shall be governed by current Spanish legislation, and any dispute shall be submitted to the Courts and Tribunals of the city of [Your city / as indicated by your lawyer]."
+          "p1": "The relationship between {companyName} and the User will be governed by current Spanish regulations, and any controversy will be submitted to the Courts and tribunals of the city of [Your city / as indicated by the lawyer]."
         }
       }
     },
@@ -2195,22 +2438,22 @@
       "section1": {
         "title": "1. Acceptance of Terms",
         "content": {
-          "p1": "These Terms and Conditions of Service (hereinafter, \"Terms\") govern the use of the {appName} platform (hereinafter, the \"Service\" or \"Platform\"), owned by {companyName}. By registering for or using the Service, you agree to be bound by these Terms.",
+          "p1": "These Terms and Conditions of Service (hereinafter, \"Terms\") govern the use of the {appName} platform (hereinafter, \"Service\" or \"Platform\"), owned by {companyName}. By registering or using the Service, you agree to be bound by these Terms.",
           "p2": "Use of the Service also implies acceptance of our Privacy Policy."
         }
       },
       "section2": {
         "title": "2. Description of the Service",
         "content": {
-          "p1": "{appName} is a business management platform offering tools for CRM, invoicing, expense management, communication, and other related functionalities. The specific features may vary depending on the plan contracted (if applicable)."
+          "p1": "{appName} is a business management platform that offers tools for CRM, invoicing, expense management, communication, and other related functionalities. Specific features may vary depending on the contracted plan (if applicable)."
         }
       },
       "section3": {
         "title": "3. Access and User Account",
         "content": {
           "p1": "To use the Service, you must register by creating an account. You are responsible for maintaining the confidentiality of your password and for all activities that occur under your account.",
-          "p2": "You must provide true, accurate, and complete information during registration and keep it up to date.",
-          "p3": "We reserve the right to suspend or terminate accounts that violate these Terms."
+          "p2": "You must provide truthful, accurate, and complete information during registration and keep it updated.",
+          "p3": "We reserve the right to suspend or cancel accounts that violate these Terms."
         }
       },
       "section4": {
@@ -2218,21 +2461,21 @@
         "content": {
           "p1": "By using the Service, you agree to:",
           "obligation1": "Use the Platform lawfully and in accordance with these Terms.",
-          "obligation2": "Not engage in activities that may damage, overload, or interfere with the normal operation of the Service.",
+          "obligation2": "Not engage in activities that could damage, overload, or impair the normal operation of the Service.",
           "obligation3": "Be solely responsible for the legality, accuracy, and ownership of the data you enter into the Platform.",
           "obligation4": "Respect the intellectual property rights of {companyName} and third parties."
         }
       },
       "section5": {
-        "title": "5. Financial Conditions",
+        "title": "5. Economic Conditions",
         "content": {
-          "p1": "[If free: The Service is provided free of charge under the conditions described herein. We reserve the right to introduce paid plans in the future.] / [If paid: Specify here the plans, prices, billing cycles, payment methods, refund policy, consequences of non-payment, etc. This section is CRITICAL and requires detailed legal review.]"
+          "p1": "[If free: The Service is provided free of charge under the conditions described herein. We reserve the right to introduce paid plans in the future.] / [If paid: Detail plans, pricing, billing cycles, payment methods, refund policy, consequences of non-payment, etc., here. This section is CRITICAL and requires detailed legal advice.]"
         }
       },
       "section6": {
         "title": "6. Intellectual Property",
         "content": {
-          "p1": "The {appName} Platform and all of its content (excluding user-entered data) are the property of {companyName} and are protected by intellectual property laws.",
+          "p1": "The {appName} Platform and all its content (excluding data entered by the user) are the property of {companyName} and are protected by intellectual property laws.",
           "p2": "The data you enter into the Platform is yours. You grant us a limited license to process this data solely for the purpose of providing the Service."
         }
       },
@@ -2241,34 +2484,34 @@
         "content": {
           "p1": "The processing of your personal data is governed by our",
           "dpaTitle": "Role as Data Processor (Data Processing Agreement - DPA)",
-          "dpaP1": "Regarding the personal data of third parties (your clients, suppliers, etc.) that you enter into {appName}, you act as the Data Controller and we act as the Data Processor. These Terms constitute the Data Processing Agreement (DPA) required by applicable regulations.",
-          "dpaP2": "We commit to: (a) Process this data only following your instructions and for the provision of the Service. (b) Ensure the confidentiality of the data. (c) Implement appropriate security measures. (d) Not subcontract without your prior authorization. (e) Assist you in fulfilling your obligations as Controller (exercise of rights, breach notifications). (f) Delete the data once the service is terminated, in accordance with legal terms. (g) Make available the information necessary to demonstrate compliance."
+          "dpaP1": "Regarding the personal data of third parties (your clients, suppliers, etc.) that you enter into {appName}, you act as the Data Controller, and we act as the Data Processor. These Terms constitute the Data Processing Agreement (DPA) required by regulations.",
+          "dpaP2": "We commit to: (a) Process this data solely on your instructions and for the provision of the Service. (b) Ensure the confidentiality of the data. (c) Implement appropriate security measures. (d) Not subcontract without your prior authorization. (e) Assist you in complying with your obligations as Controller (exercise of rights, breach notifications). (f) Delete the data once the service is terminated, according to legal terms. (g) Make available to you the information necessary to demonstrate compliance."
         }
       },
       "section8": {
         "title": "8. Warranties and Limitation of Liability",
         "content": {
-          "p1": "The Service is provided \"as is,\" without express or implied warranties of any kind. We do not guarantee that the Service will be uninterrupted, secure, or error-free.",
-          "p2": "To the maximum extent permitted by law, {companyName} shall not be liable for indirect, incidental, special, consequential, or punitive damages, nor for loss of profits or revenues, loss of data, or other intangible losses resulting from (i) your access to or use or inability to access or use the Service; (ii) any third-party conduct or content within the Service; (iii) any content obtained from the Service; and (iv) unauthorized access to, use, or alteration of your transmissions or content."
+          "p1": "The Service is provided \"as is,\" without warranties of any kind, either express or implied. We do not guarantee that the Service will be uninterrupted, secure, or error-free.",
+          "p2": "To the maximum extent permitted by law, {companyName} shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, loss of data, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the service; (ii) any conduct or content of any third party on the service; (iii) any content obtained from the service; and (iv) unauthorized access, use, or alteration of your transmissions or content."
         }
       },
       "section9": {
         "title": "9. Modification of Terms",
         "content": {
-          "p1": "We reserve the right to modify these Terms at any time. We will notify you of significant changes. Continued use of the Service after such modifications constitutes acceptance of the new Terms."
+          "p1": "We reserve the right to modify these Terms at any time. We will notify you of significant changes. If you continue to use the Service after the modification, you will be deemed to have accepted the new Terms."
         }
       },
       "section10": {
         "title": "10. Duration and Termination",
         "content": {
-          "p1": "These Terms remain in effect while you use the Service. You may cancel your account at any time.",
-          "p2": "We may suspend or terminate your access to the Service if you violate these Terms."
+          "p1": "These Terms will remain in effect while you use the Service. You may cancel your account at any time.",
+          "p2": "We may suspend or terminate your access to the Service if you breach these Terms."
         }
       },
       "section11": {
-        "title": "11. Governing Law and Jurisdiction",
+        "title": "11. Applicable Law and Jurisdiction",
         "content": {
-          "p1": "These Terms shall be governed by and interpreted in accordance with the laws of Spain. Any dispute relating to these Terms shall be submitted to the exclusive jurisdiction of the courts of [Your city / as advised by your legal counsel]."
+          "p1": "These Terms shall be governed and construed in accordance with the laws of Spain. Any dispute related to these Terms shall be subject to the exclusive jurisdiction of the courts of [Your city / as indicated by the lawyer]."
         }
       }
     },
@@ -2276,47 +2519,47 @@
       "metaTitle": "Cookie Policy | {appName}",
       "title": "Cookie Policy",
       "section1": {
-        "title": "1. What Are Cookies?",
+        "title": "1. What are Cookies?",
         "content": {
-          "p1": "A cookie is a small text file that a website stores on your computer or mobile device when you visit the site. It allows the website to remember your actions and preferences (such as login, language, font size, and other display preferences) over a period of time, so you don’t have to re-enter them each time you return or navigate from one page to another."
+          "p1": "A cookie is a small text file that a website stores on your computer or mobile device when you visit the site. It enables the website to remember your actions and preferences (such as login, language, font size, and other display preferences) over a period of time, so you don't have to keep re-entering them whenever you come back to the site or browse from one page to another."
         }
       },
       "section2": {
-        "title": "2. What Types of Cookies Do We Use and Why?",
+        "title": "2. What types of Cookies do we use and why?",
         "content": {
           "p1": "At {appName}, we primarily use the following types of cookies:",
           "type1": {
             "name": "Technical or Necessary Cookies",
-            "description": "These are essential for the proper functioning of the Platform. They enable navigation and use of its different options or services, such as controlling data traffic and communication, identifying sessions, accessing restricted areas, remembering items in a shopping cart, completing purchase processes, registering for events, using security elements during browsing, storing content for video or audio playback, or sharing content on social networks.",
-            "cookie1": "Authentication cookie (e.g., {name}): Keeps your session active.",
-            "cookie2": "Preference cookie (e.g., {name}): Remembers your selected language."
+            "description": "These are essential for the proper functioning of the Platform. They allow navigation and the use of different options or services, such as, for example, controlling traffic and data communication, identifying the session, accessing restricted access parts, remembering the elements that make up an order, carrying out the purchase process of an order, making the request for registration or participation in an event, using security elements during navigation, storing content for the dissemination of videos or sound, or sharing content through social networks.",
+            "cookie1": "Authentication cookie (e.g., {name}): Allows keeping your session logged in.",
+            "cookie2": "Preference cookie (e.g., {name}): Remembers the selected language."
           },
           "type2": {
-            "name": "Analytics or Measurement Cookies",
-            "description": "(IF USED) These cookies allow us to quantify the number of users and perform statistical analysis of how users use the offered service. We analyze browsing behavior on our website to improve the products or services we offer.",
+            "name": "Analysis or Measurement Cookies",
+            "description": "(IF USED) These cookies allow us to quantify the number of users and thus carry out the measurement and statistical analysis of the use made by users of the service offered. For this, your navigation on our website is analyzed in order to improve the offer of products or services that we offer you.",
             "cookie1": "Example: {name}.",
-            "thirdPartyInfo": "(IF THIRD-PARTY) The information is collected and processed by [Third-party name, e.g., Google Analytics]. You can find more information about how Google processes data in its privacy policy."
+            "thirdPartyInfo": "(IF THIRD-PARTY) The information is collected and processed by [Name of third party, e.g., Google Analytics]. You can find more information about how Google processes data in its privacy policy."
           }
         }
       },
       "section3": {
-        "title": "3. How Can You Manage Cookies?",
+        "title": "3. How can you manage Cookies?",
         "content": {
-          "p1": "You can control and/or delete cookies as you wish. You can delete all cookies already on your computer and configure most browsers to prevent them from being installed.",
-          "p2": "Below, you will find links with information on how to set your preferences in major browsers:",
-          "p3": "Additionally, you can manage your consent for non-essential cookies through the cookie banner displayed when accessing our Platform [or a link to a management tool if implemented]."
+          "p1": "You can control and/or delete cookies as you wish. You can delete all cookies that are already on your computer, and you can set most browsers to prevent them from being placed.",
+          "p2": "Below, we provide links where you will find information on how to configure your preferences in the main browsers:",
+          "p3": "Additionally, you can manage consent for non-essential cookies through the cookie banner that appears when accessing our Platform [Or link to a management tool if you implement one]."
         }
       },
       "section4": {
-        "title": "4. More Information About Data Protection",
+        "title": "4. More information about Data Protection",
         "content": {
-          "p1": "For more information on how we process your personal data, please refer to our"
+          "p1": "For more information on how we process your personal data, please see our"
         }
       },
       "section5": {
         "title": "5. Changes to the Cookie Policy",
         "content": {
-          "p1": "We may update the Cookie Policy of our Platform; therefore, we recommend reviewing this policy each time you access our website to stay properly informed about how and for what purposes we use cookies."
+          "p1": "We may update the Cookie Policy of our Platform, so we recommend you review this policy each time you access our website in order to be adequately informed about how and why we use cookies."
         }
       }
     }
@@ -2353,9 +2596,16 @@
     "subscription_loading_error": "Error loading subscription.",
     "no_subscription": "No active subscription found.",
     "no_invoices": "No invoices found.",
-    "limitReachedTitle": "Plan Limit Reached",
-    "limitReachedDefault": "You’ve reached the maximum number of contacts allowed in your current plan. Upgrade to add more.",
-    "upgradePlan": "Upgrade Plan"
+    "limitReachedTitle": "Plan limit reached",
+    "limitReachedDefault": "You have reached the contact limit allowed in your current plan. Upgrade to add more.",
+    "upgradePlan": "Upgrade Plan",
+    "accessDenied": "Access Denied",
+    "permissionDenied": "You do not have permission to access this billing section.",
+    "aiActionsUsed": "AI Actions Used",
+    "aiActionsLimit": "AI Actions Limit",
+    "subscriptionCheckFailed": "Error verifying your subscription. Could not start import.",
+    "countCheckFailed": "Error counting current records. Could not start import.",
+    "importLimitExceeded": "Could not import. Your plan has a limit of {planLimit} records. You already have {currentCount}, so you can only add {availableQuota} more. The file you uploaded contains {newRecordsCount}."
   },
   "Transcripcio": {
     "listTitle": "Audio Transcriptions",
@@ -2363,11 +2613,11 @@
     "listNewButton": "New Transcription",
     "detailTitle": "Transcription Result",
     "detailDescription": "Job status: {jobId}",
-    "listEmpty": "No transcriptions available.",
+    "listEmpty": "There are no transcriptions.",
     "cardTitle": "Audio Job",
     "cardSummaryEmpty": "Completed without summary.",
     "cardErrorUnknown": "Unknown error",
-    "cardInProgress": "The transcription is in progress...",
+    "cardInProgress": "Transcription is in progress...",
     "cardViewDetailsButton": "View Details",
     "pendingTitle": "Processing...",
     "pendingDescription": "Your audio is being analyzed. This may take a few minutes.",
@@ -2379,10 +2629,10 @@
     "summaryTitle": "Meeting Summary",
     "summaryEmpty": "No summary has been generated.",
     "participantsTitle": "Participants",
-    "participantsEmpty": "No participants assigned.",
+    "participantsEmpty": "No participants have been assigned.",
     "keyMomentsTitle": "Key Moments of the Meeting",
-    "keyMomentsEmpty": "No key moments were extracted from this transcription.",
-    "keyMomentsNoWork": "The analysis found no relevant work topics in this conversation.",
+    "keyMomentsEmpty": "No key moments have been extracted from this transcription.",
+    "keyMomentsNoWork": "The analysis did not find any relevant work topics in this conversation.",
     "keyMomentsDecisions": "Decisions Made",
     "fullTranscriptionTitle": "Full Transcription",
     "fullTranscriptionEmpty": "No transcription has been generated.",
@@ -2401,26 +2651,26 @@
     "cancelButton": "Cancel",
     "createTaskDialogTitle": "Create New Task",
     "createTaskDialogDescription": "The task will be added to the activity list.",
-    "defaultTaskTitle": "New transcription task",
+    "defaultTaskTitle": "New task from transcription",
     "createTaskLabelTitle": "Title",
     "createTaskLabelDescription": "Description",
     "createTaskLabelAssignee": "Assign to (Optional)",
     "createButton": "Create",
     "deleteDialogTitle": "Are you sure?",
-    "deleteDialogDescription": "This action is permanent and cannot be undone. The job, audio, and associated transcription will be deleted.",
+    "deleteDialogDescription": "This action is permanent and cannot be undone. It will delete the job, the audio, and the associated transcription.",
     "errorTitle": "Error",
-    "errorLoading": "The transcription job could not be loaded or you don't have access.",
+    "errorLoading": "Could not load the transcription job or you do not have access.",
     "createTaskErrorTitle": "Error creating task",
     "createTaskSuccessTitle": "Task created",
     "deleteErrorTitle": "Error deleting",
     "sendEmailErrorTitle": "Error sending email",
     "sendEmailSuccessTitle": "Summary sent successfully",
     "sendEmailInvalidData": "Invalid job data.",
-    "sendEmailNoRecipients": "No valid email recipients were found among the participants.",
+    "sendEmailNoRecipients": "No recipients with valid email found among participants.",
     "sendEmailSubject": "Meeting summary: {jobDate}",
     "viewFullTranscriptionButton": "View full transcription",
     "automatedEmail": "Automatically generated email",
-    "backToListButton": "Back to Transcriptions",
+    "backToListButton": "Back to list",
     "errorUnknown": "Unknown error",
     "AssignedTasks": {
       "title": "Assigned Tasks",
@@ -2431,14 +2681,31 @@
       "title": "Key Moments",
       "WorkTopics": "Work Topics",
       "DecisionsMade": "Decisions Made",
-      "decisions": "Highlights of the meeting",
+      "decisions": "Meeting highlights",
       "actions": "Actions to take",
-      "participants": "Main participants"
+      "participants": "Main participants",
+      "invalidData": "Invalid key moments data."
+    },
+    "Email": {
+      "sendSuccess": "The email with the meeting summary has been sent successfully to {recipientCount} recipients.",
+      "meetingTitle": "Meeting:",
+      "summaryTitle": "General summary",
+      "keyMomentsTitle": "Key moments of the meeting",
+      "keyMomentsDecisions": "Decisions",
+      "keyMomentsActions": "Actions",
+      "assignedTasksTitle": "Assigned tasks",
+      "participantsTitle": "Main participants",
+      "flowTitle": "General flow",
+      "flowDiagnosi": "Diagnosis",
+      "flowAccions": "Actions",
+      "flowTasques": "Tasks",
+      "flowSeguiment": "Follow-up",
+      "footerText": "Automatically generated from RibotFlow"
     }
   },
   "Global": {
     "loading": "Loading...",
-    "error": "An error has occurred. If the problem persists, please contact support.",
+    "error": "An error occurred. If the problem persists, contact support.",
     "noData": "No data available.",
     "searchPlaceholder": "Search...",
     "confirm": "Confirm",
@@ -2446,6 +2713,160 @@
     "delete": "Delete",
     "edit": "Edit",
     "deleting": "Deleting...",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "save": "Save"
+  },
+  "ExcelColumns": {
+    "contacts": {
+      "nom": "Name",
+      "empresa": "Company",
+      "email": "Email",
+      "telefon": "Phone",
+      "estat": "Status",
+      "valor": "Value",
+      "ultim_contacte": "Last Contact",
+      "ubicacio": "Location",
+      "created_at": "Creation Date",
+      "last_interaction_at": "Last Interaction",
+      "birthday": "Birthday",
+      "marital_status": "Marital Status",
+      "hobbies": "Hobbies",
+      "social_media": "Social Media",
+      "job_title": "Job Title",
+      "industry": "Industry",
+      "lead_source": "Lead Source",
+      "notes": "Notes",
+      "address": "Address (JSON)",
+      "children_count": "No. Children",
+      "partner_name": "Partner's Name",
+      "supplier_id": "Supplier ID",
+      "gender": "Gender",
+      "tax_id": "VAT/Tax ID",
+      "street": "Street",
+      "city": "City",
+      "postal_code": "Postal Code",
+      "country": "Country"
+    },
+    "products": {
+      "name": "Name",
+      "description": "Description",
+      "price": "Price",
+      "tax_rate": "Tax (%)",
+      "unit": "Unit",
+      "category": "Category",
+      "is_active": "Is Active?",
+      "created_at": "Creation Date"
+    },
+    "quotes": {
+      "title": "Quote Title",
+      "issue_date": "Issue Date",
+      "valid_until": "Valid Until",
+      "status": "Status",
+      "notes": "Internal Notes",
+      "terms_and_conditions": "Terms and Conditions",
+      "contact_id": "Contact ID",
+      "quote_number": "Quote Number",
+      "subtotal": "Subtotal",
+      "tax_amount": "Tax Amount",
+      "discount_amount": "Discount Amount",
+      "total_amount": "Total",
+      "items": "Items (JSON)",
+      "created_at": "Creation Date",
+      "secure_id": "Secure ID",
+      "expiry_date": "Expiry Date",
+      "theme_color": "Theme Color",
+      "opportunity_id": "Opportunity ID",
+      "send_at": "Send Date",
+      "sent_at": "Sent At",
+      "rejection_reason": "Rejection Reason",
+      "show_quantity": "Show Quantity",
+      "sequence_number": "Sequence Number",
+      "tax_rate": "Tax Rate (%)"
+    },
+    "invoices": {
+      "contact_id": "Contact ID",
+      "invoice_number": "Invoice Number",
+      "issue_date": "Issue Date",
+      "due_date": "Due Date",
+      "total_amount": "Total",
+      "status": "Status",
+      "created_at": "Creation Date",
+      "updated_at": "Update Date",
+      "notes": "Notes",
+      "subtotal": "Subtotal",
+      "tax_amount": "Tax Amount",
+      "discount_amount": "Discount Amount",
+      "currency": "Currency",
+      "language": "Language",
+      "client_name": "Client Name",
+      "client_address": "Client Address",
+      "client_tax_id": "Client VAT/Tax ID",
+      "client_email": "Client Email",
+      "company_name": "Company Name",
+      "company_address": "Company Address",
+      "company_tax_id": "Company VAT/Tax ID",
+      "company_email": "Company Email",
+      "quote_id": "Quote ID",
+      "verifactu_uuid": "VeriFactu UUID",
+      "retention_amount": "Retention Amount",
+      "legacy_tax_rate": "VAT Rate (Legacy)",
+      "legacy_tax_amount": "VAT Amount (Legacy)",
+      "extra_data": "Extra Data (JSON)",
+      "budget_id": "Budget ID (Legacy)",
+      "tax": "Tax (Legacy)",
+      "discount": "Discount (Legacy)",
+      "project_id": "Project ID",
+      "paid_at": "Paid Date",
+      "sent_at": "Sent Date",
+      "shipping_cost": "Shipping Cost",
+      "verifactu_qr_data": "VeriFactu QR",
+      "verifactu_signature": "VeriFactu Signature",
+      "verifactu_previous_signature": "VeriFactu Previous Signature",
+      "payment_details": "Payment Details",
+      "company_logo_url": "Company Logo URL",
+      "client_reference": "Client Reference",
+      "terms": "Terms and Conditions"
+    },
+    "expenses": {
+      "description": "Description",
+      "total_amount": "Total Amount",
+      "expense_date": "Expense Date",
+      "invoice_number": "Invoice No.",
+      "tax_amount": "VAT Amount",
+      "extra_data": "Extra Data",
+      "supplier_id": "Supplier (ID)",
+      "subtotal": "Subtotal",
+      "discount_amount": "Discount Amount",
+      "notes": "Notes",
+      "status": "Status",
+      "payment_date": "Payment Date",
+      "payment_method": "Payment Method",
+      "is_billable": "Is Billable",
+      "project_id": "Project (ID)",
+      "is_reimbursable": "Is Reimbursable",
+      "currency": "Currency",
+      "category_id": "Category (ID)",
+      "retention_amount": "Retention Amount",
+      "due_date": "Due Date",
+      "discount_rate": "Discount Rate (%)",
+      "created_at": "Creation Date",
+      "legacy_tax_amount": "VAT (Legacy)",
+      "legacy_tax_rate": "VAT Rate (Legacy)",
+      "legacy_category_name": "Category (Legacy)"
+    },
+    "suppliers": {
+      "name": "Name",
+      "contact_name": "Contact Name",
+      "email": "Email",
+      "telefon": "Phone",
+      "address": "Address (JSON)",
+      "tax_id": "VAT/Tax ID",
+      "notes": "Notes",
+      "created_at": "Creation Date",
+      "updated_at": "Update Date",
+      "category": "Category",
+      "website": "Website",
+      "nif": "VAT/Tax ID"
+    }
   }
 }
