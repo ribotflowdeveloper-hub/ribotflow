@@ -19,10 +19,8 @@ const baseLimits = {
   maxTeamMembers: 1,
   maxStorageMB: 500,
   // CRM
-  maxContacts: 10, //100
+  maxContacts: 20, //100
   maxPipelines: 5,
-  maxQuotesPerMonth: 10,
-  maxProducts: 10,
   maxCalendarAccounts: 1,
   maxTasks: 25,
   // Comunicació
@@ -35,7 +33,10 @@ const baseLimits = {
   // Finances
   maxInvoicesPerMonth: 1,
   maxExpensesPerMonth: 1,
-  maxSuppliers: 1,
+  maxSuppliers: 10,  
+  maxProducts: 20,  
+  maxQuotesPerMonth: 10,
+
   // IA
   maxAIActionsPerMonth: 5,
 };

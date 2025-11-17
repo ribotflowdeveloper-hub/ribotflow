@@ -62,7 +62,7 @@ const DropdownButton: React.FC<DropdownButtonProps> = ({
       </button>
       {isOpen && (
         // 💡 2. CORRECCIÓ DE Z-INDEX: Canviat de z-10 a z-50
-        <ul className="absolute block list-none p-1 m-0 mt-2 bg-green-700/25 backdrop-blur-sm border border-green-600 rounded-md shadow-lg z-50">
+        <ul className="absolute block list-none p-1 m-0 mt-2 bg-green-700/55 backdrop-blur-sm border border-green-600 rounded-md shadow-lg z-50">
           <TooltipProvider delayDuration={100}>
             {options.map((option) => (
               <Tooltip key={option.value}>

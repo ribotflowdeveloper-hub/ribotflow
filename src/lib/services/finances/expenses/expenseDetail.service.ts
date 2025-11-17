@@ -97,7 +97,8 @@ export async function fetchExpenseDetail(
         return {
             ...item,
             total: (item.quantity || 0) * (item.unit_price || 0), // Calculem el total
-            taxes: taxesForItem
+            taxes: taxesForItem,
+            category_id: item.category_id,
         };
     });
     
@@ -211,6 +212,7 @@ async function syncExpenseItems(
             description: item.description,
             quantity: item.quantity,
             unit_price: item.unit_price,
+            category_id: item.category_id,
         });
         
         const itemBase = (item.quantity || 0) * (item.unit_price || 0);

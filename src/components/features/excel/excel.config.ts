@@ -1,4 +1,4 @@
-// @/app/[locale]/(app)/excel/excel.config.ts (CORREGIT)
+// @/app/[locale]/(app)/excel/excel.config.ts (VERSIÓ CORREGIDA)
 import { type PlanLimit } from "@/config/subscriptions";
 
 // --- TIPUS COMPARTITS ---
@@ -49,15 +49,15 @@ const INVOICE_STATUS_LIST = ["Draft", "Sent", "Paid", "Overdue", "Cancelled"];
 // --- CONFIGURACIÓ DE PLANTILLES ---
 export const TEMPLATE_CONFIG: TemplateConfig = {
     contacts: {
-        // Basat en el teu ca.json
+        // ... (sense canvis)
         excludeColumns: [
             "created_at",
             "last_interaction_at",
-            "ultim_contacte", // Camp legacy
-            "address", // JSON
-            "social_media", // JSON
-            "hobbies", // Array
-            "supplier_id", // FK
+            "ultim_contacte",
+            "address",
+            "social_media",
+            "hobbies",
+            "supplier_id",
         ],
         validations: {
             estat: FRIENDLY_CONTACT_STATUS,
@@ -88,6 +88,7 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
         },
     },
     products: {
+        // ... (sense canvis, assumint 0.21 de la correcció anterior)
         excludeColumns: ["created_at"],
         validations: {
             is_active: ["true", "false"],
@@ -97,35 +98,42 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
             name: "Producte/Servei Mostra",
             category: "Serveis Web",
             price: 100,
-            tax_rate: 21,
+            tax_rate: 0.21, // Corregit
             unit: "hora",
             is_active: true,
             description: "Descripció del servei",
         },
     },
     quotes: {
-        // Basat en el teu log d'error de 'quotes'
+        // ✅ CORRECCIÓ: Hem tret els camps financers
         excludeColumns: [
             "title",
             "valid_until",
             "terms_and_conditions",
             "contact_id",
-            "quote_number",
-            "subtotal",
-            "tax_amount",
-            "discount_amount",
-            "total_amount",
-            "items",
+            // "subtotal", // TRET
+            // "tax_amount", // TRET
+            // "discount_amount", // TRET
+            // "total_amount", // TRET
+            "items", // Encara exclòs, no importem línies
             "created_at",
             "secure_id",
         ],
         validations: { status: QUOTE_STATUS_LIST },
+        // ✅ CORRECCIÓ: Afegim els camps financers a l'exemple
         exampleRow: {
+            quote_number: "PRE-2025-001", // Corregit
             status: "Draft",
             issue_date: new Date().toISOString().split("T")[0],
             expiry_date:
                 new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
                     .split("T")[0],
+            subtotal: 1000.00, // AFEGIT
+            tax_amount: 210.00, // AFEGIT
+            discount_amount: 0.00, // AFEGIT
+            total_amount: 1210.00, // AFEGIT
+            tax_rate: 0.21, // Corregit
+            sequence_number: 1001,
             notes: "Notes internes",
             theme_color: "#FFFFFF",
             opportunity_id: null,
@@ -133,12 +141,10 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
             sent_at: null,
             rejection_reason: null,
             show_quantity: true,
-            sequence_number: 1001,
-            tax_rate: 21,
         },
     },
     expenses: {
-        // Basat en el teu log d'error de 'expenses'
+        // ... (sense canvis)
         excludeColumns: [
             "created_at",
             "extra_data",
@@ -174,29 +180,24 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
             currency: "EUR",
         },
     },
-    // ✅ ===== CONFIGURACIÓ D'INVOICES CORREGIDA =====
     invoices: {
-        // Excloem camps interns, JSON, FKs, i camps legacy
-        // !! HEM TRET ELS CAMPS FINANCERS (total_amount, etc.) D'AQUÍ !!
+        // ... (sense canvis)
         excludeColumns: [
             "created_at",
             "updated_at",
-            "contact_id", // FK
-            "quote_id", // FK
-            "project_id", // FK
-            "budget_id", // Camp legacy
-            "extra_data", // JSON
-            // Camps de VeriFactu
+            "contact_id",
+            "quote_id",
+            "project_id",
+            "budget_id",
+            "extra_data",
             "verifactu_uuid",
             "verifactu_qr_data",
             "verifactu_signature",
             "verifactu_previous_signature",
-            // Camps legacy/redundants
             "legacy_tax_rate",
             "legacy_tax_amount",
-            "tax", // Redundant amb tax_amount
-            "discount", // Redundant amb discount_amount
-            // Camps automàtics
+            "tax",
+            "discount",
             "paid_at",
             "sent_at",
             "retention_amount",
@@ -205,7 +206,6 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
         validations: {
             status: INVOICE_STATUS_LIST,
         },
-        // Fila d'exemple amb els camps que l'usuari SÍ ha d'omplir
         exampleRow: {
             invoice_number: "F-2025-001",
             issue_date: new Date().toISOString().split("T")[0],
@@ -213,13 +213,11 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
                 new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
                     .split("T")[0],
             status: "Draft",
-            // Aquests SÓN OBLIGATORIS (NOT NULL)
             total_amount: 1210.00,
             subtotal: 1000.00,
             tax_amount: 210.00,
             discount_amount: 0,
             shipping_cost: 0,
-            // Camps de text
             notes: "Notes de la factura",
             terms: "Pagament a 30 dies",
             currency: "EUR",
@@ -236,15 +234,12 @@ export const TEMPLATE_CONFIG: TemplateConfig = {
             client_reference: "Ref. Client 001",
         },
     },
-    // ✅ ===== NOVA CONFIGURACIÓ PER A SUPPLIERS =====
     suppliers: {
-        // Excloem camps automàtics
+        // ... (sense canvis)
         excludeColumns: [
             "created_at",
         ],
-        // No hi ha validacions especials (tot és text)
         validations: {},
-        // Fila d'exemple
         exampleRow: {
             nom: "Proveïdor Exemple SL",
             email: "info@proveidor.com",

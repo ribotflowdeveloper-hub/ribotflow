@@ -100,6 +100,15 @@ CREATE TYPE "public"."task_priority" AS ENUM (
 ALTER TYPE "public"."task_priority" OWNER TO "postgres";
 
 
+CREATE TYPE "public"."tax_type" AS ENUM (
+    'vat',
+    'retention'
+);
+
+
+ALTER TYPE "public"."tax_type" OWNER TO "postgres";
+
+
 CREATE TYPE "public"."ticket_filter" AS ENUM (
     'tots',
     'rebuts',
@@ -292,8 +301,7 @@ ALTER FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") OWN
 CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
-    AS $$
-DECLARE 
+    AS $$DECLARE 
   v_quote public.quotes%ROWTYPE;
   v_new_invoice_id BIGINT;
   v_opportunity_stage_id BIGINT;
@@ -348,10 +356,10 @@ BEGIN
   INSERT INTO public.invoices (
     user_id, team_id, contact_id, quote_id, status, 
     total_amount, subtotal, tax_amount, discount_amount,
-    issue_date, due_date
+    issue_date, due_date , tax_rate
   ) VALUES (
     v_quote.user_id, v_quote.team_id, v_quote.contact_id, v_quote.id, 'Draft',
-    v_quote.total, v_quote.subtotal, v_quote.tax, v_quote.discount,
+    v_quote.total_amount, v_quote.subtotal, v_quote.tax_amount, v_quote.discount_amount, tax_rate,
     CURRENT_DATE,
     CURRENT_DATE + INTERVAL '30 days'
   )
@@ -368,7 +376,7 @@ BEGIN
     qi.description,
     qi.quantity,
     qi.unit_price,
-    COALESCE(p.iva, 0) AS tax_rate,
+    COALESCE(p.tax_rate, 0) AS tax_rate,
     qi.total,
     v_quote.user_id,
     v_quote.team_id
@@ -376,8 +384,7 @@ BEGIN
   LEFT JOIN public.products p ON qi.product_id = p.id
   WHERE qi.quote_id = v_quote.id;
 
-END;
-$$;
+END;$$;
 
 
 ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") OWNER TO "postgres";
@@ -963,6 +970,62 @@ $$;
 
 
 ALTER FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_filtered_expenses"("p_team_id" "uuid", "p_search_term" "text" DEFAULT NULL::"text", "p_category_id" "uuid" DEFAULT NULL::"uuid", "p_status" "text" DEFAULT NULL::"text", "p_sort_by" "text" DEFAULT 'expense_date'::"text", "p_sort_order" "text" DEFAULT 'desc'::"text", "p_limit" integer DEFAULT 50, "p_offset" integer DEFAULT 0) RETURNS TABLE("id" bigint, "user_id" "uuid", "description" "text", "total_amount" numeric, "expense_date" "date", "created_at" timestamp with time zone, "invoice_number" "text", "tax_amount" numeric, "extra_data" "jsonb", "supplier_id" "uuid", "subtotal" numeric, "discount_amount" numeric, "notes" "text", "team_id" "uuid", "status" "public"."expense_status", "payment_date" "date", "payment_method" "text", "is_billable" boolean, "project_id" "uuid", "is_reimbursable" boolean, "supplier_nom" "text", "full_count" bigint, "retention_amount" numeric, "currency" character varying, "due_date" "date", "category_id" "uuid", "category_name" "text")
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    RETURN QUERY
+    WITH filtered_expenses AS (
+        SELECT
+            e.*,
+            s.nom AS supplier_nom,
+            ec.name AS category_name
+        FROM public.expenses e
+        LEFT JOIN public.suppliers s ON e.supplier_id = s.id
+        LEFT JOIN public.expense_categories ec ON e.category_id = ec.id
+        WHERE
+            e.team_id = p_team_id
+            AND (p_search_term IS NULL OR e.description ILIKE ('%' || p_search_term || '%') OR
+                 s.nom ILIKE ('%' || p_search_term || '%') OR
+                 ec.name ILIKE ('%' || p_search_term || '%') OR
+                 e.invoice_number ILIKE ('%' || p_search_term || '%'))
+            AND (p_category_id IS NULL OR e.category_id = p_category_id) 
+            AND (p_status IS NULL OR e.status::text = p_status)
+    ),
+    counted_expenses AS (
+        SELECT *, COUNT(*) OVER()::bigint as full_count FROM filtered_expenses
+    )
+    SELECT
+        ce.id, ce.user_id, ce.description, ce.total_amount, ce.expense_date,
+        ce.created_at, ce.invoice_number, ce.tax_amount, ce.extra_data,
+        ce.supplier_id, 
+        ce.subtotal, ce.discount_amount, ce.notes, 
+        ce.team_id, ce.status, ce.payment_date, ce.payment_method, ce.is_billable,
+        ce.project_id, 
+        ce.is_reimbursable,
+        ce.supplier_nom,
+        ce.full_count,
+        ce.retention_amount,
+        ce.currency,
+        ce.due_date,
+        ce.category_id,
+        ce.category_name
+    FROM counted_expenses ce
+    ORDER BY
+        CASE WHEN p_sort_by = 'expense_date' AND p_sort_order = 'desc' THEN ce.expense_date END DESC NULLS LAST,
+        CASE WHEN p_sort_by = 'expense_date' AND p_sort_order = 'asc' THEN ce.expense_date END ASC NULLS LAST,
+        CASE WHEN p_sort_by = 'total_amount' AND p_sort_order = 'desc' THEN ce.total_amount END DESC NULLS LAST,
+        CASE WHEN p_sort_by = 'total_amount' AND p_sort_order = 'asc' THEN ce.total_amount END ASC NULLS LAST,
+        ce.id DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_filtered_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category_id" "uuid", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_financial_summary"() RETURNS TABLE("facturat" numeric, "pendent" numeric, "despeses" numeric)
@@ -2058,27 +2121,41 @@ CREATE TABLE IF NOT EXISTS "public"."expenses" (
     "description" "text" NOT NULL,
     "total_amount" numeric NOT NULL,
     "expense_date" "date" NOT NULL,
-    "category" "text",
+    "legacy_category_name" "text",
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "invoice_number" "text",
-    "tax_amount" numeric,
+    "legacy_tax_amount" numeric,
     "extra_data" "jsonb",
     "supplier_id" "uuid",
     "subtotal" numeric,
     "discount_amount" numeric,
     "notes" "text",
-    "tax_rate" numeric,
+    "legacy_tax_rate" numeric,
     "team_id" "uuid",
     "status" "public"."expense_status" DEFAULT 'pending'::"public"."expense_status" NOT NULL,
     "payment_date" "date",
     "payment_method" "text",
     "is_billable" boolean DEFAULT false NOT NULL,
     "project_id" "uuid",
-    "is_reimbursable" boolean DEFAULT false NOT NULL
+    "is_reimbursable" boolean DEFAULT false NOT NULL,
+    "tax_amount" numeric DEFAULT 0 NOT NULL,
+    "retention_amount" numeric DEFAULT 0 NOT NULL,
+    "currency" character varying(3) DEFAULT 'EUR'::character varying NOT NULL,
+    "due_date" "date",
+    "discount_rate" numeric DEFAULT 0,
+    "category_id" "uuid"
 );
 
 
 ALTER TABLE "public"."expenses" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."expenses"."discount_amount" IS 'Import final del descompte (calculat).';
+
+
+
+COMMENT ON COLUMN "public"."expenses"."discount_rate" IS 'Percentatge de descompte (ex: 5 per 5%).';
+
 
 
 CREATE OR REPLACE FUNCTION "public"."save_expense_with_items"("p_expense_id_to_update" bigint, "p_user_id" "uuid", "p_team_id" "uuid", "expense_data" "jsonb", "items_data" "jsonb") RETURNS SETOF "public"."expenses"
@@ -2386,51 +2463,65 @@ $$;
 ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "status_param" "text", "contact_id_param" bigint, "search_term_param" "text", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text" DEFAULT NULL::"text", "status_param" "public"."quote_status" DEFAULT NULL::"public"."quote_status", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text") RETURNS TABLE("id" bigint, "sequence_number" integer, "user_id" "uuid", "contact_id" bigint, "team_id" "uuid", "tax_percent" numeric, "show_quantity" boolean, "status" "public"."quote_status", "issue_date" "date", "expiry_date" "date", "subtotal" numeric, "discount" numeric, "tax" numeric, "total" numeric, "created_at" timestamp with time zone, "opportunity_id" bigint, "send_at" timestamp with time zone, "secure_id" "uuid", "sent_at" timestamp with time zone, "quote_number" "text", "notes" "text", "rejection_reason" "text", "theme_color" "text", "contact_nom" "text", "contact_empresa" "text", "total_count" bigint)
+CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text" DEFAULT NULL::"text", "status_param" "public"."quote_status" DEFAULT NULL::"public"."quote_status", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 20, "offset_param" integer DEFAULT 0) RETURNS TABLE("id" bigint, "sequence_number" integer, "user_id" "uuid", "contact_id" bigint, "team_id" "uuid", "show_quantity" boolean, "status" "public"."quote_status", "issue_date" "date", "expiry_date" "date", "subtotal" numeric, "discount_amount" numeric, "tax_amount" numeric, "tax_rate" numeric, "total_amount" numeric, "created_at" timestamp with time zone, "opportunity_id" bigint, "send_at" timestamp with time zone, "secure_id" "uuid", "sent_at" timestamp with time zone, "quote_number" "text", "notes" "text", "rejection_reason" "text", "theme_color" "text", "contact_nom" "text", "contact_empresa" "text", "total_count" bigint)
     LANGUAGE "plpgsql"
     AS $$
 BEGIN
   RETURN QUERY
-  
-  -- PAS 1: Filtrat (Imitant el patró 'invoices')
   WITH filtered_quotes AS (
     SELECT
-      q.id, q.sequence_number, q.user_id, q.contact_id, q.team_id, q.tax_percent, 
-      q.show_quantity, q.status, q.issue_date, q.expiry_date, q.subtotal, 
-      q.discount, q.tax, q.total, q.created_at, q.opportunity_id, q.send_at, 
-      q.secure_id, q.sent_at, q.quote_number, q.notes, q.rejection_reason, q.theme_color,
+      q.id,
+      q.sequence_number,
+      q.user_id,
+      q.contact_id,
+      q.team_id,
+      q.show_quantity,
+      q.status,
+      q.issue_date,
+      q.expiry_date,
+      q.subtotal,
+      q.discount_amount,
+      q.tax_amount,
+      q.tax_rate,
+      q.total_amount,
+      q.created_at,
+      q.opportunity_id,
+      q.send_at,
+      q.secure_id,
+      q.sent_at,
+      q.quote_number,
+      q.notes,
+      q.rejection_reason,
+      q.theme_color,
       c.nom AS contact_nom,
       c.empresa AS contact_empresa
     FROM public.quotes q
     LEFT JOIN public.contacts c ON q.contact_id = c.id
     WHERE
       q.team_id = team_id_param
-      AND (status_param IS NULL OR q.status = status_param) 
+      AND (status_param IS NULL OR q.status = status_param)
       AND (
         search_term_param IS NULL
         OR q.quote_number ILIKE '%' || search_term_param || '%'
         OR c.nom ILIKE '%' || search_term_param || '%'
       )
   ),
-  -- PAS 2: Recompte (Imitant el patró 'invoices')
   counted_quotes AS (
-     SELECT *, COUNT(*) OVER() AS total_count
-     FROM filtered_quotes
+    SELECT *,
+           COUNT(*) OVER() AS total_count
+    FROM filtered_quotes
   )
-  
-  -- PAS 3: Ordenació i Paginació
   SELECT *
-  FROM counted_quotes fq -- ✅ Utilitzem un àlies (fq)
+  FROM counted_quotes fq
   ORDER BY
-    -- ✅ Arreglem l'ambigüitat '42702' utilitzant l'àlies 'fq'
     CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'asc' THEN fq.issue_date END ASC NULLS LAST,
     CASE WHEN sort_by_param = 'issue_date' AND sort_order_param = 'desc' THEN fq.issue_date END DESC NULLS LAST,
     CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'asc' THEN fq.quote_number END ASC NULLS LAST,
     CASE WHEN sort_by_param = 'quote_number' AND sort_order_param = 'desc' THEN fq.quote_number END DESC NULLS LAST,
     CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'asc' THEN fq.contact_nom END ASC NULLS LAST,
     CASE WHEN sort_by_param = 'client_name' AND sort_order_param = 'desc' THEN fq.contact_nom END DESC NULLS LAST,
-    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN fq.total END ASC NULLS LAST,
-    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN fq.total END DESC NULLS LAST,
+    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'asc' THEN fq.total_amount END ASC NULLS LAST,
+    CASE WHEN sort_by_param = 'total' AND sort_order_param = 'desc' THEN fq.total_amount END DESC NULLS LAST,
     CASE WHEN sort_by_param = 'status' AND sort_order_param = 'asc' THEN fq.status::text END ASC NULLS LAST,
     CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN fq.status::text END DESC NULLS LAST
   LIMIT limit_param
@@ -2439,7 +2530,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_pipeline_stage_type"("p_pipeline_id" bigint, "p_team_id" "uuid", "p_stage_id" bigint, "p_stage_type" "text") RETURNS "void"
@@ -2686,65 +2777,99 @@ ALTER FUNCTION "public"."upsert_invoice_with_items"("invoice_data" "jsonb", "ite
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_quote_with_items"("quote_payload" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO 'public'
-    AS $$
-DECLARE
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    AS $$DECLARE
   final_quote_id bigint;
   user_id uuid := auth.uid();
-  
-  -- ✅ 2. CORRECCIÓ DE RENDIMENT/SEGURETAT:
-  -- Canviem la consulta lenta a 'auth.users' per la nostra funció ràpida.
   v_team_id uuid := public.get_active_team_id();
-  
   item_record jsonb;
 BEGIN
-  -- (La resta del teu codi, que ara fa servir el v_team_id ràpid)
+  
   IF (quote_payload->>'id') = 'new' THEN
-    INSERT INTO public.quotes (contact_id, opportunity_id, quote_number, status, issue_date, expiry_date, notes, subtotal, discount, tax, total, tax_percent, show_quantity, user_id, team_id)
+    INSERT INTO public.quotes (
+      contact_id, opportunity_id, quote_number, status, issue_date, expiry_date, notes, 
+      subtotal, show_quantity, user_id, team_id, secure_id, theme_color,
+      discount_amount, tax_amount, tax_rate, total_amount
+   
+    )
     VALUES (
-      (quote_payload->>'contact_id')::bigint, (quote_payload->>'opportunity_id')::bigint, quote_payload->>'quote_number',
-      (quote_payload->>'status')::quote_status, (quote_payload->>'issue_date')::date, (quote_payload->>'expiry_date')::date,
-      quote_payload->>'notes', (quote_payload->>'subtotal')::numeric, (quote_payload->>'discount')::numeric,
-      (quote_payload->>'tax')::numeric, (quote_payload->>'total')::numeric, (quote_payload->>'tax_percent')::numeric,
-      (quote_payload->>'show_quantity')::boolean, user_id, v_team_id
+      (quote_payload->>'contact_id')::bigint, 
+      (quote_payload->>'opportunity_id')::bigint, 
+      quote_payload->>'quote_number',
+      (quote_payload->>'status')::public.quote_status, 
+      (quote_payload->>'issue_date')::date, 
+      (quote_payload->>'expiry_date')::date,
+      quote_payload->>'notes', 
+      (quote_payload->>'subtotal')::numeric,
+      (quote_payload->>'show_quantity')::boolean, 
+      user_id, 
+      v_team_id,
+      (quote_payload->>'secure_id')::uuid, 
+      quote_payload->>'theme_color',
+
+      (quote_payload->>'discount_amount')::numeric,
+      (quote_payload->>'tax_amount')::numeric,
+      (quote_payload->>'tax_rate')::numeric,
+      (quote_payload->>'total_amount')::numeric
+
     ) RETURNING id INTO final_quote_id;
+  
   ELSE
     final_quote_id := (quote_payload->>'id')::bigint;
+    
     UPDATE public.quotes
-    SET contact_id = (quote_payload->>'contact_id')::bigint, opportunity_id = (quote_payload->>'opportunity_id')::bigint,
-        quote_number = quote_payload->>'quote_number', status = (quote_payload->>'status')::quote_status,
-        issue_date = (quote_payload->>'issue_date')::date, expiry_date = (quote_payload->>'expiry_date')::date,
-        notes = quote_payload->>'notes', subtotal = (quote_payload->>'subtotal')::numeric,
-        discount = (quote_payload->>'discount')::numeric, tax = (quote_payload->>'tax')::numeric,
-        total = (quote_payload->>'total')::numeric, tax_percent = (quote_payload->>'tax_percent')::numeric,
-        show_quantity = (quote_payload->>'show_quantity')::boolean
+    SET 
+      contact_id = (quote_payload->>'contact_id')::bigint, 
+      opportunity_id = (quote_payload->>'opportunity_id')::bigint,
+      quote_number = quote_payload->>'quote_number', 
+      status = (quote_payload->>'status')::public.quote_status,
+      issue_date = (quote_payload->>'issue_date')::date, 
+      expiry_date = (quote_payload->>'expiry_date')::date,
+      notes = quote_payload->>'notes', 
+      subtotal = (quote_payload->>'subtotal')::numeric,
+      show_quantity = (quote_payload->>'show_quantity')::boolean,
+      theme_color = quote_payload->>'theme_color',
+      discount_amount = (quote_payload->>'discount_amount')::numeric,
+      tax_amount = (quote_payload->>'tax_amount')::numeric,
+      tax_rate = (quote_payload->>'tax_rate')::numeric,
+      total_amount = (quote_payload->>'total_amount')::numeric
+
+    
     WHERE id = final_quote_id AND quotes.team_id = v_team_id;
+    
     DELETE FROM public.quote_items WHERE quote_id = final_quote_id;
   END IF;
 
-  IF jsonb_typeof(quote_payload->'items') = 'array' AND jsonb_array_length(quote_payload->'items') > 0 THEN
-    FOR item_record IN SELECT * FROM jsonb_array_elements(quote_payload->'items') LOOP
+  IF jsonb_typeof(quote_payload->'items') = 'array' 
+     AND jsonb_array_length(quote_payload->'items') > 0 THEN
+    FOR item_record IN 
+      SELECT * FROM jsonb_array_elements(quote_payload->'items') 
+    LOOP
       INSERT INTO public.quote_items (
         quote_id, product_id, description, quantity, unit_price, total, user_id, team_id
       )
       VALUES (
-        final_quote_id, (item_record->>'product_id')::bigint, item_record->>'description',
-        (item_record->>'quantity')::numeric, (item_record->>'unit_price')::numeric,
+        final_quote_id,
+        (item_record->>'product_id')::bigint,
+        item_record->>'description',
+        (item_record->>'quantity')::numeric,
+        (item_record->>'unit_price')::numeric,
         (item_record->>'quantity')::numeric * (item_record->>'unit_price')::numeric,
-        user_id, v_team_id
+        user_id,
+        v_team_id
       );
     END LOOP;
   END IF;
 
   IF (quote_payload->>'opportunity_id') IS NOT NULL THEN
-    UPDATE public.opportunities SET stage_name = 'Proposta Enviada'
-    WHERE id = (quote_payload->>'opportunity_id')::bigint AND opportunities.team_id = v_team_id;
+    UPDATE public.opportunities 
+    SET stage_name = 'Proposta Enviada'
+    WHERE id = (quote_payload->>'opportunity_id')::bigint 
+      AND opportunities.team_id = v_team_id;
   END IF;
 
   RETURN jsonb_build_object('quote_id', final_quote_id);
-END;
-$$;
+END;$$;
 
 
 ALTER FUNCTION "public"."upsert_quote_with_items"("quote_payload" "jsonb") OWNER TO "postgres";
@@ -3161,6 +3286,35 @@ CREATE TABLE IF NOT EXISTS "public"."expense_attachments" (
 ALTER TABLE "public"."expense_attachments" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."expense_categories" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text"
+);
+
+
+ALTER TABLE "public"."expense_categories" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."expense_item_taxes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "expense_item_id" "uuid" NOT NULL,
+    "tax_rate_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "rate" numeric NOT NULL,
+    "amount" numeric NOT NULL
+);
+
+
+ALTER TABLE "public"."expense_item_taxes" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."expense_item_taxes"."amount" IS 'Import de l''impost calculat per a aquesta línia.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."expense_items" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "expense_id" bigint NOT NULL,
@@ -3170,7 +3324,8 @@ CREATE TABLE IF NOT EXISTS "public"."expense_items" (
     "total" numeric GENERATED ALWAYS AS (("quantity" * "unit_price")) STORED,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "user_id" "uuid",
-    "team_id" "uuid"
+    "team_id" "uuid",
+    "category_id" "uuid"
 );
 
 
@@ -3245,6 +3400,20 @@ CREATE TABLE IF NOT EXISTS "public"."invoice_deliveries" (
 ALTER TABLE "public"."invoice_deliveries" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."invoice_item_taxes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "invoice_item_id" "uuid" NOT NULL,
+    "tax_rate_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "rate" numeric NOT NULL,
+    "amount" numeric NOT NULL
+);
+
+
+ALTER TABLE "public"."invoice_item_taxes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."invoice_items" (
     "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
     "invoice_id" bigint NOT NULL,
@@ -3278,8 +3447,8 @@ CREATE TABLE IF NOT EXISTS "public"."invoices" (
     "status" "text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "subtotal" numeric,
-    "tax_rate" numeric DEFAULT 21,
-    "tax_amount" numeric,
+    "legacy_tax_rate" numeric DEFAULT 21,
+    "legacy_tax_amount" numeric,
     "notes" "text",
     "extra_data" "jsonb",
     "discount_amount" numeric,
@@ -3311,6 +3480,8 @@ CREATE TABLE IF NOT EXISTS "public"."invoices" (
     "payment_details" "text",
     "company_logo_url" "text",
     "client_reference" "text",
+    "tax_amount" numeric DEFAULT 0 NOT NULL,
+    "retention_amount" numeric DEFAULT 0 NOT NULL,
     CONSTRAINT "invoices_status_check" CHECK (("status" = ANY (ARRAY['Draft'::"text", 'Issued'::"text", 'Paid'::"text", 'Cancelled'::"text", 'Overdue'::"text", 'Sent'::"text"])))
 );
 
@@ -3492,13 +3663,24 @@ CREATE TABLE IF NOT EXISTS "public"."prices" (
 ALTER TABLE "public"."prices" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."product_taxes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "product_id" bigint NOT NULL,
+    "tax_rate_id" "uuid" NOT NULL
+);
+
+
+ALTER TABLE "public"."product_taxes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."products" (
     "id" bigint NOT NULL,
     "user_id" "uuid" NOT NULL,
     "name" "text" NOT NULL,
     "price" numeric NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "iva" numeric,
+    "legacy_tax_rate" numeric,
     "discount" numeric,
     "description" "text",
     "category" "text",
@@ -3618,9 +3800,6 @@ CREATE TABLE IF NOT EXISTS "public"."quotes" (
     "expiry_date" "date",
     "notes" "text",
     "subtotal" numeric(10,2) NOT NULL,
-    "discount" numeric(10,2) DEFAULT 0,
-    "tax" numeric(10,2) DEFAULT 0,
-    "total" numeric(10,2) NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"(),
     "theme_color" "text" DEFAULT '#8A2BE2'::"text",
     "opportunity_id" bigint,
@@ -3629,9 +3808,12 @@ CREATE TABLE IF NOT EXISTS "public"."quotes" (
     "sent_at" timestamp with time zone,
     "rejection_reason" "text",
     "team_id" "uuid",
-    "tax_percent" numeric DEFAULT 21,
     "show_quantity" boolean DEFAULT true NOT NULL,
-    "sequence_number" integer
+    "sequence_number" integer,
+    "tax_rate" numeric(5,4),
+    "tax_amount" numeric(10,2),
+    "discount_amount" numeric(10,2),
+    "total_amount" numeric(10,2)
 );
 
 
@@ -3791,6 +3973,28 @@ ALTER TABLE "public"."tasks" ALTER COLUMN "id" ADD GENERATED BY DEFAULT AS IDENT
     NO MAXVALUE
     CACHE 1
 );
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."tax_rates" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "rate" numeric NOT NULL,
+    "type" "public"."tax_type" DEFAULT 'vat'::"public"."tax_type" NOT NULL,
+    "is_default" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."tax_rates" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."tax_rates"."rate" IS 'Percentatge (ex: 21.00). Sempre positiu.';
+
+
+
+COMMENT ON COLUMN "public"."tax_rates"."type" IS 'Defineix si l''impost SUMA (vat) o RESTA (retention).';
 
 
 
@@ -4014,6 +4218,16 @@ ALTER TABLE ONLY "public"."expense_attachments"
 
 
 
+ALTER TABLE ONLY "public"."expense_categories"
+    ADD CONSTRAINT "expense_categories_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."expense_item_taxes"
+    ADD CONSTRAINT "expense_item_taxes_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."expense_items"
     ADD CONSTRAINT "expense_items_pkey" PRIMARY KEY ("id");
 
@@ -4051,6 +4265,11 @@ ALTER TABLE ONLY "public"."invoice_attachments"
 
 ALTER TABLE ONLY "public"."invoice_deliveries"
     ADD CONSTRAINT "invoice_deliveries_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."invoice_item_taxes"
+    ADD CONSTRAINT "invoice_item_taxes_pkey" PRIMARY KEY ("id");
 
 
 
@@ -4101,6 +4320,11 @@ ALTER TABLE ONLY "public"."platform_documents"
 
 ALTER TABLE ONLY "public"."prices"
     ADD CONSTRAINT "prices_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."product_taxes"
+    ADD CONSTRAINT "product_taxes_pkey" PRIMARY KEY ("id");
 
 
 
@@ -4194,6 +4418,11 @@ ALTER TABLE ONLY "public"."tasks"
 
 
 
+ALTER TABLE ONLY "public"."tax_rates"
+    ADD CONSTRAINT "tax_rates_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."team_credentials"
     ADD CONSTRAINT "team_credentials_pkey" PRIMARY KEY ("id");
 
@@ -4231,6 +4460,21 @@ ALTER TABLE ONLY "public"."tickets"
 
 ALTER TABLE ONLY "public"."tickets"
     ADD CONSTRAINT "tickets_user_id_provider_message_id_key" UNIQUE ("user_id", "provider_message_id");
+
+
+
+ALTER TABLE ONLY "public"."product_taxes"
+    ADD CONSTRAINT "unique_product_tax" UNIQUE ("product_id", "tax_rate_id");
+
+
+
+ALTER TABLE ONLY "public"."expense_categories"
+    ADD CONSTRAINT "unique_team_category_name" UNIQUE ("team_id", "name");
+
+
+
+ALTER TABLE ONLY "public"."tax_rates"
+    ADD CONSTRAINT "unique_team_tax_name" UNIQUE ("team_id", "name");
 
 
 
@@ -4274,6 +4518,10 @@ CREATE INDEX "idx_contacts_user_id_created_at" ON "public"."contacts" USING "btr
 
 
 CREATE INDEX "idx_contacts_user_id_last_interaction" ON "public"."contacts" USING "btree" ("user_id", "last_interaction_at");
+
+
+
+CREATE INDEX "idx_expenses_category_id" ON "public"."expenses" USING "btree" ("category_id");
 
 
 
@@ -4468,8 +4716,33 @@ ALTER TABLE ONLY "public"."expense_attachments"
 
 
 
+ALTER TABLE ONLY "public"."expense_categories"
+    ADD CONSTRAINT "expense_categories_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."expense_item_taxes"
+    ADD CONSTRAINT "expense_item_taxes_expense_item_id_fkey" FOREIGN KEY ("expense_item_id") REFERENCES "public"."expense_items"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."expense_item_taxes"
+    ADD CONSTRAINT "expense_item_taxes_tax_rate_id_fkey" FOREIGN KEY ("tax_rate_id") REFERENCES "public"."tax_rates"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."expense_item_taxes"
+    ADD CONSTRAINT "expense_item_taxes_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."expense_items"
     ADD CONSTRAINT "expense_items_expense_id_fkey" FOREIGN KEY ("expense_id") REFERENCES "public"."expenses"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."expenses"
+    ADD CONSTRAINT "expenses_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "public"."expense_categories"("id") ON DELETE SET NULL;
 
 
 
@@ -4545,6 +4818,21 @@ ALTER TABLE ONLY "public"."invoice_deliveries"
 
 ALTER TABLE ONLY "public"."invoice_deliveries"
     ADD CONSTRAINT "invoice_deliveries_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_item_taxes"
+    ADD CONSTRAINT "invoice_item_taxes_invoice_item_id_fkey" FOREIGN KEY ("invoice_item_id") REFERENCES "public"."invoice_items"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."invoice_item_taxes"
+    ADD CONSTRAINT "invoice_item_taxes_tax_rate_id_fkey" FOREIGN KEY ("tax_rate_id") REFERENCES "public"."tax_rates"("id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."invoice_item_taxes"
+    ADD CONSTRAINT "invoice_item_taxes_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4640,6 +4928,21 @@ ALTER TABLE ONLY "public"."pipeline_stages"
 
 ALTER TABLE ONLY "public"."pipelines"
     ADD CONSTRAINT "pipelines_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."product_taxes"
+    ADD CONSTRAINT "product_taxes_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."product_taxes"
+    ADD CONSTRAINT "product_taxes_tax_rate_id_fkey" FOREIGN KEY ("tax_rate_id") REFERENCES "public"."tax_rates"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."product_taxes"
+    ADD CONSTRAINT "product_taxes_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -4765,6 +5068,11 @@ ALTER TABLE ONLY "public"."tasks"
 
 ALTER TABLE ONLY "public"."tasks"
     ADD CONSTRAINT "tasks_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."tax_rates"
+    ADD CONSTRAINT "tax_rates_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
 
 
 
@@ -5050,6 +5358,26 @@ CREATE POLICY "Els usuaris poden crear els seus propis equips" ON "public"."team
 
 
 
+CREATE POLICY "Els usuaris poden gestionar els impostos del seu equip" ON "public"."tax_rates" USING (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els usuaris poden gestionar els impostos dels items de factura" ON "public"."invoice_item_taxes" USING (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els usuaris poden gestionar els impostos dels items del seu equ" ON "public"."expense_item_taxes" USING (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els usuaris poden gestionar els impostos dels seus productes" ON "public"."product_taxes" USING (("team_id" = "public"."get_active_team_id"()));
+
+
+
+CREATE POLICY "Els usuaris poden gestionar les categories del seu equip" ON "public"."expense_categories" USING (("team_id" = "public"."get_active_team_id"()));
+
+
+
 CREATE POLICY "Els usuaris poden veure les seves pròpies invitacions" ON "public"."invitations" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "user_id"));
 
 
@@ -5190,6 +5518,12 @@ ALTER TABLE "public"."email_templates" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."expense_attachments" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."expense_categories" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."expense_item_taxes" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."expense_items" ENABLE ROW LEVEL SECURITY;
 
 
@@ -5207,6 +5541,9 @@ ALTER TABLE "public"."invoice_attachments" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."invoice_deliveries" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."invoice_item_taxes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."invoice_items" ENABLE ROW LEVEL SECURITY;
@@ -5231,6 +5568,9 @@ ALTER TABLE "public"."pipelines" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."prices" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."product_taxes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."products" ENABLE ROW LEVEL SECURITY;
@@ -5268,6 +5608,9 @@ ALTER TABLE "public"."suppliers" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."tasks" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."tax_rates" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."team_credentials" ENABLE ROW LEVEL SECURITY;
@@ -5407,6 +5750,12 @@ GRANT ALL ON FUNCTION "public"."get_dashboard_stats"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") TO "anon";
 GRANT ALL ON FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."get_dashboard_stats_for_team"("p_team_id" "uuid") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_filtered_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category_id" "uuid", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."get_filtered_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category_id" "uuid", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_filtered_expenses"("p_team_id" "uuid", "p_search_term" "text", "p_category_id" "uuid", "p_status" "text", "p_sort_by" "text", "p_sort_order" "text", "p_limit" integer, "p_offset" integer) TO "service_role";
 
 
 
@@ -5644,9 +5993,9 @@ GRANT ALL ON FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid
 
 
 
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") TO "anon";
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "limit_param" integer, "offset_param" integer, "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text") TO "service_role";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "anon";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "authenticated";
+GRANT ALL ON FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) TO "service_role";
 
 
 
@@ -5836,6 +6185,18 @@ GRANT ALL ON TABLE "public"."expense_attachments" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."expense_categories" TO "anon";
+GRANT ALL ON TABLE "public"."expense_categories" TO "authenticated";
+GRANT ALL ON TABLE "public"."expense_categories" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."expense_item_taxes" TO "anon";
+GRANT ALL ON TABLE "public"."expense_item_taxes" TO "authenticated";
+GRANT ALL ON TABLE "public"."expense_item_taxes" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."expense_items" TO "anon";
 GRANT ALL ON TABLE "public"."expense_items" TO "authenticated";
 GRANT ALL ON TABLE "public"."expense_items" TO "service_role";
@@ -5869,6 +6230,12 @@ GRANT ALL ON TABLE "public"."invoice_attachments" TO "service_role";
 GRANT ALL ON TABLE "public"."invoice_deliveries" TO "anon";
 GRANT ALL ON TABLE "public"."invoice_deliveries" TO "authenticated";
 GRANT ALL ON TABLE "public"."invoice_deliveries" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."invoice_item_taxes" TO "anon";
+GRANT ALL ON TABLE "public"."invoice_item_taxes" TO "authenticated";
+GRANT ALL ON TABLE "public"."invoice_item_taxes" TO "service_role";
 
 
 
@@ -5953,6 +6320,12 @@ GRANT ALL ON TABLE "public"."platform_documents" TO "service_role";
 GRANT ALL ON TABLE "public"."prices" TO "anon";
 GRANT ALL ON TABLE "public"."prices" TO "authenticated";
 GRANT ALL ON TABLE "public"."prices" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."product_taxes" TO "anon";
+GRANT ALL ON TABLE "public"."product_taxes" TO "authenticated";
+GRANT ALL ON TABLE "public"."product_taxes" TO "service_role";
 
 
 
@@ -6055,6 +6428,12 @@ GRANT ALL ON TABLE "public"."tasks" TO "service_role";
 GRANT ALL ON SEQUENCE "public"."tasks_id_seq" TO "anon";
 GRANT ALL ON SEQUENCE "public"."tasks_id_seq" TO "authenticated";
 GRANT ALL ON SEQUENCE "public"."tasks_id_seq" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."tax_rates" TO "anon";
+GRANT ALL ON TABLE "public"."tax_rates" TO "authenticated";
+GRANT ALL ON TABLE "public"."tax_rates" TO "service_role";
 
 
 

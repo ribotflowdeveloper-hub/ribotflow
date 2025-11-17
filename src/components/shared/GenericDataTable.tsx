@@ -327,7 +327,7 @@ export function GenericDataTable<TData extends { id: string | number }>({
             <div className="flex-grow overflow-y-auto bg-card rounded-xl shadow-lg border border-border min-h-0">
                 <Table className="relative">
                    {/* ... (TableHeader i TableBody no canvien) ... */}
-                   <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
+                   <TableHeader className="sticky top-0 bg-card shadow-sm">
                        <TableRow>
                            {columns.map((column, index) => (<SortableHeader key={index} column={column} />))}
                            <TableHead className="text-right">{t('table.actions')}</TableHead>

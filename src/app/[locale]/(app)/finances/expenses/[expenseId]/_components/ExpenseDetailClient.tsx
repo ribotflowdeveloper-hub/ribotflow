@@ -124,6 +124,9 @@ export function ExpenseDetailClient({
             unit_price: item.unit_price || 0,
             total: (item.quantity || 1) * (item.unit_price || 0),
             taxes: availableTaxes.filter(t => t.is_default), // 👈 Assignem impostos per defecte
+            user_id: userId,
+            team_id: teamId,
+            category_id: formData.category_id || null,
         }));
 
         setFormData(prev => {

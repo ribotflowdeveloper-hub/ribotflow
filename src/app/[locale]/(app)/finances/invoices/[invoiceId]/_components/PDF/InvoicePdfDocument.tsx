@@ -217,7 +217,7 @@ export function InvoicePdfDocument({
   const subtotal = Number(invoice.subtotal || 0)
   const discount = Number(invoice.discount_amount || 0)
   const shipping = Number(invoice.shipping_cost || 0)
-  const tax = Number(invoice.tax_amount || 0)
+  const tax = Number(invoice.tax || 0)
   const baseImposable = subtotal - discount
 
   // --- 💡 LÒGICA DE FALLBACK (Correcta) ---
@@ -340,7 +340,7 @@ export function InvoicePdfDocument({
             </View>
             <View style={styles.totalsRow}>
               <Text style={styles.totalsLabel}>
-                IVA ({invoice.tax_rate || 0}%)
+                IVA ({invoice.tax || 0}%)
               </Text>
               <Text style={styles.totalsValue}>
                 {formatCurrency(tax, invoice.currency || 'EUR')}

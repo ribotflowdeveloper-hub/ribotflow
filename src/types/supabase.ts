@@ -702,6 +702,7 @@ export type Database = {
       }
       expense_items: {
         Row: {
+          category_id: string | null
           created_at: string | null
           description: string
           expense_id: number
@@ -713,6 +714,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          category_id?: string | null
           created_at?: string | null
           description: string
           expense_id: number
@@ -724,6 +726,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          category_id?: string | null
           created_at?: string | null
           description?: string
           expense_id?: number

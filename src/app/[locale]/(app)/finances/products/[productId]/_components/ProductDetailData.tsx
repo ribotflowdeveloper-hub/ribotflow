@@ -93,7 +93,7 @@ export async function ProductDetailData({ productId: productIdProp }: ProductDet
 
   return (
     <ProductDetailClient 
-      product={product} 
+      product={{ ...product, product_taxes: [] }} 
       isNew={false} // ✅ Passem 'isNew'
       userId={user.id} // ✅ Passem 'userId'
       teamId={activeTeamId} // ✅ Passem 'teamId'

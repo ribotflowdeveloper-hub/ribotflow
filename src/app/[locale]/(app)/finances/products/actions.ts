@@ -71,7 +71,9 @@ export async function createProduct(
 
   // Ara la validació de 'productService.createProduct' rebrà el 'tax_rate'
   // i 'z.coerce.number()' funcionarà correctament.
-  const result = await productService.createProduct(supabase, user.id, activeTeamId, formData);
+  // Afegim el cinquè argument 'taxIds' (del formData o per defecte)
+  const taxIds = (formData.get('tax_ids') as string) ?? '';
+  const result = await productService.createProduct(supabase, user.id, activeTeamId, formData, taxIds);
 
   if (result.success) {
     // Hem de revalidar tant 'crm' com 'finances' si les rutes conviuen
