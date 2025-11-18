@@ -15,7 +15,8 @@ import {
     type InvoiceFormDataForAction,
 } from '@/types/finances/invoices';
 
-import * as invoiceService from '@/lib/services/finances/invoices/invoicesDetail.service';
+// ✅ ACTUALITZAT: Importem des de la carpeta modular
+import * as invoiceService from '@/lib/services/finances/invoices';
 
 /**
  * ACCIÓ: Desa una factura (capçalera, línies i totals).
@@ -28,16 +29,14 @@ export async function saveInvoiceAction(
   let validationResult;
 
   if (invoiceId === null) {
-    // És una CREACIÓ. Hem de comprovar permís + límit.
+    // Creació: Validem permís + límit
     const limitToCheck: PlanLimit = 'maxInvoicesPerMonth'; 
-    
-    console.log(`[saveInvoiceAction] Comprovant límit: ${limitToCheck}`);
     validationResult = await validateActionAndUsage(
       PERMISSIONS.MANAGE_INVOICES,
       limitToCheck 
     );
   } else {
-    // És una ACTUALITZACIÓ. Només comprovem permís.
+    // Edició: Només validem permís
     validationResult = await validateSessionAndPermission(
       PERMISSIONS.MANAGE_INVOICES
     );
@@ -66,7 +65,7 @@ export async function saveInvoiceAction(
 }
 
 /**
- * ACCIÓ: Esborra una factura
+ * ACCIÓ: Esborra una factura (individual)
  */
 export async function deleteInvoiceAction(invoiceId: number): Promise<ActionResult> {
   const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
@@ -80,6 +79,41 @@ export async function deleteInvoiceAction(invoiceId: number): Promise<ActionResu
   }
 
   return result;
+}
+
+/**
+ * ACCIÓ: Esborra múltiples factures
+ * 🔑 PER QUÈ: Utilitzem .in('id', ids) amb Supabase per fer l'eliminació 
+ * en una sola operació optimitzada (ROW-LEVEL SECURITY és crucial).
+ */
+export async function deleteBulkInvoicesAction(ids: number[]): Promise<ActionResult> {
+    // 🔑 PER QUÈ: Validació de permisos (MANAGE_INVOICES) primer de tot per seguretat.
+    const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
+    if ("error" in session) return { success: false, message: session.error.message };
+    const { supabase, activeTeamId } = session;
+
+    if (ids.length === 0) {
+        return { success: true, message: "No s'ha seleccionat cap factura per eliminar." };
+    }
+    
+    const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .in('id', ids)
+        // 🔑 PER QUÈ: La clàusula .eq('team_id', activeTeamId) és una doble seguretat 
+        // per RLS, assegurant que només es poden eliminar factures del teu equip actiu.
+        .eq('team_id', activeTeamId); 
+
+    if (error) {
+        console.error('Error al realitzar l\'eliminació massiva de factures:', error);
+        return { success: false, message: `Error al eliminar les factures. Prova-ho de nou.` };
+    }
+    
+    // 🔑 PER QUÈ: RevalidatePath força Next.js a tornar a carregar la llista de factures 
+    // per reflectir els canvis al Server Component.
+    revalidatePath('/finances/invoices');
+    
+    return { success: true, message: `S'han eliminat correctament ${ids.length} factures.` };
 }
 
 /**
@@ -129,6 +163,7 @@ export async function deleteInvoiceAttachmentAction(
   const result = await invoiceService.deleteAttachment(supabase, activeTeamId, attachmentId, filePath);
 
   if (result.success) {
+      // No tenim fàcilment l'ID de la factura, així que només revalidem la llista general.
       revalidatePath('/finances/invoices');
   }
 
@@ -158,25 +193,23 @@ export async function finalizeInvoiceAction(
 
 /**
  * ACCIÓ: Envia la factura per email (PDF + Edge Function).
- * ✅ *** CORREGIT AMB ELS 3 ARGUMENTS ***
  */
 export async function sendInvoiceByEmailAction(
   invoiceId: number,
   recipientEmail: string,
-  messageBody: string, // <-- ✅ 1. Acceptem el 3r argument
+  messageBody: string,
 ): Promise<ActionResult> {
 
   const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_INVOICES);
   if ('error' in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
-  // ✅ 2. Passem els 5 arguments al servei
   const result = await invoiceService.sendInvoiceByEmail(
     supabase,
     invoiceId,
     activeTeamId,
     recipientEmail,
-    messageBody // <-- ✅ Passem el 5è argument
+    messageBody
   );
 
   if (result.success) {
@@ -185,3 +218,4 @@ export async function sendInvoiceByEmailAction(
 
   return result;
 }
+

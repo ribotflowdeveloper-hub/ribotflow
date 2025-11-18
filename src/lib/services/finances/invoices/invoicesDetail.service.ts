@@ -1,4 +1,4 @@
-"use server"; 
+"use server";
 
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { type Database } from "@/types/supabase";
@@ -10,7 +10,6 @@ import {
     type InvoiceDetail,
     type InvoiceFormDataForAction,
     type InvoiceItem,
-    // 🚫 'InvoiceRow' i 'TaxRate' no s'utilitzen directament aquí
 } from "@/types/finances/invoices";
 import { type ActionResult } from "@/types/shared/index";
 import { generateInvoicePdfBuffer } from "@/lib/pdf/generateInvoicePDF";
@@ -19,6 +18,9 @@ import { type CompanyProfile } from '@/types/settings/team'
 import { getCompanyProfile } from "@/lib/services/settings/team/team.service";
 import { getContactById } from "@/lib/services/crm/contacts/contacts.service";
 import { fetchInvoiceDetail } from "@/app/[locale]/(app)/finances/invoices/[invoiceId]/_hooks/fetchInvoiceDetail";
+
+// ✅ IMPORTEM EL CERVELL FINANCER
+import { calculateLineValues, calculateDocumentTotals, type FinancialItem } from "@/lib/services/finances/calculations";
 
 // Tipus locals
 type Contact = Database["public"]["Tables"]["contacts"]["Row"] | null;
@@ -30,7 +32,6 @@ function isValidUuid(id: unknown): id is string {
   return regex.test(id);
 }
 
-
 // --- Funcions Internes del Servei ---
 
 async function _upsertInvoiceHeader(
@@ -41,8 +42,6 @@ async function _upsertInvoiceHeader(
     teamId: string,
 ): Promise<{ id: number; error: string | null }> {
     
-    // ✅ CORREGIT: 'InvoiceFormDataForAction' ja OMET
-    // els camps denormalitzats (client_name, etc.)
     const dataToUpsert: Omit<DbTableInsert<'invoices'>, 'id' | 'team_id' | 'user_id' | 'created_at' | 'subtotal' | 'tax_amount' | 'total_amount' | 'retention_amount' | 'legacy_tax_rate' | 'legacy_tax_amount' | 'tax' | 'discount'> = {
         contact_id: invoiceData.contact_id || null,
         budget_id: invoiceData.budget_id || null,
@@ -58,29 +57,17 @@ async function _upsertInvoiceHeader(
         client_reference: invoiceData.client_reference,
         currency: invoiceData.currency || "EUR",
         language: invoiceData.language || "ca",
+        // Guardem els inputs directes, els totals calculats es faran a _updateInvoiceTotals
         discount_amount: Number(invoiceData.discount_amount) || 0,
         shipping_cost: Number(invoiceData.shipping_cost) || 0,
         extra_data: invoiceData.extra_data,
         
-        // 🚫 Camps denormalitzats (client_name, etc.) NO S'HAN D'INCLOURE AQUÍ.
-        // S'afegeixen només al 'finalizeInvoice'
-        client_name: null,
-        client_tax_id: null,
-        client_address: null,
-        client_email: null,
-        company_name: null,
-        company_tax_id: null,
-        company_address: null,
-        company_email: null,
-        company_logo_url: null,
-
-        // Camps Verifactu (null al crear/editar)
-        verifactu_uuid: null,
-        verifactu_qr_data: null,
-        verifactu_signature: null,
-        verifactu_previous_signature: null,
-        sent_at: null,
-        paid_at: null,
+        // Camps denormalitzats null (es posen al finalize)
+        client_name: null, client_tax_id: null, client_address: null, client_email: null,
+        company_name: null, company_tax_id: null, company_address: null, company_email: null, company_logo_url: null,
+        // Camps Verifactu null
+        verifactu_uuid: null, verifactu_qr_data: null, verifactu_signature: null, verifactu_previous_signature: null,
+        sent_at: null, paid_at: null,
     };
 
     let query;
@@ -91,10 +78,8 @@ async function _upsertInvoiceHeader(
             ...dataToUpsert,
             user_id: userId,
             team_id: teamId,
-            total_amount: 0, 
-            subtotal: 0,
-            tax_amount: 0,
-            retention_amount: 0,
+            // Inicialitzem a 0, es corregiran immediatament
+            total_amount: 0, subtotal: 0, tax_amount: 0, retention_amount: 0,
         } as DbTableInsert<'invoices'>);
     }
 
@@ -106,51 +91,31 @@ async function _upsertInvoiceHeader(
     return { id: data.id, error: null };
 }
 
-// ✅ REESCRIT: _syncInvoiceItems (Copiat de 'expenses' i adaptat)
 async function _syncInvoiceItems(
     supabase: SupabaseClient<Database>,
     invoiceId: number,
     items: InvoiceItem[],
     userId: string,
     teamId: string,
-): Promise<{
-    calculatedSubtotal: number;
-    calculatedTotalLineDiscount: number;
-    calculatedTotalVat: number;
-    calculatedTotalRetention: number;
-    error: string | null;
-}> {
-    let calculatedSubtotal = 0;
-    let calculatedTotalLineDiscount = 0;
-    let calculatedTotalVat = 0;
-    let calculatedTotalRetention = 0;
-
-    // 1. Esborrar items antics
+): Promise<{ error: string | null }> {
+    
+    // 1. Neteja d'items eliminats
     const existingValidUuids = items
         ?.map(item => item.id)
         .filter(isValidUuid)
         .map(id => String(id)); 
 
-    let deleteQuery = supabase
-        .from('invoice_items')
-        .delete()
-        .eq('invoice_id', invoiceId);
-
+    let deleteQuery = supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
     if (existingValidUuids && existingValidUuids.length > 0) {
         const filterString = `(${existingValidUuids.join(',')})`;
         deleteQuery = deleteQuery.not('id', 'in', filterString);
     }
-    
     const { error: deleteError } = await deleteQuery;
-    if (deleteError) {
-        return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error esborrant conceptes antics: ${deleteError.message}` };
-    }
+    if (deleteError) return { error: `Error esborrant conceptes antics: ${deleteError.message}` };
     
-    if (!items || items.length === 0) {
-        return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: null };
-    }
+    if (!items || items.length === 0) return { error: null };
 
-    // 2. Preparar 'items' i 'impostos'
+    // 2. Preparació de dades per inserció massiva
     const itemsToUpsert: DbTableInsert<'invoice_items'>[] = [];
     const taxesToInsert: DbTableInsert<'invoice_item_taxes'>[] = [];
     
@@ -158,23 +123,9 @@ async function _syncInvoiceItems(
         const isNew = !isValidUuid(item.id);
         const itemId = isNew ? crypto.randomUUID() : String(item.id);
 
-        const quantity = Number(item.quantity) || 0;
-        const unit_price = Number(item.unit_price) || 0;
-        const lineTotal = quantity * unit_price;
-        calculatedSubtotal += lineTotal;
-
-        // Descomptes de línia
-        let lineDiscount = 0;
-        const discountPercentage = Number(item.discount_percentage) || 0;
-        const discountAmount = Number(item.discount_amount) || 0;
-        if (discountAmount > 0) {
-            lineDiscount = discountAmount;
-        } else if (discountPercentage > 0) {
-            lineDiscount = lineTotal * (discountPercentage / 100);
-        }
-        calculatedTotalLineDiscount += lineDiscount;
-        
-        const itemBase = lineTotal - lineDiscount; // Base per als impostos
+        // ✅ USEM EL CERVELL FINANCER per calcular la base de la línia
+        // Això assegura que el que guardem a la columna 'total' (base) és matemàticament correcte
+        const lineValues = calculateLineValues(item);
 
         itemsToUpsert.push({
             id: itemId,
@@ -183,24 +134,23 @@ async function _syncInvoiceItems(
             team_id: teamId,
             product_id: item.product_id ? Number(item.product_id) : null,
             description: item.description,
-            quantity: quantity,
-            unit_price: unit_price,
-            total: itemBase, // Total de la línia (post-descompte)
-            discount_percentage: discountPercentage > 0 ? discountPercentage : null,
-            discount_amount: discountAmount > 0 ? discountAmount : null,
+            quantity: Number(item.quantity) || 0,
+            unit_price: Number(item.unit_price) || 0,
+            // IMPORTANT: Guardem la BASE IMPOSABLE de la línia (Unit * Qty - Descompte Línia)
+            total: lineValues.baseAmount, 
+            discount_percentage: item.discount_percentage ? Number(item.discount_percentage) : null,
+            discount_amount: item.discount_amount ? Number(item.discount_amount) : null,
             reference_sku: item.reference_sku || null,
         });
         
-        // Impostos de línia
+        // Generació de les files d'impostos associades a la línia
         if (item.taxes && item.taxes.length > 0) {
+            // Primer netegem impostos antics d'aquesta línia per evitar duplicats en updates
+            await supabase.from('invoice_item_taxes').delete().eq('invoice_item_id', itemId);
+
             for (const tax of item.taxes) {
-                const taxAmount = itemBase * (tax.rate / 100);
-                
-                if (tax.type === 'vat') {
-                    calculatedTotalVat += taxAmount;
-                } else if (tax.type === 'retention') {
-                    calculatedTotalRetention += taxAmount;
-                }
+                // Calculem la quota d'aquest impost específic sobre la base de la línia
+                const taxAmount = lineValues.baseAmount * (tax.rate / 100);
                 
                 taxesToInsert.push({
                     team_id: teamId,
@@ -214,64 +164,41 @@ async function _syncInvoiceItems(
         }
     }
 
-    // 3. Executar 'upsert' d'items
+    // 3. Execució DB
     if (itemsToUpsert.length > 0) {
         const { error: upsertError } = await supabase.from('invoice_items').upsert(itemsToUpsert as DbTableInsert<'invoice_items'>[]);
-        if (upsertError) {
-            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error fent upsert d'items: ${upsertError.message}` };
-        }
+        if (upsertError) return { error: `Error fent upsert d'items: ${upsertError.message}` };
     }
     
-    // 4. Sincronitzar Impostos
-    // ✅ CORREGIT: (string | undefined)[] no és string[]
-    const allItemIds = itemsToUpsert.map(i => i.id).filter((id): id is string => !!id);
-    if (allItemIds.length > 0) {
-        const { error: deleteTaxesError } = await supabase.from('invoice_item_taxes').delete().in('invoice_item_id', allItemIds);
-        if (deleteTaxesError) {
-            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error netejant impostos antics: ${deleteTaxesError.message}` };
-        }
-    }
-
     if (taxesToInsert.length > 0) {
         const { error: insertTaxesError } = await supabase.from('invoice_item_taxes').insert(taxesToInsert);
-        if (insertTaxesError) {
-            return { calculatedSubtotal: 0, calculatedTotalLineDiscount: 0, calculatedTotalVat: 0, calculatedTotalRetention: 0, error: `Error inserint nous impostos: ${insertTaxesError.message}` };
-        }
+        if (insertTaxesError) return { error: `Error inserint nous impostos: ${insertTaxesError.message}` };
     }
 
-    return { 
-        calculatedSubtotal, 
-        calculatedTotalLineDiscount, 
-        calculatedTotalVat, 
-        calculatedTotalRetention,
-        error: null 
-    };
+    return { error: null };
 }
 
-// ✅ REESCRIT: _updateInvoiceTotals (amb els nous camps)
 async function _updateInvoiceTotals(
     supabase: SupabaseClient<Database>,
     invoiceId: number,
-    subtotal: number,
-    totalLineDiscount: number,
-    generalDiscount: number,
-    totalVat: number, // 👈 NOU
-    totalRetention: number, // 👈 NOU
-    shippingCost: number,
+    items: InvoiceItem[],
+    discountAmount: number,
+    shippingCost: number
 ): Promise<{ error: string | null }> {
     
-    const subtotalAfterLineDiscounts = subtotal - totalLineDiscount;
-    const effectiveSubtotal = subtotalAfterLineDiscounts - generalDiscount;
-    const totalAmount = effectiveSubtotal + totalVat - totalRetention + shippingCost;
+    // ✅ USEM EL CERVELL FINANCER per calcular els totals globals
+    // Passem tots els ítems, el descompte general (import) i el cost d'enviament
+    const totals = calculateDocumentTotals(items, discountAmount, shippingCost, false); // false = discountAmount és import, no %
 
     const { error } = await supabase
         .from("invoices")
         .update({
-            subtotal: subtotal, // Subtotal brut
-            tax_amount: totalVat, // Total IVA
-            retention_amount: totalRetention, // Total IRPF
-            total_amount: totalAmount, // Total final
+            subtotal: totals.subtotal,             // Suma bruta
+            tax_amount: totals.taxAmount,          // IVA Total
+            retention_amount: totals.retentionAmount, // IRPF Total
+            total_amount: totals.totalAmount,      // Total a Pagar
             shipping_cost: shippingCost,
+            discount_amount: discountAmount
         })
         .eq("id", invoiceId);
 
@@ -321,7 +248,7 @@ export async function saveInvoice(
     }
     const resultingInvoiceId = invoiceResult.id;
 
-    // 2. Sincronitzar línies i impostos
+    // 2. Sincronitzar línies i impostos (Calculant base de línia)
     const itemsResult = await _syncInvoiceItems(
         supabase,
         resultingInvoiceId,
@@ -333,23 +260,13 @@ export async function saveInvoice(
         return { success: false, message: itemsResult.error, data: { id: resultingInvoiceId } };
     }
     
-    const { 
-        calculatedSubtotal, 
-        calculatedTotalLineDiscount,
-        calculatedTotalVat,
-        calculatedTotalRetention
-    } = itemsResult;
-
-    // 3. Actualitzar totals
+    // 3. Actualitzar totals globals (Calculant totals finals)
     const totalsResult = await _updateInvoiceTotals(
         supabase,
         resultingInvoiceId,
-        calculatedSubtotal,
-        calculatedTotalLineDiscount,
-        Number(invoiceData.discount_amount),
-        calculatedTotalVat, 
-        calculatedTotalRetention,
-        Number(invoiceData.shipping_cost),
+        invoice_items || [],
+        Number(invoiceData.discount_amount) || 0,
+        Number(invoiceData.shipping_cost) || 0,
     );
     if (totalsResult.error) {
         console.warn(`Factura ${resultingInvoiceId} desada, però error actualitzant totals: ${totalsResult.error}`);
@@ -362,7 +279,9 @@ export async function saveInvoice(
     };
 }
 
-// ... (la resta de funcions: deleteInvoice, uploadAttachment, etc. es queden igual)
+// ... (deleteInvoice, uploadAttachment, getAttachmentSignedUrl, deleteAttachment MANTINGUTS IGUALS)
+// ... Només els copio per assegurar que el fitxer estigui complet com demanaves
+
 export async function deleteInvoice(
     supabase: SupabaseClient<Database>,
     invoiceId: number,
@@ -462,14 +381,12 @@ export async function uploadAttachment(
       };
   }
   
-  // ✅ CORREGIT: Assegurem que el tipus coincideix amb 'DbTableInsert'
   const attachmentData: DbTableInsert<'invoice_attachments'> = {
       invoice_id: invoiceId,
       file_path: filePath,
       filename: file.name,
       mime_type: file.type,
       team_id: teamId,
-      // user_id: userId, // Afegeix això si la teva taula 'invoice_attachments' té 'user_id'
   };
   const { data: dbData, error: dbError } = await supabase
       .from("invoice_attachments")
@@ -682,20 +599,14 @@ export async function finalizeInvoice(
     };
 }
 
-
-/**
- * SERVEI: Envia la factura per email (PDF + Edge Function).
- * ✅ *** ADAPTAT AMB LA LÒGICA DE L'INBOX I QUOTES ***
- */
 export async function sendInvoiceByEmail(
     supabase: SupabaseClient, 
     invoiceId: number,
     teamId: string,
-    recipientEmail: string, // L'email del diàleg
+    recipientEmail: string, 
     messageBody: string,
 ): Promise<ActionResult> {
     
-    // Obtenim el ID de l'usuari de la sessió actual
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
          return { success: false, message: "Usuari no autenticat." };
@@ -719,9 +630,7 @@ export async function sendInvoiceByEmail(
     }
     const companyProfile: CompanyProfile = companyProfileResult;
 
-    // ✅ 3. LÒGICA DE CONTACTE (copiada de 'inbox.service.ts')
-    // Hem de trobar el contactId basat en el 'recipientEmail' que ens arriba,
-    // o crear el contacte si no existeix.
+    // 3. Lògica de Contacte
     let finalContactId: number;
     const email = recipientEmail.trim().toLowerCase();
     
@@ -735,7 +644,6 @@ export async function sendInvoiceByEmail(
     if (existingContact) {
       finalContactId = existingContact.id;
     } else {
-      // Si no existeix, el creem (com fa l'inbox)
       const newContactData: DbTableInsert<'contacts'> = {
         team_id: teamId,
         email: email,
@@ -754,12 +662,8 @@ export async function sendInvoiceByEmail(
       }
       finalContactId = newContact.id;
     }
-    // --- Fi lògica de contacte
 
     // 4. Generar PDF
-    // Obtenim el contacte (el que acabem de trobar/crear o l'original de la factura)
-    // És millor fer servir el contacte original de la factura pel PDF,
-    // ja que té les dades fiscals correctes, independentment de a qui s'enviï l'email.
     const contactForPdf: Contact = invoiceData.contact_id !== null
         ? await getContactById(supabase, teamId, invoiceData.contact_id)
         : null;
@@ -769,7 +673,7 @@ export async function sendInvoiceByEmail(
         pdfBuffer = await generateInvoicePdfBuffer(
             invoiceData,
             companyProfile,
-            contactForPdf // Fem servir el contacte original per les dades del PDF
+            contactForPdf 
         );
     } catch (error) {
         console.error("Error generant el PDF al servidor:", error);
@@ -779,20 +683,18 @@ export async function sendInvoiceByEmail(
         };
     }
 
-    // 5. Lògica d'enviament (adaptada)
+    // 5. Enviar Email (Edge Function)
     const fileName = `factura-${
         invoiceData.invoice_number || invoiceData.id
     }.pdf`;
     
     const emailSubject = `Nova Factura: ${invoiceData.invoice_number || invoiceId} de ${companyProfile.company_name || 'la teva empresa'}`;
-
     const pdfBase64 = pdfBuffer.toString('base64');
 
     try {
-        // ✅ Invoquem la Edge Function amb el PAYLOAD CORRECTE
         const { error: invokeError } = await supabase.functions.invoke('send-email', {
           body: {
-            contactId: finalContactId, // <-- L'ID del contacte a qui enviem
+            contactId: finalContactId,
             subject: emailSubject,
             htmlBody: messageBody,
             attachments: [{
@@ -808,7 +710,6 @@ export async function sendInvoiceByEmail(
              console.error("Error invocant la Edge Function 'send-email':", invokeError);
              return { 
                 success: false, 
-                // Donem un missatge més clar si la funció falla per credencials
                 message: invokeError.message.includes('credentials') 
                   ? "Error d'autenticació. Si us plau, reconnecta el teu compte de correu a la secció d'Integracions."
                   : `Error en el servei d'enviament: ${invokeError.message}` 
@@ -830,7 +731,7 @@ export async function sendInvoiceByEmail(
                 invoice_id: invoiceId,
                 team_id: teamId,
                 method: "email",
-                recipient: recipientEmail, // Guardem l'email on s'ha enviat
+                recipient: recipientEmail, 
             });
         } catch (dbError) {
             console.warn("No s'ha pogut registrar el lliurament:", dbError);

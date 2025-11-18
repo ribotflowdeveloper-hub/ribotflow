@@ -78,37 +78,40 @@ export async function getPublicQuoteData(
 export async function acceptQuote(secureId: string): Promise<FormState> {
   const validation = AcceptQuoteSchema.safeParse(secureId);
   if (!validation.success) {
-    return { success: false, message: validation.error.issues[0].message };
+    return { success: false, message: "Identificador invàlid." };
   }
 
+  // Usem AdminClient per poder executar la funció RPC sense restriccions de sessió
+  // encara que la funció sigui SECURITY DEFINER, és bona pràctica des del server action.
   const supabaseAdmin = createAdminClient();
 
   try {
-    // ✅ CRIDA ÚNICA I TRANSACCIONAL
+    console.log(`[AcceptQuote] Iniciant procés per secure_id: ${secureId}`);
+
     const { error } = await supabaseAdmin.rpc(
       "accept_quote_and_create_invoice",
-      {
-        p_secure_id: secureId,
-      },
+      { p_secure_id: secureId }
     );
-    if (error) throw error;
+
+    if (error) {
+      console.error("[AcceptQuote] Error RPC:", error);
+      // Missatges d'error amigables basats en codis SQL si cal
+      if (error.message.includes("PRESSUPOST_NO_TROBAT")) {
+        return { success: false, message: "Aquest pressupost ja no està disponible." };
+      }
+      throw error;
+    }
 
     return {
       success: true,
-      message: "Pressupost acceptat i esborrany de factura creat correctament.",
+      message: "Pressupost acceptat correctament. S'ha generat la factura.",
     };
   } catch (error: unknown) {
-    // ✅ AQUEST ÉS EL CANVI PER VEURE L'ERROR REAL
-    let errorMessage = "Error desconegut en processar l'acceptació.";
-
-    // Comprovem si l'error és un objecte i té una propietat 'message'
+    let errorMessage = "Error desconegut al servidor.";
     if (typeof error === "object" && error !== null && "message" in error) {
-      // Els errors de Supabase (PostgrestError) tenen el missatge aquí
       errorMessage = (error as { message: string }).message;
     }
-
-    console.error("[acceptQuote Service] Error REAL:", errorMessage); // Log real
-    return { success: false, message: errorMessage }; // Retorna l'error real a la UI
+    return { success: false, message: errorMessage };
   }
 }
 

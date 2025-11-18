@@ -863,7 +863,6 @@
       "unitPrice": "Preu Unitari",
       "taxes": "Impostos",
       "total": "Total",
-    
       "productSelector": {
         "addButton": "Afegir concepte",
         "newProductTitle": "Crear nou producte",
@@ -901,7 +900,7 @@
       "taxableBase": "Base Imposable",
       "taxes": "Impostos (IVA%)",
       "total": "Total",
-      "vat": "IVA"  ,
+      "vat": "IVA",
       "retention": "Retenció"
     },
     "preview": {
@@ -1270,7 +1269,8 @@
     },
     "toast": {
       "deleteSuccess": "Factura esborrada correctament.",
-      "deleteError": "Error en esborrar la factura."
+      "deleteError": "Error en esborrar la factura.",
+      "bulkDeleteSuccess": "Factures eliminades correctament."
     },
     "filters": {
       "searchPlaceholder": "Número o client...",
@@ -2086,7 +2086,13 @@
       "back": "Enrere",
       "save": "Desar",
       "saving": "Desant...",
-      "create": "Crear"
+      "create": "Crear",
+      "selectItems": "Seleccionar ítems",
+      "cancelSelection": "Cancel·lar selecció",
+      "deleteCount": "Eliminar ({count})",
+      "selectedItemsCount": "{count} seleccionats",
+      "selectAll": "Seleccionar-ho tot",
+      "selectItem": "Seleccionar ítem"
     },
     "deleteDialog": {
       "title": "Estàs segur?",
@@ -2095,7 +2101,10 @@
       "confirmButton": "Sí, esborra",
       "cancelButton": "Cancel·la",
       "deleting": "S'està esborrant...",
-      "confirm": "Esborra {item}"
+      "confirm": "Esborra {item}",
+      "titleBulk": "Eliminar {count} elements?",
+      "descriptionBulk": "Estàs a punt d'eliminar permanentment {count} elements seleccionats. Aquesta acció no es pot desfer.",
+      "confirmButtonBulk": "Sí, elimina-ho"
     },
     "pagination": {
       "previous": "Anterior",
@@ -2119,7 +2128,9 @@
         "Cancelled": "Cancel·lada"
       },
       "deleteDialog": {
-        "title": "Vols esborrar aquesta factura?"
+        "title": "Vols esborrar aquesta factura?",
+        "titleBulk": "Eliminar {count} elements?",
+        "descriptionBulk": "Estàs a punt d'eliminar permanentment {count} elements seleccionats. Aquesta acció no es pot desfer."
       }
     },
     "dataTable": {
@@ -2153,6 +2164,9 @@
         "title": "Vols esborrar aquest pressupost?"
       }
     },
+    "errors": {
+      "genericDeleteError": "No s'han pogut eliminar els ítems. Revisa els permisos o la connexió."
+    },
     "fields": {
       "name": "Nom",
       "email": "Email",
@@ -2166,6 +2180,7 @@
       "subject": "Assumpte",
       "lastActivity": "Última activitat"
     }
+
   },
   "SuppliersPage": {
     "title": "Proveïdors",

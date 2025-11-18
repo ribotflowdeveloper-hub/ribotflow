@@ -14,10 +14,12 @@ import {
     type TaxRate,
 } from "@/types/finances/index";
 import { finalizeInvoiceAction, saveInvoiceAction } from "../actions";
-import { fetchTaxRatesAction } from "@/components/features/taxs/fetchTaxRatesAction"; // Ruta centralitzada
-
-import { formatDate } from "@/lib/utils/formatters";
+import { fetchTaxRatesAction } from "@/components/features/taxs/fetchTaxRatesAction"; 
 import { type Database } from "@/types/supabase";
+
+// ✅ IMPORTEM EL CERVELL FINANCER
+import { calculateLineValues, calculateDocumentTotals } from "@/lib/services/finances/calculations";
+
 type Product = Database["public"]["Tables"]["products"]["Row"] & {
     sku?: string | null;
 };
@@ -32,7 +34,8 @@ interface UseInvoiceDetailProps {
 const defaultInitialData: InvoiceFormData = {
     contact_id: null,
     invoice_number: null,
-    issue_date: formatDate(new Date()),
+    // Usem format ISO per defecte per evitar problemes amb inputs type="date"
+    issue_date: new Date().toISOString().split("T")[0],
     due_date: null,
     status: "Draft",
     notes: null,
@@ -50,8 +53,8 @@ const defaultInitialData: InvoiceFormData = {
     subtotal: 0,
     discount_amount: 0,
     shipping_cost: 0,
-    tax_amount: 0, // Total IVA
-    retention_amount: 0, // Total IRPF
+    tax_amount: 0, 
+    retention_amount: 0,
     total_amount: 0,
     client_name: null,
     client_tax_id: null,
@@ -65,92 +68,6 @@ const defaultInitialData: InvoiceFormData = {
     tax: null,
     discount: null,
 };
-
-// ✅ NOU: Funció Helper per calcular el total D'UNA LÍNIA
-// Aquesta és la lògica que volies
-function calculateLineTotal(item: InvoiceItem): number {
-    const itemBase = (item.quantity || 0) * (item.unit_price || 0);
-    let itemVat = 0;
-    let itemRetention = 0;
-
-    // Descomptes de línia primer
-    let lineDiscount = 0;
-    if (item.discount_amount && item.discount_amount > 0) {
-        lineDiscount = Number(item.discount_amount);
-    } else if (item.discount_percentage && item.discount_percentage > 0) {
-        lineDiscount = itemBase * (Number(item.discount_percentage) / 100);
-    }
-
-    const baseAfterLineDiscount = itemBase - lineDiscount;
-
-    // Els impostos s'apliquen sobre la base post-descompte
-    (item.taxes || []).forEach((tax) => {
-        const taxAmount = baseAfterLineDiscount * (tax.rate / 100);
-        if (tax.type === "vat") {
-            itemVat += taxAmount;
-        } else if (tax.type === "retention") {
-            itemRetention += taxAmount;
-        }
-    });
-
-    // El total de la línia és la base (després de descompte de línia) + impostos - retencions
-    return baseAfterLineDiscount + itemVat - itemRetention;
-}
-
-// ✅ NOU: Funció Helper per calcular els totals GENERALS
-// (Aquest és el 'calculateTotals' que l'usuari ja tenia, però separat)
-function calculateMainTotals(
-    items: InvoiceItem[],
-    generalDiscountAmount: number = 0,
-    shippingCost: number = 0,
-) {
-    let subtotal = 0; // Subtotal brut (qty * price)
-    let totalVat = 0;
-    let totalRetention = 0;
-    let totalLineDiscountAmount = 0;
-
-    (items || []).forEach((item) => {
-        const quantity = Number(item.quantity) || 0;
-        const unitPrice = Number(item.unit_price) || 0;
-        const lineTotal = quantity * unitPrice;
-        subtotal += lineTotal;
-
-        let lineDiscount = 0;
-        if (item.discount_amount && item.discount_amount > 0) {
-            lineDiscount = Number(item.discount_amount);
-        } else if (
-            item.discount_percentage && item.discount_percentage > 0
-        ) {
-            lineDiscount = lineTotal *
-                (Number(item.discount_percentage) / 100);
-        }
-        totalLineDiscountAmount += lineDiscount;
-
-        const itemBase = lineTotal - lineDiscount;
-
-        (item.taxes || []).forEach((tax) => {
-            const taxAmount = itemBase * (tax.rate / 100);
-            if (tax.type === "vat") {
-                totalVat += taxAmount;
-            } else if (tax.type === "retention") {
-                totalRetention += taxAmount;
-            }
-        });
-    });
-
-    const subtotalAfterLineDiscounts = subtotal - totalLineDiscountAmount;
-    const effectiveSubtotal = subtotalAfterLineDiscounts -
-        generalDiscountAmount;
-    const totalAmount = effectiveSubtotal + totalVat - totalRetention +
-        shippingCost;
-
-    return {
-        subtotal: subtotal, // Retornem el subtotal brut
-        taxAmount: totalVat,
-        retentionAmount: totalRetention,
-        totalAmount: totalAmount,
-    };
-}
 
 export function useInvoiceDetail({
     initialData,
@@ -170,13 +87,13 @@ export function useInvoiceDetail({
 
     const [formData, setFormData] = useState<InvoiceFormData>(() => {
         if (initialData) {
-            // ✅ Calculem els totals de línia a l'inici
             const initialItems = (initialData.invoice_items || []).map(
                 (item) => ({
                     ...item,
                     id: String(item.id),
-                    taxes: (item as InvoiceItem).taxes || [], // Assegurem que 'taxes' existeix
-                    total: calculateLineTotal(item as InvoiceItem), // 👈 Total real inicial
+                    taxes: (item as InvoiceItem).taxes || [],
+                    // ✅ Càlcul inicial consistent
+                    total: calculateLineValues(item as InvoiceItem).finalLineTotal,
                 }),
             );
 
@@ -185,13 +102,13 @@ export function useInvoiceDetail({
                 ...initialData,
                 id: initialData.id,
                 issue_date: initialData.issue_date
-                    ? formatDate(new Date(initialData.issue_date))
-                    : "",
+                    ? new Date(initialData.issue_date).toISOString().split("T")[0]
+                    : new Date().toISOString().split("T")[0],
                 due_date: initialData.due_date
-                    ? formatDate(new Date(initialData.due_date))
+                    ? new Date(initialData.due_date).toISOString().split("T")[0]
                     : null,
                 status: initialData.status as InvoiceStatus,
-                invoice_items: initialItems, // 👈 Items amb total real
+                invoice_items: initialItems,
                 subtotal: initialData.subtotal ?? 0,
                 tax_amount: initialData.total_amount ?? 0,
                 retention_amount: initialData.retention_amount ?? 0,
@@ -207,60 +124,60 @@ export function useInvoiceDetail({
     const [isLoadingTaxes, setIsLoadingTaxes] = useState(true);
 
     useEffect(() => {
+        let isMounted = true;
         async function loadTaxes() {
             setIsLoadingTaxes(true);
-            const result = await fetchTaxRatesAction();
-            if (result.success && result.data) {
-                setAvailableTaxes(result.data);
-            } else {
-                toast.error(
-                    t("toast.loadTaxesError") ||
-                        "Error al carregar els impostos.",
-                );
+            try {
+                const result = await fetchTaxRatesAction();
+                if (!isMounted) return;
+                
+                if (result.success && result.data) {
+                    setAvailableTaxes(result.data);
+                } else {
+                    console.warn("[useInvoiceDetail] No s'han pogut carregar els impostos:", result.message);
+                }
+            } catch (error) {
+                console.error("[useInvoiceDetail] Error de xarxa carregant impostos:", error);
+            } finally {
+                if (isMounted) setIsLoadingTaxes(false);
             }
-            setIsLoadingTaxes(false);
         }
         loadTaxes();
-    }, [t]);
+        return () => { isMounted = false; };
+    }, []);
 
-    // ✅ MODIFICAT: useEffect ara NOMÉS calcula totals generals
-    // (Això corregeix el bucle infinit)
+    // ✅ useEffect REFACTORITZAT: Recalcula totals globals utilitzant la lògica compartida
     useEffect(() => {
-        const { subtotal, taxAmount, retentionAmount, totalAmount } =
-            calculateMainTotals(
-                formData.invoice_items || [],
-                Number(formData.discount_amount) || 0,
-                Number(formData.shipping_cost) || 0,
-            );
+        const totals = calculateDocumentTotals(
+            formData.invoice_items || [],
+            Number(formData.discount_amount) || 0,
+            Number(formData.shipping_cost) || 0,
+            false // Assumim que el descompte és un import fix (euros), no %
+        );
 
         setFormData((prev) => {
-            // Comprovem si els totals han canviat per evitar bucle
+            // Evitem re-renders innecessaris si res ha canviat
             if (
-                subtotal === prev.subtotal &&
-                taxAmount === prev.tax_amount &&
-                retentionAmount === prev.retention_amount &&
-                totalAmount === prev.total_amount
+                prev.subtotal === totals.subtotal &&
+                prev.tax_amount === totals.taxAmount &&
+                prev.retention_amount === totals.retentionAmount &&
+                prev.total_amount === totals.totalAmount
             ) {
-                return prev; // No hi ha canvis
+                return prev;
             }
 
             return {
                 ...prev,
-                subtotal,
-                tax_amount: taxAmount,
-                retention_amount: retentionAmount,
-                total_amount: totalAmount,
+                subtotal: totals.subtotal,
+                tax_amount: totals.taxAmount,
+                retention_amount: totals.retentionAmount,
+                total_amount: totals.totalAmount,
             };
         });
     }, [
         formData.invoice_items,
         formData.discount_amount,
         formData.shipping_cost,
-        // Afegim dependències per seguretat
-        formData.subtotal,
-        formData.tax_amount,
-        formData.retention_amount,
-        formData.total_amount,
     ]);
 
     const handleFieldChange = useCallback(<K extends keyof InvoiceFormData>(
@@ -270,7 +187,7 @@ export function useInvoiceDetail({
         setFormData((prev) => ({ ...prev, [field]: value }));
     }, []);
 
-    // ✅ MODIFICAT: handleItemChange ara calcula el total de la línia
+    // ✅ handleItemChange REFACTORITZAT: Recalcula línia amb lògica compartida
     const handleItemChange = useCallback(<K extends keyof InvoiceItem>(
         index: number,
         field: K,
@@ -282,39 +199,31 @@ export function useInvoiceDetail({
 
             const updatedItem = { ...currentItems[index], [field]: value };
 
-            // Lògica de descompte de línia
-            if (
-                field === "discount_percentage" &&
-                Number(value) > 0
-            ) {
+            if (field === "discount_percentage" && Number(value) > 0) {
                 updatedItem.discount_amount = null;
-            } else if (
-                field === "discount_amount" &&
-                Number(value) > 0
-            ) {
+            } else if (field === "discount_amount" && Number(value) > 0) {
                 updatedItem.discount_percentage = null;
             }
 
-            // ✅ RECALCULEM EL TOTAL REAL DE LA LÍNIA
-            updatedItem.total = calculateLineTotal(updatedItem);
+            // Recàlcul automàtic del total de la línia
+            updatedItem.total = calculateLineValues(updatedItem).finalLineTotal;
 
             currentItems[index] = updatedItem;
             return { ...prev, invoice_items: currentItems };
         });
     }, []);
 
-    // ✅ NOU: handleItemTaxesChange
+    // ✅ handleItemTaxesChange REFACTORITZAT
     const handleItemTaxesChange = useCallback(
         (index: number, taxes: TaxRate[]) => {
             setFormData((prev) => {
                 const newItems = [...(prev.invoice_items || [])];
                 if (!newItems[index]) return prev;
 
-                // 1. Actualitzem els impostos
                 newItems[index] = { ...newItems[index], taxes: taxes };
-
-                // 2. Recalculem el total D'AQUESTA LÍNIA
-                newItems[index].total = calculateLineTotal(newItems[index]);
+                
+                // Recàlcul automàtic del total de la línia
+                newItems[index].total = calculateLineValues(newItems[index]).finalLineTotal;
 
                 return { ...prev, invoice_items: newItems };
             });
@@ -322,7 +231,7 @@ export function useInvoiceDetail({
         [],
     );
 
-    // ✅ MODIFICAT: 'handleAddItem' (afegeix 'taxes' i calcula 'total')
+    // ✅ handleAddItem REFACTORITZAT
     const handleAddItem = useCallback(() => {
         const newItem: InvoiceItem = {
             id: `temp-${Date.now()}-${Math.random()}`,
@@ -330,9 +239,9 @@ export function useInvoiceDetail({
             description: "",
             quantity: 1,
             unit_price: 0,
-            total: 0, // Es calcularà
+            total: 0,
             created_at: new Date().toISOString(),
-            taxes: availableTaxes.filter((t) => t.is_default), // ✅ NOU
+            taxes: availableTaxes.filter((t) => t.is_default),
             user_id: userId,
             team_id: teamId,
             product_id: null,
@@ -340,14 +249,17 @@ export function useInvoiceDetail({
             discount_amount: null,
             reference_sku: null,
         };
-        newItem.total = calculateLineTotal(newItem); // Calculem total inicial
+        
+        // Recàlcul inicial
+        newItem.total = calculateLineValues(newItem).finalLineTotal;
+        
         setFormData((prev) => ({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
         }));
     }, [formData.id, userId, teamId, availableTaxes]);
 
-    // ✅ MODIFICAT: 'handleAddProductFromLibrary' (afegeix 'taxes' i calcula 'total')
+    // ✅ handleAddProductFromLibrary REFACTORITZAT
     const handleAddProductFromLibrary = useCallback((product: Product) => {
         const newItem: InvoiceItem = {
             id: `temp-${Date.now()}-${Math.random()}`,
@@ -355,9 +267,9 @@ export function useInvoiceDetail({
             description: product.name || product.description || "",
             quantity: 1,
             unit_price: product.price || 0,
-            total: 0, // Es calcularà
+            total: 0,
             created_at: new Date().toISOString(),
-            taxes: availableTaxes.filter((t) => t.is_default), // ✅ NOU
+            taxes: availableTaxes.filter((t) => t.is_default),
             user_id: userId,
             team_id: teamId,
             product_id: product.id,
@@ -365,7 +277,10 @@ export function useInvoiceDetail({
             discount_amount: null,
             reference_sku: product.sku || null,
         };
-        newItem.total = calculateLineTotal(newItem); // Calculem total inicial
+        
+        // Recàlcul inicial
+        newItem.total = calculateLineValues(newItem).finalLineTotal;
+
         setFormData((prev) => ({
             ...prev,
             invoice_items: [...(prev.invoice_items || []), newItem],
@@ -393,12 +308,14 @@ export function useInvoiceDetail({
             const currentInvoiceId = typeof formData.id === "number"
                 ? formData.id
                 : null;
+            
             const result = await saveInvoiceAction(
                 formData as InvoiceFormDataForAction & {
                     invoice_items?: InvoiceItem[];
                 },
                 currentInvoiceId,
             );
+            
             if (result.success && result.data?.id) {
                 toast.success(result.message || t("toast.saveSuccess"));
                 if (isNew || !currentInvoiceId) {
@@ -410,9 +327,8 @@ export function useInvoiceDetail({
                 toast.error(result.message || t("toast.saveError"));
             }
         });
-    }, [formData, isNew, router, t, startTransition, isLocked]);
+    }, [formData, isNew, router, t, isLocked]);
 
-    // ✅ *** REFACTORITZAT 'handleFinalize' AMB LA LÒGICA DE 'setIsFinalizing' ***
     const handleFinalize = useCallback(async () => {
         const currentInvoiceId = typeof formData.id === "number"
             ? formData.id
@@ -430,33 +346,27 @@ export function useInvoiceDetail({
 
         let result;
         try {
-            // Executem l'acció FORA de la transició per poder fer 'await'
-            setIsFinalizing(true); // ✅ Activem el loading manualment
+            setIsFinalizing(true);
             result = await finalizeInvoiceAction(currentInvoiceId);
 
             if (result.success) {
                 toast.success(result.message || t("toast.finalizeSuccess"));
-
-                // Actualitzem l'estat local a l'instant
                 setFormData((prev) => ({ ...prev, status: "Sent" }));
-                setIsLocked(true); // Bloquegem el formulari
-
-                // Refresquem la pàgina (ara sense 'startTransition')
+                setIsLocked(true);
                 router.refresh();
-                setIsFinalizing(false); // Desactivem el loading al final
+                setIsFinalizing(false);
             } else {
                 toast.error(result.message || t("toast.finalizeError"));
-                setIsFinalizing(false); // Desactivem el loading si hi ha error
+                setIsFinalizing(false);
             }
         } catch (error) {
             console.error(error);
             toast.error(t("toast.finalizeError"));
             result = { success: false, message: t("toast.finalizeError") };
-            setIsFinalizing(false); // Desactivem el loading si hi ha error
+            setIsFinalizing(false);
         }
-
-        return result; // Retornem el resultat de l'acció
-    }, [formData.id, isNew, isLocked, router, t]); // ✅ CORRECCIÓ 2: Treiem 'setIsFinalizing' de les dependències
+        return result;
+    }, [formData.id, isNew, isLocked, router, t]);
 
     return {
         formData,

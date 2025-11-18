@@ -1,17 +1,20 @@
+// src/app/[locale]/(app)/finances/invoices/_components/InvoicesClient.tsx
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { PlusCircle, Edit, TriangleAlert } from 'lucide-react';
+// 🆕 Importem totes les icones
+import { PlusCircle, Edit, TriangleAlert, CheckSquare, Square, Trash2, Loader2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 // Tipus i Accions
 import { type InvoiceListRow, type InvoiceStatus } from '@/types/finances/invoices';
 import { type ActionResult } from '@/types/shared/actionResult';
 import { fetchPaginatedInvoices, type InvoicePageFilters } from '../actions';
-import { deleteInvoiceAction } from '../[invoiceId]/actions';
+// 🆕 Importem Server Actions
+import { deleteInvoiceAction, deleteBulkInvoicesAction } from '../[invoiceId]/actions';
 
 // Components Compartits
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -31,16 +34,18 @@ import {
 } from "@/components/ui/alert-dialog";
 // Importem els components de l'Alert
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils/utils'; // 💡 S'afegeix un ús per evitar l'error TS/ESLint (encara que realment només s'usi al CSS del component)
 
 // Components Específics
 import { InvoiceFilters } from './InvoicesFilters';
 
-// Hook Genèric
+// Hook Genèric i Hook de Selecció
 import { usePaginatedResource, type PaginatedResponse, type PaginatedActionParams } from '@/hooks/usePaginateResource';
+import { useMultiSelect } from '@/hooks/useMultiSelect'; // 🌟 NOU HOOK
 // Utilitats
 import { formatDate, formatCurrency } from '@/lib/utils/formatters';
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
-// 💡 3. Importem el botó i accions d'Excel
+// 💡 Importem i utilitzem els hooks d'Excel (SOLUCIONA ELS ERRORS 6133)
 import ExcelDropdownButton from '@/components/features/excel/ExcelDropdownButton';
 import { useExcelActions } from '@/components/features/excel/useExelActions';
 // Alias per claredat
@@ -55,6 +60,10 @@ interface InvoicesClientProps {
   clientsForFilter?: { id: number; nom: string | null }[];
   invoiceLimitStatus: UsageCheckResult | null;
 }
+// Alias per tipus d'eliminació massiva (per a l'estat `invoiceToDelete`)
+// 🔑 PER QUÈ: Usem aquest objecte dummy per indicar que l'AlertDialog s'ha d'obrir
+// per eliminació massiva sense trencar els tipus de `invoiceToDelete: TData | null`.
+const BULK_DELETE_ITEM: Partial<InvoiceListRow> = { id: -1, /* isBulk: true */ }; // Ha de complir TData amb 'id'
 
 export function InvoicesClient({
   initialData,
@@ -65,12 +74,14 @@ export function InvoicesClient({
   const t = useTranslations('InvoicesPage');
   const tShared = useTranslations('Shared');
   const t_billing = useTranslations('Shared.limits');
+  const tActions = useTranslations('Shared.actions'); // 💡 Per a missatges d'acció
   const router = useRouter();
   const locale = useLocale();
   const pathname = usePathname();
-  // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
+
+  // --- Lògica d'Excel (SOLUCIONA ELS ERRORS 2304) ---
   const {
-    isPending: isExcelPending, // Renombrem per claredat
+    isPending: isExcelPending,
     excelOptions,
     handleExcelAction
   } = useExcelActions({
@@ -80,14 +91,14 @@ export function InvoicesClient({
       create: 'invoices.create',
       load: 'invoices.load',
       download: 'invoices.download',
-      limit: 'invoices', // Clau de Shared.limits
+      limit: 'invoices',
     }
   });
-  const [showLimitModal, setShowLimitModal] = useState(false);
+  // 💡 setShowLimitModal no llegeix el seu valor, però el canvia. Havia de ser `useState` normal.
+  const [showLimitModal, setShowLimitModal] = useState(false); // SOLUCIONA L'ERROR 2304
 
-  // --- Definició de Columnes (No canvia) ---
+  // 1. DEFINICIÓ DE COLUMNES (Incondicional)
   const allColumns = useMemo<ColumnDef<InvoiceListRow>[]>(() => [
-    // ... (les teves columnes) ...
     {
       accessorKey: 'invoice_number',
       header: t('table.number'),
@@ -158,9 +169,10 @@ export function InvoicesClient({
     }
   ], [t, locale, tShared, pathname]);
 
-  // --- Hook Genèric (No canvia) ---
+
+  // --- 2. Hook de Paginació (Sense MultiSelect) ---
   const {
-    isPending: isTablePending, // Renombrem per claredat
+    isPending: isTablePending,
     data: invoices,
     itemToDelete: invoiceToDelete,
     setItemToDelete: setInvoiceToDelete,
@@ -180,7 +192,6 @@ export function InvoicesClient({
     rowsPerPage,
     handleRowsPerPageChange,
   } = usePaginatedResource<InvoiceListRow, InvoicePageFilters>({
-    // ... (configuració del hook sense canvis)
     initialData,
     initialFilters: { status: 'all', contactId: 'all' },
     initialSort: { column: 'issue_date', order: 'desc' },
@@ -200,22 +211,82 @@ export function InvoicesClient({
     }
   });
 
-  // --- Columnes Visibles i Descripció Esborrat (No canvien) ---
+  const {
+    isMultiSelectActive,
+    selectedItems, // 👈 Aquesta variable ja no es llegeix abans de ser definida
+    isBulkDeletePending,
+    onToggleMultiSelect,
+    onSelectAll,
+    onSelectItem,
+    handleBulkDelete,
+    clearSelection,
+  } = useMultiSelect<InvoiceListRow>({
+    data: invoices,
+    bulkDeleteAction: (ids: (string | number)[]) => {
+      const numberIds = ids.map(id => Number(id)).filter(id => !isNaN(id));
+      return deleteBulkInvoicesAction(numberIds);
+    },
+    toastMessages: {
+      // 🚨 CORREGIT: Ja NO passem selectedItems.length. 
+      // El hook useMultiSelect rebrà la clau i utilitzarà l'array 'ids' per obtenir el comptador internament.
+      bulkDeleteSuccess: t('toast.bulkDeleteSuccess'),
+      bulkDeleteError: tShared('errors.genericDeleteError'),
+    },
+    // Funció de callback: forcem un canvi d'estat per disparar el refetch en usePaginatedResource
+    onDeleteSuccess: () => {
+      handleSort(currentSortColumn || 'issue_date');
+    },
+  });
+
+  // 🔑 PER QUÈ: Neteja la selecció quan es canvia de pàgina o filtre.
+  useEffect(() => {
+    clearSelection();
+    // Si canviem de pàgina, cerca o filtre, netegem la selecció (l'usuari només selecciona a la pàgina actual)
+  }, [page, searchTerm, filters, clearSelection]);
+
+  // --- 4. Lògica de Presentació ---
   const visibleColumns = useMemo(
     () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
     [allColumns, columnVisibility]
   );
-  const deleteDescription = (
-    <>
-      {tShared('deleteDialog.description1')}{' '}
-      <span className="font-bold">{invoiceToDelete?.invoice_number || `INV-${invoiceToDelete?.id}`}</span>.
-      <br />
-      {tShared('deleteDialog.description2')}
-    </>
-  );
 
-  // Variable per mostrar l'alerta
   const isLimitExceeded = invoiceLimitStatus && !invoiceLimitStatus.allowed;
+
+  // 🔑 PER QUÈ: Gestor unificat que decideix si esborra individualment o massivament
+  const handleUnifiedDelete = () => {
+    // Si invoiceToDelete és l'objecte BULK_DELETE_ITEM, cridem la funció massiva.
+    if (invoiceToDelete === BULK_DELETE_ITEM) {
+      handleBulkDelete(); // Crida a l'eliminació massiva de useMultiSelect
+      setInvoiceToDelete(null); // Tanca el diàleg
+    } else if (invoiceToDelete) {
+      handleDelete(); // Crida a l'eliminació individual de usePaginatedResource
+    }
+  };
+
+  // 🔑 PER QUÈ: Aquesta lògica detecta si estem en mode BULK DELETE 
+  // per canviar el títol del diàleg i mostrar el botó.
+  const isBulkDeletionMode = isMultiSelectActive && selectedItems.length > 0;
+  const isBulkDeletionDialog = invoiceToDelete === BULK_DELETE_ITEM; // Nova variable de diàleg
+
+  const deleteTitleKey = isBulkDeletionDialog
+    ? 'Shared.deleteDialog.titleBulk'
+    : 'InvoicesPage.deleteDialog.title';
+
+  const deleteDescription = useMemo(() => {
+    // Usem isBulkDeletionDialog per garantir que els comptadors només es mostrin quan el diàleg s'obre
+    if (isBulkDeletionDialog) {
+      return tShared('deleteDialog.descriptionBulk', { count: selectedItems.length });
+    }
+    return (
+      <>
+        {tShared('deleteDialog.description1')}{' '}
+        <span className="font-bold">{invoiceToDelete?.invoice_number || `INV-${invoiceToDelete?.id}`}</span>.
+        <br />
+        {tShared('deleteDialog.description2')}
+      </>
+    );
+  }, [invoiceToDelete, isBulkDeletionDialog, selectedItems.length, tShared]);
+
 
   // Gestor pel botó "Nova Factura"
   const handleNewInvoiceClick = () => {
@@ -226,18 +297,18 @@ export function InvoicesClient({
     }
   };
 
+
   // --- Renderització ---
   return (
     <div className="flex flex-col gap-4 h-full">
 
-      {/* ✅ AQUEST ÉS EL CANVI PRINCIPAL */}
+      {/* 1. PAGE HEADER (Accions principals: Nova, Excel) */}
       <PageHeader title={t('title')}>
 
-        {/* 1. L'Alerta ara és un fill del PageHeader */}
         {isLimitExceeded && (
           <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
             <TriangleAlert className="h-4 w-4 text-yellow-900" />
-            <AlertTitle className="font-semibold text-xs mb-0"> {/* Més compacte */}
+            <AlertTitle className="font-semibold text-xs mb-0">
               {t_billing('modalTitle', { default: 'Límit assolit' })}
             </AlertTitle>
             <AlertDescription className="text-xs">
@@ -248,31 +319,67 @@ export function InvoicesClient({
             </AlertDescription>
           </Alert>
         )}
-        {/* 💡 5. Botó d'Excel afegit i connectat al hook */}
+
+        {/* Botó Excel (Deshabilitat en mode selecció) */}
         <ExcelDropdownButton
           options={excelOptions}
           onSelect={handleExcelAction}
-          disabled={isExcelPending || isTablePending}
+          disabled={isExcelPending || isTablePending || isMultiSelectActive}
         />
-        {/* 2. El Botó ara és un "germà" de l'Alerta */}
-        <Button onClick={handleNewInvoiceClick}>
+
+        {/* Botó de Nova Factura (Deshabilitat en mode selecció) */}
+        <Button onClick={handleNewInvoiceClick} disabled={isTablePending || isExcelPending || isMultiSelectActive}>
           <PlusCircle className="mr-2 h-4 w-4" /> {t('newButton')}
         </Button>
-
       </PageHeader>
 
-      {/* ❗ Eliminem l'Alert que hi havia aquí abans */}
+      {/* 2. 🌟 BARRA D'ACCIÓ RÀPIDA (Toggle + Filtres + Botó Eliminar Massiu) */}
+      <div className="flex justify-between items-start gap-4">
 
-      {/* Barra de Filtres / Accions (sense canvis) */}
-      <div className="flex justify-between items-center">
-        {/* ... (InvoiceFilters i ColumnToggleButton) ... */}
-        <InvoiceFilters
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          clients={clientsForFilter}
-        />
+        {/* GRUP ESQUERRA: TOGGLE + ELIMINAR MASSIU + FILTRES */}
+        <div className="flex items-center gap-2 flex-grow">
+
+          {/* 🌟 1. Botó de Toggle (Esquerra del tot) */}
+          <Button
+            variant={isMultiSelectActive ? "secondary" : "ghost"}
+            size="icon"
+            onClick={onToggleMultiSelect}
+            title={isMultiSelectActive ? tActions('cancelSelection') : tActions('selectItems')}
+            disabled={isTablePending || isExcelPending}
+            className={cn("flex-shrink-0 h-8 w-8", (isTablePending || isExcelPending) && "opacity-50 pointer-events-none")}
+          >
+            {isMultiSelectActive ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+            <span className="sr-only">{isMultiSelectActive ? tActions('cancelSelection') : tActions('selectItems')}</span>
+          </Button>
+
+          {/* 🌟 2. Botó d'Eliminació Massiva (Apareix només si hi ha selecció) */}
+          {isBulkDeletionMode && ( // Usem isBulkDeletionMode aquí
+            <Button
+              variant="destructive"
+              size="sm"
+              // 🔑 CLAU: Quan cliquem, assignem l'objecte dummy per obrir el diàleg
+              onClick={() => setInvoiceToDelete(BULK_DELETE_ITEM as InvoiceListRow | null)}
+              // Deshabilitat si no hi ha ítems per eliminar
+              disabled={selectedItems.length === 0 || isBulkDeletePending || isTablePending || isExcelPending}
+              className="flex-shrink-0"
+            >
+              {(isBulkDeletePending || isTablePending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              <Trash2 className="w-4 h-4 mr-2" />
+              {tActions('deleteCount', { count: selectedItems.length })}
+            </Button>
+          )}
+
+          {/* 3. Filtres (Deshabilitats si la selecció està activa) */}
+          <InvoiceFilters
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            clients={clientsForFilter}
+          />
+        </div>
+
+        {/* GRUP DRETA: Toggle de Columnes */}
         <ColumnToggleButton
           allColumns={allColumns}
           columnVisibility={columnVisibility}
@@ -280,13 +387,12 @@ export function InvoicesClient({
         />
       </div>
 
-      {/* Taula Genèrica (sense canvis) */}
+      {/* 3. TAULA DE DADES */}
       <GenericDataTable<InvoiceListRow>
-        // ... (props de la taula)
         className="flex-grow overflow-hidden"
         columns={visibleColumns}
         data={invoices}
-        isPending={isExcelPending || isTablePending} // 💡 6. Combinem els 'pending'        
+        isPending={isExcelPending || isTablePending || isBulkDeletePending}
         onSort={handleSort}
         currentSortColumn={currentSortColumn}
         currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
@@ -296,17 +402,28 @@ export function InvoicesClient({
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleRowsPerPageChange}
         rowsPerPageOptions={INVOICE_ROWS_PER_PAGE_OPTIONS}
+
         deleteItem={invoiceToDelete}
         setDeleteItem={setInvoiceToDelete}
-        onDelete={handleDelete}
-        deleteTitleKey="InvoicesPage.deleteDialog.title"
+        // 🔑 CLAU: La taula crida a handleUnifiedDelete (el nostre gestor)
+        onDelete={handleUnifiedDelete}
+
+        // 🌟 PROPS DE SELECCIÓ MÚLTIPLE
+        isMultiSelectActive={isMultiSelectActive}
+        selectedItems={selectedItems}
+        onToggleMultiSelect={onToggleMultiSelect}
+        onSelectAll={onSelectAll}
+        onSelectItem={onSelectItem}
+        onBulkDelete={handleBulkDelete} // No s'utilitza directament, però es passa
+        isBulkDeletePending={isBulkDeletePending}
+
+        deleteTitleKey={deleteTitleKey}
         deleteDescription={deleteDescription}
         emptyStateMessage={t('emptyState')}
       />
 
-      {/* Modal d'avís de límit (sense canvis) */}
+      {/* Modal d'avís de límit (sense canvis, utilitza setShowLimitModal) */}
       <AlertDialog open={showLimitModal} onOpenChange={setShowLimitModal}>
-        {/* ... (contingut del modal) ... */}
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
@@ -323,9 +440,13 @@ export function InvoicesClient({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tShared('actions.cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.push(`/${locale}/settings/billing`)}>
-              {t_billing('upgradeButton')}
+            <AlertDialogCancel>
+              <Button variant="outline" onClick={() => setShowLimitModal(false)}>{tShared('actions.cancel')}</Button>
+            </AlertDialogCancel>
+            <AlertDialogAction>
+              <Link href={`/${locale}/settings/billing`} passHref>
+                <Button>{t_billing('upgradeButton')}</Button>
+              </Link>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
