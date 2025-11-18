@@ -1,204 +1,146 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session";
-import { type ActionResult } from "@/types/shared/index";
 import {
   PERMISSIONS,
+  validateActionAndUsage,
   validateSessionAndPermission,
-  validateActionAndUsage, // ✅ 1. Importem el nostre guardià 3-en-1
 } from "@/lib/permissions/permissions";
-// ❌ 2. Ja no necessitem 'checkUsageLimit' aquí
-// import { checkUsageLimit } from "@/lib/subscription/subscription";
-
-import type { Contact } from "@/types/db"; 
+import { validateUserSession } from "@/lib/supabase/session";
 import * as contactService from "@/lib/services/crm/contacts/contacts.service";
+import type { Contact } from "@/types/db"; // 🟢 Eliminat ContactWithOpportunities
+import type { ActionResult } from "@/types/shared/actionResult";
 
 // ----------------------------------------------------
-// ACCIONS DE LLISTA/FETCHING
+// ACCIONS DE LECTURA
 // ----------------------------------------------------
 
-/**
- * ACCIÓ: Obté tots els contactes/proveïdors de l'equip actiu.
- */
-export async function fetchContacts(): Promise<Partial<Contact>[]> {
-  // Correcte: Aquesta acció només necessita permís de VISTA
+export async function fetchContactsAction(): Promise<
+  ActionResult<Partial<Contact>[]>
+> {
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_CONTACTS);
-
   if ("error" in session) {
-    console.error("No es pot carregar la sessió per obtenir els contactes:", session.error.message);
-    return [];
+    return { success: false, message: session.error.message };
   }
 
-  const { supabase, activeTeamId } = session;
-
   try {
-    return await contactService.fetchContactsList(supabase, activeTeamId);
+    const data = await contactService.getPaginatedContacts(session.supabase, {
+      teamId: session.activeTeamId,
+      page: 1,
+    });
+    return { success: true, data: data.contacts };
   } catch (error) {
-    console.error("Error en carregar els contactes (action):", error);
-    throw new Error("No s'han pogut carregar els contactes.");
+    // 🟢 Utilitzem l'error fent log per evitar "unused var"
+    console.error("Error fetching contacts:", error);
+    return { success: false, message: "Error carregant contactes." };
   }
 }
 
+export async function searchContactsForLinkingAction(
+  query: string,
+): Promise<Pick<Contact, "id" | "nom" | "email">[]> {
+  const session = await validateUserSession();
+  if ("error" in session) return [];
+
+  return await contactService.searchContactsForLinking(
+    session.supabase,
+    session.activeTeamId,
+    query,
+  );
+}
+
 // ----------------------------------------------------
-// ACCIONS DE MUTACIÓ
+// ACCIONS D'ESCRIPTURA
 // ----------------------------------------------------
 
 export async function createContactAction(
   formData: FormData,
-): Promise<{ data: Contact | null; error: { message: string } | null }> {
-  
-  // ✅ 3. VALIDACIÓ 3-EN-1 (Sessió + Rol + Límit)
-  // Aquest guardià automàticament:
-  // 1. Valida la sessió de l'usuari.
-  // 2. Comprova que el rol tingui 'PERMISSIONS.MANAGE_CONTACTS'.
-  // 3. Comprova 'getUsageLimitStatus('maxContacts')' i falla si no és 'allowed'.
+): Promise<ActionResult<Contact>> {
   const validation = await validateActionAndUsage(
     PERMISSIONS.MANAGE_CONTACTS,
-    'maxContacts' // El límit del pla que ha de comprovar
+    "maxContacts",
   );
 
-  // Si la validació falla (permís o límit), retorna l'error
   if ("error" in validation) {
-    return { data: null, error: validation.error };
+    return { success: false, message: validation.error.message };
   }
-  
-  // Si la validació passa, tenim tot el que necessitem
+
   const { supabase, user, activeTeamId } = validation;
 
   try {
-    // 4. Cridem al servei
-    const data = await contactService.createContact(
+    const newContact = await contactService.createContact(
       supabase,
       formData,
       user.id,
-      activeTeamId
+      activeTeamId,
     );
-    
-    // 5. Efecte secundari
+
     revalidatePath("/crm/contactes");
-    return { data, error: null };
-
+    return {
+      success: true,
+      message: "Contacte creat correctament.",
+      data: newContact,
+    };
   } catch (error: unknown) {
-    // 6. Gestió d'errors
-    const message = (error as Error).message;
-    console.error("Error en crear el contacte (action):", message);
-    return { data: null, error: { message } };
+    const msg = error instanceof Error ? error.message : "Error desconegut";
+    return { success: false, message: msg };
   }
 }
 
-/**
- * ACCIÓ: Obté contactes per a un proveïdor (Visió 360).
- */
-export async function fetchContactsForSupplier(supplierId: string) {
-  // Correcte: Aquesta acció només valida la sessió (és de lectura)
-  const session = await validateUserSession();
-  if ("error" in session) {
-    console.error("Session error in fetchContactsForSupplier:", session.error);
-    return [];
-  }
-  const { supabase, activeTeamId } = session;
-
-  try {
-    return await contactService.fetchContactsForSupplier(supabase, supplierId, activeTeamId);
-  } catch (error) {
-    console.error("Error fetching contacts for supplier (action):", (error as Error).message);
-    return [];
-  }
-}
-
-/**
- * ACCIÓ: Cerca contactes que NO estan vinculats.
- */
-export async function searchContactsForLinking(
-  searchTerm: string,
-): Promise<Pick<Contact, "id" | "nom" | "email">[]> {
-  // Correcte: Només valida sessió
-  const session = await validateUserSession();
-  if ("error" in session) return [];
-  const { supabase, activeTeamId } = session;
-
-  return await contactService.searchContactsForLinking(supabase, activeTeamId, searchTerm);
-}
-
-/**
- * ACCIÓ: Vincula un contacte existent a un proveïdor.
- */
-export async function linkContactToSupplier(
+export async function linkContactToSupplierAction(
   contactId: string,
   supplierId: string,
 ): Promise<ActionResult<Contact>> {
-  // Correcte: Aquesta acció no crea contactes, només els modifica.
-  // Només necessita el permís de ROL.
-  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_CONTACTS);
+  const session = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_CONTACTS,
+  );
   if ("error" in session) {
     return { success: false, message: session.error.message };
-  }
-  const { supabase, activeTeamId } = session;
-
-  const contactIdNum = Number(contactId);
-  if (isNaN(contactIdNum)) {
-    return { success: false, message: "L'ID del contacte no és vàlid." };
   }
 
   try {
     const data = await contactService.linkContactToSupplier(
-      supabase,
-      contactIdNum,
+      session.supabase,
+      Number(contactId),
       supplierId,
-      activeTeamId
+      session.activeTeamId,
     );
+
     revalidatePath(`/finances/suppliers/${supplierId}`);
     revalidatePath(`/crm/contactes/${contactId}`);
-    return { success: true, message: "Contacte vinculat.", data: data as Contact };
-  } catch (error: unknown) {
-    const message = (error as Error).message;
-    console.error("Error linking contact (action):", message);
-    return { success: false, message: `Error en vincular el contacte: ${message}` };
+    return { success: true, message: "Contacte vinculat correctament.", data };
+  } catch (error) {
+    console.error("Error linking contact:", error); // 🟢 Log per utilitzar la variable
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Error vinculant contacte",
+    };
   }
 }
 
-/**
- * ACCIÓ: Desvincula un contacte d'un proveïdor.
- */
-export async function unlinkContactFromSupplier(
-  contactId: string, 
+export async function unlinkContactFromSupplierAction(
+  contactId: string,
   supplierId: string,
-): Promise<ActionResult> {
-  // Correcte: Només necessita el permís de ROL.
-  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_CONTACTS);
+): Promise<ActionResult<void>> {
+  const session = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_CONTACTS,
+  );
   if ("error" in session) {
     return { success: false, message: session.error.message };
   }
-  const { supabase, activeTeamId } = session;
-
-  const contactIdNum = Number(contactId);
-  if (isNaN(contactIdNum)) {
-    return { success: false, message: "L'ID del contacte no és vàlid." };
-  }
 
   try {
-    await contactService.unlinkContactFromSupplier(supabase, contactIdNum, activeTeamId);
+    await contactService.unlinkContactFromSupplier(
+      session.supabase,
+      Number(contactId),
+      session.activeTeamId,
+    );
+
     revalidatePath(`/finances/suppliers/${supplierId}`);
     revalidatePath(`/crm/contactes/${contactId}`);
     return { success: true, message: "Contacte desvinculat." };
-  } catch (error: unknown) {
-    const message = (error as Error).message;
-    console.error("Error unlinking contact (action):", error);
-    return { success: false, message: `Error en desvincular el contacte: ${message}` };
+  } catch (error) {
+    console.error("Error unlinking contact:", error); // 🟢 Log per utilitzar la variable
+    return { success: false, message: "Error desvinculant contacte." };
   }
-}
-
-/**
- * ACCIÓ: Obté una llista de tots els contactes d'un equip.
- */
-export async function getTeamContactsList(): Promise<Contact[]> {
-  // Correcte: Només valida sessió
-  const session = await validateUserSession()
-  if ('error' in session) {
-    return []
-  }
-  const { supabase, activeTeamId } = session
-  const contacts = await contactService.getAllContacts(supabase, activeTeamId);
-  return contacts as Contact[];
 }

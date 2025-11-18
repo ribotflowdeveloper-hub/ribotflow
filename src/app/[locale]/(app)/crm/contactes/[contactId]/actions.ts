@@ -2,30 +2,27 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { validateUserSession } from "@/lib/supabase/session";
-
-// ✅ 1. Importem el servei
+import { 
+  PERMISSIONS, 
+  validateSessionAndPermission 
+} from "@/lib/permissions/permissions";
 import * as contactService from "@/lib/services/crm/contacts/contacts.service";
-// ✅ 2. Importem el tipus de detall des del servei
 import type { ContactDetail } from "@/lib/services/crm/contacts/contacts.service";
+import type { ActionResult } from "@/types/shared/actionResult";
 
-// ❌ 3. ELIMINEM LA RE-EXPORTACIÓ DEL TIPUS
-// export type { ContactDetail }; // <--- AQUESTA LÍNIA CAUSA EL REFERENCE ERROR
+// ⚠️ NO exportis tipus des d'aquí. Importa'ls directament del servei on calgui.
 
-/**
- * ACCIÓ: Actualitza un contacte a partir de FormData.
- */
 export async function updateContactAction(
     contactId: number, 
     formData: FormData
-): Promise<{ data: ContactDetail | null; error: { message: string } | null }> {
-    // 1. Validació de sessió
-    const session = await validateUserSession();
-    if ('error' in session) return { data: null, error: session.error };
+): Promise<ActionResult<ContactDetail>> {
+    // 1. Validació de permisos (Editar necessita MANAGE)
+    const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_CONTACTS);
+    if ("error" in session) return { success: false, message: session.error.message };
+
     const { supabase, activeTeamId } = session;
 
     try {
-        // 2. Cridem al servei
         const data = await contactService.updateContact(
             supabase,
             contactId,
@@ -33,43 +30,35 @@ export async function updateContactAction(
             formData
         );
 
-        // 3. Efecte secundari
         revalidatePath(`/crm/contactes/${contactId}`);
-        return { data, error: null };
-
-    } catch (error: unknown) {
-        // 4. Gestió d'errors
-        const message = (error as Error).message;
-        console.error("Error updating contact (action):", message);
-        return { data: null, error: { message } };
+        revalidatePath('/crm/contactes'); // Actualitzem la llista també
+        
+        return { success: true, message: "Contacte actualitzat.", data };
+    } catch (error) {
+        console.error("Error updateContactAction:", error);
+        return { 
+            success: false, 
+            message: error instanceof Error ? error.message : "Error actualitzant el contacte" 
+        };
     }
 }
 
-/**
- * ACCIÓ: Elimina un contacte.
- */
 export async function deleteContactAction(
     contactId: number
-): Promise<{ success: boolean; message: string }> {
-   // 1. Validació de sessió
-   const session = await validateUserSession();
-    if ('error' in session) {
-        return { success: false, message: session.error.message };
-    }
-    const { supabase, activeTeamId } = session;
+): Promise<ActionResult<void>> {
+    const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_CONTACTS);
+    if ("error" in session) return { success: false, message: session.error.message };
 
     try {
-        // 2. Cridem al servei
-        await contactService.deleteContact(supabase, contactId, activeTeamId);
+        await contactService.deleteContact(session.supabase, contactId, session.activeTeamId);
 
-        // 3. Efecte secundari
         revalidatePath('/crm/contactes');
         return { success: true, message: "Contacte eliminat correctament." };
-
-    } catch (error: unknown) {
-        // 4. Gestió d'errors
-        const message = (error as Error).message;
-        console.error("Error deleting contact (action):", message);
-        return { success: false, message };
+    } catch (error) {
+        console.error("Error deleteContactAction:", error);
+        return { 
+            success: false, 
+            message: error instanceof Error ? error.message : "Error eliminant el contacte" 
+        };
     }
 }

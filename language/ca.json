@@ -426,7 +426,30 @@
       "title": "Eliminar contacte?",
       "description1": "Aquesta acció",
       "irreversible": "no es pot desfer",
-      "description2": "Es perdrà tota la informació relacionada amb aquest contacte, incloent activitats, pressupostos i factures."
+      "description2": "Es perdrà tota la informació relacionada amb aquest contacte, incloent activitats, pressupostos i factures.",
+      "description": "Es perdrà tota la informació relacionada amb aquest contacte, incloent activitats, pressupostos i factures.",
+      "cancel":"Cancel·la",
+      "confirm": "Sí, elimina'l"
+    },
+    "table":{
+      "name": "Nom",
+      "status": "Estat",
+      "email": "Email",
+      "phone": "Telèfon",
+      "company": "Empresa",
+      "viewDetails": "Veure detalls",
+      "date": "Data",
+      "type": "Tipus",
+      "value": "Valor",
+      "number": "Número",
+      "total": "Total"
+    },
+    "emptyStates": {
+      "noActivities": "No hi ha activitats per a aquest contacte.",
+      "noOpportunities": "No hi ha oportunitats.",
+      "noQuotes": "No hi ha pressupostos.",
+      "noInvoices": "No hi ha factures.",
+      "opportunities":"No hi ha oportunitats."
     },
     "tabs": {
       "activities": "Activitats",
@@ -478,6 +501,7 @@
       }
     },
     "details": {
+      "professionalInfo": "Informació Professional",
       "title": "Detalls del Contacte",
       "generalInfo": "Informació General",
       "personalInfo": "Informació Personal",
@@ -500,6 +524,9 @@
         "partnerName": "Nom de la parella",
         "hobbies": "Hobbies",
         "company": "Empresa"
+      },
+      "placeholders": {
+        "notes": "Afegeix notes sobre aquest contacte..."
       }
     },
     "status": {
@@ -524,6 +551,15 @@
       "successTitle": "Èxit!",
       "updateSuccess": "Contacte actualitzat.",
       "deleteSuccess": "El contacte ha estat eliminat correctament."
+    },
+    "header": {
+      "viewInRibotflow": "Veure a Ribotflow",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "editingContact": "Editant Contacte..." ,
+      "cancel": "Cancel·lar",
+      "save": "Desar Canvis"
+
     }
   },
   "ComposeEmailDialog": {

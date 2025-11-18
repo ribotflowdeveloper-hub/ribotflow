@@ -300,91 +300,115 @@ ALTER FUNCTION "public"."accept_personal_invitation"("invitation_id" "uuid") OWN
 
 CREATE OR REPLACE FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$DECLARE 
+    AS $$
+DECLARE 
   v_quote public.quotes%ROWTYPE;
+  v_quote_item RECORD; -- Variable per iterar
   v_new_invoice_id BIGINT;
+  v_new_invoice_item_id UUID; -- Assumint que invoice_items.id és UUID segons el teu esquema
+  v_combined_tax_rate NUMERIC;
   v_opportunity_stage_id BIGINT;
   v_pipeline_id BIGINT;
   v_target_stage_id BIGINT;
 BEGIN
-  -- 1️⃣ Actualitzar el pressupost (Ara sense 'accepted_at' ni 'invoice_id')
+  -- 1️⃣ Actualitzar el pressupost a 'Accepted'
   UPDATE public.quotes
-  SET status = 'Accepted'
+  SET status = 'Accepted',
+      updated_at = NOW()
   WHERE secure_id = p_secure_id
   RETURNING * INTO v_quote;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT';
+    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT: No existeix cap pressupost amb aquest secure_id.';
   END IF;
 
-  -- 2️⃣ Actualitzar l’oportunitat (etapa guanyada)
+  -- 2️⃣ Actualitzar l’oportunitat (Gestió CRM)
   IF v_quote.opportunity_id IS NOT NULL THEN
     BEGIN
-      -- Pas 2.1: Obtenir l'etapa actual de l'oportunitat
       SELECT pipeline_stage_id INTO v_opportunity_stage_id
-      FROM public.opportunities
-      WHERE id = v_quote.opportunity_id;
+      FROM public.opportunities WHERE id = v_quote.opportunity_id;
 
-      -- Pas 2.2: Obtenir el pipeline_id a partir de l'etapa actual
-      SELECT pipeline_id INTO v_pipeline_id
-      FROM public.pipeline_stages
-      WHERE id = v_opportunity_stage_id;
+      IF v_opportunity_stage_id IS NOT NULL THEN
+        SELECT pipeline_id INTO v_pipeline_id
+        FROM public.pipeline_stages WHERE id = v_opportunity_stage_id;
 
-      -- Pas 2.3: Trobar l'etapa 'WON' DINS d'aquest pipeline
-      SELECT id INTO v_target_stage_id
-      FROM public.pipeline_stages
-      WHERE pipeline_id = v_pipeline_id
-        AND stage_type = 'WON'
-      LIMIT 1;
+        SELECT id INTO v_target_stage_id
+        FROM public.pipeline_stages
+        WHERE pipeline_id = v_pipeline_id AND stage_type = 'WON'
+        LIMIT 1;
 
-      -- Pas 2.4: Actualitzar l'oportunitat
-      IF v_target_stage_id IS NOT NULL THEN
-        UPDATE public.opportunities
-        SET 
-          pipeline_stage_id = v_target_stage_id,
-          stage_name = 'Guanyat' -- Actualitzem camp denormalitzat
-        WHERE id = v_quote.opportunity_id;
+        IF v_target_stage_id IS NOT NULL THEN
+          UPDATE public.opportunities
+          SET pipeline_stage_id = v_target_stage_id, stage_name = 'Guanyat', updated_at = NOW()
+          WHERE id = v_quote.opportunity_id;
+        END IF;
       END IF;
-    EXCEPTION 
-      WHEN NO_DATA_FOUND THEN 
-        RAISE WARNING 'No s''ha pogut moure l''oportunitat (ID: %), dades no trobades.', v_quote.opportunity_id;
+    EXCEPTION WHEN OTHERS THEN 
+      RAISE WARNING 'Error no crític actualitzant oportunitat: %', SQLERRM;
     END;
   END IF;
 
-  -- 3️⃣ Crear la factura associada
+  -- 3️⃣ Crear la Capçalera de la Factura
   INSERT INTO public.invoices (
     user_id, team_id, contact_id, quote_id, status, 
     total_amount, subtotal, tax_amount, discount_amount,
-    issue_date, due_date , tax_rate
+    issue_date, due_date, notes, currency
   ) VALUES (
     v_quote.user_id, v_quote.team_id, v_quote.contact_id, v_quote.id, 'Draft',
-    v_quote.total_amount, v_quote.subtotal, v_quote.tax_amount, v_quote.discount_amount, tax_rate,
-    CURRENT_DATE,
-    CURRENT_DATE + INTERVAL '30 days'
+    v_quote.total_amount, v_quote.subtotal, v_quote.tax_amount, v_quote.discount_amount,
+    CURRENT_DATE, CURRENT_DATE + INTERVAL '30 days', v_quote.notes, 'EUR'
   )
   RETURNING id INTO v_new_invoice_id;
 
-  -- 4️⃣ Copiar els ítems del pressupost (L'antic Pas 5)
-  INSERT INTO public.invoice_items (
-    invoice_id, product_id, description, quantity, unit_price, 
-    tax_rate, total, user_id, team_id
-  )
-  SELECT
-    v_new_invoice_id,
-    qi.product_id,
-    qi.description,
-    qi.quantity,
-    qi.unit_price,
-    COALESCE(p.tax_rate, 0) AS tax_rate,
-    qi.total,
-    v_quote.user_id,
-    v_quote.team_id
-  FROM public.quote_items qi
-  LEFT JOIN public.products p ON qi.product_id = p.id
-  WHERE qi.quote_id = v_quote.id;
+  -- 4️⃣ Bucle per processar Items i els seus Impostos
+  FOR v_quote_item IN 
+    SELECT * FROM public.quote_items WHERE quote_id = v_quote.id 
+  LOOP
+    
+    -- 4.1 Calcular la taxa total per a la columna legacy 'tax_rate' de invoice_items
+    -- (Suma de totes les taxes aplicades a aquest item per mantenir consistència visual)
+    SELECT COALESCE(SUM(rate), 0)
+    INTO v_combined_tax_rate
+    FROM public.quote_item_taxes
+    WHERE quote_item_id = v_quote_item.id;
 
-END;$$;
+    -- 4.2 Crear l'Item de la Factura
+    INSERT INTO public.invoice_items (
+      invoice_id, product_id, description, quantity, unit_price, 
+      tax_rate, -- Columna legacy poblada amb la suma
+      total, user_id, team_id, reference_sku
+    ) VALUES (
+      v_new_invoice_id,
+      v_quote_item.product_id,
+      v_quote_item.description,
+      v_quote_item.quantity,
+      v_quote_item.unit_price,
+      v_combined_tax_rate, 
+      v_quote_item.total,
+      v_quote.user_id,
+      v_quote.team_id,
+      NULL -- O mapejar reference_sku si existeix a quote_items
+    )
+    RETURNING id INTO v_new_invoice_item_id;
+
+    -- 4.3 Copiar els Impostos Específics a la nova taula invoice_item_taxes
+    INSERT INTO public.invoice_item_taxes (
+      invoice_item_id, tax_rate_id, name, rate, amount, team_id
+    )
+    SELECT 
+      v_new_invoice_item_id, -- Enllacem amb el nou item creat
+      qit.tax_rate_id,
+      qit.name,
+      qit.rate,
+      qit.amount,
+      v_quote.team_id
+    FROM public.quote_item_taxes qit
+    WHERE qit.quote_item_id = v_quote_item.id;
+
+  END LOOP;
+
+END;
+$$;
 
 
 ALTER FUNCTION "public"."accept_quote_and_create_invoice"("p_secure_id" "uuid") OWNER TO "postgres";
@@ -1289,47 +1313,54 @@ ALTER FUNCTION "public"."get_my_teams"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_quote_details"("p_quote_id" bigint) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    LANGUAGE "plpgsql"
     AS $$
 DECLARE
-  quote_data JSONB;
-  opportunities_data JSONB;
+    v_quote jsonb;
+    v_items jsonb;
+    v_opportunities jsonb;
 BEGIN
-  -- ✅ 1. Obtenim les dades del pressupost i els seus items
-  SELECT to_jsonb(q)
-  INTO quote_data
-  FROM (
-    SELECT q.*, COALESCE(jsonb_agg(qi) FILTER (WHERE qi.id IS NOT NULL), '[]'::jsonb) AS items
-    FROM public.quotes q
-    LEFT JOIN public.quote_items qi ON q.id = qi.quote_id
-    WHERE q.id = p_quote_id
-    GROUP BY q.id
-  ) q;
+    -- 1. Obtenir el Pressupost
+    SELECT to_jsonb(q.*) INTO v_quote 
+    FROM quotes q 
+    WHERE id = p_quote_id;
 
-  IF quote_data IS NULL THEN
-    RAISE EXCEPTION 'PRESSUPOST_NO_TROBAT per ID %', p_quote_id;
-  END IF;
+    IF v_quote IS NULL THEN
+        RETURN jsonb_build_object('quote', NULL, 'opportunities', '[]');
+    END IF;
 
-  -- ✅ 2. Si el pressupost té un contacte, busquem les seves oportunitats
-  IF (quote_data->>'contact_id') IS NOT NULL THEN
-    SELECT COALESCE(jsonb_agg(o), '[]'::jsonb)
-    INTO opportunities_data
-    FROM public.opportunities o
-    WHERE o.contact_id = (quote_data->>'contact_id')::BIGINT;
-  ELSE
-    opportunities_data := '[]'::jsonb;
-  END IF;
+    -- 2. Obtenir els Ítems amb les Taxes niades (VERSIÓ SEGURA)
+    SELECT jsonb_agg(
+        to_jsonb(qi.*) || jsonb_build_object(
+            'taxes', (
+                SELECT COALESCE(jsonb_agg(
+                    jsonb_build_object(
+                        'id', qit.tax_rate_id,  -- ID per al selector
+                        'name', qit.name,
+                        'rate', qit.rate,
+                        'amount', qit.amount,
+                        'type', 'vat'           -- Valor per defecte segur
+                    )
+                ), '[]'::jsonb)
+                FROM quote_item_taxes qit
+                WHERE qit.quote_item_id = qi.id
+            )
+        )
+        ORDER BY qi.id ASC
+    ) INTO v_items
+    FROM quote_items qi
+    WHERE qi.quote_id = p_quote_id;
 
-  -- ✅ 3. Retornem un únic objecte JSON amb tota la informació
-  RETURN jsonb_build_object(
-    'quote', quote_data,
-    'opportunities', opportunities_data
-  );
+    -- 3. Obtenir oportunitats (CORREGIT: Sense filtrar per 'status')
+    SELECT COALESCE(jsonb_agg(to_jsonb(o.*)), '[]'::jsonb) INTO v_opportunities
+    FROM opportunities o
+    WHERE contact_id = (v_quote->>'contact_id')::bigint;
+    -- ❌ ELIMINAT: AND status = 'open' (perquè la columna no existeix)
 
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE EXCEPTION 'Error a get_quote_details(%): %', p_quote_id, SQLERRM;
+    RETURN jsonb_build_object(
+        'quote', v_quote || jsonb_build_object('items', COALESCE(v_items, '[]'::jsonb)),
+        'opportunities', v_opportunities
+    );
 END;
 $$;
 
@@ -2465,8 +2496,7 @@ ALTER FUNCTION "public"."search_paginated_invoices"("team_id_param" "uuid", "sta
 
 CREATE OR REPLACE FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text" DEFAULT NULL::"text", "status_param" "public"."quote_status" DEFAULT NULL::"public"."quote_status", "sort_by_param" "text" DEFAULT 'issue_date'::"text", "sort_order_param" "text" DEFAULT 'desc'::"text", "limit_param" integer DEFAULT 20, "offset_param" integer DEFAULT 0) RETURNS TABLE("id" bigint, "sequence_number" integer, "user_id" "uuid", "contact_id" bigint, "team_id" "uuid", "show_quantity" boolean, "status" "public"."quote_status", "issue_date" "date", "expiry_date" "date", "subtotal" numeric, "discount_amount" numeric, "tax_amount" numeric, "tax_rate" numeric, "total_amount" numeric, "created_at" timestamp with time zone, "opportunity_id" bigint, "send_at" timestamp with time zone, "secure_id" "uuid", "sent_at" timestamp with time zone, "quote_number" "text", "notes" "text", "rejection_reason" "text", "theme_color" "text", "contact_nom" "text", "contact_empresa" "text", "total_count" bigint)
     LANGUAGE "plpgsql"
-    AS $$
-BEGIN
+    AS $$BEGIN
   RETURN QUERY
   WITH filtered_quotes AS (
     SELECT
@@ -2482,7 +2512,8 @@ BEGIN
       q.subtotal,
       q.discount_amount,
       q.tax_amount,
-      q.tax_rate,
+      -- q.tax_rate, -- <-- ELIMINADA. Aquesta columna ja no existeix.
+      q.retention_amount, -- ✅ AFEGIDA (Assumeixo que l'has afegit, si no, elimina-la també)
       q.total_amount,
       q.created_at,
       q.opportunity_id,
@@ -2526,8 +2557,7 @@ BEGIN
     CASE WHEN sort_by_param = 'status' AND sort_order_param = 'desc' THEN fq.status::text END DESC NULLS LAST
   LIMIT limit_param
   OFFSET offset_param;
-END;
-$$;
+END;$$;
 
 
 ALTER FUNCTION "public"."search_paginated_quotes"("team_id_param" "uuid", "search_term_param" "text", "status_param" "public"."quote_status", "sort_by_param" "text", "sort_order_param" "text", "limit_param" integer, "offset_param" integer) OWNER TO "postgres";
@@ -2777,99 +2807,116 @@ ALTER FUNCTION "public"."upsert_invoice_with_items"("invoice_data" "jsonb", "ite
 
 
 CREATE OR REPLACE FUNCTION "public"."upsert_quote_with_items"("quote_payload" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$DECLARE
-  final_quote_id bigint;
-  user_id uuid := auth.uid();
-  v_team_id uuid := public.get_active_team_id();
-  item_record jsonb;
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    v_quote_id bigint;
+    v_item jsonb;
+    v_tax jsonb;
+    v_item_id bigint;
+    v_contact_id bigint;
 BEGIN
-  
-  IF (quote_payload->>'id') = 'new' THEN
-    INSERT INTO public.quotes (
-      contact_id, opportunity_id, quote_number, status, issue_date, expiry_date, notes, 
-      subtotal, show_quantity, user_id, team_id, secure_id, theme_color,
-      discount_amount, tax_amount, tax_rate, total_amount
-   
-    )
-    VALUES (
-      (quote_payload->>'contact_id')::bigint, 
-      (quote_payload->>'opportunity_id')::bigint, 
-      quote_payload->>'quote_number',
-      (quote_payload->>'status')::public.quote_status, 
-      (quote_payload->>'issue_date')::date, 
-      (quote_payload->>'expiry_date')::date,
-      quote_payload->>'notes', 
-      (quote_payload->>'subtotal')::numeric,
-      (quote_payload->>'show_quantity')::boolean, 
-      user_id, 
-      v_team_id,
-      (quote_payload->>'secure_id')::uuid, 
-      quote_payload->>'theme_color',
+    -- 1. Recuperar o validar el contact_id
+    v_contact_id := (quote_payload->>'contact_id')::bigint;
 
-      (quote_payload->>'discount_amount')::numeric,
-      (quote_payload->>'tax_amount')::numeric,
-      (quote_payload->>'tax_rate')::numeric,
-      (quote_payload->>'total_amount')::numeric
+    -- 2. Inserir o Actualitzar la capçalera del Pressupost (Quotes)
+    IF (quote_payload->>'id') = 'new' OR (quote_payload->>'id') IS NULL THEN
+        INSERT INTO quotes (
+            team_id, user_id, contact_id, opportunity_id,
+            quote_number, sequence_number, issue_date, expiry_date,
+            status, notes, 
+            subtotal, discount_amount, tax_amount, total_amount,
+            show_quantity, created_at, secure_id
+        )
+        VALUES (
+            (quote_payload->>'team_id')::uuid,
+            (quote_payload->>'user_id')::uuid,
+            v_contact_id,
+            (quote_payload->>'opportunity_id')::bigint,
+            quote_payload->>'quote_number',
+            (quote_payload->>'sequence_number')::int,
+            (quote_payload->>'issue_date')::date,
+            (quote_payload->>'expiry_date')::date,
+            (quote_payload->>'status')::quote_status,
+            quote_payload->>'notes',
+            (quote_payload->>'subtotal')::numeric,
+            (quote_payload->>'discount_amount')::numeric,
+            (quote_payload->>'tax_amount')::numeric,
+            (quote_payload->>'total_amount')::numeric,
+            (quote_payload->>'show_quantity')::boolean,
+            NOW(),
+            COALESCE((quote_payload->>'secure_id')::uuid, gen_random_uuid())
+        )
+        RETURNING id INTO v_quote_id;
+    ELSE
+        v_quote_id := (quote_payload->>'id')::bigint;
+        
+        UPDATE quotes
+        SET 
+            contact_id = v_contact_id,
+            opportunity_id = (quote_payload->>'opportunity_id')::bigint,
+            quote_number = quote_payload->>'quote_number',
+            issue_date = (quote_payload->>'issue_date')::date,
+            expiry_date = (quote_payload->>'expiry_date')::date,
+            status = (quote_payload->>'status')::quote_status,
+            notes = quote_payload->>'notes',
+            subtotal = (quote_payload->>'subtotal')::numeric,
+            discount_amount = (quote_payload->>'discount_amount')::numeric,
+            tax_amount = (quote_payload->>'tax_amount')::numeric,
+            total_amount = (quote_payload->>'total_amount')::numeric,
+            show_quantity = (quote_payload->>'show_quantity')::boolean,
+            updated_at = NOW()
+        WHERE id = v_quote_id;
+    END IF;
 
-    ) RETURNING id INTO final_quote_id;
-  
-  ELSE
-    final_quote_id := (quote_payload->>'id')::bigint;
+    -- 3. Gestionar els Ítems (Quote Items)
+    -- Estratègia: Esborrar tots els items existents i recrear-los. 
+    -- És més net per gestionar canvis en les taxes associades.
     
-    UPDATE public.quotes
-    SET 
-      contact_id = (quote_payload->>'contact_id')::bigint, 
-      opportunity_id = (quote_payload->>'opportunity_id')::bigint,
-      quote_number = quote_payload->>'quote_number', 
-      status = (quote_payload->>'status')::public.quote_status,
-      issue_date = (quote_payload->>'issue_date')::date, 
-      expiry_date = (quote_payload->>'expiry_date')::date,
-      notes = quote_payload->>'notes', 
-      subtotal = (quote_payload->>'subtotal')::numeric,
-      show_quantity = (quote_payload->>'show_quantity')::boolean,
-      theme_color = quote_payload->>'theme_color',
-      discount_amount = (quote_payload->>'discount_amount')::numeric,
-      tax_amount = (quote_payload->>'tax_amount')::numeric,
-      tax_rate = (quote_payload->>'tax_rate')::numeric,
-      total_amount = (quote_payload->>'total_amount')::numeric
+    DELETE FROM quote_items WHERE quote_id = v_quote_id;
+    -- (Nota: Al esborrar l'item, per CASCADE s'esborren les taxes a quote_item_taxes automàticament)
 
-    
-    WHERE id = final_quote_id AND quotes.team_id = v_team_id;
-    
-    DELETE FROM public.quote_items WHERE quote_id = final_quote_id;
-  END IF;
-
-  IF jsonb_typeof(quote_payload->'items') = 'array' 
-     AND jsonb_array_length(quote_payload->'items') > 0 THEN
-    FOR item_record IN 
-      SELECT * FROM jsonb_array_elements(quote_payload->'items') 
+    FOR v_item IN SELECT * FROM jsonb_array_elements(quote_payload->'items')
     LOOP
-      INSERT INTO public.quote_items (
-        quote_id, product_id, description, quantity, unit_price, total, user_id, team_id
-      )
-      VALUES (
-        final_quote_id,
-        (item_record->>'product_id')::bigint,
-        item_record->>'description',
-        (item_record->>'quantity')::numeric,
-        (item_record->>'unit_price')::numeric,
-        (item_record->>'quantity')::numeric * (item_record->>'unit_price')::numeric,
-        user_id,
-        v_team_id
-      );
+        INSERT INTO quote_items (
+            quote_id, team_id, product_id,
+            description, quantity, unit_price, total, user_id
+        )
+        VALUES (
+            v_quote_id,
+            (quote_payload->>'team_id')::uuid,
+            (v_item->>'product_id')::bigint,
+            v_item->>'description',
+            COALESCE((v_item->>'quantity')::numeric, 1),
+            COALESCE((v_item->>'unit_price')::numeric, 0),
+            COALESCE((v_item->>'total')::numeric, 0),
+            (quote_payload->>'user_id')::uuid
+        )
+        RETURNING id INTO v_item_id;
+
+        -- 4. Gestionar les Taxes de l'Ítem (Quote Item Taxes)
+        IF v_item->'taxes' IS NOT NULL AND jsonb_array_length(v_item->'taxes') > 0 THEN
+            FOR v_tax IN SELECT * FROM jsonb_array_elements(v_item->'taxes')
+            LOOP
+                INSERT INTO quote_item_taxes (
+                    team_id, quote_item_id, tax_rate_id, name, rate, amount
+                )
+                VALUES (
+                    (quote_payload->>'team_id')::uuid,
+                    v_item_id,
+                    (v_tax->>'id')::uuid, -- Assumim que el front envia l'ID del tax_rate com 'id'
+                    v_tax->>'name',
+                    (v_tax->>'rate')::numeric,
+                    (v_tax->>'amount')::numeric -- El front ha de calcular l'import d'aquest impost per línia
+                );
+            END LOOP;
+        END IF;
+
     END LOOP;
-  END IF;
 
-  IF (quote_payload->>'opportunity_id') IS NOT NULL THEN
-    UPDATE public.opportunities 
-    SET stage_name = 'Proposta Enviada'
-    WHERE id = (quote_payload->>'opportunity_id')::bigint 
-      AND opportunities.team_id = v_team_id;
-  END IF;
-
-  RETURN jsonb_build_object('quote_id', final_quote_id);
-END;$$;
+    RETURN jsonb_build_object('quote_id', v_quote_id);
+END;
+$$;
 
 
 ALTER FUNCTION "public"."upsert_quote_with_items"("quote_payload" "jsonb") OWNER TO "postgres";
@@ -3763,6 +3810,20 @@ CREATE TABLE IF NOT EXISTS "public"."projects" (
 ALTER TABLE "public"."projects" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."quote_item_taxes" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "team_id" "uuid" NOT NULL,
+    "quote_item_id" bigint NOT NULL,
+    "tax_rate_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "rate" numeric NOT NULL,
+    "amount" numeric NOT NULL
+);
+
+
+ALTER TABLE "public"."quote_item_taxes" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."quote_items" (
     "id" bigint NOT NULL,
     "quote_id" bigint NOT NULL,
@@ -3810,10 +3871,13 @@ CREATE TABLE IF NOT EXISTS "public"."quotes" (
     "team_id" "uuid",
     "show_quantity" boolean DEFAULT true NOT NULL,
     "sequence_number" integer,
-    "tax_rate" numeric(5,4),
-    "tax_amount" numeric(10,2),
+    "legacy_tax_rate" numeric(5,4),
+    "legacy_tax_amount" numeric(10,2),
     "discount_amount" numeric(10,2),
-    "total_amount" numeric(10,2)
+    "total_amount" numeric(10,2),
+    "tax_amount" numeric DEFAULT 0 NOT NULL,
+    "retention_amount" numeric DEFAULT 0 NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"()
 );
 
 
@@ -4358,6 +4422,11 @@ ALTER TABLE ONLY "public"."projects"
 
 
 
+ALTER TABLE ONLY "public"."quote_item_taxes"
+    ADD CONSTRAINT "quote_item_taxes_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."quote_items"
     ADD CONSTRAINT "quote_items_pkey" PRIMARY KEY ("id");
 
@@ -4465,6 +4534,11 @@ ALTER TABLE ONLY "public"."tickets"
 
 ALTER TABLE ONLY "public"."product_taxes"
     ADD CONSTRAINT "unique_product_tax" UNIQUE ("product_id", "tax_rate_id");
+
+
+
+ALTER TABLE ONLY "public"."quote_item_taxes"
+    ADD CONSTRAINT "unique_quote_item_tax" UNIQUE ("quote_item_id", "tax_rate_id");
 
 
 
@@ -4976,6 +5050,21 @@ ALTER TABLE ONLY "public"."projects"
 
 
 
+ALTER TABLE ONLY "public"."quote_item_taxes"
+    ADD CONSTRAINT "quote_item_taxes_quote_item_id_fkey" FOREIGN KEY ("quote_item_id") REFERENCES "public"."quote_items"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."quote_item_taxes"
+    ADD CONSTRAINT "quote_item_taxes_tax_rate_id_fkey" FOREIGN KEY ("tax_rate_id") REFERENCES "public"."tax_rates"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."quote_item_taxes"
+    ADD CONSTRAINT "quote_item_taxes_team_id_fkey" FOREIGN KEY ("team_id") REFERENCES "public"."teams"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."quote_items"
     ADD CONSTRAINT "quote_items_product_id_fkey" FOREIGN KEY ("product_id") REFERENCES "public"."products"("id") ON DELETE SET NULL;
 
@@ -5366,6 +5455,10 @@ CREATE POLICY "Els usuaris poden gestionar els impostos dels items de factura" O
 
 
 
+CREATE POLICY "Els usuaris poden gestionar els impostos dels items de pressupo" ON "public"."quote_item_taxes" USING (("team_id" = "public"."get_active_team_id"()));
+
+
+
 CREATE POLICY "Els usuaris poden gestionar els impostos dels items del seu equ" ON "public"."expense_item_taxes" USING (("team_id" = "public"."get_active_team_id"()));
 
 
@@ -5583,6 +5676,9 @@ ALTER TABLE "public"."project_layouts" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."projects" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."quote_item_taxes" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."quote_items" ENABLE ROW LEVEL SECURITY;
@@ -6356,6 +6452,12 @@ GRANT ALL ON SEQUENCE "public"."project_layouts_id_seq" TO "service_role";
 GRANT ALL ON TABLE "public"."projects" TO "anon";
 GRANT ALL ON TABLE "public"."projects" TO "authenticated";
 GRANT ALL ON TABLE "public"."projects" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."quote_item_taxes" TO "anon";
+GRANT ALL ON TABLE "public"."quote_item_taxes" TO "authenticated";
+GRANT ALL ON TABLE "public"."quote_item_taxes" TO "service_role";
 
 
 

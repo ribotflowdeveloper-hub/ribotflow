@@ -4,37 +4,32 @@
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { type useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 
-// ✅ 1. Importem NOMÉS les accions des de 'actions'
 import { updateContactAction, deleteContactAction } from '../actions';
-// ✅ 2. Importem el TIPUS directament des del SERVEI
 import type { ContactDetail } from '@/lib/services/crm/contacts/contacts.service';
 
-type TFunction = ReturnType<typeof useTranslations<string>>;
-
-/**
- * Hook per gestionar la lògica de la pàgina de detall d'un contacte.
- */
-export function useContactDetail(initialContact: ContactDetail, t: TFunction) {
+export function useContactDetail(initialContact: ContactDetail) {
+    const t = useTranslations('ContactDetailPage'); // Assegura't que la clau existeix
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [isEditing, setIsEditing] = useState(false);
     
+    // Optimistic UI: Podríem utilitzar useOptimistic aquí, però per ara local state va bé
     const [contact, setContact] = useState<ContactDetail>(initialContact);
     const formRef = useRef<HTMLFormElement>(null);
 
     const handleSaveChanges = (formData: FormData) => {
         startTransition(async () => {
-            const { data, error } = await updateContactAction(contact.id, formData);
+            // Afegim l'ID manualment si no ve del form, encara que updateContactAction ja el rep per paràmetre
+            const res = await updateContactAction(contact.id, formData);
             
-            if (error) {
-                console.error("Error updating contact:", error);
-                toast.error(t('toast.errorTitle'), { description: error.message });
-            } else if (data) {
+            if (res.success && res.data) {
                 toast.success(t('toast.successTitle'), { description: t('toast.updateSuccess') });
-                setContact(data);
+                setContact(res.data);
                 setIsEditing(false);
+            } else {
+                toast.error(t('toast.errorTitle'), { description: res.message });
             }
         });
     };
@@ -42,18 +37,19 @@ export function useContactDetail(initialContact: ContactDetail, t: TFunction) {
     const handleDelete = () => {
         startTransition(async () => {
             const res = await deleteContactAction(contact.id);
-            if (!res.success) {
-                toast.error(t('toast.errorTitle'), { description: res.message });
-            } else {
+            
+            if (res.success) {
                 toast.success(t('toast.successTitle'), { description: t('toast.deleteSuccess') });
                 router.push('/crm/contactes');
                 router.refresh(); 
+            } else {
+                toast.error(t('toast.errorTitle'), { description: res.message });
             }
         });
     };
 
     const handleCancelEdit = () => {
-        setContact(initialContact);
+        setContact(initialContact); // Revertim canvis
         setIsEditing(false);
         formRef.current?.reset();
     };
@@ -61,11 +57,11 @@ export function useContactDetail(initialContact: ContactDetail, t: TFunction) {
     return {
         contact,
         isEditing,
+        setIsEditing,
         isPending,
         formRef,
         handleSaveChanges,
         handleDelete,
         handleCancelEdit,
-        setIsEditing,
     };
 }

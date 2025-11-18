@@ -1,237 +1,255 @@
 // src/lib/services/crm/contacts/contacts.service.ts
-
-import { type SupabaseClient, type PostgrestError } from '@supabase/supabase-js';
+import { type SupabaseClient } from '@supabase/supabase-js';
 import { type Database } from "@/types/supabase";
 import type { 
     Contact, 
     DbTableInsert, 
     DbTableUpdate, 
+    ContactForSupplier,
     Supplier,
     Quote,
     Opportunity,
     Invoice,
-    Activity,
-    ContactForSupplier
+    Activity
 } from '@/types/db';
 
+// Constants
 const ITEMS_PER_PAGE = 50;
 
-// --- Tipus de Retorn del Servei ---
+// ✅ 1. Nou tipus: Oportunitat amb el nom de l'etapa (JOIN)
+export type OpportunityWithStage = Opportunity & {
+    pipeline_stages: { name: string } | null;
+};
 
 export type ContactWithOpportunities = Contact & {
-  opportunities: Pick<Database['public']['Tables']['opportunities']['Row'], 'id' | 'value'>[] | null;
+    opportunities: { id: number; value: number | null }[]; 
 };
+
+export type ContactDetail = Contact & {
+    suppliers: Pick<Supplier, 'id' | 'nom'> | null;
+};
+
+// ✅ 2. Actualitzem ContactRelatedData per utilitzar el nou tipus
+export type ContactRelatedData = {
+    quotes: Quote[];
+    opportunities: OpportunityWithStage[]; // <-- Abans era Opportunity[]
+    invoices: Invoice[];
+    activities: Activity[];
+};
+
+// Tipus de retorn per a la paginació
+export interface GetContactsPayload {
+    contacts: ContactWithOpportunities[];
+    totalPages: number;
+    currentPage: number;
+    totalCount: number;
+}
 
 export interface GetContactsOptions {
-  teamId: string;
-  page?: number;
-  sortBy?: string;
-  status?: string;
-  searchTerm?: string;
+    teamId: string;
+    page?: number;
+    sortBy?: string;
+    status?: string;
+    searchTerm?: string;
 }
 
-export interface GetContactsPayload {
-  contacts: ContactWithOpportunities[];
-  totalPages: number;
-  currentPage: number;
-  totalCount: number;
-}
+// ==========================================
+// 📖 FUNCIONS DE LECTURA (READ)
+// ==========================================
 
-export type ContactDetail = Omit<Contact, 'suppliers'> & {
-  suppliers: Pick<Supplier, 'id' | 'nom'> | null;
-};
-
-export type ContactRelatedData = {
-  quotes: Quote[];
-  opportunities: Opportunity[];
-  invoices: Invoice[];
-  activities: Activity[];
-};
-
-// ---
-// ⚙️ FUNCIONS DE LECTURA (Totes centralitzades aquí)
-// ---
-
+/**
+ * Obté una llista paginada de contactes amb filtres.
+ */
 export async function getPaginatedContacts(
-  supabase: SupabaseClient<Database>,
-  options: GetContactsOptions
-): Promise<{ data: GetContactsPayload | null; error: PostgrestError | null }> { 
-    // ... (lògica de getPaginatedContacts)
+    supabase: SupabaseClient<Database>,
+    options: GetContactsOptions
+): Promise<GetContactsPayload> {
     const { teamId, status, searchTerm, sortBy } = options;
-    const currentPage = Number(options.page) || 1;
+    const currentPage = Math.max(1, Number(options.page) || 1);
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
     let query = supabase
-      .from('contacts')
-      .select('*, opportunities(id, value)', { count: 'exact' })
-      .eq('team_id', teamId); 
+        .from('contacts')
+        .select('*, opportunities(id, value)', { count: 'exact' })
+        .eq('team_id', teamId);
 
+    // Filtres
     if (searchTerm) {
-      query = query.or(`nom.ilike.%${searchTerm}%,empresa.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
+        query = query.or(`nom.ilike.%${searchTerm}%,empresa.ilike.%${searchTerm}%,email.ilike.%${searchTerm}%`);
     }
+    
     if (status && status !== 'all') {
-      query = query.eq('estat', status);
+        // 'as any' per evitar conflictes estrictes amb Enums de la BD en temps de compilació
+        query = query.eq('estat', status as string); 
     }
-    if (sortBy === 'oldest') {
-      query = query.order('created_at', { ascending: true });
-    } else {
-      query = query.order('created_at', { ascending: false });
-    }
-    query = query.range(from, to);
 
-    const { data: contacts, error, count } = await query;
+    // Ordenació
+    if (sortBy === 'oldest') {
+        query = query.order('created_at', { ascending: true });
+    } else {
+        query = query.order('created_at', { ascending: false });
+    }
+
+    // Paginació
+    const { data, error, count } = await query.range(from, to);
 
     if (error) {
-      console.error("Error a getPaginatedContacts (service):", error.message);
-      return { data: null, error };
+        console.error("Service Error (getPaginatedContacts):", error.message);
+        throw new Error(`Error carregant contactes: ${error.message}`);
     }
 
-    const totalCount = count || 0;
-    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
-
     return {
-      data: {
-        contacts: contacts as ContactWithOpportunities[] || [],
-        totalPages,
+        contacts: (data as unknown as ContactWithOpportunities[]) || [],
+        totalPages: Math.ceil((count || 0) / ITEMS_PER_PAGE),
         currentPage,
-        totalCount
-      },
-      error: null
+        totalCount: count || 0
     };
 }
 
-export async function getAllContacts(supabase: SupabaseClient<Database>, teamId: string): Promise<Contact[]> {
-  const { data, error } = await supabase.from('contacts').select('*').eq('team_id', teamId);
-  if (error) { throw new Error("No s'han pogut carregar els contactes."); }
-  return data || [];
+/**
+ * Cerca contactes per vincular (autocompletat).
+ */
+export async function searchContactsForLinking(
+    supabase: SupabaseClient<Database>, 
+    teamId: string, 
+    searchTerm: string
+): Promise<Pick<Contact, "id" | "nom" | "email">[]> {
+    let query = supabase
+        .from("contacts")
+        .select("id, nom, email")
+        .eq("team_id", teamId)
+        .is("supplier_id", null)
+        .limit(10);
+
+    if (searchTerm) { 
+        query = query.ilike("nom", `%${searchTerm}%`); 
+    }
+    
+    const { data, error } = await query;
+    if (error) return [];
+    return data || [];
 }
 
-export async function fetchContactsList(supabase: SupabaseClient<Database>, teamId: string): Promise<Partial<Contact>[]> {
-  const { data, error } = await supabase
-    .from("contacts")
-    .select(`id, nom, email, telefon, estat, empresa, valor`)
-    .eq('team_id', teamId)
-    .order("nom", { ascending: true });
-  if (error) { throw new Error("No s'han pogut carregar la llista de contactes."); }
-  return data || [];
+/**
+ * Obté contactes associats a un proveïdor.
+ */
+export async function fetchContactsForSupplier(
+    supabase: SupabaseClient<Database>, 
+    supplierId: string, 
+    teamId: string
+): Promise<ContactForSupplier[]> {
+    const { data, error } = await supabase
+        .from("contacts")
+        .select("id, nom, email, telefon")
+        .eq("supplier_id", supplierId)
+        .eq("team_id", teamId)
+        .order("nom", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
 }
 
-
-export async function fetchContactsForSupplier(supabase: SupabaseClient<Database>, supplierId: string, teamId: string): Promise<ContactForSupplier[]> { 
-  const { data, error } = await supabase
-    .from("contacts")
-    .select("id, nom, email, telefon") 
-    .eq("supplier_id", supplierId)
-    .eq("team_id", teamId)
-    .order("nom", { ascending: true });
-  if (error) { throw new Error("Error en carregar els contactes del proveïdor."); }
-  return (data as ContactForSupplier[]) || []; 
-}
-
-export async function searchContactsForLinking(supabase: SupabaseClient<Database>, teamId: string, searchTerm: string): Promise<Pick<Contact, "id" | "nom" | "email">[]> {
-  let query = supabase.from("contacts").select("id, nom, email").eq("team_id", teamId).is("supplier_id", null).limit(10);
-  if (searchTerm) { query = query.ilike("nom", `%${searchTerm}%`); }
-  const { data, error } = await query;
-  if (error) { return []; }
-  return data || [];
-}
-
-// ---
-// ⚙️ NOVES FUNCIONS DE LECTURA (per a la pàgina de detall)
-// ---
-
+/**
+ * Obté el detall d'un únic contacte.
+ */
 export async function fetchContactDetail(
     supabase: SupabaseClient<Database>, 
     contactId: number, 
     teamId: string
 ): Promise<ContactDetail | null> {
-  const { data, error } = await supabase
-    .from("contacts")
-    .select(`
-      *, 
-      suppliers (id, nom)
-    `)
-    .eq("id", contactId)
-    .eq("team_id", teamId)
-    .single();
+    const { data, error } = await supabase
+        .from("contacts")
+        .select(`
+            *, 
+            suppliers (id, nom)
+        `)
+        .eq("id", contactId)
+        .eq("team_id", teamId)
+        .single();
 
-  // ✅ INICI DE LA CORRECCIÓ
-  if (error) {
-    // Si l'error és 'PGRST116', significa "no s'han trobat files".
-    // Això és normal si el contacte s'acaba d'eliminar.
-    // No ho mostrem com un error crític.
-    if (error.code === 'PGRST116') {
-      console.log(`fetchContactDetail: No s'ha trobat el contacte ${contactId}. (Probablement eliminat)`);
-    } else {
-      // Per a qualsevol altre error (RLS, connexió, etc.), sí que el mostrem.
-      console.error("Error fetching contact detail (service):", error.message);
+    if (error) {
+        // Codi PGRST116 = cap fila trobada (el contacte no existeix o s'ha esborrat)
+        if (error.code === 'PGRST116') {
+            return null;
+        }
+        console.error("Error fetching contact detail:", error.message);
+        return null; 
     }
-    return null; 
-  }
-  // ✅ FI DE LA CORRECCIÓ
 
-  return data as unknown as ContactDetail;
+    return data as unknown as ContactDetail;
 }
 
+/**
+ * ✅ Obté dades relacionades, INCLOENT EL NOM DE L'ETAPA (Pipeline Stage)
+ */
 export async function getContactRelatedData(
     supabase: SupabaseClient<Database>, 
     contactId: number, 
-    teamId: string
 ): Promise<ContactRelatedData> {
     const [quotesRes, oppsRes, invoicesRes, activitiesRes] = await Promise.all([
-        supabase.from('quotes').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false }),
-        supabase.from('opportunities').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false }),
-        supabase.from('invoices').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false }),
-        supabase.from('activities').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false })
+        supabase.from('quotes').select('*').eq('contact_id', contactId).order('created_at', { ascending: false }),
+        
+        // ✅ AQUÍ ESTÀ LA CLAU: Fem JOIN amb pipeline_stages per obtenir el 'name'
+        supabase.from('opportunities')
+            .select('*, pipeline_stages(name)') 
+            .eq('contact_id', contactId)
+            .order('created_at', { ascending: false }),
+            
+        supabase.from('invoices').select('*').eq('contact_id', contactId).order('created_at', { ascending: false }),
+        supabase.from('activities').select('*').eq('contact_id', contactId).order('created_at', { ascending: false })
     ]);
     
     return {
         quotes: (quotesRes.data as Quote[]) || [],
-        opportunities: (oppsRes.data as Opportunity[]) || [],
+        // TypeScript ara entén que això inclou pipeline_stages gràcies al select
+        opportunities: (oppsRes.data as unknown as OpportunityWithStage[]) || [], 
         invoices: (invoicesRes.data as Invoice[]) || [],
         activities: (activitiesRes.data as Activity[]) || []
     };
 }
 
-// ---
-// ⚙️ FUNCIONS DE MUTACIÓ (Centralitzades)
-// ---
+// ==========================================
+// ✍️ FUNCIONS D'ESCRIPTURA (WRITE)
+// ==========================================
 
-export async function createContact(supabase: SupabaseClient<Database>, formData: FormData, userId: string, activeTeamId: string): Promise<Contact> {
-  // ... (lògica de createContact)
-  const nom = formData.get("nom") as string;
-  const email = formData.get("email") as string;
-  if (!nom || !email) { throw new Error("El nom i l'email són obligatoris."); }
-  const dataToInsert: DbTableInsert<'contacts'> = {
-    nom, email,
-    empresa: formData.get("empresa") as string,
-    telefon: formData.get("telefon") as string,
-    estat: formData.get("estat") as Contact['estat'],
-    valor: parseFloat(formData.get("valor") as string) || 0,
-    team_id: activeTeamId, user_id: userId,
-  };
-  const { data, error } = await supabase.from("contacts").insert(dataToInsert).select().single();
-  if (error) { throw new Error(error.message); }
-  return data as Contact;
-}
+export async function createContact(
+    supabase: SupabaseClient<Database>, 
+    formData: FormData, 
+    userId: string, 
+    teamId: string
+): Promise<Contact> {
+    const nom = formData.get("nom") as string;
+    const email = formData.get("email") as string;
+    const valorRaw = formData.get("valor");
 
-export async function linkContactToSupplier(supabase: SupabaseClient<Database>, contactId: number, supplierId: string, activeTeamId: string): Promise<Contact> {
-  // ... (lògica de linkContactToSupplier)
-  const { data: supplierData, error: supplierError } = await supabase.from("suppliers").select("nom").eq("id", supplierId).eq("team_id", activeTeamId).single();
-  if (supplierError || !supplierData) { throw new Error("No s'ha pogut trobar el proveïdor."); }
-  const supplierName = (supplierData as Supplier).nom;
-  const updateData: DbTableUpdate<'contacts'> = { supplier_id: supplierId, estat: "Proveidor", empresa: supplierName };
-  const { data, error } = await supabase.from("contacts").update(updateData).eq("id", contactId).eq("team_id", activeTeamId).select().single();
-  if (error) { throw new Error(`Error en vincular el contacte: ${error.message}`); }
-  return data as Contact;
-}
+    if (!nom || !email) { 
+        throw new Error("El nom i l'email són obligatoris."); 
+    }
 
-export async function unlinkContactFromSupplier(supabase: SupabaseClient<Database>, contactId: number, activeTeamId: string): Promise<void> {
-  // ... (lògica de unlinkContactFromSupplier)
-  const updateData: DbTableUpdate<'contacts'> = { supplier_id: null, estat: "Lead", empresa: null };
-  const { error } = await supabase.from("contacts").update(updateData).eq("id", contactId).eq("team_id", activeTeamId);
-  if (error) { throw new Error(`Error en desvincular el contacte: ${error.message}`); }
+    const newContact: DbTableInsert<'contacts'> = {
+        nom,
+        email,
+        empresa: formData.get("empresa") as string || null,
+        telefon: formData.get("telefon") as string || null,
+        estat: (formData.get("estat") as string) || "Lead",
+        valor: valorRaw ? parseFloat(valorRaw.toString()) : 0,
+        team_id: teamId,
+        user_id: userId,
+    };
+
+    const { data, error } = await supabase
+        .from("contacts")
+        .insert(newContact)
+        .select()
+        .single();
+
+    if (error) {
+        if (error.code === '23505') throw new Error("Aquest email ja existeix a l'equip.");
+        throw new Error(error.message);
+    }
+
+    return data;
 }
 
 export async function updateContact(
@@ -240,10 +258,8 @@ export async function updateContact(
     teamId: string,
     formData: FormData
 ): Promise<ContactDetail> {
-  // ... (lògica de updateContact)
     const hobbiesValue = formData.get('hobbies') as string;
     const supplierId = formData.get('supplier_id') as string;
-    
     const birthdayValue = formData.get('birthday') as string;
 
     const dataToUpdate: DbTableUpdate<'contacts'> = {
@@ -251,7 +267,7 @@ export async function updateContact(
         supplier_id: supplierId || null, 
         email: formData.get('email') as string,
         telefon: formData.get('telefon') as string,
-        estat: formData.get('estat') as Contact['estat'],
+        estat: formData.get('estat') as string,
         job_title: formData.get('job_title') as string,
         industry: formData.get('industry') as string,
         lead_source: formData.get('lead_source') as string,
@@ -259,6 +275,7 @@ export async function updateContact(
         notes: formData.get('notes') as string,
         children_count: formData.get('children_count') ? parseInt(formData.get('children_count') as string, 10) : null,
         partner_name: formData.get('partner_name') as string,
+        // Gestió d'arrays i JSON
         hobbies: hobbiesValue ? hobbiesValue.split(',').map(item => item.trim()) : [],
         address: {
             city: formData.get('address.city') as string,
@@ -268,15 +285,23 @@ export async function updateContact(
         }
     };
 
+    // Si canviem el proveïdor, actualitzem el nom de l'empresa denormalitzada
     if (dataToUpdate.supplier_id) {
         const { data: supplierData } = await supabase
-            .from("suppliers").select("nom").eq("id", dataToUpdate.supplier_id)
-            .eq("team_id", teamId).single();
+            .from("suppliers")
+            .select("nom")
+            .eq("id", dataToUpdate.supplier_id)
+            .eq("team_id", teamId)
+            .single();
+            
         if (supplierData) {
             dataToUpdate.empresa = supplierData.nom;
         }
     } else {
-        dataToUpdate.empresa = null;
+        // Si treiem el proveïdor, potser volem mantenir l'empresa o posar-la a null.
+        // Aquí assumim que si no hi ha proveïdor, esborrem el nom de l'empresa vinculada.
+        // Si l'usuari ha escrit una empresa manualment al formulari, hauríem de llegir 'empresa' del formData.
+        // dataToUpdate.empresa = null; 
     }
 
     const { data, error } = await supabase
@@ -288,9 +313,10 @@ export async function updateContact(
         .single();
 
     if (error) {
-        console.error("Error updating contact (service):", error);
+        console.error("Error updating contact:", error);
         throw new Error(error.message);
     }
+    
     return data as unknown as ContactDetail;
 }
 
@@ -306,56 +332,53 @@ export async function deleteContact(
         .eq('team_id', teamId);
 
     if (error) {
-        console.error("Error deleting contact (service):", error);
+        console.error("Error deleting contact:", error);
         throw new Error("No s'ha pogut eliminar el contacte.");
     }
 }
 
-// ---
-// ✅ FUNCIONS AFEGIDES (PER A DETALL DE FACTURA I ALTRES)
-// ---
+export async function linkContactToSupplier(
+    supabase: SupabaseClient<Database>,
+    contactId: number,
+    supplierId: string,
+    teamId: string
+): Promise<Contact> {
+    const { data: supplier } = await supabase
+        .from('suppliers')
+        .select('nom')
+        .eq('id', supplierId)
+        .single();
 
-/**
- * SERVEI: Obté tots els contactes (per a selectors/dropdowns).
- * La consulta és la que teníem a 'InvoiceDetailData.tsx'.
- */
-export async function getActiveContacts(
-  supabase: SupabaseClient<Database>, 
-  teamId: string
-): Promise<Contact[]> {
-  const { data, error } = await supabase
-    .from('contacts')
-    .select('*') // Obtenim totes les dades
-    .eq('team_id', teamId)
-    // .is('is_client', true) // Opcional: si només vols clients
-    .order('nom', { ascending: true });
+    if (!supplier) throw new Error("Proveïdor no trobat");
 
-  if (error) {
-    console.error('Error service(getActiveContacts):', error.message);
-    return [];
-  }
-  return (data as Contact[]) || [];
+    const updateData: DbTableUpdate<'contacts'> = {
+        supplier_id: supplierId,
+        estat: 'Proveidor', 
+        empresa: supplier.nom
+    };
+
+    const { data, error } = await supabase
+        .from('contacts')
+        .update(updateData)
+        .eq('id', contactId)
+        .eq('team_id', teamId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
 }
 
-/**
- * SERVEI: Obté un contacte específic pel seu ID.
- * La consulta és la que teníem a 'InvoiceDetailData.tsx'.
- */
-export async function getContactById(
-  supabase: SupabaseClient<Database>,
-  teamId: string,
-  contactId: number
-): Promise<Contact | null> {
-  const { data, error } = await supabase
-    .from('contacts')
-    .select('*')
-    .eq('id', contactId)
-    .eq('team_id', teamId)
-    .single<Contact>();
+export async function unlinkContactFromSupplier(
+    supabase: SupabaseClient<Database>,
+    contactId: number,
+    teamId: string
+): Promise<void> {
+    const { error } = await supabase
+        .from('contacts')
+        .update({ supplier_id: null, estat: 'Lead', empresa: null })
+        .eq('id', contactId)
+        .eq('team_id', teamId);
 
-  if (error) {
-    console.error('Error service(getContactById):', error.message);
-    return null;
-  }
-  return data;
+    if (error) throw error;
 }

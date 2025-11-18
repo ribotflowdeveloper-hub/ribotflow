@@ -5,40 +5,36 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { ca, es, enUS } from 'date-fns/locale';
-import { useContactDetail } from '../_hooks/useContactDetail';
-import { ContactDetailHeader } from './ContactDetailHeader';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
 
-// ✅ 1. Importem els tipus DIRECTAMENT des del SERVEI
 import type { ContactDetail, ContactRelatedData } from '@/lib/services/crm/contacts/contacts.service';
+import { useContactDetail } from '../_hooks/useContactDetail';
 
-// ✅ 2. Importem els components de layout
-import { ContactSummaryDashboard } from './tabs/ContactSummaryDashboard';
+// Components
+import { ContactDetailHeader } from './ContactDetailHeader';
 import { ContactViewSwitcher, type ContactViewKey } from './ContactViewSwitcher';
-
-// ✅ 3. Importem el contingut que abans estava dins les pestanyes
+import { ContactSummaryDashboard } from './tabs/ContactSummaryDashboard';
+import { DetailsTab } from './tabs/DetailsTab';
 import { ActivitiesTab } from './tabs/ActivitiesTab';
 import { RelatedDataTable } from './tabs/RelatedDataTable';
-import { DetailsTab } from './tabs/DetailsTab';
+import type { RelatedDataKey } from './ContactViewSwitcher'; // Importa el tipus restringit
 
 interface ContactDetailClientProps {
     initialContact: ContactDetail;
-    // ✅ 4. Corregim el nom del tipus (coincidint amb el Server Component)
     initialRelatedData: ContactRelatedData;
 }
 
-// Definim les animacions per al canvi de vista
 const viewVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.2 } },
+    hidden: { opacity: 0, y: 10 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.1 } },
 };
 
 export function ContactDetailClient({ initialContact, initialRelatedData }: ContactDetailClientProps) {
     const t = useTranslations('ContactDetailPage');
     const locale = useLocale();
     const dateLocale = { ca, es, en: enUS }[locale] || ca;
-    
+
     const [activeView, setActiveView] = useState<ContactViewKey>('summary');
 
     const {
@@ -50,7 +46,12 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
         handleDelete,
         handleCancelEdit,
         setIsEditing,
-    } = useContactDetail(initialContact, t);
+    } = useContactDetail(initialContact);
+
+    // Si entrem en mode edició, forcem la vista de detalls
+    useEffect(() => {
+        if (isEditing) setActiveView('details');
+    }, [isEditing]);
 
     const getStatusLabel = (statusCode?: string | null) => {
         if (!statusCode) return t('details.noData');
@@ -58,118 +59,90 @@ export function ContactDetailClient({ initialContact, initialRelatedData }: Cont
         return status ? t(`contactStatuses.${status.key}`) : statusCode;
     };
 
-    useEffect(() => {
-        if (isEditing) {
-            setActiveView('details');
-        }
-    }, [isEditing]);
-
     return (
-        <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            className="flex flex-col h-full overflow-y-auto"
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col h-full overflow-hidden" // Evitem scroll doble
         >
+            {/* IMPORTANT: El form engloba Header i Content */}
             <form action={handleSaveChanges} ref={formRef} className="flex flex-col h-full">
-                
-                {/* 1. CAPÇALERA (Sticky) */}
-                <ContactDetailHeader
-                    contact={contact}
-                    isEditing={isEditing}
-                    isPending={isPending}
-                    onEdit={() => setIsEditing(true)}
-                    onCancel={handleCancelEdit}
-                    onDelete={handleDelete}
-                />
 
-                {/* 2. NAVEGACIÓ DE MÒDULS (El nou Switcher) */}
-                <ContactViewSwitcher
-                    relatedData={initialRelatedData}
-                    activeView={activeView}
-                    onViewChange={setActiveView}
-                    disabled={isEditing} // Deshabilitem el selector mentre s'edita
-                />
+                {/* HEADER (Sticky i fix) */}
+                <div className="flex-shrink-0">
+                    <ContactDetailHeader
+                        contact={contact}
+                        isEditing={isEditing}
+                        isPending={isPending}
+                        onEdit={() => setIsEditing(true)}
+                        onCancel={handleCancelEdit}
+                        onDelete={handleDelete}
+                    />
 
-                {/* 3. CONTINGUT ANIMAT */}
-                <div className="p-4 md:px-6 flex-1">
-                    <AnimatePresence mode="wait">
-                        <motion.div
-                            key={isEditing ? 'edit' : activeView}
-                            variants={viewVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                        >
-                            {/* Cas especial: Mode Edició */}
-                            {isEditing ? (
-                                <DetailsTab 
-                                    contact={contact} 
-                                    isEditing={true} 
-                                    dateLocale={dateLocale} 
-                                    getStatusLabel={getStatusLabel} 
-                                />
-                            ) : (
-                                <>
-                                    {/* Vistes normals (Mode Visualització) */}
-                                    {activeView === 'summary' && (
-                                        <ContactSummaryDashboard
-                                            relatedData={initialRelatedData}
-                                        />
-                                    )}
-                                    {activeView === 'activities' && (
-                                        <ActivitiesTab 
-                                            activities={initialRelatedData.activities} 
-                                            dateLocale={dateLocale} 
-                                            emptyMessage={t('activities.empty')}
-                                        />
-                                    )}
-                                    {activeView === 'opportunities' && (
-                                        <RelatedDataTable 
-                                            data={initialRelatedData.opportunities} 
-                                            columns={[
-                                                { key: 'name', label: t('opportunities.table.name') }, 
-                                                { key: 'stage', label: t('opportunities.table.status') }, 
-                                                { key: 'value', label: t('opportunities.table.value') }
-                                            ]} 
-                                            linkPath="/crm/pipeline" 
-                                            emptyMessage={t('opportunities.empty')} 
-                                        />
-                                    )}
-                                    {activeView === 'quotes' && (
-                                        <RelatedDataTable 
-                                            data={initialRelatedData.quotes} 
-                                            columns={[
-                                                { key: 'quote_number', label: t('quotes.table.number') }, 
-                                                { key: 'status', label: t('quotes.table.status') }, 
-                                                { key: 'total_amount', label: t('quotes.table.total') } // Assegura't que 'total_amount' existeix
-                                            ]} 
-                                            linkPath="/finances/quotes" 
-                                            emptyMessage={t('quotes.empty')} 
-                                        />
-                                    )}
-                                    {activeView === 'invoices' && (
-                                        <RelatedDataTable 
-                                            data={initialRelatedData.invoices} 
-                                            columns={[
-                                                { key: 'invoice_number', label: t('invoices.table.number') }, 
-                                                { key: 'status', label: t('invoices.table.status') }, 
-                                                { key: 'total_amount', label: t('invoices.table.total') } // Assegura't que 'total_amount' existeix
-                                            ]} 
-                                            emptyMessage={t('invoices.empty')} 
-                                        />
-                                    )}
-                                    {activeView === 'details' && (
-                                        <DetailsTab 
-                                            contact={contact} 
-                                            isEditing={false} // Mode vista
-                                            dateLocale={dateLocale} 
-                                            getStatusLabel={getStatusLabel} 
-                                        />
-                                    )}
-                                </>
-                            )}
-                        </motion.div>
-                    </AnimatePresence>
+                    <ContactViewSwitcher
+                        relatedData={initialRelatedData}
+                        activeView={activeView}
+                        onViewChange={setActiveView}
+                        disabled={isEditing}
+                    />
+                </div>
+
+                {/* CONTINGUT (Scrollable) */}
+                <div className="flex-1 overflow-y-auto bg-muted/10 p-4 md:p-6">
+                    <div className="max-w-7xl mx-auto">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={isEditing ? 'editing-mode' : activeView}
+                                variants={viewVariants}
+                                initial="hidden"
+                                animate="visible"
+                                exit="exit"
+                            >
+                                {isEditing ? (
+                                    <DetailsTab
+                                        contact={contact}
+                                        isEditing={true}
+                                        dateLocale={dateLocale}
+                                        getStatusLabel={getStatusLabel}
+                                    />
+                                ) : (
+                                    <>
+                                        {activeView === 'summary' && (
+                                            <ContactSummaryDashboard relatedData={initialRelatedData} />
+                                        )}
+                                        {activeView === 'details' && (
+                                            <DetailsTab
+                                                contact={contact}
+                                                isEditing={false}
+                                                dateLocale={dateLocale}
+                                                getStatusLabel={getStatusLabel}
+                                            />
+                                        )}
+                                        {activeView === 'activities' && (
+                                            <ActivitiesTab
+                                                activities={initialRelatedData.activities}
+                                                dateLocale={dateLocale}
+                                                emptyMessage={t('activities.empty')}
+                                            />
+                                        )}
+                                        {/* Bloc de renderització condicional */}
+                                        {/* Comprovem si la vista activa és una de les taules */}
+                                        {['opportunities', 'quotes', 'invoices'].includes(activeView) && (
+                                            <RelatedDataTable
+                                                // 1. Fem càsting: "TypeScript, confia en mi, ja he fet l'if a dalt"
+                                                type={activeView as RelatedDataKey}
+
+                                                // 2. Passem les dades. Com que 'activeView' és dinàmic,
+                                                // accedim a initialRelatedData amb clau dinàmica.
+                                                // Utilitzem el tipus adequat en lloc de 'any'
+                                                data={initialRelatedData[activeView as RelatedDataKey]}
+                                            />
+                                        )}
+                                    </>
+                                )}
+                            </motion.div>
+                        </AnimatePresence>
+                    </div>
                 </div>
             </form>
         </motion.div>

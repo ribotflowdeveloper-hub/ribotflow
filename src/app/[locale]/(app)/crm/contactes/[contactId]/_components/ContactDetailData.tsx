@@ -1,44 +1,42 @@
-// /app/[locale]/(app)/crm/contactes/[contactId]/_components/ContactDetailData.tsx
+// src/app/[locale]/(app)/crm/contactes/[contactId]/_components/ContactDetailData.tsx
 import { notFound } from 'next/navigation';
-import { ContactDetailClient } from './contact-detail-client';
 import { validatePageSession } from "@/lib/supabase/session";
-
-// ✅ 1. Importem els nostres serveis
 import { 
     fetchContactDetail, 
-    getContactRelatedData 
+    getContactRelatedData,
+  
 } from '@/lib/services/crm/contacts/contacts.service';
-// ✅ 2. Importem el tipus des del servei (per passar-lo al client)
-import type { ContactDetail, ContactRelatedData } from '@/lib/services/crm/contacts/contacts.service';
-export type { ContactDetail, ContactRelatedData }; // Re-exportem
+
+import { ContactDetailClient } from './contact-detail-client';
 
 interface ContactDetailDataProps {
-    params: { contactId: string };
+    params: { contactId: string };
 }
 
 export async function ContactDetailData({ params }: ContactDetailDataProps) {
-    const { supabase, activeTeamId } = await validatePageSession();
-    const contactId = params.contactId;
+    const session = await validatePageSession();
+    if ('error' in session) {
+        // Si no hi ha sessió, Next.js middleware hauria d'haver actuat, 
+        // però per seguretat:
+        notFound(); 
+    }
+    const { supabase, activeTeamId } = session;
 
-    const numericContactId = parseInt(contactId, 10);
-    if (isNaN(numericContactId)) {
-        notFound();
-    }
+    const numericId = parseInt(params.contactId, 10);
+    if (isNaN(numericId)) notFound();
 
-    // ✅ 3. Cridem a TOTA la lògica de dades en paral·lel
-    const [contactData, relatedData] = await Promise.all([
-        fetchContactDetail(supabase, numericContactId, activeTeamId),
-        getContactRelatedData(supabase, numericContactId, activeTeamId)
-    ]);
+    // Execució en paral·lel per millor TTFB (Time To First Byte)
+    const [contact, relatedData] = await Promise.all([
+        fetchContactDetail(supabase, numericId, activeTeamId),
+        getContactRelatedData(supabase, numericId, activeTeamId)
+    ]);
 
-    // Si el contacte principal no existeix, és un 404
-    if (!contactData) {
-        notFound();
-    }
+    if (!contact) notFound();
 
-    // ✅ 4. Passem les dades netes al client
-    return <ContactDetailClient 
-        initialContact={contactData} 
-        initialRelatedData={relatedData} 
-    />;
+    return (
+        <ContactDetailClient 
+            initialContact={contact} 
+            initialRelatedData={relatedData} 
+        />
+    );
 }

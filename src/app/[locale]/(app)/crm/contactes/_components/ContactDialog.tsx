@@ -2,51 +2,48 @@
 
 import React, { useState, useEffect, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Lock } from 'lucide-react'; // ✅ Eliminat 'Link' de lucide-react
-import Link from 'next/link'; // ✅ Afegit 'Link' de next/link per a la navegació
-import { createContactAction } from '../actions';
+import { Loader2, Lock } from 'lucide-react';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+
+import { createContactAction } from '../actions';
 import { CONTACT_STATUS_MAP } from '@/config/contacts';
-import type { Contact } from '@/types/db'; // ✅ Afegeix aquesta línia
+import type { Contact } from '@/types/db';
 
 interface ContactDialogProps {
     trigger: React.ReactNode; 
-    initialData?: {
-        nom?: string | null;
-        email?: string | null;
-    };
-    onContactSaved?: (newContact: Partial<Contact>) => void; // ✅ Canviat tipus 'unknown' → 'Partial<Contact>'
+    initialData?: { nom?: string | null; email?: string | null; };
+    onContactSaved?: (newContact: Contact) => void;
     isLimitReached?: boolean;
     limitError?: string;
 }
 
 export function ContactDialog({ trigger, initialData, onContactSaved, isLimitReached, limitError }: ContactDialogProps) {
     const t = useTranslations('ContactsClient');
-    const t_billing = useTranslations('Billing'); // ✅ Afegit per a les traduccions de l'alerta
+    const t_billing = useTranslations('Billing');
     const [isOpen, setIsOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const formRef = React.useRef<HTMLFormElement>(null);
 
     useEffect(() => {
-        if (isOpen) {
-            formRef.current?.reset();
-        }
+        if (isOpen) formRef.current?.reset();
     }, [isOpen]);
 
     const handleFormAction = (formData: FormData) => {
         startTransition(async () => {
             const result = await createContactAction(formData);
-            if (result.error) {
-                toast.error(t('toastErrorTitle'), { description: result.error.message });
-            } else if (result.data) {
+            
+            if (result.success && result.data) {
                 toast.success(t('toastSuccessTitle'), { description: t('toastSuccessDescription') });
                 setIsOpen(false);
-                onContactSaved?.(result.data); 
+                onContactSaved?.(result.data);
+            } else {
+                toast.error(t('toastErrorTitle'), { description: result.message });
             }
         });
     };
@@ -57,10 +54,8 @@ export function ContactDialog({ trigger, initialData, onContactSaved, isLimitRea
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>{t('dialogTitle')}</DialogTitle>
-                    <DialogDescription>{t('dialogDescription')}</DialogDescription>
                 </DialogHeader>
                 
-                {/* Bloc d'Alerta */}
                 {isLimitReached && (
                     <Alert variant="destructive" className="mt-2">
                         <Lock className="h-4 w-4" />
@@ -80,6 +75,7 @@ export function ContactDialog({ trigger, initialData, onContactSaved, isLimitRea
                     <Input name="email" type="email" placeholder={t('emailPlaceholder')} required defaultValue={initialData?.email ?? ''} />
                     <Input name="telefon" placeholder={t('phonePlaceholder')} />
                     <Input name="valor" type="number" placeholder={t('valuePlaceholder')} defaultValue={0} />
+                    
                     <Select name="estat" defaultValue="Lead">
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -90,10 +86,9 @@ export function ContactDialog({ trigger, initialData, onContactSaved, isLimitRea
                             ))}
                         </SelectContent>
                     </Select>
+
                     <DialogFooter>
                         <DialogClose asChild><Button type="button" variant="ghost">{t('cancelButton')}</Button></DialogClose>
-                        
-                        {/* ✅ SOLUCIÓ 1: Canviat 'form.formState.isSubmitting' per 'isPending' */}
                         <Button type="submit" disabled={isPending || isLimitReached}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isPending ? t('savingButton') : t('saveButton')}
