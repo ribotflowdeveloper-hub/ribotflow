@@ -230,3 +230,33 @@ export async function createExpenseCategoryAction(
     return { success: false, message };
   }
 }
+
+/**
+ * ACCIÓ: Esborra múltiples despeses (Bulk Delete).
+ * @param ids Array d'IDs (number) de les despeses a eliminar.
+ */
+export async function deleteBulkExpensesAction(ids: number[]): Promise<ActionResult> {
+    const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
+    if ("error" in session) return { success: false, message: session.error.message };
+    const { supabase, activeTeamId } = session;
+
+    if (ids.length === 0) {
+        return { success: true, message: "No s'ha seleccionat cap despesa per eliminar." };
+    }
+    
+    // 🔑 PER QUÈ: Eliminació optimitzada amb clàusula IN.
+    const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .in('id', ids)
+        .eq('team_id', activeTeamId); // Assegurança de RLS
+
+    if (error) {
+        console.error('Error al realitzar l\'eliminació massiva de despeses:', error);
+        return { success: false, message: `Error al eliminar les despeses. Prova-ho de nou.` };
+    }
+    
+    revalidatePath('/finances/expenses');
+    
+    return { success: true, message: `S'han eliminat correctament ${ids.length} despeses.` };
+}

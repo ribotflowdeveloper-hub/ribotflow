@@ -693,7 +693,8 @@
       "productCreatedDesc": "S'ha afegit a la teva llista de productes.",
       "productDeleted": "Producte eliminat correctament.",
       "deleteSuccess": "Eliminat!",
-      "productUpdated": "Producte actualitzat correctament."
+      "productUpdated": "Producte actualitzat correctament.",
+      "bulkDeleteSuccess": "Productes eliminats correctament."
     },
     "deleteDialog": {
       "title": "Estàs segur?",
@@ -745,7 +746,8 @@
     "toast": {
       "successTitle": "Èxit!",
       "errorTitle": "Error",
-      "deleteSuccess": "Pressupost eliminat correctament."
+      "deleteSuccess": "Pressupost eliminat correctament.",
+      "bulkDeleteSuccess": "Pressupostos eliminats correctament."
     },
     "status": {
       "Draft": "Esborrany",
@@ -1116,7 +1118,9 @@
     },
     "toast": {
       "deleteSuccess": "Despesa eliminada correctament.",
-      "deleteError": "Error en eliminar la despesa."
+      "deleteError": "Error en eliminar la despesa.",
+      "bulkDeleteSuccess": "Despeses eliminades correctament.",
+      "bulkDeleteError": "Error en eliminar les despeses seleccionades."
     },
     "deleteDialog": {
       "title": "Estàs segur?",
@@ -2104,7 +2108,9 @@
       "confirm": "Esborra {item}",
       "titleBulk": "Eliminar {count} elements?",
       "descriptionBulk": "Estàs a punt d'eliminar permanentment {count} elements seleccionats. Aquesta acció no es pot desfer.",
-      "confirmButtonBulk": "Sí, elimina-ho"
+      "confirmButtonBulk": "Sí, elimina-ho",
+      "defaultRecord": "aquest registre",
+      "bulkRecords": "aquests registres"
     },
     "pagination": {
       "previous": "Anterior",
@@ -2179,8 +2185,12 @@
       "date": "Data",
       "subject": "Assumpte",
       "lastActivity": "Última activitat"
+    },
+    "ProductsPage": {
+      "deleteDialog": {
+        "title": "Vols esborrar aquest concepte?"
+      }
     }
-
   },
   "SuppliersPage": {
     "title": "Proveïdors",
@@ -2199,7 +2209,9 @@
     },
     "toast": {
       "deleteSuccess": "Proveïdor esborrat amb èxit.",
-      "deleteError": "No s'ha pogut esborrar el proveïdor."
+      "deleteError": "No s'ha pogut esborrar el proveïdor.",
+      "bulkDeleteSuccess": "Proveïdors esborrats amb èxit.",
+      "bulkDeleteError": "No s'han pogut esborrar els proveïdors"
     }
   },
   "SupplierDetailPage": {

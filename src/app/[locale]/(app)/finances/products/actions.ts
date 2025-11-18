@@ -17,7 +17,7 @@ import type {
   FormState, 
   PaginatedProductsData,
 } from '@/lib/services/finances/products/products.service';
-
+import { type ActionResult } from "@/types/shared/actionResult";
 // ... (fetchPaginatedProducts i getUniqueProductCategories es queden igual) ...
 
 export async function fetchPaginatedProducts(
@@ -107,4 +107,36 @@ export async function deleteProduct(productId: number): Promise<FormState> {
   
   // Redirigim a la llista principal
   redirect(`/finances/products`);
+}
+
+/**
+ * ACCIÓ: Esborra múltiples productes (Bulk Delete).
+ * @param ids Array d'IDs (number) dels productes a eliminar.
+ */
+export async function deleteBulkProductsAction(ids: number[]): Promise<ActionResult> {
+    // 🔑 PER QUÈ: Validació de permisos primer de tot per seguretat.
+    const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_PRODUCTS);
+    if ("error" in session) return { success: false, message: session.error.message };
+    const { supabase, activeTeamId } = session;
+
+    if (ids.length === 0) {
+        return { success: true, message: "No s'ha seleccionat cap producte per eliminar." };
+    }
+    
+    // Assumim que la taula es diu 'products' i té una columna 'team_id'
+    const { error } = await supabase
+        .from('products') 
+        .delete()
+        .in('id', ids)
+        .eq('team_id', activeTeamId); // Assegurança de RLS
+
+    if (error) {
+        console.error('Error al realitzar l\'eliminació massiva de productes:', error);
+        return { success: false, message: `Error al eliminar els productes. Prova-ho de nou.` };
+    }
+    
+    // 🔑 PER QUÈ: RevalidatePath per forçar Next.js a actualitzar la llista.
+    revalidatePath('/finances/products');
+    
+    return { success: true, message: `S'han eliminat correctament ${ids.length} productes.` };
 }

@@ -10,15 +10,15 @@ import {
 } from "@/lib/permissions/permissions";
 // Importem les funcions del servei
 import {
-  getPaginatedQuotes,
   deleteQuote,
-} from "@/lib/services/finances/quotes/quotes.service"; 
+  getPaginatedQuotes,
+} from "@/lib/services/finances/quotes/quotes.service";
 
 // Importem els tipus centralitzats
 import {
-  type QuotePageFilters,
   type PaginatedQuotesData,
   type QuoteId,
+  type QuotePageFilters,
 } from "@/types/finances/quotes";
 
 type FetchQuotesParams = PaginatedActionParams<QuotePageFilters>;
@@ -31,8 +31,8 @@ export async function fetchPaginatedQuotes(
 ): Promise<PaginatedQuotesData> {
   // ✅ SEGURETAT (RBAC): L'usuari té permís per VEURE les finances?
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
-  if ("error" in session) return { data: [], count: 0 }; 
-  
+  if ("error" in session) return { data: [], count: 0 };
+
   const { supabase, activeTeamId } = session;
 
   return await getPaginatedQuotes(supabase, activeTeamId, params);
@@ -65,6 +65,56 @@ export async function deleteQuoteAction(
     };
   }
 
-  revalidatePath("/finances/quotes"); 
+  revalidatePath("/finances/quotes");
   return { success: true, message: "Pressupost eliminat correctament." };
+}
+
+/**
+ * ACCIÓ: Esborra múltiples productes (Bulk Delete).
+ * @param ids Array d'IDs (number) dels productes a eliminar.
+ */
+export async function deleteBulkQuotesAction(
+  ids: number[],
+): Promise<ActionResult> {
+  // 🔑 PER QUÈ: Validació de permisos primer de tot per seguretat.
+  const session = await validateSessionAndPermission(
+    PERMISSIONS.MANAGE_QUOTES,
+  );
+  if ("error" in session) {
+    return { success: false, message: session.error.message };
+  }
+  const { supabase, activeTeamId } = session;
+
+  if (ids.length === 0) {
+    return {
+      success: true,
+      message: "No s'ha seleccionat cap cotització per eliminar.",
+    };
+  }
+
+  // 🔑 PER QUÈ: Eliminació optimitzada amb clàusula IN.
+  const { error } = await supabase
+    .from("quotes")
+    .delete()
+    .in("id", ids)
+    .eq("team_id", activeTeamId);
+
+  if (error) {
+    console.error(
+      "Error al realitzar l'eliminació massiva de pressupostos:",
+      error,
+    );
+    return {
+      success: false,
+      message: `Error al eliminar els pressupostos. Prova-ho de nou.`,
+    };
+  }
+
+  // 🔑 PER QUÈ: RevalidatePath per forçar Next.js a actualitzar la llista.
+  revalidatePath("/finances/quotes");
+
+  return {
+    success: true,
+    message: `S'han eliminat correctament ${ids.length} pressupostos.`,
+  };
 }

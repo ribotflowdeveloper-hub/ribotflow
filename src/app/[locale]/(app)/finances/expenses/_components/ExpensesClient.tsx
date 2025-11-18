@@ -1,11 +1,11 @@
 "use client";
 
 // ✅ 1. Importem 'useState', 'useRouter' i components necessaris
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation'; // Importem useRouter
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, TriangleAlert } from 'lucide-react'; // ✅ Importem 'TriangleAlert'
+import { PlusCircle, Edit, TriangleAlert, CheckSquare, Square, Trash2, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useLocale, useTranslations } from 'next-intl';
 import { GenericDataTable, type ColumnDef } from '@/components/shared/GenericDataTable';
@@ -19,11 +19,11 @@ import {
 } from '@/hooks/usePaginateResource';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ExpenseFilters } from './ExpenseFilters';
-import { fetchPaginatedExpenses } from '../actions';
+import { fetchPaginatedExpenses, deleteBulkExpensesAction } from '../actions';
 import type { ExpenseWithContact, ExpenseCategory } from '@/types/finances/expenses';
 import type { ExpensePageFilters } from '@/lib/services/finances/expenses/expenses.service';
 import { type ActionResult } from '@/types/shared/actionResult';
-
+import { useMultiSelect } from '@/hooks/useMultiSelect'; // 🌟 NOU HOOK
 // ✅ 2. Importem els components d'Alerta i Modal
 import {
   AlertDialog,
@@ -41,6 +41,7 @@ import ExcelDropdownButton from '@/components/features/excel/ExcelDropdownButton
 import { useExcelActions } from '@/components/features/excel/useExelActions';
 // ✅ 3. Importem el tipus del límit
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
+import { cn } from '@/lib/utils/utils';
 
 // ✅ 4. Actualitzem les Props
 interface ExpensesClientProps {
@@ -55,6 +56,17 @@ type PaginatedExpensesResponse = PaginatedResponse<ExpenseWithContact>;
 type FetchExpensesParams = PaginatedActionParams<ExpensePageFilters>;
 const EXPENSE_ROWS_PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
+// 🌟 OBJECTE DUMMY PER SENYALITZAR ELIMINACIÓ MASIVA
+// Ha de complir amb les propietats mínimes de l'ExpenseWithContact per a la taula
+const BULK_DELETE_ITEM: ExpenseWithContact & { isBulk: true } = {
+  id: -1,
+  invoice_number: 'BULK_DELETE',
+  total_amount: 0,
+  expense_date: new Date().toISOString(),
+  status: 'paid', // Dummy status
+  isBulk: true
+} as ExpenseWithContact & { isBulk: true };
+
 export function ExpensesClient({
   initialData,
   filterOptions,
@@ -65,6 +77,7 @@ export function ExpensesClient({
   const tShared = useTranslations('Shared');
   const t_billing = useTranslations('Shared.limits');
   const router = useRouter(); // Per al modal i el botó
+  const tActions = useTranslations('Shared.actions');
   // 💡 2. TOTA LA LÒGICA D'EXCEL ARA ESTÀ AQUÍ
   const {
     isPending: isExcelPending, // Renombrem per claredat
@@ -86,7 +99,6 @@ export function ExpensesClient({
 
 
   const allColumns = useMemo<ColumnDef<ExpenseWithContact>[]>(() => [
-    // ... (columnes sense canvis, com les has definit)
     {
       accessorKey: "invoice_number",
       header: t('table.number'),
@@ -216,28 +228,70 @@ export function ExpensesClient({
     rowsPerPageOptions: EXPENSE_ROWS_PER_PAGE_OPTIONS,
     toastMessages: { deleteSuccess: t('toast.deleteSuccess') },
   });
+  // 🌟 1. INTEGRACIÓ DEL useMultiSelect HOOK
+  const {
+    isMultiSelectActive, selectedItems, isBulkDeletePending,
+    onToggleMultiSelect, onSelectAll, onSelectItem, handleBulkDelete, clearSelection,
+  } = useMultiSelect<ExpenseWithContact>({
+    data: expenses,
+    bulkDeleteAction: (ids: (string | number)[]) => {
+      const numberIds = ids.map(id => Number(id)).filter(id => !isNaN(id));
+      return deleteBulkExpensesAction(numberIds as number[]);
+    },
+    toastMessages: { bulkDeleteSuccess: t('toast.bulkDeleteSuccess'), bulkDeleteError: tShared('errors.genericDeleteError'), },
+    onDeleteSuccess: () => { handleSort(currentSortColumn || 'expense_date'); },
+  });
 
+  // 🔑 Neteja la selecció quan hi ha canvis de dades o paginació
+  useEffect(() => { clearSelection(); }, [page, searchTerm, filters, clearSelection]);
+
+  // Lògica Unificada de Gestió del Diàleg i Delete
+  const isBulkDeletionMode = isMultiSelectActive && selectedItems.length > 0;
+  const isBulkDeletionDialog = expenseToDelete === BULK_DELETE_ITEM;
+
+  // 🔑 CLAU: Gestor unificat (cridat pel GenericDataTable)
+  const handleUnifiedDelete = () => {
+    if (isBulkDeletionDialog) {
+      handleBulkDelete();
+    } else if (expenseToDelete) {
+      handleDelete(); // Individual
+    }
+  };
+
+  // Lògica de Presentació de la Taula
   const visibleColumns = useMemo(
     () => allColumns.filter(col => columnVisibility[col.accessorKey.toString()] ?? true),
     [allColumns, columnVisibility]
   );
 
-  const deleteDescription = (
-    <>
-      {tShared('deleteDialog.description1')}{' '}
-      <span className="font-bold">{expenseToDelete?.invoice_number || expenseToDelete?.id}</span>.
-      <br />
-      {tShared('deleteDialog.description2')}
-    </>
-  );
+  const deleteTitleKey = isBulkDeletionDialog ? 'Shared.deleteDialog.titleBulk' : 'ExpensesPage.deleteDialog.title';
 
-  // ✅ 7. Gestor pel botó "Nova Despesa"
-  const handleNewExpenseClick = () => {
-    if (isLimitExceeded) {
-      setShowLimitModal(true); // Mostra el modal si se supera el límit
-    } else {
-      router.push(`/${locale}/finances/expenses/new`); // Navega si tot està bé
+  // 🔑 CLAU: Correcció del missatge i diferenciació Bulk/Individual
+  const deleteDescription = useMemo(() => {
+    if (isBulkDeletionDialog) {
+      return tShared('deleteDialog.descriptionBulk', { count: selectedItems.length });
     }
+
+    // CORRECCIÓ: Mostra el número de factura o un placeholder si no n'hi ha cap
+    const itemNumber = expenseToDelete
+      ? expenseToDelete.invoice_number || `EXP-${expenseToDelete.id}`
+      : tShared('deleteDialog.defaultRecord');
+
+    return (
+      <>
+        {tShared('deleteDialog.description1')}{' '}
+        <span className="font-bold">{itemNumber}</span>.
+        <br />
+        {tShared('deleteDialog.description2')}
+      </>
+    );
+  }, [expenseToDelete, isBulkDeletionDialog, selectedItems.length, tShared]);
+
+
+
+  // Gestor pel botó "Nova Despesa"
+  const handleNewExpenseClick = () => {
+    if (isLimitExceeded) { setShowLimitModal(true); } else { router.push(`/${locale}/finances/expenses/new`); }
   };
 
   return (
@@ -246,70 +300,92 @@ export function ExpensesClient({
       <div className="sticky top-0 z-10 bg-background border-b shadow-sm py-3 px-4 sm:px-0">
         <PageHeader title={t('title')}>
 
-          {/* ✅ 8. Alerta de límit (només si se supera) */}
           {isLimitExceeded && (
             <Alert variant="destructive" className="border-yellow-400 bg-yellow-50 text-yellow-900 p-2 max-w-md">
               <TriangleAlert className="h-4 w-4 text-yellow-900" />
-              <AlertTitle className="font-semibold text-xs mb-0">
-                {t_billing('modalTitle', { default: 'Límit assolit' })}
-              </AlertTitle>
+              <AlertTitle className="font-semibold text-xs mb-0"> {t_billing('modalTitle', { default: 'Límit assolit' })} </AlertTitle>
               <AlertDescription className="text-xs">
-                {expenseLimitStatus.error || t_billing('expensesPerMonth', { current: expenseLimitStatus.current, max: expenseLimitStatus.max })}
+                {expenseLimitStatus!.error || t_billing('expensesPerMonth', { current: expenseLimitStatus!.current, max: expenseLimitStatus!.max })}
                 <Button asChild variant="link" size="sm" className="p-0 h-auto ml-1 text-yellow-900 font-semibold underline">
                   <Link href={`/${locale}/settings/billing`}>{t_billing('upgradeButton')}</Link>
                 </Button>
               </AlertDescription>
             </Alert>
           )}
-          {/* 💡 5. Botó d'Excel afegit i connectat al hook */}
+
+          {/* Botó d'Excel (Deshabilitat en mode selecció) */}
           <ExcelDropdownButton
-            options={excelOptions}
-            onSelect={handleExcelAction}
-            disabled={isExcelPending || isTablePending}
+            options={excelOptions} onSelect={handleExcelAction}
+            disabled={isExcelPending || isTablePending || isMultiSelectActive}
           />
-          {/* ✅ 9. Botó ara utilitza el gestor onClick */}
-          <Button onClick={handleNewExpenseClick} className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
+
+          {/* Botó Nova Despesa (Deshabilitat en mode selecció) */}
+          <Button onClick={handleNewExpenseClick} disabled={isTablePending || isExcelPending || isMultiSelectActive} className="w-full sm:w-auto">
+            <PlusCircle className="w-4 h-4 mr-1" /> {t('newExpenseButton')}
           </Button>
 
         </PageHeader>
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4 px-2 sm:px-0">
-        <ExpenseFilters
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          categories={filterOptions.categories} />
+      {/* 🌟 BARRA D'ACCIÓ RÀPIDA (Toggle + Eliminar + Filtres) */}
+      <div className="flex justify-between items-start gap-4 px-2 sm:px-0">
 
-        <ColumnToggleButton
-          allColumns={allColumns}
-          columnVisibility={columnVisibility}
-          toggleColumnVisibility={toggleColumnVisibility}
-        />
+        {/* GRUP ESQUERRA: TOGGLE + ELIMINAR MASSIU + FILTRES */}
+        <div className="flex items-center gap-2 flex-grow">
+
+          {/* 🌟 1. Botó de Toggle (Esquerra del tot) */}
+          <Button
+            variant={isMultiSelectActive ? "secondary" : "ghost"}
+            size="icon"
+            onClick={onToggleMultiSelect}
+            title={isMultiSelectActive ? tActions('cancelSelection') : tActions('selectItems')}
+            disabled={isTablePending || isExcelPending}
+            className={cn("flex-shrink-0 h-8 w-8", (isTablePending || isExcelPending) && "opacity-50 pointer-events-none")}
+          >
+            {isMultiSelectActive ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+            <span className="sr-only">{isMultiSelectActive ? tActions('cancelSelection') : tActions('selectItems')}</span>
+          </Button>
+
+          {/* 🌟 2. Botó d'Eliminació Massiva (Apareix només si hi ha selecció) */}
+          {isBulkDeletionMode && (
+            <Button
+              variant="destructive" size="sm"
+              // 🔑 CLAU: Assginem el DUMMY per obrir l'AlertDialog
+              onClick={() => setExpenseToDelete(BULK_DELETE_ITEM)}
+              disabled={selectedItems.length === 0 || isBulkDeletePending || isTablePending || isExcelPending}
+              className="flex-shrink-0"
+            >
+              {(isBulkDeletePending || isTablePending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              <Trash2 className="w-4 h-4 mr-2" />
+              {tActions('deleteCount', { count: selectedItems.length })}
+            </Button>
+          )}
+
+          {/* 3. Filtres (Deshabilitats en mode selecció) */}
+          <ExpenseFilters
+            searchTerm={searchTerm} onSearchChange={handleSearchChange} filters={filters} onFilterChange={handleFilterChange}
+            categories={filterOptions.categories}
+          />
+        </div>
+
+        {/* GRUP DRETA: Toggle de Columnes */}
+        <ColumnToggleButton allColumns={allColumns} columnVisibility={columnVisibility} toggleColumnVisibility={toggleColumnVisibility} />
       </div>
 
-      <div className="flex-grow overflow-x-auto">
-        <GenericDataTable
+      <div className="flex-grow overflow-x-auto px-2 sm:px-0">
+        <GenericDataTable<ExpenseWithContact>
           data={expenses}
           columns={visibleColumns}
-          onSort={handleSort}
-          currentSortColumn={currentSortColumn}
-          currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
-          isPending={isExcelPending || isTablePending} // 💡 6. Combinem els 'pending'        
-          onDelete={handleDelete}
-          deleteItem={expenseToDelete}
-          setDeleteItem={setExpenseToDelete}
-          deleteTitleKey="ExpensesPage.deleteDialog.title"
-          deleteDescription={deleteDescription}
-          emptyStateMessage={t('emptyState')}
-          page={page}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          rowsPerPage={rowsPerPage}
-          onRowsPerPageChange={handleRowsPerPageChange}
+          onSort={handleSort} currentSortColumn={currentSortColumn} currentSortOrder={currentSortOrder as 'asc' | 'desc' | null}
+          isPending={isExcelPending || isTablePending || isBulkDeletePending}
+          onDelete={handleUnifiedDelete} // 🔑 Crida al gestor unificat
+          deleteItem={expenseToDelete} setDeleteItem={setExpenseToDelete}
+          deleteTitleKey={deleteTitleKey} deleteDescription={deleteDescription} emptyStateMessage={t('emptyState')}
+          page={page} totalPages={totalPages} onPageChange={handlePageChange} rowsPerPage={rowsPerPage} onRowsPerPageChange={handleRowsPerPageChange}
           rowsPerPageOptions={EXPENSE_ROWS_PER_PAGE_OPTIONS}
+          // 🌟 PROPS DE SELECCIÓ MÚLTIPLE
+          isMultiSelectActive={isMultiSelectActive} selectedItems={selectedItems} onToggleMultiSelect={onToggleMultiSelect}
+          onSelectAll={onSelectAll} onSelectItem={onSelectItem} onBulkDelete={handleBulkDelete} isBulkDeletePending={isBulkDeletePending}
         />
       </div>
 

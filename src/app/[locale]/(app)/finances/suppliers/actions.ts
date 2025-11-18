@@ -2,30 +2,32 @@
 
 import { revalidatePath } from "next/cache";
 // ✅ 1. Importem guardians, permisos i límits
-import { 
-  validateSessionAndPermission,
-  validateActionAndUsage
+import {
+    validateActionAndUsage,
+    validateSessionAndPermission,
 } from "@/lib/permissions/permissions";
 import { PERMISSIONS } from "@/lib/permissions/permissions.config";
 import { type PlanLimit } from "@/config/subscriptions";
 
 import { type ActionResult } from "@/types/shared/actionResult";
-import { type PaginatedActionParams } from '@/hooks/usePaginateResource';
+import { type PaginatedActionParams } from "@/hooks/usePaginateResource";
 
-import * as supplierService from '@/lib/services/finances/suppliers/suppliers.service';
-import type { 
-  Supplier, 
-  SupplierFormData,
-  SupplierPageFilters,
-  PaginatedSuppliersData
-} from '@/lib/services/finances/suppliers/suppliers.service';
+import * as supplierService from "@/lib/services/finances/suppliers/suppliers.service";
+import type {
+    PaginatedSuppliersData,
+    Supplier,
+    SupplierFormData,
+    SupplierPageFilters,
+} from "@/lib/services/finances/suppliers/suppliers.service";
 
 // --- Acció per Obtenir Dades Paginades ---
 export async function fetchPaginatedSuppliers(
-    params: PaginatedActionParams<SupplierPageFilters>
+    params: PaginatedActionParams<SupplierPageFilters>,
 ): Promise<PaginatedSuppliersData> {
     // ✅ 2. Validació de VISTA
-    const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+    const session = await validateSessionAndPermission(
+        PERMISSIONS.VIEW_FINANCES,
+    );
     if ("error" in session) {
         console.error("Session error fetching suppliers:", session.error);
         return { data: [], count: 0 };
@@ -33,10 +35,17 @@ export async function fetchPaginatedSuppliers(
     const { supabase, activeTeamId } = session;
 
     try {
-        return await supplierService.getPaginatedSuppliers(supabase, activeTeamId, params);
+        return await supplierService.getPaginatedSuppliers(
+            supabase,
+            activeTeamId,
+            params,
+        );
     } catch (error: unknown) {
         const message = (error as Error).message;
-        console.error("Unhandled error in fetchPaginatedSuppliers action:", message);
+        console.error(
+            "Unhandled error in fetchPaginatedSuppliers action:",
+            message,
+        );
         return { data: [], count: 0 };
     }
 }
@@ -44,16 +53,26 @@ export async function fetchPaginatedSuppliers(
 /**
  * ACCIÓ: Esborra un proveïdor.
  */
-export async function deleteSupplierAction(supplierId: string): Promise<ActionResult> {
+export async function deleteSupplierAction(
+    supplierId: string,
+): Promise<ActionResult> {
     // ✅ 3. Validació de GESTIÓ
-    const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_SUPPLIERS);
-    if ("error" in session) return { success: false, message: session.error.message };
+    const session = await validateSessionAndPermission(
+        PERMISSIONS.MANAGE_SUPPLIERS,
+    );
+    if ("error" in session) {
+        return { success: false, message: session.error.message };
+    }
     const { supabase, activeTeamId } = session;
 
-    const result = await supplierService.deleteSupplier(supabase, activeTeamId, supplierId);
+    const result = await supplierService.deleteSupplier(
+        supabase,
+        activeTeamId,
+        supplierId,
+    );
 
     if (result.success) {
-        revalidatePath('/finances/suppliers');
+        revalidatePath("/finances/suppliers");
     }
     return result;
 }
@@ -63,14 +82,20 @@ export async function deleteSupplierAction(supplierId: string): Promise<ActionRe
  */
 export async function fetchSupplierDetail(id: string): Promise<Supplier> {
     // ✅ 4. Validació de VISTA
-    const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+    const session = await validateSessionAndPermission(
+        PERMISSIONS.VIEW_FINANCES,
+    );
     if ("error" in session) {
         console.error("Session error fetching supplier detail:", session.error);
         throw new Error(session.error.message);
     }
     const { supabase, activeTeamId } = session;
 
-    return await supplierService.fetchSupplierDetail(supabase, activeTeamId, id);
+    return await supplierService.fetchSupplierDetail(
+        supabase,
+        activeTeamId,
+        id,
+    );
 }
 
 /**
@@ -78,24 +103,23 @@ export async function fetchSupplierDetail(id: string): Promise<Supplier> {
  */
 export async function saveSupplierAction(
     formData: SupplierFormData,
-    supplierId: string | null
+    supplierId: string | null,
 ): Promise<ActionResult<Supplier>> {
-    
     // ✅ 5. CAPA 3: Validació de GESTIÓ + LÍMIT
     let validationResult;
-    const isNew = supplierId === null || supplierId === 'new';
-    const limitToCheck: PlanLimit = 'maxSuppliers'; // Definim el límit
+    const isNew = supplierId === null || supplierId === "new";
+    const limitToCheck: PlanLimit = "maxSuppliers"; // Definim el límit
 
     if (isNew) {
         // Si és nou, comprovem permís I límit
         validationResult = await validateActionAndUsage(
             PERMISSIONS.MANAGE_SUPPLIERS,
-            limitToCheck
+            limitToCheck,
         );
     } else {
         // Si edita, només comprovem permís
         validationResult = await validateSessionAndPermission(
-            PERMISSIONS.MANAGE_SUPPLIERS
+            PERMISSIONS.MANAGE_SUPPLIERS,
         );
     }
 
@@ -106,43 +130,103 @@ export async function saveSupplierAction(
     const { supabase, user, activeTeamId } = validationResult;
 
     const result = await supplierService.saveSupplier(
-        supabase, 
-        user.id, 
-        activeTeamId, 
-        formData, 
-        supplierId
+        supabase,
+        user.id,
+        activeTeamId,
+        formData,
+        supplierId,
     );
-    
+
     if (result.success) {
-        revalidatePath('/finances/suppliers');
-        if (supplierId && supplierId !== 'new') {
+        revalidatePath("/finances/suppliers");
+        if (supplierId && supplierId !== "new") {
             revalidatePath(`/finances/suppliers/${supplierId}`);
         }
     }
-    
+
     return result;
 }
 
 /**
  * ACCIÓ: Obté la llista completa de proveïdors (per a selectors, etc.).
  */
-export async function fetchSuppliers(): Promise<Pick<Supplier, 'id' | 'nom'>[]> {
+export async function fetchSuppliers(): Promise<
+    Pick<Supplier, "id" | "nom">[]
+> {
     // ✅ 6. Validació de VISTA
-    const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+    const session = await validateSessionAndPermission(
+        PERMISSIONS.VIEW_FINANCES,
+    );
     if ("error" in session) return [];
     const { supabase, activeTeamId } = session;
-    
+
     return await supplierService.fetchSuppliers(supabase, activeTeamId);
 }
 
 /**
  * ACCIÓ: Cerca proveïdors per nom per al combobox asíncron.
  */
-export async function searchSuppliers(searchTerm: string): Promise<Pick<Supplier, 'id' | 'nom'>[]> {
+export async function searchSuppliers(
+    searchTerm: string,
+): Promise<Pick<Supplier, "id" | "nom">[]> {
     // ✅ 7. Validació de VISTA
-    const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
+    const session = await validateSessionAndPermission(
+        PERMISSIONS.VIEW_FINANCES,
+    );
     if ("error" in session) return [];
     const { supabase, activeTeamId } = session;
 
-    return await supplierService.searchSuppliers(supabase, activeTeamId, searchTerm);
+    return await supplierService.searchSuppliers(
+        supabase,
+        activeTeamId,
+        searchTerm,
+    );
+}
+
+/**
+ * ACCIÓ: Esborra múltiples proveïdors (Bulk Delete).
+ * @param ids Array d'IDs (string/UUID) dels proveïdors a eliminar.
+ */
+export async function deleteBulkSuppliersAction(
+    ids: string[],
+): Promise<ActionResult> {
+    const session = await validateSessionAndPermission(
+        PERMISSIONS.MANAGE_SUPPLIERS,
+    );
+    if ("error" in session) {
+        return { success: false, message: session.error.message };
+    }
+    const { supabase, activeTeamId } = session;
+
+    if (ids.length === 0) {
+        return {
+            success: true,
+            message: "No s'ha seleccionat cap proveïdor per eliminar.",
+        };
+    }
+
+    // 🔑 PER QUÈ: L'operador 'in' funciona igual per a UUIDs (strings) que per a enters.
+    const { error } = await supabase
+        .from("suppliers")
+        .delete()
+        .in("id", ids)
+        .eq("team_id", activeTeamId); // Assegurança de RLS
+
+    if (error) {
+        console.error(
+            "Error al realitzar l'eliminació massiva de proveïdors:",
+            error,
+        );
+        return {
+            success: false,
+            message: `Error al eliminar els proveïdors. Prova-ho de nou.`,
+        };
+    }
+
+    revalidatePath("/finances/suppliers");
+
+    return {
+        success: true,
+        message: `S'han eliminat correctament ${ids.length} proveïdors.`,
+    };
 }
