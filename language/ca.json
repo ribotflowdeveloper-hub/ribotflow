@@ -858,6 +858,12 @@
       "addManualItem": "Afegir línia manual",
       "removeItemTooltip": "Eliminar concepte",
       "createNewItem": "Crear i desar producte",
+      "description": "Descripció",
+      "quantity": "Quantitat",
+      "unitPrice": "Preu Unitari",
+      "taxes": "Impostos",
+      "total": "Total",
+    
       "productSelector": {
         "addButton": "Afegir concepte",
         "newProductTitle": "Crear nou producte",
@@ -894,7 +900,9 @@
       "discountAmount": "Import Descompte",
       "taxableBase": "Base Imposable",
       "taxes": "Impostos (IVA%)",
-      "total": "Total"
+      "total": "Total",
+      "vat": "IVA"  ,
+      "retention": "Retenció"
     },
     "preview": {
       "logoPlaceholder": "El teu Logo",
@@ -910,8 +918,11 @@
       "notesAndTerms": "Notes i Termes",
       "totalLabel": "TOTAL",
       "quantityHeader": "Quant.",
-      "priceHeader": "Preu/U."
+      "priceHeader": "Preu/U.",
+      "from": "De",
+      "to": "A"
     },
+    "form": "Formulari de Pressupost",
     "options": {
       "title": "Opcions de Visualització",
       "showQuantitiesLabel": "Mostrar quantitats i preus unitaris",

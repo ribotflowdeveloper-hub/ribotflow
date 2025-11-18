@@ -22,7 +22,7 @@ export function PublicQuoteClient({ initialQuoteData }: { initialQuoteData: Quot
     if (finalStatus) {
         return <QuoteStatusScreen status={finalStatus} quote={quote} />;
     }
-
+    console.log("🔍 [PublicQuoteClient] Quote Data:", quote);
     // Si no, mostrem la vista principal del pressupost i el diàleg de rebuig (que està ocult per defecte).
     return (
         <>

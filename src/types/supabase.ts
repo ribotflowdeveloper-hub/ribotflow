@@ -1877,6 +1877,58 @@ export type Database = {
           },
         ]
       }
+      quote_item_taxes: {
+        Row: {
+          amount: number
+          id: string
+          name: string
+          quote_item_id: number
+          rate: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Insert: {
+          amount: number
+          id?: string
+          name: string
+          quote_item_id: number
+          rate: number
+          tax_rate_id: string
+          team_id: string
+        }
+        Update: {
+          amount?: number
+          id?: string
+          name?: string
+          quote_item_id?: number
+          rate?: number
+          tax_rate_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_item_taxes_quote_item_id_fkey"
+            columns: ["quote_item_id"]
+            isOneToOne: false
+            referencedRelation: "quote_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_item_taxes_tax_rate_id_fkey"
+            columns: ["tax_rate_id"]
+            isOneToOne: false
+            referencedRelation: "tax_rates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_item_taxes_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quote_items: {
         Row: {
           description: string
@@ -1943,10 +1995,13 @@ export type Database = {
           expiry_date: string | null
           id: number
           issue_date: string
+          legacy_tax_amount: number | null
+          legacy_tax_rate: number | null
           notes: string | null
           opportunity_id: number | null
           quote_number: string
           rejection_reason: string | null
+          retention_amount: number
           secure_id: string
           send_at: string | null
           sent_at: string | null
@@ -1954,8 +2009,7 @@ export type Database = {
           show_quantity: boolean
           status: Database["public"]["Enums"]["quote_status"] | null
           subtotal: number
-          tax_amount: number | null
-          tax_rate: number | null
+          tax_amount: number
           team_id: string | null
           theme_color: string | null
           total_amount: number | null
@@ -1968,10 +2022,13 @@ export type Database = {
           expiry_date?: string | null
           id?: number
           issue_date: string
+          legacy_tax_amount?: number | null
+          legacy_tax_rate?: number | null
           notes?: string | null
           opportunity_id?: number | null
           quote_number: string
           rejection_reason?: string | null
+          retention_amount?: number
           secure_id?: string
           send_at?: string | null
           sent_at?: string | null
@@ -1979,8 +2036,7 @@ export type Database = {
           show_quantity?: boolean
           status?: Database["public"]["Enums"]["quote_status"] | null
           subtotal: number
-          tax_amount?: number | null
-          tax_rate?: number | null
+          tax_amount?: number
           team_id?: string | null
           theme_color?: string | null
           total_amount?: number | null
@@ -1993,10 +2049,13 @@ export type Database = {
           expiry_date?: string | null
           id?: number
           issue_date?: string
+          legacy_tax_amount?: number | null
+          legacy_tax_rate?: number | null
           notes?: string | null
           opportunity_id?: number | null
           quote_number?: string
           rejection_reason?: string | null
+          retention_amount?: number
           secure_id?: string
           send_at?: string | null
           sent_at?: string | null
@@ -2004,8 +2063,7 @@ export type Database = {
           show_quantity?: boolean
           status?: Database["public"]["Enums"]["quote_status"] | null
           subtotal?: number
-          tax_amount?: number | null
-          tax_rate?: number | null
+          tax_amount?: number
           team_id?: string | null
           theme_color?: string | null
           total_amount?: number | null

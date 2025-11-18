@@ -3,7 +3,7 @@
 
 import { type Database, type Tables } from '@/types/supabase';
 import { type PaginatedResponse } from '@/hooks/usePaginateResource'; // ✅ Assegura't que aquí posa 'from'
-
+import { type TaxRate } from '@/types/finances/index';
 // --- Tipus Base (Font de la Veritat) ---
 export type Quote = Tables<'quotes'>;
 export type QuoteId = Quote["id"];
@@ -11,7 +11,12 @@ export type QuoteStatus = Database["public"]["Enums"]["quote_status"];
 export type QuoteRow = Database['public']['Tables']['quotes']['Row'];
 export type ContactRow = Database['public']['Tables']['contacts']['Row'];
 export type TeamRow = Database['public']['Tables']['teams']['Row'];
-
+export type Product = Tables<'products'>;
+export type Team = Tables<'teams'>;
+export type Opportunity = Tables<'opportunities'>;
+export type Contact = Tables<'contacts'>;
+export type QuoteItemTax = Tables<'quote_item_taxes'>; // Tipus cru de la taula taxes
+export type QuoteItemTable = Tables<'quote_items'>; // Tipus cru de la taula
 // --- Tipus de la Funció RPC (Contracte Manual) ---
 // ✅ CORREGIT: També actualitzem la RPC per reflectir la FASE 1
 // (Assumint que has actualitzat la teva funció SQL 'search_paginated_quotes' 
@@ -75,24 +80,52 @@ export interface QuotePageFilters {
 }
 export type PaginatedQuotesData = PaginatedResponse<QuoteWithContact>;
 
+export type QuoteItemRow = Database['public']['Tables']['quote_items']['Row'];
 
+/* ----------------------------- QUOTE ITEM ----------------------------- */
 
-// --- Tipus addicionals per a l'Editor [id] ---
+// El QuoteItem que utilitzem a la UI (Frontend)
+export type QuoteItem = Omit<QuoteItemTable, "tax_rate_id"> & {
+    id?: number;               
+    tempId?: string;           
+    
+    // AQUI ESTA LA CLAU: taxes ha de ser un array de TaxRate
+    // Quan ve de la DB, potser es diu 'quote_item_taxes', així que ho mapejarem.
+    taxes: TaxRate[];          
+    
+    total: number;             
 
-export type QuoteItem = Tables<'quote_items'>;
-export type Product = Tables<'products'>;
-export type Team = Tables<'teams'>;
-export type Opportunity = Tables<'opportunities'>;
-export type Contact = Tables<'contacts'>;
-
-/**
- * El payload que la RPC 'upsert_quote_with_items' espera.
- * Definit a 'actions.ts'
- */
-export type QuotePayload = Partial<Omit<Quote, "id">> & {
-  id: "new" | number;
-  items: Partial<QuoteItem>[];
+    // Camps opcionals de frontend/backend
+    description?: string | null;
+    quantity?: number | null;
+    unit_price?: number | null;
+    product_id?: number | null;
+    user_id?: string | null;
 };
+
+/* ------------------------------- QUOTE ------------------------------- */
+
+export type QuotePayload = Partial<Omit<Quote, "id">> & {
+    id: "new" | number;
+    items: Partial<QuoteItem>[]; // Els items amb les seves taxes niades
+
+    subtotal: number;
+    tax_amount: number;
+    total_amount: number;
+    discount_amount: number;
+
+    tax_rate?: number;
+};
+
+// ✅ CORRECCIÓ AQUÍ: Afegim 'tax_percent_input'
+export type EditableQuote = QuotePayload & {
+  discount_percent_input?: number | null;
+  tax_percent_input?: number | null; // <--- Aquest camp faltava!
+};
+
+
+
+
 
 /**
  * El tipus de dades que retorna la RPC 'get_quote_details'
@@ -114,6 +147,7 @@ export type NewQuote = Omit<Quote, 'id'> & { id: 'new'; items: Partial<QuoteItem
  * Definit a 'QuoteEditorData.tsx'
  */
 export type InitialQuoteType = (Quote & { items: QuoteItem[] }) | NewQuote;
+
 
 /**
  * Tipus de dades agregades que el servei 'getQuoteEditorData' retornarà
@@ -138,3 +172,27 @@ export type QuoteDataFromServer = QuoteRow & {
   items: QuoteItem[];           // 'items' (en lloc de 'quote_items')
 };
 
+
+// Definim l'estat de la interfície
+export type EditorState = {
+  quote: EditableQuote;
+  currentTeamData: Team | null;
+  contactOpportunities: Opportunity[];
+  isDeleteDialogOpen: boolean;
+  isProfileDialogOpen: boolean;
+  sendingStatus: "idle" | "generating" | "uploading" | "sending";
+};
+
+// Definim les accions del Reducer amb tipatge estricte
+export type EditorAction =
+  | { type: "SET_QUOTE"; payload: EditableQuote }
+  | { 
+      type: "UPDATE_QUOTE_FIELD"; 
+      // Això permet actualitzar qualsevol camp de EditableQuote assegurant el tipus correcte
+      payload: { field: keyof EditableQuote; value: EditableQuote[keyof EditableQuote] } 
+    }
+  | { type: "SET_TEAM_DATA"; payload: Team | null }
+  | { type: "SET_OPPORTUNITIES"; payload: Opportunity[] }
+  | { type: "SET_DELETE_DIALOG"; payload: boolean }
+  | { type: "SET_PROFILE_DIALOG"; payload: boolean }
+  | { type: "SET_SENDING_STATUS"; payload: EditorState["sendingStatus"] };

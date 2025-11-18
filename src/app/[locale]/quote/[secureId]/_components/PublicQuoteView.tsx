@@ -1,12 +1,12 @@
-// /app/[locale]/quote/[secureId]/_components/PublicQuoteView.tsx (CORREGIT)
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { QuotePreview } from "@/app/[locale]/(app)/finances/quotes/[id]/_components/QuotePreview";
-import { type QuoteDataFromServer } from "@/types/finances/quotes";
-import { type EditableQuote } from "@/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor";
+import { type QuoteDataFromServer, type EditableQuote } from "@/types/finances/quotes"; 
 import { type Database } from "@/types/supabase";
+// ✅ Importem el helper de càlcul compartit
+import { calculateQuoteTotals } from "@/app/[locale]/(app)/finances/quotes/[id]/_hooks/quoteCalculations"; 
 
 type Contact = Database['public']['Tables']['contacts']['Row'];
 type Team = Database['public']['Tables']['teams']['Row'];
@@ -19,22 +19,33 @@ interface PublicQuoteViewProps {
 }
 
 export function PublicQuoteView({ quoteData, onAccept, onReject, isPending }: PublicQuoteViewProps) {
-    // 🔹 Càlculs equivalents al useQuoteEditor
-    const tax_percent_input = (quoteData.tax_rate ?? 0) * 100; // 0.21 -> 21
-    const discount_percent_input =
-        quoteData.subtotal && quoteData.subtotal > 0
-            ? parseFloat(((quoteData.discount_amount ?? 0) / quoteData.subtotal * 100).toFixed(2))
-            : 0;
-
-    // ✅ 1. Creem l'objecte 'quoteForPreview' CORRECTAMENT
-    // Mapegem els camps de % persistits (que vam desar al SQL)
-    // als camps temporals que el 'QuotePreview' espera.
-    const quoteForPreview = {
+    
+    // 1. Preparem l'objecte EditableQuote
+    // Nota: quoteData.items JA hauria de contenir l'array 'taxes' gràcies al backend
+    const quoteForPreview: EditableQuote = {
         ...quoteData,
-        tax_percent_input,
-        discount_percent_input,
+        // Recalculem el % de descompte si només tenim l'import absolut
+        discount_percent_input: (quoteData.subtotal && quoteData.subtotal > 0 && quoteData.discount_amount)
+             ? (quoteData.discount_amount / quoteData.subtotal * 100) 
+             : 0,
+        tax_percent_input: null, 
         items: quoteData.items || [],
+        // Assegurem valors per defecte
+        subtotal: quoteData.subtotal || 0,
+        discount_amount: quoteData.discount_amount || 0,
+        tax_amount: quoteData.tax_amount || 0,
+        total_amount: quoteData.total_amount || 0,
+        // tax_rate: quoteData.tax_rate || 0.21, // Removed because 'tax_rate' does not exist
+        // Camps opcionals que potser falten
+        legacy_tax_amount: null,
+        legacy_tax_rate: null,
+        retention_amount: 0,
     } as unknown as EditableQuote;
+
+    // ✅ 2. RECALCULEM ELS TOTALS EN TEMPS REAL
+    // Això generarà el 'taxBreakdown' basant-se en els items i les seves taxes.
+    const totals = calculateQuoteTotals(quoteForPreview);
+
     return (
         <div className="bg-gray-100 min-h-screen p-4 sm:p-8">
             <div className="max-w-4xl mx-auto">
@@ -48,12 +59,18 @@ export function PublicQuoteView({ quoteData, onAccept, onReject, isPending }: Pu
                         quote={quoteForPreview}
                         contacts={quoteData.contacts ? [quoteData.contacts as unknown as Contact] : []}
                         companyProfile={quoteData.team as unknown as Team | null}
-                        subtotal={quoteData.subtotal || 0}
-                        discount_amount={quoteData.discount_amount || 0}
-                        tax_amount={quoteData.tax_amount || 0}
-                        total_amount={quoteData.total_amount || 0}
+                        
+                        // ✅ Passem els totals frescos del helper
+                        subtotal={totals.subtotal}
+                        discount_amount={totals.discountAmount}
+                        tax_amount={totals.taxAmount}
+                        total_amount={totals.totalAmount}
+                        
+                        // ✅ Passem el desglossament d'impostos
+                        taxBreakdown={totals.taxBreakdown}
                     />
                 </div>
+                
                 <div className="mt-8 p-6 bg-white rounded-lg shadow-lg flex flex-col sm:flex-row justify-around items-center gap-4">
                     <p className="text-lg text-black font-semibold">Estàs d'acord amb aquest pressupost?</p>
                     <div className="flex gap-4">

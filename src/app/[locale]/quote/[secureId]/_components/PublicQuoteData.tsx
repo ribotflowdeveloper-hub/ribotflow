@@ -1,56 +1,56 @@
-// Al teu fitxer de servidor (p.ex. /quote/[secureId]/page.tsx)
 import { createClient } from '@/lib/supabase/server'; 
-import type { QuoteDataFromServer } from "@/types/finances/quotes"; 
-// Importem els tipus de la base de dades (assegura't que la ruta és correcta)
-import { type Database } from '@/types/supabase'; 
+import type { QuoteDataFromServer, QuoteItem, Quote, Opportunity } from "@/types/finances/quotes"; 
 
-// Definim el tipus que SÍ esperem al Pas 1
-type QuoteWithRelations = Database['public']['Tables']['quotes']['Row'] & {
-  contacts: Database['public']['Tables']['contacts']['Row'] | null;
-  team: Database['public']['Tables']['teams']['Row'] | null;
+// Definim el tipus que retorna l'RPC
+type QuoteDetailsResponse = {
+    quote: Quote & { items: QuoteItem[] }; // Ojo: Aquí items ja inclou taxes
+    opportunities: Opportunity[];
 };
 
-/**
- * Funció de servidor per obtenir les dades d'un pressupost (versió manual).
- * @param secureId L'ID únic del pressupost.
- * @returns Les dades del pressupost o null si no es troba.
- */
 export async function getQuoteDataBySecureId(secureId: string): Promise<QuoteDataFromServer | null> {
-    
-    const supabase = createClient();
+    const supabase = await createClient();
 
-    // PAS 1: Obtenim el pressupost (sense els items)
-    const selectString = "*, contacts (*), team:teams (*)";
+    // 1. Recuperar l'ID numèric
+    const { data: quoteIdData, error: idError } = await supabase
+        .from('quotes')
+        .select('id')
+        .eq('secure_id', secureId)
+        .single();
+    
+    if (idError || !quoteIdData) return null;
 
-    const { data: quoteData, error: quoteError } = await supabase
-        .from("quotes")
-        .select(selectString) 
-        .eq("secure_id", secureId)
-        .single<QuoteWithRelations>(); 
+    // 2. Cridar a l'RPC amb el tipus genèric
+    const { data, error } = await supabase
+        .rpc('get_quote_details', { p_quote_id: quoteIdData.id })
+        .single<QuoteDetailsResponse>(); // ✅ AQUEST ÉS EL CANVI CLAU
 
-    if (quoteError || !quoteData) {
-        console.error("Error carregant dades del pressupost (Pas 1):", quoteError?.message || "Dades no trobades");
-        return null;
-    }
-    
-    // PAS 2: Obtenim els items manualment (Sabem que la RLS d'això funciona)
-    const { data: itemsData, error: itemsError } = await supabase
-        .from("quote_items")
-        .select("*")
-        .eq("quote_id", quoteData.id);
+    if (error || !data || !data.quote) {
+        console.error("Error RPC Public:", error);
+        return null;
+    }
 
-    if (itemsError) {
-        console.error("Pressupost trobat, però error en carregar items (Pas 2):", itemsError.message);
-    }
+    const quote = data.quote;
+    
+    // 3. Recuperar contacte i equip
+    // Nota: Si 'quote.contact_id' pot ser null, cal comprovar-ho abans
+    if (!quote.contact_id || !quote.team_id) {
+         console.error("Dades incompletes al pressupost");
+         return null;
+    }
 
-    // PAS 3: Combinem els resultats manualment
-    // ✅ --- LA CORRECCIÓ DEFINITIVA ---
-    // Canviem el nom de 'quote_items' (BD) a 'items' (React)
-    const fullData = {
-        ...quoteData,
-        items: itemsData || [] // <-- Canviem 'quote_items' per 'items'
-    };
+    const [contactRes, teamRes] = await Promise.all([
+        supabase.from('contacts').select('*').eq('id', quote.contact_id).single(),
+        supabase.from('teams').select('*').eq('id', quote.team_id).single()
+    ]);
 
-    // Fem una petita trampa a TypeScript per unificar els tipus
-    return fullData as unknown as QuoteDataFromServer;
+    // Construïm el paquet final
+    // Fem servir un objecte intermedi per evitar conflictes de tipus estrictes
+    const fullData = {
+        ...quote,
+        contacts: contactRes.data,
+        team: teamRes.data,
+        items: quote.items || [] 
+    };
+
+    return fullData as unknown as QuoteDataFromServer;
 }

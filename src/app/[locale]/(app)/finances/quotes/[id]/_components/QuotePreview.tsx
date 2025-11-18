@@ -1,95 +1,97 @@
-// /app/[locale]/(app)/crm/quotes/[id]/_components/QuotePreview.tsx (Refactoritzat)
 "use client";
 
 import React from 'react';
 import { useTranslations } from 'next-intl';
-// ✅ 1. Importem els tipus correctes des de la BD i el hook.
 import { type Database } from '@/types/supabase';
-import { type EditableQuote } from '../_hooks/useQuoteEditor';
+// Importem el tipus global per accedir a les taxes dels items
+import { type EditableQuote } from '@/types/finances/quotes';
+import { formatCurrency } from '@/lib/utils/formatters';
+import { calculateLineTotal } from "../_hooks/quoteCalculations"; // Importem el helper
 
-// ✅ 2. Definim els tipus locals a partir de la BD.
 type Contact = Database['public']['Tables']['contacts']['Row'];
 type Team = Database['public']['Tables']['teams']['Row'];
 
 interface QuotePreviewProps {
-    // ✅ 1. 'quote' ara és 'EditableQuote'
     quote: EditableQuote;
     contacts: Contact[];
     companyProfile: Team | null;
     subtotal: number;
-    discount_amount: number; // Valor en €
-    tax_amount: number; // Valor en €
-    total_amount: number; // Valor en €
+    discount_amount: number;
+    tax_amount: number;
+    total_amount: number;
+    taxBreakdown?: Record<string, number>;
 }
 
 export const QuotePreview = ({
     quote,
     contacts,
-    companyProfile, // <-- Ja no es diu 'displayProfile', rep el 'team' directament
+    companyProfile,
     subtotal,
-    discount_amount,   // 👈 Nom nou
-    tax_amount,       // 👈 Nom nou
-    total_amount       // 👈 Nom nou
+    discount_amount,
+    tax_amount,
+    total_amount,
+    taxBreakdown = {}
 }: QuotePreviewProps) => {
     const contact = contacts.find(c => c.id === quote.contact_id);
     const base = subtotal - discount_amount;
     const t = useTranslations('QuoteEditor');
 
-    // ⛔ La funció 'mapTeamDataToProfile' i el tipus 'CompanyProfile' ja no són necessaris.
+
 
     return (
-        <aside className="hidden lg:block glass-card overflow-y-auto">
+        <aside className="hidden lg:block glass-card overflow-y-auto h-full">
             <div id="quote-preview-for-pdf">
-                <div className="bg-white text-gray-900 px-8 py-2 font-sans text-sm">
-                    <header className="flex justify-between items-center border-b-2 border-gray-200">
+                <div className="bg-white text-gray-900 px-8 py-8 font-sans text-sm shadow-sm min-h-[800px]">
+
+                    {/* HEADER */}
+                    <header className="flex justify-between items-start border-b-2 border-gray-100 pb-6 mb-6">
                         {companyProfile?.logo_url ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                                 src={companyProfile.logo_url}
                                 alt="Logo"
-                                style={{ maxWidth: '100px', height: '70px', objectFit: 'contain' }}
+                                style={{ maxWidth: '120px', maxHeight: '80px', objectFit: 'contain' }}
                                 crossOrigin="anonymous"
                             />
                         ) : (
-                            <div className="h-12 w-28 flex items-center justify-center bg-gray-100 text-gray-400 text-xs rounded">
+                            <div className="h-16 w-32 flex items-center justify-center bg-gray-50 text-gray-400 text-xs rounded border border-gray-200">
                                 {t('preview.logoPlaceholder')}
                             </div>
                         )}
-                        <div className="text-right ml-2">
-                            {/* ✅ 3. Accedim a les propietats del tipus 'Team'. */}
-                            <p className="font-bold text-lg">{companyProfile?.name || t('preview.yourCompany')}</p>
-                            <p className="text-gray-500 text-base mt-0"># {quote.quote_number || t('preview.pending')}</p>
+                        <div className="text-right">
+                            <h1 className="font-bold text-xl text-gray-900 mb-1">{companyProfile?.name || t('preview.yourCompany')}</h1>
+                            <p className="text-gray-500 text-sm"># {quote.quote_number || t('preview.pending')}</p>
                         </div>
                     </header>
 
-                    <section className="grid grid-cols-2 gap-8 my-4">
+                    {/* INFO GRID */}
+                    <section className="grid grid-cols-2 gap-12 mb-8">
                         <div>
-                            <p className="font-semibold">{companyProfile?.name || t('preview.yourCompany')}</p>
+                            <p className="text-gray-700 font-medium">{companyProfile?.name}</p>
                             <p className="text-gray-600">{companyProfile?.address}</p>
                             <p className="text-gray-600">{companyProfile?.tax_id}</p>
                             <p className="text-gray-600">{companyProfile?.email}</p>
                         </div>
                         <div className="text-right">
-                            <p className="font-semibold">{contact?.nom || t('preview.unselectedClient')}</p>
+                            <p className="text-gray-700 font-medium">{contact?.nom || t('preview.unselectedClient')}</p>
                             <p className="text-gray-600">{contact?.empresa}</p>
                             <p className="text-gray-600">{contact?.email}</p>
                         </div>
                     </section>
 
-                    {/* ---------------- DATES ---------------- */}
-                    <section className="grid grid-cols-2 gap-8 my-6">
+                    {/* DATES */}
+                    <section className="grid grid-cols-2 gap-12 mb-8 pb-6 border-b border-gray-100">
                         <div>
-                            <p className="text-xs text-gray-500 font-bold">{t('preview.issueDate')}</p>
-                            <p>
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">{t('preview.issueDate')}</p>
+                            <p className="font-medium">
                                 {quote.issue_date
                                     ? new Date(quote.issue_date).toLocaleDateString('ca-ES', { timeZone: 'UTC' })
                                     : ''}
                             </p>
                         </div>
-
                         <div className="text-right">
-                            <p className="text-xs text-gray-500 font-bold">{t('preview.expiryDate')}</p>
-                            <p>
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">{t('preview.expiryDate')}</p>
+                            <p className="font-medium">
                                 {quote.expiry_date
                                     ? new Date(quote.expiry_date).toLocaleDateString('ca-ES', { timeZone: 'UTC' })
                                     : 'N/A'}
@@ -98,51 +100,68 @@ export const QuotePreview = ({
                     </section>
 
                     {/* ---------------- TAULA D'ITEMS ---------------- */}
-                    {/* ---------------- TAULA D'ITEMS (AMB LÒGICA CONDICIONAL) ---------------- */}
-                    <section>
+                    <section className="mb-8">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="p-2 text-left font-bold text-xs uppercase w-[60%]">
+                            <thead>
+                                <tr className="border-b border-gray-200">
+                                    <th className="py-2 text-left font-bold text-xs uppercase text-gray-500 w-[40%]">
                                         {t('preview.itemHeader')}
                                     </th>
-
-                                    {/* ✅ Mostrem/amaguem les columnes segons la preferència */}
                                     {(quote.show_quantity ?? true) && (
                                         <>
-                                            <th className="p-2 text-center font-bold text-xs uppercase">
+                                            <th className="py-2 text-center font-bold text-xs uppercase text-gray-500">
                                                 {t('preview.quantityHeader')}
                                             </th>
-                                            <th className="p-2 text-right font-bold text-xs uppercase">
+                                            <th className="py-2 text-right font-bold text-xs uppercase text-gray-500">
                                                 {t('preview.priceHeader')}
                                             </th>
                                         </>
                                     )}
 
-                                    <th className="p-2 text-right font-bold text-xs uppercase">
+                                    {/* ✅ NOVA COLUMNA IMPOSTOS */}
+                                    {(quote.show_quantity ?? true) && (
+                                        <th className="py-2 text-right font-bold text-xs uppercase text-gray-500">
+                                            Impostos
+                                        </th>
+                                    )}
+
+                                    <th className="py-2 text-right font-bold text-xs uppercase text-gray-500">
                                         {t('preview.totalHeader')}
                                     </th>
                                 </tr>
                             </thead>
-
-                            <tbody>
+                            <tbody className="text-gray-700">
                                 {quote.items?.map((item, index) => (
-                                    <tr key={index} className="border-b border-gray-200">
-                                        <td className="p-2 pr-2">
-                                            {/* ✅ CORRECCIÓ 2: El 'p' amb la quantitat extra s'ha eliminat. */}
-                                            {item.description}
+                                    <tr key={index} className="border-b border-gray-100 last:border-0">
+                                        <td className="py-3 pr-2 align-top">
+                                            <p className="font-medium text-gray-900">{item.description}</p>
                                         </td>
-
-                                        {/* Mostrem/amaguem les cel·les corresponents */}
                                         {(quote.show_quantity ?? true) && (
                                             <>
-                                                <td className="text-center p-2">{item.quantity}</td>
-                                                <td className="text-right p-2">{item.unit_price?.toFixed(2)} €</td>
+                                                <td className="py-3 text-center align-top">{item.quantity}</td>
+                                                <td className="py-3 text-right align-top">{formatCurrency(item.unit_price ?? 0)}</td>
                                             </>
                                         )}
 
-                                        <td className="text-right p-2 font-medium">
-                                            {((item.quantity || 0) * (item.unit_price || 0)).toFixed(2)} €
+                                        {/* ✅ NOVA CEL·LA IMPOSTOS */}
+                                        {(quote.show_quantity?? true) && (
+                                            <td className="py-3 text-right align-top">
+                                                <div className="flex flex-col items-end gap-0.5">
+                                                    {item.taxes && item.taxes.length > 0 ? (
+                                                        item.taxes.map(t => (
+                                                            <span key={t.id} className="text-xs text-gray-500 whitespace-nowrap">
+                                                                {t.name} 
+                                                            </span>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">-</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
+
+                                        <td className="py-3 text-right font-medium align-top">
+                                            {formatCurrency(calculateLineTotal(item))}
                                         </td>
                                     </tr>
                                 ))}
@@ -150,59 +169,57 @@ export const QuotePreview = ({
                         </table>
                     </section>
 
-                    {/* ---------------- TOTALS ---------------- */}
-                    <section className="flex justify-end mt-6">
-                        <div className="w-full max-w-xs space-y-2">
-
-                            {/* Subtotal */}
-                            <div className="flex justify-between">
-                                <p className="text-gray-600">{t('totals.subtotal')}:</p>
-                                <p>{subtotal.toFixed(2)} €</p>
+                    {/* TOTALS */}
+                    <section className="flex justify-end mb-12">
+                        <div className="w-full max-w-xs space-y-3">
+                            <div className="flex justify-between text-gray-600">
+                                <p>{t('totals.subtotal')}:</p>
+                                <p className="font-medium text-gray-900">{formatCurrency(subtotal)}</p>
                             </div>
 
-                            {/* ✅ 3. Descompte (amb % de l'input) */}
-                            {/* Mostrem la línia si el % és major que 0 */}
-                            {(quote.discount_percent_input ?? 0) > 0 && (
+                            {discount_amount > 0 && (
                                 <div className="flex justify-between text-green-600">
-                                    {/* Llegim el % del camp '_input' */}
-                                    <p>{t('preview.discountLine')} ({quote.discount_percent_input}%)</p>
-                                    {/* Mostrem el valor en € calculat */}
-                                    <p>-{discount_amount.toFixed(2)} €</p>
+                                    <p>{t('preview.discountLine')}</p>
+                                    <p>-{formatCurrency(discount_amount)}</p>
                                 </div>
                             )}
 
-                            {/* Base imposable */}
-                            <div className="flex justify-between">
-                                <p className="text-gray-600">{t('totals.taxableBase')}:</p>
-                                <p>{base.toFixed(2)} €</p>
+                            <div className="flex justify-between text-gray-600 pt-2 border-t border-gray-100">
+                                <p>{t('totals.taxableBase')}:</p>
+                                <p>{formatCurrency(base)}</p>
                             </div>
 
-                            {/* ✅ 4. IVA (amb % de l'input) */}
-                            <div className="flex justify-between">
-                                <p className="text-gray-600">
-                                    {/* Llegim el % del camp '_input' */}
-                                    {t('preview.taxesLine')} ({quote.tax_percent_input ?? 21}%)
-                                </p>
-                                _         <p>{tax_amount.toFixed(2)} €</p>
-                            </div>
+                            {/* DESGLOSSAMENT D'IMPOSTOS */}
+                            {Object.entries(taxBreakdown).length > 0 ? (
+                                Object.entries(taxBreakdown).map(([name, amount]) => (
+                                    <div key={name} className="flex justify-between text-gray-600">
+                                        <p>{name}</p>
+                                        <p>{formatCurrency(amount)}</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="flex justify-between text-gray-600">
+                                    <p>{t('totals.taxes')}</p>
+                                    <p>€0.00</p>
+                                </div>
+                            )}
 
-                            {/* TOTAL FINAL */}
-                            <div className="flex justify-between font-bold text-xl mt-2 pt-2 border-t-2 border-gray-800">
+                            <div className="flex justify-between font-bold text-xl text-gray-900 pt-3 border-t-2 border-gray-900 mt-2">
                                 <p>{t('preview.totalHeader')}:</p>
-                                <p>{total_amount.toFixed(2)} €</p>
+                                <p>{formatCurrency(total_amount)}</p>
                             </div>
                         </div>
                     </section>
 
-                    {/* ---------------- NOTES I CONDICIONS ---------------- */}
-                    <footer className="mt-10 pt-6 border-t border-gray-200">
-                        <h3 className="font-bold mb-2">{t('preview.notesAndTerms')}</h3>
-                        {/* ✅ CANVI: Hem canviat 'text-xs' per 'text-sm' i 'text-gray-500' per 'text-gray-600' */}
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                            {quote.notes}
-                        </p>
-                    </footer>
-
+                    {/* FOOTER */}
+                    {quote.notes && (
+                        <footer className="pt-6 border-t border-gray-200">
+                            <h3 className="font-bold text-gray-900 mb-2 text-xs uppercase tracking-wide">{t('preview.notesAndTerms')}</h3>
+                            <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
+                                {quote.notes}
+                            </p>
+                        </footer>
+                    )}
                 </div>
             </div>
         </aside>

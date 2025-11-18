@@ -1,60 +1,62 @@
-// /src/lib/pdf/generateQuotePDF.ts (O on tinguis aquesta funció)
-
 import { renderToBuffer } from '@react-pdf/renderer'
 import { QuotePdfDocument } from '@/app/[locale]/(app)/finances/quotes/[id]/_components/PDF/QuotePdfDocument'
-import { type EditableQuote } from '@/app/[locale]/(app)/finances/quotes/[id]/_hooks/useQuoteEditor'
-import { type Database } from '@/types/supabase'
-
-type Contact = Database['public']['Tables']['contacts']['Row']
-type Team = Database['public']['Tables']['teams']['Row']
-
-// ⛔ AQUESTA FUNCIÓ ÉS L'ARREL DEL PROBLEMA. LA LÒGICA ÉS ANTIGA.
-// const calculateQuoteTotals = ( ... ) => { ... }
-// ⛔ LA PODEM ELIMINAR COMPLETAMENT.
+import { type EditableQuote, type Team, type Contact } from '@/types/finances/quotes'
+import { calculateQuoteTotals } from "@/app/[locale]/(app)/finances/quotes/[id]/_hooks/quoteCalculations"; 
 
 export async function generateQuotePdfBuffer(
-  quote: EditableQuote, // Aquest 'quote' ve de la BDD (via 'sendQuote')
-  company: Team | null,
-  contact: Contact | null
+  quote: EditableQuote, 
+  company: Team | null,
+  contact: Contact | null
 ): Promise<Buffer> {
-  
-  // ✅✅✅ INICI DE LA SOLUCIÓ ✅✅✅
+  
+  // 1. Recuperem valors base de la BD per reconstruir el percentatge
+  const dbSubtotal = quote.subtotal || 0;
+  const dbDiscountAmount = quote.discount_amount || 0;
 
-  // 1. NO RECALCULEM. Utilitzem els valors que ja estan desats a la BDD.
-  const subtotal = quote.subtotal || 0
-  const discountAmount = quote.discount_amount || 0 // 👈 Llegim el camp NOU
-  const taxAmount = quote.tax_amount || 0 // 👈 Llegim el camp NOU
-  const totalAmount = quote.total_amount || 0 // 👈 Llegim el camp NOU
+  // ✅ CÀLCUL CLAU: Reconstruïm el % de descompte si no el tenim
+  // Si tenim un descompte de 10€ sobre 100€, el % és 10.
+  let derivedDiscountPercent = quote.discount_percent_input;
+  
+  if ((!derivedDiscountPercent || derivedDiscountPercent === 0) && dbSubtotal > 0 && dbDiscountAmount > 0) {
+      derivedDiscountPercent = (dbDiscountAmount / dbSubtotal) * 100;
+  }
 
-  // 2. Mapegem els camps de % per al PDF
-  // El 'QuotePdfDocument' (que vam corregir) espera 'discount_percent_input'
-  // per mostrar el percentatge. El desem a la BDD al camp 'discount'.
-  const quoteForPdf: EditableQuote = {
-    ...quote,
-    discount_percent_input: quote.discount_amount ?? 0, // 👈 Llegim el % que vam desar
-    tax_percent_input: quote.tax_rate ?? 21, // 👈 Llegim el % que vam desar
-  };
-  // ✅✅✅ FI DE LA SOLUCIÓ ✅✅✅
+  // 2. Preparem l'objecte per al calculador amb el % injectat
+  const quoteForCalc: EditableQuote = {
+    ...quote,
+    discount_percent_input: derivedDiscountPercent ?? 0,
+    // tax_percent_input ja no s'usa, però el deixem a null
+    tax_percent_input: null,
+  };
 
-  const document = (
-    <QuotePdfDocument
-      quote={quoteForPdf} // 👈 Passem el 'quote' mapejat
-      company={company}
-      contact={contact}
-      
-      // ✅ 3. Passem les props amb els noms correctes
-      subtotal={subtotal}
-      discount_amount={discountAmount} // 👈 Prop correcta
-      tax_amount={taxAmount} // 👈 Prop correcta
-      total_amount={totalAmount} // 👈 Prop correcta
-    />
-  )
+  // 3. RECALCULEM TOTS ELS TOTALS (Ara el descompte serà correcte)
+  const calculatedTotals = calculateQuoteTotals(quoteForCalc);
 
-  try {
-    const buffer = await renderToBuffer(document)
-    return buffer
-  } catch (error) {
-    console.error('Error generant el buffer del PDF del pressupost:', error)
-    throw new Error("No s'ha pogut generar el PDF del pressupost.")
-  }
+  // 🔍 Debug (pots esborrar-ho després)
+  console.log("🔍 [PDF Gen] Discount Input:", derivedDiscountPercent);
+  console.log("🔍 [PDF Gen] Calculated Discount:", calculatedTotals.discountAmount);
+
+  // 4. Generar el document
+  const document = (
+    <QuotePdfDocument
+      quote={quoteForCalc}
+      company={company}
+      contact={contact}
+      
+      // Passem els totals recalculats (que ara inclouran el descompte i els impostos ajustats)
+      subtotal={calculatedTotals.subtotal}
+      discount_amount={calculatedTotals.discountAmount}
+      tax_amount={calculatedTotals.taxAmount}
+      total_amount={calculatedTotals.totalAmount}
+      taxBreakdown={calculatedTotals.taxBreakdown}
+    />
+  )
+
+  try {
+    const buffer = await renderToBuffer(document)
+    return buffer
+  } catch (error) {
+    console.error('Error generant el buffer del PDF del pressupost:', error)
+    throw new Error("No s'ha pogut generar el PDF del pressupost.")
+  }
 }

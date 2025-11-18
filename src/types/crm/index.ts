@@ -10,7 +10,6 @@ export * from './opportunitys';
 export * from './contacts';
 export * from '../comunicacio/inbox';
 export * from './general';
-export * from '../finances/products';
 export * from './deals';
 export * from '../shared/notification';
 export * from './calendar';

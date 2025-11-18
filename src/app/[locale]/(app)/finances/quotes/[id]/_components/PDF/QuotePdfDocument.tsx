@@ -1,5 +1,3 @@
-// /src/app/[locale]/(app)/finances/quotes/[id]/_components/PDF/QuotePdfDocument.tsx (CORREGIT)
-// NO 'use client'
 import {
   Document,
   Page,
@@ -8,14 +6,9 @@ import {
   StyleSheet,
   Image,
 } from '@react-pdf/renderer'
-import { type EditableQuote } from '../../_hooks/useQuoteEditor'
-import { type Database } from '@/types/supabase'
+import { type EditableQuote, type Team, type Contact, type QuoteItem } from '@/types/finances/quotes'
 
-// Defineix els tipus com ho fas a InvoicePdfDocument
-type Contact = Database['public']['Tables']['contacts']['Row']
-type Team = Database['public']['Tables']['teams']['Row']
-
-// --- Helpers de Format ---
+// --- Helpers ---
 const formatCurrency = (value: number | null) => {
   const num = Number(value || 0)
   return `${num.toFixed(2)} €`
@@ -34,180 +27,76 @@ const formatDate = (dateString: string | null) => {
   }
 }
 
-// --- Estils (Traducció de Tailwind) ---
+// ✅ Helper local per calcular el total de línia (Base + Impostos - Retencions)
+// Això garanteix que el PDF mostri el mateix valor que la pantalla.
+const calculateLineTotal = (item: Partial<QuoteItem>) => {
+  const quantity = Number(item.quantity) || 0;
+  const price = Number(item.unit_price) || 0;
+  const base = quantity * price;
+
+  let taxSum = 0;
+  if (item.taxes && item.taxes.length > 0) {
+    item.taxes.forEach(tax => {
+      const amount = base * (tax.rate / 100);
+      if (tax.type === 'retention') {
+        taxSum -= amount;
+      } else {
+        taxSum += amount;
+      }
+    });
+  }
+  return base + taxSum;
+};
+
+
+// --- Estils ---
 const styles = StyleSheet.create({
-  page: {
-    padding: 30,
-    fontFamily: 'Helvetica',
-    fontSize: 10,
-    color: '#333',
-    backgroundColor: '#ffffff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: '#e5e7eb',
-    paddingBottom: 8,
-  },
-  logo: {
-    maxWidth: 100,
-    height: 70,
-    objectFit: 'contain',
-  },
-  logoPlaceholder: {
-    height: 48,
-    width: 112,
-    backgroundColor: '#f3f4f6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPlaceholderText: {
-    color: '#9ca3af',
-    fontSize: 9,
-  },
-  headerRight: {
-    textAlign: 'right',
-    marginLeft: 8,
-  },
-  companyName: {
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 16,
-  },
-  quoteNumber: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginTop: 2,
-  },
-  section: {
-    flexDirection: 'row',
-    gap: 32,
-    marginVertical: 16,
-  },
-  sectionColumn: {
-    flex: 1,
-  },
-  sectionColumnRight: {
-    flex: 1,
-    textAlign: 'right',
-  },
-  textBold: {
-    fontFamily: 'Helvetica-Bold',
-  },
-  textGray: {
-    color: '#4b5563',
-  },
-  sectionDates: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 20,
-  },
-  dateBox: {
-    textAlign: 'left',
-  },
-  dateBoxRight: {
-    textAlign: 'right',
-  },
-  dateLabel: {
-    fontSize: 9,
-    color: '#6b7280',
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-  },
-  table: {
-    width: '100%',
-  },
-  tableHeader: {
-    backgroundColor: '#f3f4f6',
-    flexDirection: 'row',
-  },
-  tableHeaderCell: {
-    padding: 6,
-    fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
-    textTransform: 'uppercase',
-  },
-  tableRow: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  tableCell: {
-    padding: 6,
-    fontSize: 10,
-  },
-  colDesc: {
-    width: '50%',
-  },
-  colQty: {
-    width: '15%',
-    textAlign: 'center',
-  },
-  colPrice: {
-    width: '15%',
-    textAlign: 'right',
-  },
-  colTotal: {
-    width: '20%',
-    textAlign: 'right',
-  },
-  colDescNoQty: {
-    width: '80%',
-  },
-  colTotalNoQty: {
-    width: '20%',
-    textAlign: 'right',
-  },
-  textMedium: {
-    fontFamily: 'Helvetica-Bold',
-  },
-  totalsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 24,
-  },
-  totalsBox: {
-    width: '35%',
-  },
-  totalsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 3,
-  },
-  totalsRowGreen: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    color: '#059669',
-    marginBottom: 3,
-  },
-  totalsFinal: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    fontFamily: 'Helvetica-Bold',
-    fontSize: 16,
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 2,
-    borderTopColor: '#111827',
-  },
-  footer: {
-    marginTop: 40,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-  },
-  footerTitle: {
-    fontFamily: 'Helvetica-Bold',
-    marginBottom: 8,
-  },
-  footerNotes: {
-    fontSize: 10,
-    color: '#4b5563',
-  },
+  page: { padding: 30, fontFamily: 'Helvetica', fontSize: 10, color: '#333', backgroundColor: '#ffffff' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: '#e5e7eb', paddingBottom: 8 },
+  logo: { maxWidth: 100, height: 70, objectFit: 'contain' },
+  logoPlaceholder: { height: 48, width: 112, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  logoPlaceholderText: { color: '#9ca3af', fontSize: 9 },
+  headerRight: { textAlign: 'right', marginLeft: 8 },
+  companyName: { fontFamily: 'Helvetica-Bold', fontSize: 16 },
+  quoteNumber: { color: '#6b7280', fontSize: 14, marginTop: 2 },
+  section: { flexDirection: 'row', gap: 32, marginVertical: 16 },
+  sectionColumn: { flex: 1 },
+  sectionColumnRight: { flex: 1, textAlign: 'right' },
+  textBold: { fontFamily: 'Helvetica-Bold' },
+  textGray: { color: '#4b5563' },
+  sectionDates: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20 },
+  dateBox: { textAlign: 'left' },
+  dateBoxRight: { textAlign: 'right' },
+  dateLabel: { fontSize: 9, color: '#6b7280', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
+
+  // Taula
+  table: { width: '100%' },
+  tableHeader: { backgroundColor: '#f3f4f6', flexDirection: 'row' },
+  tableHeaderCell: { padding: 6, fontSize: 9, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  tableCell: { padding: 6, fontSize: 10 },
+
+  // Columnes
+  colDesc: { width: '40%' },
+  colQty: { width: '10%', textAlign: 'center' },
+  colPrice: { width: '15%', textAlign: 'right' },
+  colTax: { width: '15%', textAlign: 'right' }, // Nova columna
+  colTotal: { width: '20%', textAlign: 'right' },
+
+  textMedium: { fontFamily: 'Helvetica-Bold' },
+
+  // Totals
+  totalsContainer: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 24 },
+  totalsBox: { width: '45%' },
+  totalsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
+  totalsRowGreen: { flexDirection: 'row', justifyContent: 'space-between', color: '#059669', marginBottom: 3 },
+  totalsFinal: { flexDirection: 'row', justifyContent: 'space-between', fontFamily: 'Helvetica-Bold', fontSize: 16, marginTop: 8, paddingTop: 8, borderTopWidth: 2, borderTopColor: '#111827' },
+
+  footer: { marginTop: 40, paddingTop: 24, borderTopWidth: 1, borderTopColor: '#e5e7eb' },
+  footerTitle: { fontFamily: 'Helvetica-Bold', marginBottom: 8 },
+  footerNotes: { fontSize: 10, color: '#4b5563' },
 })
 
-// --- Props del Document ---
 interface QuotePdfDocumentProps {
   quote: EditableQuote
   company: Team | null
@@ -216,9 +105,9 @@ interface QuotePdfDocumentProps {
   discount_amount: number
   tax_amount: number
   total_amount: number
+  taxBreakdown?: Record<string, number>
 }
 
-// --- Component Pur del PDF ---
 export function QuotePdfDocument({
   quote,
   company,
@@ -227,137 +116,119 @@ export function QuotePdfDocument({
   discount_amount,
   tax_amount,
   total_amount,
+  taxBreakdown = {},
 }: QuotePdfDocumentProps) {
   const base = subtotal - discount_amount
   const showQuantity = quote.show_quantity ?? true
+  const showTaxColumn = quote.show_quantity ?? true // ✅ Llegim preferència
 
-  // ✅ 2. Obtenim els percentatges correctes des dels camps d'input
-  const discountPercent = quote.discount_percent_input || 0
-  const taxPercent = quote.tax_percent_input ?? 21
-
+  // Amplada dinàmica
+  let descWidth = 40;
+  if (!showQuantity) descWidth += 25;
+  if (!showTaxColumn) descWidth += 15;
+  console.log("🔍 [QuotePdfDocument] taxBreakdown:", taxBreakdown);
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* --- CAPÇALERA --- */}
+        {/* HEADER */}
         <View style={styles.header}>
           {company?.logo_url ? (
-            <Image
-              src={company.logo_url} // Passem la URL pública directament
-              style={styles.logo}
-            />
+            <Image src={company.logo_url} style={styles.logo} />
           ) : (
             <View style={styles.logoPlaceholder}>
               <Text style={styles.logoPlaceholderText}>Logo</Text>
             </View>
           )}
           <View style={styles.headerRight}>
-            <Text style={styles.companyName}>
-              {company?.name || 'La Teva Empresa'}
-            </Text>
-            <Text style={styles.quoteNumber}>
-              # {quote.quote_number || 'Pendent'}
-            </Text>
+            <Text style={styles.companyName}>{company?.name || 'La Teva Empresa'}</Text>
+            <Text style={styles.quoteNumber}># {quote.quote_number || 'Pendent'}</Text>
           </View>
         </View>
 
-        {/* --- INFO EMPRESA / CLIENT --- */}
+        {/* INFO */}
         <View style={styles.section}>
           <View style={styles.sectionColumn}>
-            <Text style={styles.textBold}>
-              {company?.name || 'La Teva Empresa'}
-            </Text>
+            <Text style={styles.textBold}>{company?.name || 'La Teva Empresa'}</Text>
             <Text style={styles.textGray}>{company?.address}</Text>
             <Text style={styles.textGray}>{company?.tax_id}</Text>
             <Text style={styles.textGray}>{company?.email}</Text>
           </View>
           <View style={styles.sectionColumnRight}>
-            <Text style={styles.textBold}>
-              {contact?.nom || 'Client no seleccionat'}
-            </Text>
+            <Text style={styles.textBold}>{contact?.nom || 'Client no seleccionat'}</Text>
             <Text style={styles.textGray}>{contact?.empresa}</Text>
             <Text style={styles.textGray}>{contact?.email}</Text>
           </View>
         </View>
 
-        {/* --- DATES --- */}
+        {/* DATES */}
         <View style={styles.sectionDates}>
           <View style={styles.dateBox}>
             <Text style={styles.dateLabel}>Data d'emissió</Text>
-            <Text>{formatDate(quote.issue_date)}</Text>
+            <Text>{formatDate(quote.issue_date || new Date().toISOString())}</Text>
           </View>
           <View style={styles.dateBoxRight}>
             <Text style={styles.dateLabel}>Data de venciment</Text>
-            <Text>{formatDate(quote.expiry_date)}</Text>
+            <Text>{formatDate(quote.expiry_date ?? null)}</Text>
           </View>
         </View>
 
-        {/* --- TAULA D'ÍTEMS --- */}
+        {/* TABLE */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text
-              style={[
-                styles.tableHeaderCell,
-                showQuantity ? styles.colDesc : styles.colDescNoQty,
-              ]}
-            >
+            <Text style={[styles.tableHeaderCell, { width: `${descWidth}%` }]}>
               Ítem
             </Text>
             {showQuantity && (
               <>
-                <Text style={[styles.tableHeaderCell, styles.colQty]}>
-                  Quant.
-                </Text>
-                <Text style={[styles.tableHeaderCell, styles.colPrice]}>
-                  Preu
-                </Text>
+                <Text style={[styles.tableHeaderCell, styles.colQty]}>Quant.</Text>
+                <Text style={[styles.tableHeaderCell, styles.colPrice]}>Preu</Text>
               </>
             )}
-            <Text
-              style={[
-                styles.tableHeaderCell,
-                showQuantity ? styles.colTotal : styles.colTotalNoQty,
-              ]}
-            >
+            {showTaxColumn && (
+              <Text style={[styles.tableHeaderCell]}>Impostos</Text>
+            )}
+            <Text style={[styles.tableHeaderCell, styles.colTotal]}>
               Total
             </Text>
           </View>
 
-          {/* Body */}
           {(quote.items || []).map((item, index) => (
             <View key={item.id || index} style={styles.tableRow}>
-              <Text
-                style={[
-                  styles.tableCell,
-                  showQuantity ? styles.colDesc : styles.colDescNoQty,
-                ]}
-              >
-                {item.description}
+              <Text style={[styles.tableCell, { width: `${descWidth}%` }]}>
+                {item.description || 'Sense descripció'}
               </Text>
+
               {showQuantity && (
                 <>
-                  {/* ✅ CORRECCIÓ 1: Convertim a String */}
-                  <Text style={[styles.tableCell, styles.colQty]}>
-                    {String(item.quantity ?? 1)}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colPrice]}>
-                    {formatCurrency(item.unit_price ?? 0)}
-                  </Text>
+                  <Text style={[styles.tableCell, styles.colQty]}>{String(item.quantity ?? 1)}</Text>
+                  <Text style={[styles.tableCell, styles.colPrice]}>{formatCurrency(item.unit_price ?? 0)}</Text>
                 </>
               )}
-              <Text
-                style={[
-                  styles.tableCell,
-                  styles.textMedium,
-                  showQuantity ? styles.colTotal : styles.colTotalNoQty,
-                ]}
-              >
-                {formatCurrency((item.quantity || 0) * (item.unit_price || 0))}
+
+              {/* ✅ COLUMNA IMPOSTOS */}
+              {showTaxColumn && (
+                <View style={[styles.tableCell, styles.colTax]}>
+                  {item.taxes && item.taxes.length > 0 ? (
+                    item.taxes.map((t, i) => (
+                      <Text key={i} style={{ fontSize: 8, color: '#6b7280' }}>
+                        {t.name} ({t.rate}%)
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={{ fontSize: 8, color: '#9ca3af' }}>-</Text>
+                  )}
+                </View>
+              )}
+
+              {/* ✅ TOTAL CALCULAT (Amb el helper) */}
+              <Text style={[styles.tableCell, styles.textMedium, styles.colTotal]}>
+                {formatCurrency(calculateLineTotal(item))}
               </Text>
             </View>
           ))}
         </View>
 
-        {/* --- TOTALS --- */}
+        {/* TOTALS */}
         <View style={styles.totalsContainer}>
           <View style={styles.totalsBox}>
             <View style={styles.totalsRow}>
@@ -365,12 +236,9 @@ export function QuotePdfDocument({
               <Text>{formatCurrency(subtotal)}</Text>
             </View>
 
-            {/* ✅ 3. CORRECCIÓ DEL DESCOMPTE */}
-            {/* Comprovem el percentatge de l'input, no el camp antic 'quote.discount' */}
-            {discountPercent > 0 && (
+            {discount_amount > 0 && (
               <View style={styles.totalsRowGreen}>
-                {/* Mostrem el percentatge correcte */}
-                <Text>Descompte ({String(discountPercent)}%)</Text>
+                <Text>Descompte</Text>
                 <Text>-{formatCurrency(discount_amount)}</Text>
               </View>
             )}
@@ -380,14 +248,20 @@ export function QuotePdfDocument({
               <Text>{formatCurrency(base)}</Text>
             </View>
 
-            <View style={styles.totalsRow}>
-              {/* ✅ 4. CORRECCIÓ DE L'IMPOST */}
-              <Text style={styles.textGray}>
-                {/* Mostrem el percentatge correcte, no 'quote.tax_percent' */}
-                IVA ({String(taxPercent)}%)
-              </Text>
-              <Text>{formatCurrency(tax_amount)}</Text>
-            </View>
+            {/* ✅ DESGLOSSAMENT D'IMPOSTOS */}
+            {Object.entries(taxBreakdown).length > 0 ? (
+              Object.entries(taxBreakdown).map(([name, amount]) => (
+                <View key={name} style={styles.totalsRow}>
+                  <Text style={styles.textGray}>{name}</Text>
+                  <Text>{formatCurrency(amount)}</Text>
+                </View>
+              ))
+            ) : (
+              <View style={styles.totalsRow}>
+                <Text style={styles.textGray}>Impostos</Text>
+                <Text>0.00 €</Text>
+              </View>
+            )}
 
             <View style={styles.totalsFinal}>
               <Text>TOTAL:</Text>
@@ -395,7 +269,8 @@ export function QuotePdfDocument({
             </View>
           </View>
         </View>
-        {/* --- PEU DE PÀGINA (NOTES) --- */}
+
+        {/* FOOTER */}
         {quote.notes && (
           <View style={styles.footer}>
             <Text style={styles.footerTitle}>Notes i Condicions</Text>
