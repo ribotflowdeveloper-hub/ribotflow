@@ -1,50 +1,62 @@
 // src/lib/services/crm/pipeline/opportunities.service.ts (FITXER CORREGIT I COMPLET)
-"use server"; 
+"use server";
 
-import { type SupabaseClient } from '@supabase/supabase-js';
-import { type Database } from '@/types/supabase';
-import type { Opportunity, DbTableInsert, DbTableUpdate } from '@/types/db';
+import { type SupabaseClient } from "@supabase/supabase-js";
+import { type Database } from "@/types/supabase";
+import type { DbTableInsert, DbTableUpdate, Opportunity } from "@/types/db";
 
 interface CreateOpportunityParams {
   supabase: SupabaseClient<Database>;
   contactId: number;
   teamId: string;
   userId: string;
-  contactName: string; 
+  contactName: string;
   pipelineId: number;
 }
 
 // --- Funcions existents (sense canvis) ---
-export async function getOpportunitiesWithContact(supabase: SupabaseClient<Database>, teamId: string) {
-  return supabase
-    .from('opportunities')
-    .select('*, contacts(id, nom)')
-    .eq('team_id', teamId);
-}
-export async function getOpportunitiesInStages(
-  supabase: SupabaseClient<Database>, 
-  teamId: string, 
-  stageIds: number[]
+export async function getOpportunitiesWithContact(
+  supabase: SupabaseClient<Database>,
+  teamId: string,
 ) {
   return supabase
-    .from('opportunities')
-    .select('*, contacts(id, nom)')
-    .eq('team_id', teamId)
-    .in('pipeline_stage_id', stageIds);
+    .from("opportunities")
+    .select("*, contacts(id, nom)")
+    .eq("team_id", teamId);
+}
+export async function getOpportunitiesInStages(
+  supabase: SupabaseClient<Database>,
+  teamId: string,
+  stageIds: number[],
+) {
+  // ✅ AFEGEIX AQUESTA LÍNIA (La Clàusula de Guàrdia)
+  if (!stageIds || stageIds.length === 0) {
+    return { data: [], error: null };
+  }
+
+  return supabase
+    .from("opportunities")
+    .select("*, contacts(id, nom)")
+    .eq("team_id", teamId)
+    .in("pipeline_stage_id", stageIds);
 }
 export async function saveOpportunity(
   supabase: SupabaseClient<Database>,
   formData: FormData,
   userId: string,
-  activeTeamId: string
+  activeTeamId: string,
 ): Promise<Opportunity> {
   const rawData = Object.fromEntries(formData.entries());
-  const contactId = rawData.contact_id ? parseInt(rawData.contact_id as string, 10) : null;
+  const contactId = rawData.contact_id
+    ? parseInt(rawData.contact_id as string, 10)
+    : null;
   const opportunityId = rawData.id ? parseInt(rawData.id as string, 10) : null;
   const closeDateValue = rawData.close_date as string;
-  const stageId = rawData.pipeline_stage_id ? parseInt(rawData.pipeline_stage_id as string, 10) : null;
+  const stageId = rawData.pipeline_stage_id
+    ? parseInt(rawData.pipeline_stage_id as string, 10)
+    : null;
   if (!stageId) {
-      throw new Error("L'etapa és obligatòria.");
+    throw new Error("L'etapa és obligatòria.");
   }
   const dataToSave = {
     name: rawData.name as string,
@@ -60,13 +72,13 @@ export async function saveOpportunity(
   if (opportunityId) {
     query = supabase
       .from("opportunities")
-      .update(dataToSave as DbTableUpdate<'opportunities'>)
+      .update(dataToSave as DbTableUpdate<"opportunities">)
       .eq("id", opportunityId)
       .eq("team_id", activeTeamId);
   } else {
     query = supabase
       .from("opportunities")
-      .insert(dataToSave as DbTableInsert<'opportunities'>);
+      .insert(dataToSave as DbTableInsert<"opportunities">);
   }
   const { data, error } = await query.select().single();
   if (error) {
@@ -79,7 +91,7 @@ export async function updateOpportunityStage(
   supabase: SupabaseClient<Database>,
   opportunityId: number,
   newStageId: number,
-  activeTeamId: string
+  activeTeamId: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("opportunities")
@@ -94,7 +106,7 @@ export async function updateOpportunityStage(
 export async function deleteOpportunity(
   supabase: SupabaseClient<Database>,
   opportunityId: number,
-  activeTeamId: string
+  activeTeamId: string,
 ): Promise<void> {
   const { error } = await supabase
     .from("opportunities")
@@ -121,18 +133,23 @@ export async function createOpportunityFromEmail({
   contactName,
   pipelineId,
 }: CreateOpportunityParams): Promise<void> {
-  
   // 1. Trobar l'etapa d'assignació (Lògica 'Contactat' o fallback)
   // (Aquesta lògica ja estava bé)
-  
+
   let stageIdToAssign: number;
-  let enumStageNameToAssign: "Nou Lead" | "Contactat" | "Proposta Enviada" | "Negociació" | "Guanyat" | "Perdut" = "Contactat";
+  let enumStageNameToAssign:
+    | "Nou Lead"
+    | "Contactat"
+    | "Proposta Enviada"
+    | "Negociació"
+    | "Guanyat"
+    | "Perdut" = "Contactat";
 
   const { data: contactatStage } = await supabase
-    .from('pipeline_stages')
-    .select('id')
-    .eq('pipeline_id', pipelineId)
-    .ilike('name', 'Contactat')
+    .from("pipeline_stages")
+    .select("id")
+    .eq("pipeline_id", pipelineId)
+    .ilike("name", "Contactat")
     .limit(1)
     .single();
 
@@ -140,19 +157,28 @@ export async function createOpportunityFromEmail({
     stageIdToAssign = contactatStage.id;
   } else {
     const { data: firstStage, error: stageError } = await supabase
-      .from('pipeline_stages')
-      .select('id, name')
-      .eq('pipeline_id', pipelineId)
-      .order('position', { ascending: true })
+      .from("pipeline_stages")
+      .select("id, name")
+      .eq("pipeline_id", pipelineId)
+      .order("position", { ascending: true })
       .limit(1)
       .single();
-    
+
     if (stageError || !firstStage) {
-      throw new Error(`El pipeline seleccionat (ID: ${pipelineId}) no té cap etapa configurada.`);
+      throw new Error(
+        `El pipeline seleccionat (ID: ${pipelineId}) no té cap etapa configurada.`,
+      );
     }
     stageIdToAssign = firstStage.id;
-    
-    const validStages = ["Nou Lead", "Contactat", "Proposta Enviada", "Negociació", "Guanyat", "Perdut"];
+
+    const validStages = [
+      "Nou Lead",
+      "Contactat",
+      "Proposta Enviada",
+      "Negociació",
+      "Guanyat",
+      "Perdut",
+    ];
     if (validStages.includes(firstStage.name)) {
       enumStageNameToAssign = firstStage.name as typeof enumStageNameToAssign;
     } else {
@@ -163,7 +189,7 @@ export async function createOpportunityFromEmail({
   // 2. ✅ CORRECCIÓ: Comprovació de duplicats
   // Comprovem si ja existeix una oportunitat OBERTA per a aquest contacte
   // DINS D'AQUEST PIPELINE ESPECÍFIC.
-  
+
   const { data: existingOpportunities, error: checkError } = await supabase
     .from("opportunities")
     // Fem un inner join amb pipeline_stages per poder filtrar
@@ -172,14 +198,17 @@ export async function createOpportunityFromEmail({
     .eq("team_id", teamId)
     // ✅ AQUEST ÉS EL FILTRE CLAU:
     // Assegurem que l'etapa pertany al pipeline que hem seleccionat
-    .eq("pipeline_stages.pipeline_id", pipelineId) 
+    .eq("pipeline_stages.pipeline_id", pipelineId)
     // ✅ COMPROVACIÓ ROBUSTA:
     // Mirem el 'stage_type' (no el 'stage_name') per saber si està tancada
-    .not("pipeline_stages.stage_type", "in", '("WON", "LOST")') 
+    .not("pipeline_stages.stage_type", "in", '("WON", "LOST")')
     .limit(1);
 
   if (checkError) {
-    console.error("Error comprovant oportunitats existents (service):", checkError);
+    console.error(
+      "Error comprovant oportunitats existents (service):",
+      checkError,
+    );
     // Compte: si el join falla (p.ex. 'pipeline_stages' no trobat), pot donar error.
     // Assegura't que la relació 'pipeline_stage_id' està ben configurada.
     throw new Error("Error en comprovar oportunitats existents.");
@@ -187,18 +216,17 @@ export async function createOpportunityFromEmail({
 
   // 3. Creació (si no n'hi ha cap d'oberta *en aquest pipeline*)
   if (!existingOpportunities || existingOpportunities.length === 0) {
-    
-    const newOpportunity: DbTableInsert<'opportunities'> = {
+    const newOpportunity: DbTableInsert<"opportunities"> = {
       team_id: teamId,
       user_id: userId,
       contact_id: contactId,
       name: `Oportunitat: ${contactName}`,
       source: "Email enviat",
       value: 0,
-      
+
       // Assignació (aquesta lògica ja estava bé)
-      pipeline_stage_id: stageIdToAssign, 
-      stage_name: enumStageNameToAssign,  
+      pipeline_stage_id: stageIdToAssign,
+      stage_name: enumStageNameToAssign,
     };
 
     const { error: insertError } = await supabase

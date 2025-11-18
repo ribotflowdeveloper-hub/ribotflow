@@ -24,7 +24,9 @@ export type InvoiceItem = DbTableRow<'invoice_items'>;
 export type Expense = DbTableRow<'expenses'>;
 export type Team = DbTableRow<'teams'>;
 export type Notification = DbTableRow<'notifications'>;
-
+export type Pipeline = DbTableRow<'pipelines'>; 
+export type PipelineStage = DbTableRow<'pipeline_stages'>; 
+export type Stage = DbTableRow<'pipeline_stages'>;
 
 // --- Tipus estesos (JOINs) ---
 // Aquests són els únics llocs on hauries de fer "types manuals"

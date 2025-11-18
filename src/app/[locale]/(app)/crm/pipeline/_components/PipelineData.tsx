@@ -3,10 +3,10 @@ import { validatePageSession } from "@/lib/supabase/session";
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // ✅ Importem els tipus que necessitarem
-import type { Contact, Pipeline } from '@/types/db'; // Importa 'Pipeline' de la BBDD
+import type { Contact, Pipeline, Stage } from '@/types/db'; // Importa 'Pipeline' de la BBDD
 import {
   getPipelineData,
-  type Stage,
+
   type OpportunityWithContact
 } from '@/lib/services/crm/pipeline/pipline.service';
 

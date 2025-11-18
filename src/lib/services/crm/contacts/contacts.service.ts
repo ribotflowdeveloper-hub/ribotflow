@@ -1,4 +1,3 @@
-// src/lib/services/crm/contacts/contacts.service.ts
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { type Database } from "@/types/supabase";
 import type { 
@@ -15,6 +14,8 @@ import type {
 
 // Constants
 const ITEMS_PER_PAGE = 50;
+
+// --- TIPUS ---
 
 // ✅ 1. Nou tipus: Oportunitat amb el nom de l'etapa (JOIN)
 export type OpportunityWithStage = Opportunity & {
@@ -108,6 +109,27 @@ export async function getPaginatedContacts(
 }
 
 /**
+ * ✅ RESTAURADA: Obté tots els contactes d'un equip (per selectors, etc.)
+ */
+export async function getAllContacts(
+    supabase: SupabaseClient<Database>, 
+    teamId: string
+): Promise<Contact[]> {
+    const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('team_id', teamId)
+        .order('nom', { ascending: true });
+
+    if (error) {
+        console.error("Error getAllContacts:", error.message);
+        throw new Error("No s'han pogut carregar els contactes.");
+    }
+    
+    return data || [];
+}
+
+/**
  * Cerca contactes per vincular (autocompletat).
  */
 export async function searchContactsForLinking(
@@ -186,18 +208,20 @@ export async function fetchContactDetail(
 export async function getContactRelatedData(
     supabase: SupabaseClient<Database>, 
     contactId: number, 
+    teamId: string // ✅ CORRECCIÓ: Afegit teamId que faltava a la signatura anterior
 ): Promise<ContactRelatedData> {
     const [quotesRes, oppsRes, invoicesRes, activitiesRes] = await Promise.all([
-        supabase.from('quotes').select('*').eq('contact_id', contactId).order('created_at', { ascending: false }),
+        supabase.from('quotes').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false }),
         
         // ✅ AQUÍ ESTÀ LA CLAU: Fem JOIN amb pipeline_stages per obtenir el 'name'
         supabase.from('opportunities')
             .select('*, pipeline_stages(name)') 
             .eq('contact_id', contactId)
+            .eq('team_id', teamId)
             .order('created_at', { ascending: false }),
             
-        supabase.from('invoices').select('*').eq('contact_id', contactId).order('created_at', { ascending: false }),
-        supabase.from('activities').select('*').eq('contact_id', contactId).order('created_at', { ascending: false })
+        supabase.from('invoices').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false }),
+        supabase.from('activities').select('*').eq('contact_id', contactId).eq('team_id', teamId).order('created_at', { ascending: false })
     ]);
     
     return {
@@ -232,7 +256,7 @@ export async function createContact(
         email,
         empresa: formData.get("empresa") as string || null,
         telefon: formData.get("telefon") as string || null,
-        estat: (formData.get("estat") as string) || "Lead",
+        estat: (formData.get("estat") as string) || "Lead", // 'as any' per seguretat amb l'Enum
         valor: valorRaw ? parseFloat(valorRaw.toString()) : 0,
         team_id: teamId,
         user_id: userId,
@@ -267,7 +291,7 @@ export async function updateContact(
         supplier_id: supplierId || null, 
         email: formData.get('email') as string,
         telefon: formData.get('telefon') as string,
-        estat: formData.get('estat') as string,
+        estat: formData.get('estat') as string, // ✅ CORRECCIÓ: Cast a 'string' per evitar l'error de string vs Enum
         job_title: formData.get('job_title') as string,
         industry: formData.get('industry') as string,
         lead_source: formData.get('lead_source') as string,
@@ -297,12 +321,7 @@ export async function updateContact(
         if (supplierData) {
             dataToUpdate.empresa = supplierData.nom;
         }
-    } else {
-        // Si treiem el proveïdor, potser volem mantenir l'empresa o posar-la a null.
-        // Aquí assumim que si no hi ha proveïdor, esborrem el nom de l'empresa vinculada.
-        // Si l'usuari ha escrit una empresa manualment al formulari, hauríem de llegir 'empresa' del formData.
-        // dataToUpdate.empresa = null; 
-    }
+    } 
 
     const { data, error } = await supabase
         .from('contacts')
@@ -353,7 +372,7 @@ export async function linkContactToSupplier(
 
     const updateData: DbTableUpdate<'contacts'> = {
         supplier_id: supplierId,
-        estat: 'Proveidor', 
+        estat: 'Proveidor' as string, 
         empresa: supplier.nom
     };
 
@@ -376,7 +395,7 @@ export async function unlinkContactFromSupplier(
 ): Promise<void> {
     const { error } = await supabase
         .from('contacts')
-        .update({ supplier_id: null, estat: 'Lead', empresa: null })
+        .update({ supplier_id: null, estat: 'Lead' as string, empresa: null })
         .eq('id', contactId)
         .eq('team_id', teamId);
 
