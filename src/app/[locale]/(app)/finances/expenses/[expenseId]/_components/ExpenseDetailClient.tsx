@@ -14,9 +14,9 @@ import Link from 'next/link';
 import {
     type ExpenseDetail,
     type ExpenseAttachment,
-    type ExpenseItem,
     type ExpensesAnalysisData,
-    type AnalyzedExpenseItem
+    type AnalyzedExpenseItem,
+    type ExpenseItemForm // 👈 Afegit import del tipus ExpenseItemForm
 } from '@/types/finances/index'; // ✅ Importem des de l'index
 import { type UsageCheckResult } from '@/lib/subscription/subscription';
 // ✅ AFEGIR Imports per al nou 'Select'
@@ -112,25 +112,31 @@ export function ExpenseDetailClient({
         }
     };
 
-    // ✅ 2. LÒGICA DE L'IA (ACTUALITZADA)
-    // Ara assigna els impostos per defecte
+    // ✅ 2. LÒGICA DE L'IA (CORREGIDA)
     const handleAnalysisComplete = (data: ExpensesAnalysisData) => {
 
-        const newItems: ExpenseItem[] = (data.items || []).map((item: AnalyzedExpenseItem, index: number) => ({
+        // ✅ CORRECCIÓ: Tipem explícitament com a ExpenseItemForm[]
+        const newItems: ExpenseItemForm[] = (data.items || []).map((item: AnalyzedExpenseItem, index: number) => ({
             id: Date.now() + index,
             expense_id: 0,
             description: item.description || '',
             quantity: item.quantity || 1,
             unit_price: item.unit_price || 0,
             total: (item.quantity || 1) * (item.unit_price || 0),
-            taxes: availableTaxes.filter(t => t.is_default), // 👈 Assignem impostos per defecte
+
+            // ✅ Això ara compleix amb el tipus ExpenseItemForm
+            taxes: availableTaxes.filter(t => t.is_default),
+
             user_id: userId,
             team_id: teamId,
             category_id: formData.category_id || null,
+            // created_at no cal perquè és opcional a ExpenseItemForm
         }));
 
         setFormData(prev => {
-            // Calculem els totals basant-nos en els nous items i impostos
+            // ... (la resta de lògica de càlcul de totals es manté igual)
+            // Com que newItems ara té taxes, el càlcul funcionarà.
+
             let subtotal = 0;
             let totalVat = 0;
             let totalRetention = 0;
@@ -138,16 +144,15 @@ export function ExpenseDetailClient({
             newItems.forEach(item => {
                 const itemBase = (item.quantity || 0) * (item.unit_price || 0);
                 subtotal += itemBase;
-                (item.taxes || []).forEach(tax => {
-                    const taxAmount = itemBase * (tax.rate / 100);
+                (item.taxes || []).forEach((tax: { percentage: number; type: 'vat' | 'retention' }) => {
+                    const taxAmount: number = itemBase * (tax.percentage / 100);
                     if (tax.type === 'vat') totalVat += taxAmount;
                     else if (tax.type === 'retention') totalRetention += taxAmount;
                 });
             });
 
+            // ... resta del codi de setFormData igual ...
             const effectiveSubtotal = subtotal - (prev.discount_amount || 0);
-
-            // Prioritzem els totals de l'IA si existeixen
             const finalTaxAmount = data.tax_amount ?? totalVat;
             const finalTotalAmount = data.total_amount ?? (effectiveSubtotal + finalTaxAmount - totalRetention);
 
@@ -157,17 +162,11 @@ export function ExpenseDetailClient({
                 supplier_id: data.supplier_id || prev.supplier_id,
                 expense_date: data.invoice_date || prev.expense_date,
                 invoice_number: data.invoice_number || prev.invoice_number,
-
-                // Assignem els nous totals calculats
                 total_amount: finalTotalAmount,
-                tax_amount: finalTaxAmount, // Total IVA
-                retention_amount: totalRetention, // Total IRPF
+                tax_amount: finalTaxAmount,
+                retention_amount: totalRetention,
                 subtotal: subtotal,
-
                 expense_items: newItems.length > 0 ? newItems : prev.expense_items,
-
-                // Eliminem la dependència del 'tax_rate' antic
-                // legacy_tax_rate: data.tax_rate ?? prev.legacy_tax_rate, 
             };
         });
     };
@@ -287,9 +286,9 @@ export function ExpenseDetailClient({
                                         >
                                             <SelectTrigger id="category_id">
                                                 <SelectValue placeholder={
-                                                    isLoadingCategories 
-                                                    ? t('loading') || 'Carregant...' 
-                                                    : t('placeholder.selectCategory') || 'Selecciona una categoria'
+                                                    isLoadingCategories
+                                                        ? t('loading') || 'Carregant...'
+                                                        : t('placeholder.selectCategory') || 'Selecciona una categoria'
                                                 } />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -306,7 +305,7 @@ export function ExpenseDetailClient({
                                                 </SelectGroup>
                                             </SelectContent>
                                         </Select>
-                                        
+
                                     </div>
                                 </div>
 

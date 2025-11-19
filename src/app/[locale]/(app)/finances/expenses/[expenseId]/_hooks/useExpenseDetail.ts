@@ -4,21 +4,24 @@ import { useState, useEffect, useTransition, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+
+// Serveis de càlcul centralitzats
+import { calculateDocumentTotals, calculateLineValues, type FinancialItem } from '@/lib/services/finances/calculations';
+
+// Tipus
 import { 
   type ExpenseDetail, 
   type ExpenseFormDataForAction, 
-  type ExpenseItem,
-  type TaxRate,
-  type ExpenseCategory
-} from '@/types/finances/index'; 
+  type ExpenseItemForm,
+  type ExpenseCategory,
+
+} from '@/types/finances/expenses'; 
+import type { TaxRate } from '@/types/finances/index';
 import { 
   saveExpenseAction,
-
   fetchExpenseCategoriesAction,
- 
 } from '../actions'; 
 import { fetchTaxRatesAction } from '@/components/features/taxs/fetchTaxRatesAction';
-
 
 interface UseExpenseDetailProps {
     initialData: ExpenseDetail | null;
@@ -27,7 +30,8 @@ interface UseExpenseDetailProps {
     teamId: string;
 }
 
-const defaultInitialData: Omit<ExpenseFormDataForAction, 'status' | 'category'> = {
+// ✅ CORRECCIÓ: Definim l'objecte i fem cast al final per evitar errors de tipus estrictes amb camps opcionals/nullables de la BD
+const defaultInitialData = {
     id: 'new',
     description: '',
     total_amount: 0,
@@ -49,67 +53,16 @@ const defaultInitialData: Omit<ExpenseFormDataForAction, 'status' | 'category'> 
     retention_amount: 0,
     currency: 'EUR',
     due_date: null,
-};
-
-// ✅ Funció Helper per calcular el total D'UNA LÍNIA
-function calculateLineTotal(item: ExpenseItem): number {
-    const itemBase = (item.quantity || 0) * (item.unit_price || 0);
-    let itemVat = 0;
-    let itemRetention = 0;
-
-    (item.taxes || []).forEach(tax => {
-        const taxAmount = itemBase * (tax.rate / 100);
-        if (tax.type === 'vat') {
-            itemVat += taxAmount;
-        } else if (tax.type === 'retention') {
-            itemRetention += taxAmount;
-        }
-    });
-    
-    return itemBase + itemVat - itemRetention;
-}
-
-// ✅ Funció Helper per calcular els totals GENERALS
-function calculateMainTotals(
-  items: ExpenseItem[], 
-  discountRate: number
-) {
-    let subtotal = 0;
-    let totalVat = 0;
-    let totalRetention = 0;
-
-    (items || []).forEach(item => {
-        const itemBase = (item.quantity || 0) * (item.unit_price || 0);
-        subtotal += itemBase; // El subtotal general és la suma de les bases
-        
-        (item.taxes || []).forEach(tax => {
-            const taxAmount = itemBase * (tax.rate / 100);
-            if (tax.type === 'vat') {
-                totalVat += taxAmount;
-            } else if (tax.type === 'retention') {
-                totalRetention += taxAmount;
-            }
-        });
-    });
-
-    const discountAmount = subtotal * (discountRate / 100);
-    const totalAmount = subtotal - discountAmount + totalVat - totalRetention;
-    
-    return { 
-        subtotal, 
-        discountAmount, 
-        totalVat, 
-        totalRetention, 
-        totalAmount
-    };
-}
-
+    status: 'pending',
+    // Si la BD requereix extra_data i no és opcional en el tipus:
+    extra_data: {}, 
+} as unknown as ExpenseFormDataForAction; // Cast segur per inicialització
 
 export function useExpenseDetail({ 
     initialData, 
     isNew, 
-    userId, // ✅ Aquests FALTAVEN
-    teamId  // ✅ AQUESTS FALTAVEN
+    userId, 
+    teamId 
 }: UseExpenseDetailProps) {
     
     const t = useTranslations('ExpenseDetailPage');
@@ -118,22 +71,34 @@ export function useExpenseDetail({
 
     const [formData, setFormData] = useState<ExpenseFormDataForAction>(() => {
         if (initialData) {
-             // Calculem els totals de línia inicials
-            const initialItems = (initialData.expense_items || []).map(item => ({
-                ...item,
-                total: calculateLineTotal(item) // 👈 Calculem el total real a l'inici
-            }));
-            
+            // Mapegem els items de la BD al format del form
+            const initialItems = (initialData.expense_items || []).map(item => {
+                // Calculem valors de línia inicials
+                const calc = calculateLineValues({
+                    quantity: item.quantity,
+                    unit_price: item.unit_price,
+                    taxes: item.taxes || [],
+                    discount_percentage: 0, // Si tens descompte de línia, posa'l aquí
+                    discount_amount: 0
+                });
+                
+                return {
+                    ...item,
+                    taxes: item.taxes || [], 
+                    total: calc.finalLineTotal // Utilitzem el càlcul centralitzat
+                } as ExpenseItemForm;
+            });
+
             return {
                 ...defaultInitialData,
                 ...initialData,
                 id: initialData.id.toString(),
-                expense_items: initialItems, // 👈 Assignem els items amb totals correctes
+                expense_items: initialItems, 
                 discount_rate: initialData.discount_rate || 0,
                 category_id: initialData.category_id || null,
             };
         }
-        return defaultInitialData as ExpenseFormDataForAction;
+        return defaultInitialData;
     });
 
     const [availableTaxes, setAvailableTaxes] = useState<TaxRate[]>([]);
@@ -141,7 +106,6 @@ export function useExpenseDetail({
     const [availableCategories, setAvailableCategories] = useState<ExpenseCategory[]>([]);
     const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
-    // ... (useEffect per carregar 'availableTaxes' i 'availableCategories' es queda igual)
     useEffect(() => {
       async function loadInitialData() {
         setIsLoadingTaxes(true);
@@ -150,16 +114,18 @@ export function useExpenseDetail({
             fetchTaxRatesAction(),
             fetchExpenseCategoriesAction()
         ]);
+        
         if (taxResult.success && taxResult.data) {
-          setAvailableTaxes(taxResult.data);
+          setAvailableTaxes(taxResult.data as unknown as TaxRate[]);
         } else {
-          toast.error(t('toast.loadTaxesError') || 'Error al carregar els impostos.');
+          toast.error(t('toast.loadTaxesError') || 'Error al carregar impostos.');
         }
         setIsLoadingTaxes(false);
+        
         if (categoryResult.success && categoryResult.data) {
           setAvailableCategories(categoryResult.data);
         } else {
-          toast.error(t('toast.loadCategoriesError') || 'Error al carregar les categories.');
+          toast.error(t('toast.loadCategoriesError') || 'Error al carregar categories.');
         }
         setIsLoadingCategories(false);
       }
@@ -167,49 +133,45 @@ export function useExpenseDetail({
     }, [t]);
 
 
-    // ✅✅✅
-    // INICI DE LA CORRECCIÓ DEL BUCLE INFINIT
-    // ✅✅✅
+    // SYNC TOTALS
     useEffect(() => {
-        const { 
-            subtotal, 
-            discountAmount,
-            totalVat, 
-            totalRetention, 
-            totalAmount
-        } = calculateMainTotals( // 👈 Crida a la funció de totals generals
-            formData.expense_items,
-            formData.discount_rate || 0
+        const financialItems: FinancialItem[] = (formData.expense_items || []).map(item => ({
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            taxes: item.taxes || [], 
+            discount_percentage: 0, 
+            discount_amount: 0
+        }));
+
+        const totals = calculateDocumentTotals(
+            financialItems,
+            formData.discount_amount || 0, // Si fas servir amount com a input
+            0, 
+            false 
         );
         
-        // Només actualitzem els totals generals, MAI els 'expense_items' aquí
-        setFormData(prev => {
-            // Comprovem si els totals han canviat realment abans de cridar 'setState'
-            if (
-                prev.subtotal === subtotal &&
-                prev.discount_amount === discountAmount &&
-                prev.tax_amount === totalVat &&
-                prev.retention_amount === totalRetention &&
-                prev.total_amount === totalAmount
-            ) {
-                return prev; // No hi ha canvis, evitem el re-render
-            }
-            
+        setFormData((prev: ExpenseFormDataForAction) => {
+            const isSame = 
+                prev.subtotal === totals.subtotal &&
+                prev.tax_amount === totals.taxAmount &&
+                prev.retention_amount === totals.retentionAmount &&
+                prev.total_amount === totals.totalAmount;
+                // Nota: Si discount_amount ve de l'input d'usuari, no l'hauríem de sobreescriure si no ha canviat per càlcul.
+                // Si ve de discount_rate, llavors sí.
+
+            if (isSame) return prev; 
+
             return {
                 ...prev,
-                // ❌ NO actualitzem 'expense_items' aquí
-                subtotal: subtotal,
-                discount_amount: discountAmount,
-                tax_amount: totalVat,
-                retention_amount: totalRetention,
-                total_amount: totalAmount
+                subtotal: totals.subtotal,
+                // Si el descompte global es calcula via rate, actualitzem l'amount
+                // discount_amount: totals.globalDiscountAmount, 
+                tax_amount: totals.taxAmount,
+                retention_amount: totals.retentionAmount,
+                total_amount: totals.totalAmount
             };
         });
-    // Les dependències ara són correctes
-    }, [formData.expense_items, formData.discount_rate]); 
-    // ✅✅✅
-    // FI DE LA CORRECCIÓ
-    // ✅✅✅
+    }, [formData.expense_items, formData.discount_amount, formData.discount_rate]); 
 
 
     const handleFieldChange = useCallback(<K extends keyof ExpenseFormDataForAction>(field: K, value: ExpenseFormDataForAction[K]) => {
@@ -217,15 +179,22 @@ export function useExpenseDetail({
     }, []);
 
     const handleItemChange = useCallback(
-        <K extends keyof ExpenseItem>(index: number, field: K, value: ExpenseItem[K]) => {
-            setFormData(prev => {
+        <K extends keyof ExpenseItemForm>(index: number, field: K, value: ExpenseItemForm[K]) => {
+            setFormData((prev: ExpenseFormDataForAction) => {
                 const newItems = [...(prev.expense_items || [])];
                 if (!newItems[index]) return prev;
 
                 newItems[index] = { ...newItems[index], [field]: value };
                 
-                // ✅ Actualitzem el total de la línia aquí
-                newItems[index].total = calculateLineTotal(newItems[index]);
+                // Recalculem el total de la línia usant la funció centralitzada
+                const calc = calculateLineValues({
+                    quantity: newItems[index].quantity,
+                    unit_price: newItems[index].unit_price,
+                    taxes: newItems[index].taxes,
+                    discount_percentage: 0,
+                    discount_amount: 0
+                });
+                newItems[index].total = calc.finalLineTotal;
                 
                 return { ...prev, expense_items: newItems };
             });
@@ -234,42 +203,58 @@ export function useExpenseDetail({
     );
 
     const handleItemTaxesChange = useCallback((index: number, taxes: TaxRate[]) => {
-        setFormData(prev => {
+        setFormData((prev: ExpenseFormDataForAction) => {
             const newItems = [...(prev.expense_items || [])];
             if (!newItems[index]) return prev;
 
             newItems[index] = { ...newItems[index], taxes: taxes };
             
-            // ✅ Actualitzem el total de la línia aquí
-            newItems[index].total = calculateLineTotal(newItems[index]);
+            // Recalculem total
+            const calc = calculateLineValues({
+                quantity: newItems[index].quantity,
+                unit_price: newItems[index].unit_price,
+                taxes: taxes,
+                discount_percentage: 0,
+                discount_amount: 0
+            });
+            newItems[index].total = calc.finalLineTotal;
             
             return { ...prev, expense_items: newItems };
         });
     }, []);
 
     const handleAddItem = useCallback(() => {
-        const newItem: ExpenseItem = {
+        const newItem: ExpenseItemForm = {
             id: Date.now(),
             expense_id: 0,
             description: "",
             quantity: 1,
             unit_price: 0,
-            total: 0, // Es calcularà
+            total: 0, 
             taxes: availableTaxes.filter((t) => t.is_default),
             user_id: userId,
             team_id: teamId,
             category_id: null,
-            legacy_category_name: null,
         };
-        newItem.total = calculateLineTotal(newItem); // Calculem el total inicial
-        setFormData((prev) => ({
+        
+        // Càlcul inicial
+        const calc = calculateLineValues({
+            quantity: newItem.quantity,
+            unit_price: newItem.unit_price,
+            taxes: newItem.taxes,
+            discount_percentage: 0,
+            discount_amount: 0
+        });
+        newItem.total = calc.finalLineTotal;
+
+        setFormData((prev: ExpenseFormDataForAction) => ({
             ...prev,
             expense_items: [...(prev.expense_items || []), newItem],
         }));
     }, [availableTaxes, userId, teamId]);
 
     const handleRemoveItem = useCallback((index: number) => {
-        setFormData((prev) => {
+        setFormData((prev: ExpenseFormDataForAction) => {
             const newItems = [...(prev.expense_items || [])];
             newItems.splice(index, 1);
             return { ...prev, expense_items: newItems };
@@ -288,12 +273,12 @@ export function useExpenseDetail({
                 toast.error(result.message || t('toast.saveError'));
             }
         });
-    }, [formData, isNew, router, t, startTransition]);
+    }, [formData, isNew, router, t]);
     
     const handleCategoryCreated = useCallback((newCategory: ExpenseCategory) => {
         setAvailableCategories(prev => [...prev, newCategory].sort((a, b) => a.name.localeCompare(b.name)));
         handleFieldChange('category_id', newCategory.id);
-    }, [handleFieldChange]); // ✅ 'handleFieldChange' és estable gràcies a 'useCallback'
+    }, [handleFieldChange]); 
 
     return {
         isPending,

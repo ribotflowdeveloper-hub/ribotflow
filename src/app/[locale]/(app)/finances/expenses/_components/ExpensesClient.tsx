@@ -218,7 +218,7 @@ export function ExpensesClient({
       }
       return deleteExpense(id);
     },
-    initialRowsPerPage: EXPENSE_ROWS_PER_PAGE_OPTIONS[0],
+    initialRowsPerPage: EXPENSE_ROWS_PER_PAGE_OPTIONS[1],
     rowsPerPageOptions: EXPENSE_ROWS_PER_PAGE_OPTIONS,
     toastMessages: { deleteSuccess: t('toast.deleteSuccess') },
   });

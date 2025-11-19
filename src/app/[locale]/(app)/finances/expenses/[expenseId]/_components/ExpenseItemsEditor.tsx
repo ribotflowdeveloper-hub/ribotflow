@@ -4,19 +4,19 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label'; // 👈 IMPORTAR
 import { Loader2, Trash2 } from 'lucide-react';
-import { type ExpenseItem, type TaxRate } from '@/types/finances/index'; // 👈 AFEGIR TaxRate
+import { type ExpenseItemForm, type TaxRate } from '@/types/finances/index'; // 👈 AFEGIR TaxRate
 import { useTranslations } from 'next-intl';
 import { ItemTaxSelector } from '../../../../../../../components/features/taxs/ItemTaxSelector'; // 👈 IMPORTAR NOU COMPONENT
 
 // ✅ MODIFICAT: Noves props
 interface ExpenseItemsEditorProps {
-    items: ExpenseItem[];
+    items: ExpenseItemForm[];
     availableTaxes: TaxRate[]; // Llista de tots els impostos
     isLoadingTaxes: boolean;
     onItemChange: (
         index: number,
-        field: keyof ExpenseItem,
-        value: string | number | ExpenseItem[keyof ExpenseItem]
+        field: keyof ExpenseItemForm,
+        value: string | number | ExpenseItemForm[keyof ExpenseItemForm]
     ) => void;
     onItemTaxesChange: (index: number, taxes: TaxRate[]) => void; // Nou handler
     onRemoveItem: (index: number) => void;

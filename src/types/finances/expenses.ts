@@ -6,17 +6,8 @@ import type {
   ExpenseAttachment as DbExpenseAttachment,
   Contact,
 } from "@/types/db";
+import type { TaxRate } from "./taxes";
 
-// Si tens el tipus TaxRate definit en un altre lloc, importa'l. 
-// Si no, el definim aquí o l'importem de 'taxes.ts' si existeix.
-// import type { TaxRate } from "./taxes"; 
-// Per si de cas no el tens, el defineixo aquí breument (ajusta'l al teu real):
-export type TaxRate = {
-    id: number;
-    name: string;
-    percentage: number;
-    is_default?: boolean;
-};
 
 // --- 1. TIPUS BASE (BD) ---
 export type Expense = DbExpense;
@@ -25,13 +16,13 @@ export type ExpenseAttachment = DbExpenseAttachment;
 
 // --- 2. TIPUS DE FORMULARI (UI) ---
 
-// ✅ CORRECCIÓ CLAU: Estenem el tipus de la BD per afegir-hi 'taxes'
-// Aquest és el tipus que utilitzarà el hook useExpenseDetail
-export type ExpenseItemForm = Omit<DbExpenseItem, 'id'> & {
+// ✅ CORRECCIÓ FINAL: Ometem també 'created_at'
+export type ExpenseItemForm = Omit<DbExpenseItem, 'id' | 'created_at'> & {
     // L'ID pot ser string (UUID temporal) o number (BD), o undefined si és nou
     id?: string | number; 
+    created_at?: string | null; // El fem opcional per als nous items
     
-    // Afegim la propietat que faltava i que donava error
+    // Afegim la propietat de formulari
     taxes: TaxRate[]; 
 };
 
@@ -104,3 +95,33 @@ export const expenseSchema = z.object({
 });
 
 export type ExpenseSchemaType = z.infer<typeof expenseSchema>;
+
+
+// AFEGIR AL FINAL DE: src/types/finances/expenses.ts
+
+// --- 7. TIPUS PER A L'IA (OCR) ---
+export interface AnalyzedExpenseItem {
+  description: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+}
+
+export interface ExpensesAnalysisData {
+  supplier_name: string | null;
+  invoice_number: string | null;
+  invoice_date: string | null; 
+  total_amount: number | null;
+  tax_amount: number | null;
+  tax_rate: number | null; 
+  currency: string | null;
+  items: AnalyzedExpenseItem[];
+  supplier_id: string | null; 
+}
+
+// Tipus de retorn de l'acció d'anàlisi
+import type { ActionResult } from "@/types/shared/actionResult";
+export type ExpensesAnalysisActionResult = ActionResult<ExpensesAnalysisData>;
+
+// --- EXPORTAR EL TIPUS BASE D'ITEM SI ES NECESSITA AL CLIENT ---
+// El client de vegades usa el tipus cru de BD abans de convertir-lo a Form
+export type ExpenseItem = DbExpenseItem;

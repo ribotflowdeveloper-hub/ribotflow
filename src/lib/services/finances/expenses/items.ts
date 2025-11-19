@@ -1,22 +1,14 @@
 import { type SupabaseClient } from '@supabase/supabase-js';
 import { type Database } from '@/types/supabase';
-import { type DbTableInsert } from '@/types/db'; // ✅ Import necessari
-import { type ExpenseItem, type TaxRate } from '@/types/finances/index';
-import crypto from 'crypto'; // Assegura't que tens això si uses randomUUID al servidor (Node)
-
-// Helper local
-function isValidUuid(id: unknown): id is string {
-  if (typeof id !== 'string') return false;
-  const regex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-  return regex.test(id);
-}
+import { type DbTableInsert } from '@/types/db';
+import { type ExpenseItemForm, type TaxRate } from '@/types/finances/index';
 
 export async function fetchExpenseItemsWithTaxes(
     supabase: SupabaseClient<Database>,
     expenseId: number,
     teamId: string
-): Promise<ExpenseItem[]> {
-    // 1. Obtenir items
+): Promise<ExpenseItemForm[]> {
+    // 1. Items
     const { data: itemsData, error: itemsError } = await supabase
         .from('expense_items')
         .select('*')
@@ -27,7 +19,7 @@ export async function fetchExpenseItemsWithTaxes(
     if (itemsError) throw new Error(itemsError.message);
     if (!itemsData || itemsData.length === 0) return [];
 
-    // 2. Obtenir impostos
+    // 2. Impostos
     const itemIds = itemsData.map(item => item.id);
     const { data: taxesData, error: taxesError } = await supabase
         .from('expense_item_taxes')
@@ -37,18 +29,30 @@ export async function fetchExpenseItemsWithTaxes(
         
     if (taxesError) throw new Error(taxesError.message);
 
-    // 3. Mapejar
+    // 3. Mapeig
     return itemsData.map(item => {
         const taxesForItem = taxesData
             ?.filter(tax => tax.expense_item_id === item.id)
-            .map(tax => tax.tax_rates as unknown as TaxRate) 
-            .filter(Boolean) ?? []; 
+            // IMPORTANT: Assegurem-nos que el map retorna TaxRate vàlid
+            .map(tax => {
+                // Si tax_rates és un array o objecte, l'extraiem
+                const rateData = Array.isArray(tax.tax_rates) ? tax.tax_rates[0] : tax.tax_rates;
+                // Retornem un objecte que compleix TaxRate
+                return rateData ? {
+                    id: rateData.id,
+                    name: rateData.name,
+                    percentage: rateData.percentage,
+                    is_default: false 
+                } as TaxRate : null;
+            })
+            .filter((t): t is TaxRate => t !== null) ?? [];
             
         return {
             ...item,
-            total: (item.quantity || 0) * (item.unit_price || 0), 
+            quantity: item.quantity ?? 0,
+            unit_price: item.unit_price ?? 0,
             taxes: taxesForItem,
-            category_id: item.category_id,
+            id: item.id 
         };
     });
 }
@@ -56,38 +60,39 @@ export async function fetchExpenseItemsWithTaxes(
 export async function syncExpenseItems(
     supabase: SupabaseClient<Database>,
     expenseId: number,
-    items: ExpenseItem[] | undefined,
+    items: ExpenseItemForm[] | undefined,
     userId: string,
     teamId: string
 ): Promise<void> {
+    if (!items) return;
 
-    const existingValidUuids = items
-        ?.map(item => item.id)
-        .filter(isValidUuid)
-        .map(id => String(id));
+    // 1. Identificar IDs existents (UUIDs vàlids)
+    const existingIds = items
+        .map(i => i.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 10);
 
-    // 1. DELETE (amb fix manual per PostgREST)
+    // 2. Esborrar items que ja no hi són
     let deleteQuery = supabase.from('expense_items').delete().eq('expense_id', expenseId);
-
-    if (existingValidUuids && existingValidUuids.length > 0) {
-        const filterString = `(${existingValidUuids.join(',')})`;
-        deleteQuery = deleteQuery.not('id', 'in', filterString);
+    if (existingIds.length > 0) {
+        // Nota: PostgREST espera (id1,id2) per al filtre 'in' quan són UUIDs
+        // O millor, usem .in() amb un array directament, que la llibreria JS gestiona millor
+        deleteQuery = supabase.from('expense_items').delete()
+            .eq('expense_id', expenseId)
+            .not('id', 'in', `(${existingIds.join(',')})`); 
+            // Si això falla, prova: .filter('id', 'not.in', `(${existingIds.join(',')})`)
     }
-    
-    const { error: deleteError } = await deleteQuery;
-    if (deleteError) throw new Error(`Error netejant items: ${deleteError.message}`);
-    
-    if (!items || items.length === 0) return;
+    await deleteQuery;
 
-    // 2. PREPARE UPSERT
-    // ✅ CORRECCIÓ: Tipatge estricte en lloc d'any[]
+    if (items.length === 0) return;
+
+    // 3. Preparar dades per Upsert
     const itemsToUpsert: DbTableInsert<'expense_items'>[] = [];
     const taxesToInsert: DbTableInsert<'expense_item_taxes'>[] = [];
-    
+
     for (const item of items) {
-        const isNew = !isValidUuid(item.id);
+        const isNew = typeof item.id === 'number' || String(item.id).length < 10;
         const itemId = isNew ? crypto.randomUUID() : String(item.id);
-        
+
         itemsToUpsert.push({
             id: itemId,
             expense_id: expenseId,
@@ -97,42 +102,39 @@ export async function syncExpenseItems(
             quantity: item.quantity,
             unit_price: item.unit_price,
             category_id: item.category_id,
-            // Assegura't que aquests camps coincideixen amb la teva BD, si 'legacy_category_name' no existeix a la BD, no l'incloguis
         });
+
+        const baseAmount = item.quantity * item.unit_price;
         
-        const itemBase = (item.quantity || 0) * (item.unit_price || 0);
-        
-        if (item.taxes && item.taxes.length > 0) {
+        if (item.taxes?.length) {
             for (const tax of item.taxes) {
                 taxesToInsert.push({
                     team_id: teamId,
                     expense_item_id: itemId,
-                    tax_rate_id: tax.id,
+                    tax_rate_id: String(tax.id), // Convertim tax.id a string per evitar errors de tipus
                     name: tax.name,
-                    rate: tax.rate,
-                    amount: itemBase * (tax.rate / 100),
+                    rate: tax.percentage,
+                    amount: baseAmount * (tax.percentage / 100)
                 });
             }
         }
     }
 
-    // 3. EXECUTE UPSERT ITEMS
+    // 4. Executar Upsert Items
     if (itemsToUpsert.length > 0) {
-        const { error: upsertError } = await supabase
-            .from('expense_items')
-            .upsert(itemsToUpsert);
-            
-        if (upsertError) throw new Error(`Error upsert items: ${upsertError.message}`);
+        const { error } = await supabase.from('expense_items').upsert(itemsToUpsert);
+        if (error) throw new Error(`Error upsert items: ${error.message}`);
     }
-    
-    // 4. SYNC TAXES (Delete all old taxes for these items -> Insert new ones)
-    const allItemIds = itemsToUpsert.map(i => i.id);
-    // Filter out undefined ids just in case, though logic guarantees strings
-    const safeIds = allItemIds.filter((id): id is string => typeof id === 'string');
 
-    if (safeIds.length > 0) {
-        await supabase.from('expense_item_taxes').delete().in('expense_item_id', safeIds);
+    // 5. Sincronitzar Taxes
+    // ✅ CORRECCIÓ FINAL: TypeScript es queixava de (string | undefined)[]
+    // Fem un filter amb Type Guard per garantir string[]
+    const allItemIds = itemsToUpsert
+        .map(i => i.id)
+        .filter((id): id is string => id !== undefined);
         
+    if (allItemIds.length > 0) {
+        await supabase.from('expense_item_taxes').delete().in('expense_item_id', allItemIds);
         if (taxesToInsert.length > 0) {
             await supabase.from('expense_item_taxes').insert(taxesToInsert);
         }

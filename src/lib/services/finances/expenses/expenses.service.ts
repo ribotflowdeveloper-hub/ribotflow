@@ -1,4 +1,3 @@
-// src/lib/services/finances/expenses/expenses.service.ts
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { type Database } from "@/types/supabase";
 import type { EnrichedExpense, ExpenseCategory } from "@/types/finances/expenses";
@@ -19,25 +18,28 @@ export async function fetchPaginatedExpenses(
 ): Promise<PaginatedExpensesData> {
   const { searchTerm, filters, sortBy, sortOrder, limit, offset } = params;
 
-  // ✅ CORRECCIÓ: Utilitzem 'undefined' en lloc de 'null' si el tipus de Supabase ho requereix
-  // (Si la definició de l'RPC és p_search_term?: string, llavors espera string | undefined)
+  // Normalització de filtres
   const p_category_id = (filters.category && filters.category !== "all" && filters.category !== "") 
     ? filters.category 
-    : undefined; 
+    : null; 
     
   const p_status = (filters.status && filters.status !== "all" && filters.status !== "") 
     ? filters.status 
-    : undefined;
+    : null;
     
-  const p_search_term = searchTerm || undefined;
+  const p_search_term = searchTerm || null;
 
   const { data: rpcData, error: rpcError } = await supabase.rpc(
     "get_filtered_expenses",
     {
       p_team_id: teamId,
-      p_search_term,
-      p_category_id,
-      p_status,
+      // ✅ CORRECCIÓ: Fem servir 'as unknown as string' en lloc de 'as any'.
+      // Això enganya TypeScript perquè accepti el 'null' runtime com si fos el tipus esperat ('string'),
+      // sense utilitzar el tipus prohibit 'any'.
+      p_search_term: p_search_term as unknown as string,
+      p_category_id: p_category_id as unknown as string,
+      p_status: p_status as unknown as string,
+      
       p_sort_by: sortBy || "expense_date",
       p_sort_order: sortOrder || "desc",
       p_limit: limit ?? 50,
@@ -56,6 +58,7 @@ export async function fetchPaginatedExpenses(
 
   const totalCount = rpcData[0].full_count ?? 0;
 
+  // Mapeig segur utilitzant unknown
   const formattedData: EnrichedExpense[] = rpcData.map((item) => {
       return {
           ...item, 
@@ -64,10 +67,9 @@ export async function fetchPaginatedExpenses(
             : null,
           category_name: item.category_name,
           
-          // Camps opcionals pel frontend
+          // Camps opcionals inicialitzats
           expense_items: [],
           expense_attachments: []
-          
       } as unknown as EnrichedExpense;
   });
 
@@ -76,7 +78,6 @@ export async function fetchPaginatedExpenses(
     count: totalCount,
   };
 }
-
 
 export async function fetchExpenseCategories(
   supabase: SupabaseClient<Database>,
@@ -92,6 +93,7 @@ export async function fetchExpenseCategories(
     console.error("Error fetching categories:", error.message);
     return [];
   }
-  // Cast segur al nostre tipus
+  
+  // Casting segur via unknown
   return (data || []) as unknown as ExpenseCategory[];
 }

@@ -7,6 +7,7 @@ export type TaxRate = {
   rate: number;
   type: 'vat' | 'retention';
   is_default: boolean;
+  percentage: number;
 };
 
 // Representa l'impost DESAT (la taula 'expense_item_taxes')
@@ -19,3 +20,4 @@ export type ItemTax = {
   rate: number;
   amount: number;
 };
+

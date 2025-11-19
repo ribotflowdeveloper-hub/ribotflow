@@ -204,7 +204,7 @@ export function InvoicesClient({
       }
       return deleteInvoiceAction(id);
     },
-    initialRowsPerPage: INVOICE_ROWS_PER_PAGE_OPTIONS[0],
+    initialRowsPerPage: INVOICE_ROWS_PER_PAGE_OPTIONS[1],
     rowsPerPageOptions: INVOICE_ROWS_PER_PAGE_OPTIONS,
     toastMessages: {
       deleteSuccess: t('toast.deleteSuccess'),

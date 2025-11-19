@@ -32,6 +32,7 @@ export async function InvoicesData({}: InvoicesDataProps) {
   try {
     const [initialDataResult, clientsResult, limitStatusResult] = await Promise.allSettled([
       fetchPaginatedInvoices({
+        page: 1,
         searchTerm: '',
         filters: { status: 'all', contactId: 'all' } as InvoicePageFilters,
         sortBy: INITIAL_SORT_COLUMN,
