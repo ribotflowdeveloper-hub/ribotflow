@@ -401,3 +401,51 @@ export async function unlinkContactFromSupplier(
 
     if (error) throw error;
 }
+
+
+/**
+ * Obté un contacte per ID (per a ús intern en altres serveis com Facturació).
+ */
+export async function getContactById(
+  supabase: SupabaseClient<Database>,
+  teamId: string,
+  contactId: number
+): Promise<Contact | null> {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('id', contactId)
+    .eq('team_id', teamId)
+    .single();
+
+  if (error) {
+    console.error("Error getContactById:", error.message);
+    return null;
+  }
+  
+  return data;
+}
+
+/**
+ * Obté tots els contactes d'un equip (per a selectors/dropdowns).
+ * Similar a getAllContacts, però es pot utilitzar amb un nom més específic
+ * si en el futur volem filtrar només els "actius" (no arxivats).
+ */
+export async function getActiveContacts(
+  supabase: SupabaseClient<Database>, 
+  teamId: string
+): Promise<Contact[]> {
+  // Reutilitzem la lògica de getAllContacts o la reescrivim si volem filtres extra
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('team_id', teamId)
+    .order('nom', { ascending: true });
+
+  if (error) {
+    console.error('Error getActiveContacts:', error.message);
+    return []; // Retornem array buit en lloc de llançar error per no trencar la UI
+  }
+  
+  return data || [];
+}

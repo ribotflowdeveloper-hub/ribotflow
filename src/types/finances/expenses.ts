@@ -1,163 +1,106 @@
-// src/types/finances/expenses.ts (FITXER CORREGIT)
+import { z } from "zod";
+import type { 
+  Expense as DbExpense, 
+  ExpenseItem as DbExpenseItem,
+  ExpenseCategory as DbExpenseCategory,
+  ExpenseAttachment as DbExpenseAttachment,
+  Contact,
+} from "@/types/db";
 
-import type { Contact } from "@/types/db";
-// import { Database } from '@/types/supabase'; // Si l'SDK ho genera automàticament
-import type { ActionResult } from "../shared/actionResult"; // Tipus genèric per a resultats d'accions
-// --- 1. Tipus d'Elements (Basats en les teves definicions) ---
-import { TaxRate } from "./taxes"; // Importem el tipus TaxRate
+// Si tens el tipus TaxRate definit en un altre lloc, importa'l. 
+// Si no, el definim aquí o l'importem de 'taxes.ts' si existeix.
+// import type { TaxRate } from "./taxes"; 
+// Per si de cas no el tens, el defineixo aquí breument (ajusta'l al teu real):
+export type TaxRate = {
+    id: number;
+    name: string;
+    percentage: number;
+    is_default?: boolean;
+};
 
-// MODIFICAT: ExpenseItem ara inclou els impostos per a l'estat del formulari
-export type ExpenseItem = {
-  id?: number | string; // ID temporal (Date.now()) o real (UUID/number)
-  expense_id: number;
+// --- 1. TIPUS BASE (BD) ---
+export type Expense = DbExpense;
+export type ExpenseCategory = DbExpenseCategory;
+export type ExpenseAttachment = DbExpenseAttachment;
+
+// --- 2. TIPUS DE FORMULARI (UI) ---
+
+// ✅ CORRECCIÓ CLAU: Estenem el tipus de la BD per afegir-hi 'taxes'
+// Aquest és el tipus que utilitzarà el hook useExpenseDetail
+export type ExpenseItemForm = Omit<DbExpenseItem, 'id'> & {
+    // L'ID pot ser string (UUID temporal) o number (BD), o undefined si és nou
+    id?: string | number; 
+    
+    // Afegim la propietat que faltava i que donava error
+    taxes: TaxRate[]; 
+};
+
+// --- 3. TIPUS PER A L'ACCIÓ (FormData) ---
+export type ExpenseFormDataForAction = Omit<
+  Expense,
+  | "id"
+  | "created_at"
+  | "user_id"
+  | "team_id"
+  | "legacy_tax_rate"
+  | "legacy_tax_amount"
+  | "legacy_category_name"
+> & {
+  id?: string | number | null;
+  // ✅ AQUÍ ESTÀ EL CANVI: Utilitzem el tipus enriquit amb taxes
+  expense_items: ExpenseItemForm[];
+};
+
+// --- 4. TIPUS ENRIQUITS (Llistats) ---
+export type EnrichedExpense = Expense & {
+    suppliers: Pick<Contact, 'id' | 'nom'> | null;
+    category_name?: string | null; 
+    amount?: number; 
+};
+
+export type ExpenseDetail = EnrichedExpense & {
+    // Al detall que ve del servidor, potser encara no tenim els objectes TaxRate complets
+    // si no hem fet el join, però per coherència amb el form, podem usar el mateix.
+    // Si el servei retorna taxes, fem servir ExpenseItemForm.
+    expense_items: ExpenseItemForm[]; 
+    expense_attachments: ExpenseAttachment[];
+};
+
+// --- 6. VALIDACIÓ ZOD ---
+export const expenseItemSchema = z.object({
+  id: z.union([z.string(), z.number()]).optional(),
+  description: z.string().min(1, "La descripció és obligatòria"),
+  quantity: z.coerce.number().min(0),
+  unit_price: z.coerce.number().min(0),
+  category_id: z.number().nullable().optional(),
+  // Ara Zod també validarà que hi hagi un array (encara que sigui buit)
+  taxes: z.array(z.any()).optional().default([]), 
+});
+
+export const expenseSchema = z.object({
+  id: z.union([z.string(), z.number()]).nullable().optional(),
+  description: z.string().min(3, "Mínim 3 caràcters"),
+  expense_date: z.string().refine((d) => !isNaN(Date.parse(d)), "Data invàlida"),
+  total_amount: z.coerce.number(),
+  supplier_id: z.string().uuid().nullable().optional().or(z.literal("").transform(() => null)),
+  category_id: z.string().uuid().nullable().optional().or(z.literal("").transform(() => null)),
+  invoice_number: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  payment_date: z.string().nullable().optional(),
+  due_date: z.string().nullable().optional(),
+  status: z.enum(["pending", "paid", "overdue", "cancelled"] as [string, ...string[]]).default("pending"),
+  payment_method: z.string().nullable().optional(),
+  is_reimbursable: z.boolean().optional(),
+  is_billable: z.boolean().optional(),
+  currency: z.string().default("EUR"),
+  subtotal: z.coerce.number().optional(),
+  tax_amount: z.coerce.number().optional(),
+  retention_amount: z.coerce.number().optional(),
+  discount_amount: z.coerce.number().optional(),
+  discount_rate: z.coerce.number().optional(),
   
-  // ✅ CORRECCIÓ: Aquests camps poden ser 'null' a la BD
-  user_id: string | null;
-  team_id: string | null;
+  // Validem els items amb el nou esquema
+  expense_items: z.array(expenseItemSchema).optional().default([]),
+});
 
-  category_id: string | null;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  total: number; // (quantity * unit_price)
-  taxes: TaxRate[]; // Llista d'impostos seleccionats per aquest item
-  legacy_category_name?: string | null; // Antic camp de text (per migració)
-};
-
-export type ExpenseAttachment = {
-  id: string; // UUID de l'adjunt
-  file_path: string;
-  filename: string;
-  mime_type: string;
-  expense_id: number;
-};
-
-// --- 2. Tipus Base de Despesa (Taula `expenses`) ---
-export type ExpenseCategory = {
-  id: string; // uuid
-  team_id: string; // uuid
-  name: string;
-  description: string | null;
-};
-// ✅ NOU: Definim el tipus per a l'estat de la despesa, basat en l'ENUM de la DB
-export type ExpenseStatus = "pending" | "paid" | "overdue" | "cancelled";
-
-export interface Expense {
-id: number;
-  user_id: string;
-  team_id: string;
-  description: string;
-  total_amount: number;
-  expense_date: string; // format YYYY-MM-DD
-  category_id: string | null; // 👈 NOU (UUID de la categoria)
-  legacy_category_name: string | null; // 👈 Antic camp de text
-  created_at: string;
-  invoice_number: string | null;
-
-  // --- NOUS CAMPS DE TOTALS ---
-  subtotal: number | null;
-  discount_rate: number | null; // ✅ AFEGIT
-  discount_amount: number | null;
-  tax_amount: number; // Suma de 'vat' (IVA)
-  retention_amount: number; // Suma de 'retention' (IRPF)
-
-  notes: string | null;
-
-  // --- CAMPS ANTICS (LEGACY) ---
-  legacy_tax_rate: number | null; // <-- El camp reanomenat
-  legacy_tax_amount: number | null; // <-- El camp reanomenat
-
-  // --- NOUS CAMPS DE LA MIGRACIÓ ---
-  currency: string;
-  due_date: string | null;
-
-  // --- CAMPS DE GESTIÓ ---
-  supplier_id: string | null;
-  status: ExpenseStatus; // Assegura't que 'ExpenseStatus' estigui definit
-  payment_date: string | null;
-  payment_method: string | null;
-  is_billable: boolean;
-  project_id: string | null;
-  is_reimbursable: boolean;
-
-  // ❌ EL CAMP 'tax_rate' JA NO EXISTEIX AQUÍ
-}
-
-// ... (la resta dels teus tipus: ExpenseWithContact, ExpenseDetail, ExpenseFormDataForAction)
-// Assegura't que 'ExpenseFormDataForAction' OMET els camps 'legacy_'
-export type ExpenseFormDataForAction =
-  & Omit<
-    Expense,
-    | "id"
-    | "created_at"
-    | "user_id"
-    | "team_id"
-    // | 'suppliers' // Afegeix 'suppliers' si el tenies al Omit
-    | "legacy_tax_rate" // 👈 Important
-    | "legacy_tax_amount" // 👈 Important
-    | "legacy_category_name" // 👈 Afegim l'antic al Omit
-  >
-  & {
-    id?: string | number | null;
-    expense_items: ExpenseItem[];
-  };
-
-// ✅ MODIFICAT: Aquest tipus és el que s'utilitza a la llista
-export type ExpenseWithContact = Expense & {
-    suppliers: Pick<Contact, 'id' | 'nom'> | null;
-    
-    // ✅ AFEGIT: Afegim el nom de la categoria que ve del JOIN
-    category_name: string | null; 
-    
-    // ✅ CANVIAT: 'category' (el camp de text antic) ja no hauria d'existir
-    // El mantenim temporalment si el teu 'Expense' encara el té
-    category?: string | null; // Aquest és el nom
-};
-
-// Tipus per a la vista de detall (totes les dades relacionals)
-export type ExpenseDetail = ExpenseWithContact & {
-  suppliers: Pick<Contact, "id" | "nom"> | null; // Tipus de detall del proveïdor
-  expense_items: ExpenseItem[];
-  expense_attachments: ExpenseAttachment[];
-};
-
-// Mapeig d'Estatus de Despeses (configuració d'UI, utilitzat a ExpensesClient)
-export const EXPENSE_STATUS_MAP = [
-  { dbValue: "pending", key: "pending", colorClass: "bg-yellow-100" },
-  { dbValue: "paid", key: "paid", colorClass: "bg-green-600" },
-  { dbValue: "reimbursed", key: "reimbursed", colorClass: "bg-blue-100" },
-  { dbValue: "rejected", key: "rejected", colorClass: "bg-red-600" },
-];
-
-// ... (la resta del fitxer)
-
-/**
- * Tipus per a les dades d'un concepte extretes per l'IA.
- */
-export interface AnalyzedExpenseItem {
-  description: string | null;
-  quantity: number | null;
-  unit_price: number | null;
-}
-
-/**
-* L'objecte de dades complet que retorna l'IA,
- * enriquit amb el supplier_id de la nostra BD.
- */
-export interface ExpensesAnalysisData {
-  supplier_name: string | null;
-  invoice_number: string | null;
-  invoice_date: string | null; // YYYY-MM-DD
-  total_amount: number | null;
-  tax_amount: number | null;
-  tax_rate: number | null; // <-- Camp obligatori (pot ser null)
-  currency: string | null;
-  items: AnalyzedExpenseItem[];
-  supplier_id: string | null; // L'ID resolt de la nostra BD
-}
-
-/**
- * El tipus de retorn complet de la nostra Server Action,
- * utilitzant el teu 'ActionResult' genèric.
- */
-export type ExpensesAnalysisActionResult = ActionResult<ExpensesAnalysisData>;
+export type ExpenseSchemaType = z.infer<typeof expenseSchema>;

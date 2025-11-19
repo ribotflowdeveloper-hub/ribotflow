@@ -21,13 +21,18 @@ export type Invoice = DbTableRow<'invoices'>;
 export type Activity = DbTableRow<'activities'>;
 export type Task = DbTableRow<'tasks'>;
 export type InvoiceItem = DbTableRow<'invoice_items'>;
-export type Expense = DbTableRow<'expenses'>;
 export type Team = DbTableRow<'teams'>;
 export type Notification = DbTableRow<'notifications'>;
 export type Pipeline = DbTableRow<'pipelines'>; 
 export type PipelineStage = DbTableRow<'pipeline_stages'>; 
 export type Stage = DbTableRow<'pipeline_stages'>;
+export type InvoiceStatus = Database['public']['Enums']['invoice_status'];
 
+export type Expense = DbTableRow<'expenses'>;
+export type ExpenseStatus = Database['public']['Enums']['expense_status'];
+export type ExpenseCategory = DbTableRow<'expense_categories'>;
+export type ExpenseAttachment = DbTableRow<'expense_attachments'>;
+export type ExpenseItem = DbTableRow<'expense_items'>;
 // --- Tipus estesos (JOINs) ---
 // Aquests són els únics llocs on hauries de fer "types manuals"
 // per representar les dades que venen de relacions.

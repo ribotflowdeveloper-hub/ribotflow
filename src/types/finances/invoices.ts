@@ -2,6 +2,7 @@
 import { type Database } from "@/types/supabase";
 import type { InvoiceStatus } from "@/config/invoices";
 import { type TaxRate } from "./index";
+import { z } from "zod";
 
 export type { InvoiceStatus } from "@/config/invoices";
 // --- Tipus Base (Reflectint Supabase - S'actualitzaran amb 'npx supabase gen types...') ---
@@ -201,3 +202,59 @@ export interface InvoiceFilters {
   limit?: number;
   offset?: number;
 }
+
+// --- INVOICES ---
+
+export const invoiceItemSchema = z.object({
+  id: z.union([z.string(), z.number()]).optional(),
+  product_id: z.number().nullable().optional(),
+  description: z.string().min(1, "La descripció és obligatòria"),
+  quantity: z.coerce.number().min(0),
+  unit_price: z.coerce.number().min(0),
+  discount_percentage: z.coerce.number().min(0).max(100).nullable().optional(),
+  discount_amount: z.coerce.number().min(0).nullable().optional(),
+  reference_sku: z.string().nullable().optional(),
+  taxes: z.array(z.any()).optional(), // Array de TaxRate
+});
+
+export const invoiceSchema = z.object({
+  id: z.union([z.string(), z.number()]).nullable().optional(),
+  
+  // Camps obligatoris
+  invoice_number: z.string().min(1, "El número de factura és obligatori"),
+  issue_date: z.string().refine((date) => !isNaN(Date.parse(date)), "Data d'emissió invàlida"),
+  status: z.enum(['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled']).default('Draft'),
+  
+  // Camps opcionals / Nullables
+  contact_id: z.number().nullable().optional(),
+  project_id: z.number().nullable().optional(),
+  quote_id: z.number().nullable().optional(),
+  budget_id: z.number().nullable().optional(),
+  
+  due_date: z.string().nullable().optional()
+    .refine((d) => !d || !isNaN(Date.parse(d)), "Data de venciment invàlida"),
+    
+  notes: z.string().nullable().optional(),
+  terms: z.string().nullable().optional(),
+  payment_details: z.string().nullable().optional(),
+  client_reference: z.string().nullable().optional(),
+  
+  currency: z.string().default("EUR"),
+  language: z.string().default("ca"),
+  
+  // Matemàtiques
+  subtotal: z.coerce.number().optional(),
+  tax_amount: z.coerce.number().optional(),
+  retention_amount: z.coerce.number().optional(),
+  total_amount: z.coerce.number().optional(),
+  discount_amount: z.coerce.number().optional(),
+  shipping_cost: z.coerce.number().optional(),
+  
+  // Relacions
+  invoice_items: z.array(invoiceItemSchema).optional().default([]),
+  
+  // Extra
+  extra_data: z.any().optional(),
+});
+
+export type InvoiceSchemaType = z.infer<typeof invoiceSchema>;

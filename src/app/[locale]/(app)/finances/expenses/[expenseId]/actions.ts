@@ -5,12 +5,11 @@ import { revalidatePath } from "next/cache";
 import {
   type ExpenseAttachment,
   type ExpenseDetail,
-  type ExpenseFormDataForAction,
-  // ✅ 1. Importem els tipus correctes (amb 'Expenses')
+  type ExpenseCategory,
   type ExpensesAnalysisActionResult,
   type ExpensesAnalysisData,
-
-  type ExpenseCategory
+  type ExpenseFormDataForAction,
+  expenseSchema
 } from "@/types/finances/index";
 import { type ActionResult } from "@/types/shared/index";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -21,26 +20,24 @@ import {
 import { PERMISSIONS } from "@/lib/permissions/permissions.config";
 import { type PlanLimit } from "@/config/subscriptions";
 
-import * as expensesService from "@/lib/services/finances/expenses/expenseDetail.service";
+// 👇 1. Importem els serveis modulars
+import * as expensesService from "@/lib/services/finances/expenses"; 
 
-// ✅ 2. Importem OpenAI
+
+
 import OpenAI from "openai";
 
-
 /**
- * ACCIÓ: Analitza una imatge de factura i retorna dades estructurades.
- * Aquesta és una acció SÍNCRONA.
+ * ACCIÓ: Analitza una factura utilitzant GPT-4o.
  */
 export async function analyzeInvoiceFileAction(
   formData: FormData,
-): Promise<ExpensesAnalysisActionResult> { // ✅ 4. Tipus de retorn estricte
+): Promise<ExpensesAnalysisActionResult> {
   
-  // ✅ NOMÉS ES CREA QUAN S'EXECUTA L'ACCIÓ
   const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
   
-  // 1. Validar permís
   const validationResult = await validateSessionAndPermission(
     PERMISSIONS.MANAGE_EXPENSES,
   );
@@ -64,11 +61,9 @@ export async function analyzeInvoiceFileAction(
   }
 
   try {
-    // 2. Convertir fitxer a Base64
     const fileBuffer = await file.arrayBuffer();
     const fileBase64 = Buffer.from(fileBuffer).toString("base64");
 
-    // 3. Cridar a OpenAI GPT-4o
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -77,7 +72,6 @@ export async function analyzeInvoiceFileAction(
           content: [
             {
               type: "text",
-              // El prompt ha d'incloure 'tax_rate'
               text: `
                 Analitza aquesta factura (imatge) i extreu les dades.
                 Retorna ÚNICAMENT un objecte JSON vàlid.
@@ -112,14 +106,8 @@ export async function analyzeInvoiceFileAction(
       throw new Error("Resposta buida d'OpenAI");
     }
 
-    // ✅ 5. CORRECCIÓ CLAU:
-    // Fem el 'cast' al tipus correcte, excloent només 'supplier_id'
-    const extractedData = JSON.parse(content) as Omit<
-      ExpensesAnalysisData,
-      "supplier_id"
-    >;
+    const extractedData = JSON.parse(content) as Omit<ExpensesAnalysisData, "supplier_id">;
 
-    // 6. Enriquir amb dades de la nostra BD (Cercar el proveïdor)
     let supplierId: string | null = null;
     if (extractedData.supplier_name) {
       const { data: supplier } = await supabase
@@ -134,7 +122,6 @@ export async function analyzeInvoiceFileAction(
       }
     }
 
-    // ✅ 7. Ara 'data' coincideix perfectament amb 'ExpensesAnalysisData'
     return {
       success: true,
       data: {
@@ -142,18 +129,16 @@ export async function analyzeInvoiceFileAction(
         supplier_id: supplierId,
       },
     };
+
   } catch (error: unknown) {
-    const message = (error as Error).message;
-    console.error("Error analyzing invoice file (action):", message);
-    return { success: false, message };
+    const message = error instanceof Error ? error.message : "Error desconegut analitzant la factura";
+    console.error("[Action] analyzeInvoiceFileAction error:", message);
+    return { success: false, message: "Error analitzant la factura. Torni-ho a provar." };
   }
 }
 
-// --- Resta de les teves Server Actions ---
-// (fetchExpenseDetail, saveExpenseAction, uploadAttachmentAction, etc.)
-
 /**
- * ACCIÓ: Obté el detall d'una despesa.
+ * ACCIÓ: Obté detall despesa
  */
 export async function fetchExpenseDetail(
   expenseId: number,
@@ -169,24 +154,39 @@ export async function fetchExpenseDetail(
       activeTeamId,
     );
   } catch (error) {
-    console.error("Error fetching expense detail (action):", error);
+    console.error("Error fetching expense detail:", error);
     return null;
   }
 }
 
 /**
- * ACCIÓ: Desa una despesa (crea o actualitza).
+ * ✅ ACCIÓ: Desa (Insert/Update) una despesa
+ * Utilitza Zod per validació i els nous serveis modulars.
  */
 export async function saveExpenseAction(
-  expenseData: ExpenseFormDataForAction,
+  // Rebem 'unknown' per forçar la validació amb Zod, o bé el tipus del formulari si confiem en el client (però Zod és millor)
+  rawExpenseData: unknown, 
   expenseId: string | number | null,
 ): Promise<ActionResult<{ id: number }>> {
+  
+  // 1. Validació Zod (Fail Fast)
+  const validation = expenseSchema.safeParse(rawExpenseData);
+
+  if (!validation.success) {
+    // Retornem el primer error de forma clara
+    const errorMessage = validation.error.errors[0]?.message || "Dades invàlides";
+    return { success: false, message: errorMessage };
+  }
+
+  // Dades netes i tipades segons l'esquema
+  const expenseData = validation.data;
+
   let validationResult;
   const isNew = expenseId === null || expenseId === "new";
 
+  // 2. Validació de límits del pla (només si és nova)
   if (isNew) {
     const limitToCheck: PlanLimit = "maxExpensesPerMonth";
-    console.log(`[saveExpenseAction] Comprovant límit: ${limitToCheck}`);
     validationResult = await validateActionAndUsage(
       PERMISSIONS.MANAGE_EXPENSES,
       limitToCheck,
@@ -204,12 +204,28 @@ export async function saveExpenseAction(
   const { supabase, user, activeTeamId } = validationResult;
 
   try {
-    const { id: resultingExpenseId } = await expensesService.saveExpense(
+    // 3. Convertim el tipus de Zod al tipus que espera el servei (si calen ajustos)
+    // Com que Zod i la interfície ExpenseFormDataForAction haurien de ser gairebé idèntics,
+    // fem un cast segur aquí.
+    const serviceData = expenseData as unknown as ExpenseFormDataForAction;
+
+    // A. Desar Capçalera
+    const { id: resultingExpenseId } = await expensesService.upsertExpenseHeader(
       supabase,
-      expenseData,
-      expenseId,
+      serviceData,
+      isNew ? null : Number(expenseId),
       user.id,
       activeTeamId,
+    );
+
+    // B. Sincronitzar Items
+    // Passem els items validats per Zod
+    await expensesService.syncExpenseItems(
+        supabase,
+        resultingExpenseId,
+        serviceData.expense_items, // Això ve del Zod .data
+        user.id,
+        activeTeamId
     );
 
     revalidatePath(`/finances/expenses/${resultingExpenseId}`);
@@ -217,29 +233,26 @@ export async function saveExpenseAction(
 
     return {
       success: true,
-      message: "Despesa desada.",
+      message: "Despesa desada correctament.",
       data: { id: resultingExpenseId },
     };
   } catch (error: unknown) {
-    const message = (error as Error).message;
-    console.error("Error saving expense (action):", message);
-    return { success: false, message };
+    // ✅ Correcció "Unexpected any": comprovem el tipus d'error
+    const message = error instanceof Error ? error.message : "Error desconegut al desar";
+    console.error("Error saving expense:", message);
+    return { success: false, message: `Error al desar: ${message}` };
   }
 }
 
 /**
- * ACCIÓ: Puja un adjunt.
+ * ACCIÓ: Puja adjunt
  */
 export async function uploadAttachmentAction(
   expenseId: string | number,
   formData: FormData,
 ): Promise<ActionResult<{ newAttachment: ExpenseAttachment }>> {
-  const session = await validateSessionAndPermission(
-    PERMISSIONS.MANAGE_EXPENSES,
-  );
-  if ("error" in session) {
-    return { success: false, message: session.error.message };
-  }
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
+  if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, user, activeTeamId } = session;
 
   const numericExpenseId = Number(expenseId);
@@ -257,106 +270,68 @@ export async function uploadAttachmentAction(
     );
 
     revalidatePath(`/finances/expenses/${numericExpenseId}`);
-
-    return { success: true, message: "Adjunt pujat.", data: { newAttachment } };
+    return { success: true, message: "Fitxer pujat.", data: { newAttachment } };
   } catch (error: unknown) {
-    const message = (error as Error).message;
-    console.error("Error uploading attachment (action):", message);
+    const message = error instanceof Error ? error.message : "Error desconegut";
     return { success: false, message };
   }
 }
 
 /**
- * ACCIÓ: Elimina una despesa.
+ * ACCIÓ: Elimina despesa
  */
 export async function deleteExpense(expenseId: number): Promise<ActionResult> {
-  const session = await validateSessionAndPermission(
-    PERMISSIONS.MANAGE_EXPENSES,
-  );
-  if ("error" in session) {
-    return { success: false, message: session.error.message };
-  }
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
+  if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
   try {
     await expensesService.deleteExpense(supabase, expenseId, activeTeamId);
     revalidatePath("/finances/expenses");
-    return { success: true, message: `Despesa eliminada correctament.` };
+    return { success: true, message: "Despesa eliminada." };
   } catch (error: unknown) {
-    const message = (error as Error).message;
+    const message = error instanceof Error ? error.message : "Error desconegut";
     return { success: false, message };
   }
 }
 
-/**
- * ACCIÓ: Obté una URL signada per a un adjunt.
- */
 export async function getAttachmentSignedUrl(
   filePath: string,
 ): Promise<ActionResult<{ signedUrl: string }>> {
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
-  if ("error" in session) {
-    return { success: false, message: session.error.message };
-  }
+  if ("error" in session) return { success: false, message: session.error.message };
   const { activeTeamId } = session;
 
   try {
-    const signedUrl = await expensesService.getAttachmentSignedUrl(
-      filePath,
-      activeTeamId,
-    );
-    return {
-      success: true,
-      message: "URL signada generada.",
-      data: { signedUrl },
-    };
+    const signedUrl = await expensesService.getAttachmentSignedUrl(filePath, activeTeamId);
+    return { success: true, message: "OK", data: { signedUrl } };
   } catch (error: unknown) {
-    const message = (error as Error).message;
+    const message = error instanceof Error ? error.message : "Error desconegut";
     return { success: false, message };
   }
 }
 
-/**
- * ACCIÓ: Elimina un adjunt.
- */
 export async function deleteAttachmentAction(
   attachmentId: string,
   filePath: string,
 ): Promise<ActionResult> {
-  const session = await validateSessionAndPermission(
-    PERMISSIONS.MANAGE_EXPENSES,
-  );
-  if ("error" in session) {
-    return { success: false, message: session.error.message };
-  }
+  const session = await validateSessionAndPermission(PERMISSIONS.MANAGE_EXPENSES);
+  if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
-
   const supabaseAdmin = createAdminClient();
 
   try {
-    await expensesService.deleteAttachment(
-      supabase,
-      supabaseAdmin,
-      attachmentId,
-      filePath,
-      activeTeamId,
-    );
-    return { success: true, message: "Adjunt eliminat correctament." };
+    await expensesService.deleteAttachment(supabase, supabaseAdmin, attachmentId, filePath, activeTeamId);
+    return { success: true, message: "Adjunt eliminat." };
   } catch (error: unknown) {
-    const message = (error as Error).message;
+    const message = error instanceof Error ? error.message : "Error desconegut";
     return { success: false, message };
   }
 }
 
-
-/**
- * ACCIÓ: Obté el catàleg de categories de despesa per a l'equip.
- */
 export async function fetchExpenseCategoriesAction(): Promise<ActionResult<ExpenseCategory[]>> {
   const session = await validateSessionAndPermission(PERMISSIONS.VIEW_FINANCES);
-  if ("error" in session) {
-    return { success: false, message: session.error.message };
-  }
+  if ("error" in session) return { success: false, message: session.error.message };
   const { supabase, activeTeamId } = session;
 
   try {
@@ -366,15 +341,10 @@ export async function fetchExpenseCategoriesAction(): Promise<ActionResult<Expen
       .eq('team_id', activeTeamId)
       .order('name');
 
-    if (error) {
-      throw new Error(error.message);
-    }
-
+    if (error) throw error;
     return { success: true, data: data as ExpenseCategory[] };
-
   } catch (error: unknown) {
-    const message = (error as Error).message;
-    console.error("Error fetching expense categories (action):", message);
+    const message = error instanceof Error ? error.message : "Error desconegut";
     return { success: false, message };
   }
 }
