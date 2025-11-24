@@ -7,7 +7,9 @@ import { z } from "zod";
 import { Json, Tables } from "@/types/supabase";
 import { JSONContent } from "@tiptap/react";
 import { getValidGoogleCalendarToken } from "@/lib/google/google-api"; // ✅ NOU: Importem el gestor de tokens
+import { getTranslations } from 'next-intl/server';
 import type { ActionResult } from "@/types/shared";
+
 // ✅ 1. Importem ELS GUARDIANS
 import {
   PERMISSIONS,
@@ -36,21 +38,6 @@ interface ChecklistProgress {
   total: number;
   completed: number;
 }
-
-const taskSchema = z.object({
-  title: z.string().min(1, "El títol és obligatori."),
-  description: z.string().nullable().optional(),
-  due_date: z.string().datetime(
-    "La data de venciment ha de ser una data vàlida.",
-  ),
-  priority: z.enum(["Baixa", "Mitjana", "Alta"]),
-  user_asign_id: z.string().uuid().nullable().optional(),
-  contact_id: z.coerce.number().nullable().optional(),
-  department_id: z.coerce.number().nullable().optional(),
-  duration: z.coerce.number().positive(
-    "La duració ha de ser un número positiu.",
-  ).optional().nullable(),
-});
 
 const processFormData = (formData: FormData) => {
   let userId = formData.get("user_asign_id");
@@ -109,6 +96,18 @@ export async function createTask(
   formData: FormData,
 ): Promise<FormState> {
   // ✅ 2. VALIDACIÓ 3-EN-1 (Sessió + Rol + Límit)
+  const t = await getTranslations('TaskActions'); // 1. Inicialitzem t
+  const taskSchema = z.object({
+    title: z.string().min(1, t('titleRequired')),
+    description: z.string().nullable().optional(),
+    due_date: z.string().datetime(t('invalidDueDate')),
+    priority: z.enum(["Baixa", "Mitjana", "Alta"]),
+    user_asign_id: z.string().uuid().nullable().optional(),
+    contact_id: z.coerce.number().nullable().optional(),
+    department_id: z.coerce.number().nullable().optional(),
+    duration: z.coerce.number().positive(t('invalidDuration')).optional().nullable(),
+  });
+
   const validation = await validateActionAndUsage(
     PERMISSIONS.MANAGE_TASKS, // Comprovem el Rol
     "maxTasks", // Comprovem el Límit
@@ -170,6 +169,7 @@ export async function updateTask(
   prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const t = await getTranslations('TaskActions'); // 1. Inicialitzem t
   console.log("--- [Server Action] La funció 'updateTask' s'ha executat! ---");
 
   // ✅ 3. VALIDACIÓ 2-EN-1 (Sessió + Rol)
@@ -201,6 +201,18 @@ export async function updateTask(
       },
     };
   }
+
+  
+  const taskSchema = z.object({
+    title: z.string().min(1, t('titleRequired')),
+    description: z.string().nullable().optional(),
+    due_date: z.string().datetime(t('invalidDueDate')),
+    priority: z.enum(["Baixa", "Mitjana", "Alta"]),
+    user_asign_id: z.string().uuid().nullable().optional(),
+    contact_id: z.coerce.number().nullable().optional(),
+    department_id: z.coerce.number().nullable().optional(),
+    duration: z.coerce.number().positive(t('invalidDuration')).optional().nullable(),
+  });
 
   const parsedData = processFormData(formData);
   const validatedFields = taskSchema.safeParse(parsedData);
@@ -281,6 +293,7 @@ export async function updateSimpleTask(
   taskIdOrObject: number | { id: number },
   updatedData: Partial<Tables<"tasks">>,
 ) {
+  const t = await getTranslations('TaskActions'); // Inicialitzem t
   // ✅ 5. VALIDACIÓ 2-EN-1 (Sessió + Rol)
   const validation = await validateSessionAndPermission(
     PERMISSIONS.MANAGE_TASKS,
@@ -298,7 +311,7 @@ export async function updateSimpleTask(
     const errorMessage =
       "ID de tasca invàlid o no proporcionat a updateSimpleTask.";
     console.error(errorMessage, { received: taskIdOrObject });
-    return { error: { db: errorMessage } };
+    return { error: { db: t('invalidTaskIdSimple') } };
   }
 
   const { error } = await supabase
@@ -358,6 +371,7 @@ export async function uploadTaskImageAction(
   formData: FormData,
 ): Promise<ActionResult<UploadSuccessData>> {
   // ✅ 7. VALIDACIÓ 2-EN-1 (Sessió + Rol)
+  const t = await getTranslations('TaskActions');
   const validation = await validateSessionAndPermission(
     PERMISSIONS.MANAGE_TASKS,
   );
@@ -376,12 +390,12 @@ export async function uploadTaskImageAction(
   // --- Lògica de Fitxer (Aquesta no canvia) ---
   console.log("[uploadTaskImageAction] Validant fitxer...");
   const file = formData.get("file") as File | null;
-  if (!file) return { success: false, message: "No s'ha rebut cap fitxer." };
+  if (!file) return { success: false, message: t('noFileReceived') };
   if (file.size > 5 * 1024 * 1024) {
-    return { success: false, message: "Fitxer massa gran (màx 5MB)." };
+    return { success: false, message: t('fileTooLarge') };
   }
   if (!file.type.startsWith("image/")) {
-    return { success: false, message: "Format no permès (només imatges)." };
+    return { success: false, message: t('invalidFileFormat') };
   }
   console.log("[uploadTaskImageAction] Fitxer vàlid:", file.name);
 
@@ -441,19 +455,20 @@ export async function uploadTaskImageAction(
 export async function getSignedUrlForFile(
   filePath: string,
 ): Promise<ActionResult<string>> {
+  const t = await getTranslations('TaskActions'); // Inicialitzem t
   // ✅ 8. VALIDACIÓ (PER LLEGIR)
   // Per veure una imatge, n'hi ha prou amb tenir permís per VEURE tasques.
   const validation = await validateSessionAndPermission(PERMISSIONS.VIEW_TASKS);
   if ("error" in validation) {
     console.warn("[getSignedUrlForFile] Usuari no autenticat.");
-    return { success: false, message: "Sessió invàlida." };
+    return { success: false, message: t('invalidSession') };
   }
   const { supabase } = validation;
 
   if (!filePath || typeof filePath !== "string" || filePath.trim() === "") {
     return {
       success: false,
-      message: "No s'ha proporcionat cap 'filePath' o és invàlid.",
+      message: t('invalidFilePath'),
     };
   }
 
@@ -473,7 +488,7 @@ export async function getSignedUrlForFile(
     );
     return {
       success: false,
-      message: `No s'ha pogut obtenir la URL: ${error.message}`,
+      message: t('urlGenerationError', { message: error.message }),
     };
   }
 
@@ -494,6 +509,7 @@ async function syncTaskWithGoogle(
   task: Tables<"tasks">,
   accessToken: string,
 ): Promise<SyncResult> {
+  const t = await getTranslations('TaskActions'); // Inicialitzem t
   // 1. Definir l'inici i el final de l'esdeveniment
   // Suposem que 'due_date' és l'hora de FINALITZACIÓ
   const endDate = new Date(task.due_date as string);
@@ -509,7 +525,7 @@ async function syncTaskWithGoogle(
   // 2. Construir el cos de l'esdeveniment
   const eventBody = {
     summary: task.title,
-    description: task.description || "Tasca de Ribotflow",
+    description: task.description || t('defaultDescription'),
     start: {
       dateTime: startDate.toISOString(),
       timeZone: "UTC", // O la timezone de l'usuari
@@ -572,7 +588,7 @@ async function syncTaskWithGoogle(
     return {
       synced: false,
       googleCalendarId: task.google_calendar_id, // Retornem l'ID antic
-      message: errorBody.error.message || "Error desconegut de Google API",
+      message: errorBody.error.message || t('unknownGoogleError'),
     };
   }
 
@@ -581,7 +597,7 @@ async function syncTaskWithGoogle(
   return {
     synced: true,
     googleCalendarId: googleEvent.id, // Aquest és el nou ID
-    message: "Sincronitzat correctament.",
+    message: t('syncSuccess'),
   };
 }
 
@@ -592,6 +608,7 @@ async function syncTaskWithGoogle(
 export async function syncTaskToGoogleAction(
   taskId: number,
 ): Promise<ActionResult> {
+  const t = await getTranslations('TaskActions'); // Inicialitzem t
   // ✅ 9. VALIDACIÓ 2-EN-1 (Sessió + Rol)
   const validation = await validateSessionAndPermission(
     PERMISSIONS.MANAGE_TASKS,
@@ -609,7 +626,7 @@ export async function syncTaskToGoogleAction(
       .eq("id", taskId)
       .single();
 
-    if (taskError) throw new Error(`No s'ha trobat la tasca amb ID ${taskId}`);
+    if (taskError) throw new Error(t('taskNotFound', { taskId }));
 
     // 2. Obtenim un token vàlid (la nostra funció màgica)
     // Passem l'ID de l'usuari que està fent l'acció
@@ -641,10 +658,10 @@ export async function syncTaskToGoogleAction(
     revalidatePath("/[locale]/(app)/crm/calendari", "layout");
     return {
       success: true,
-      message: "Tasca sincronitzada amb Google Calendar!",
+      message: t('syncSuccessMessage'),
     };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Error desconegut";
+    const message = error instanceof Error ? error.message : t('unknownError');
     console.error("[syncTaskToGoogleAction] Error:", message, error);
     return { success: false, message: message };
   }

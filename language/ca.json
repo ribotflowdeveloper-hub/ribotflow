@@ -1994,6 +1994,66 @@
     "passwordResetSuccess": "Si l'email existeix, rebràs un enllaç per a restablir la teva contrasenya.",
     "passwordResetError": "No s'ha pogut iniciar el procés de restabliment."
   },
+  "AuthActions": {
+    "invalidToken": "Token d'invitació invàlid.",
+    "expiredToken": "La teva invitació és invàlida o ha caducat.",
+    "serverError": "Hi ha hagut un error al servidor.",
+    "loginRequired": "Has d'iniciar sessió per acceptar.",
+    "wrongUser": "Aquesta invitació està destinada a un altre usuari.",
+    "processingError": "Error en processar la invitació."
+  },
+  "DepartmentActions": {
+    "nameRequired": "El nom del departament és obligatori.",
+    "nameTooLong": "El nom no pot superar els 100 caràcters.",
+    "missingTeamId": "Falta l'identificador de l'equip.",
+    "invalidName": "Nom de departament invàlid.",
+    "duplicateName": "Ja existeix un departament amb el nom \"{name}\" en aquest equip.",
+    "dbError": "Error de base de dades: {message}",
+    "fetchError": "No s'han pogut obtenir les dades del nou departament.",
+    "invalidId": "ID de departament invàlid.",
+    "usageCheckError": "No s'ha pogut verificar si el departament està en ús.",
+    "deleteConstraint": "No es pot eliminar. El departament està assignat a {count} tasca(ques). Desassigna'l primer."
+  },
+  "TaskActions": {
+    "titleRequired": "El títol és obligatori.",
+    "invalidDueDate": "La data de venciment ha de ser una data vàlida.",
+    "invalidDuration": "La duració ha de ser un número positiu.",
+    "invalidDescriptionFormat": "El format del contingut de la descripció és invàlid.",
+    "invalidTaskId": "ID de la tasca no trobat o invàlid.",
+    "fetchError": "No s'ha pogut obtenir la tasca actual: {message}",
+    "invalidTaskIdSimple": "ID de tasca invàlid o no proporcionat a updateSimpleTask.",
+    "noFileReceived": "No s'ha rebut cap fitxer.",
+    "fileTooLarge": "Fitxer massa gran (màx 5MB).",
+    "invalidFileFormat": "Format no permès (només imatges).",
+    "imageProcessingError": "Error desconegut processant imatge.",
+    "invalidSession": "Sessió invàlida.",
+    "invalidFilePath": "No s'ha proporcionat cap 'filePath' o és invàlid.",
+    "urlGenerationError": "No s'ha pogut obtenir la URL: {message}",
+    "defaultDescription": "Tasca de Ribotflow",
+    "unknownGoogleError": "Error desconegut de Google API",
+    "syncSuccess": "Sincronitzat correctament.",
+    "taskNotFound": "No s'ha trobat la tasca amb ID {id}",
+    "syncSuccessMessage": "Tasca sincronitzada amb Google Calendar!",
+    "unknownError": "Error desconegut"
+  },
+  "ChatbotAPI": {
+    "noUserMessage": "No s'ha trobat cap missatge de l'usuari.",
+    "embeddingError": "No s'ha pogut generar l'embedding.",
+    "rpcError": "Error RPC: {message}",
+    "noContextFound": "No s'ha trobat context rellevant.",
+    "promptSystemRole": "Ets \"Ribot\", l'assistent d'IA de RibotFlow.",
+    "promptInstructions": "Respon només amb la informació del context. Si no hi és, digues que no ho saps.",
+    "contextLabel": "CONTEXT",
+    "questionLabel": "PREGUNTA",
+    "internalServerError": "Error intern del servidor"
+  },
+  "IntegrationsAPI": {
+    "encryptionKeyMissing": "La clau d'encriptació (ENCRYPTION_SECRET_KEY) no està configurada al servidor.",
+    "tokenFetchError": "Error en obtenir el token de {provider}: {error}",
+    "activeTeamRequired": "S'ha de seleccionar un equip actiu abans de connectar una integració.",
+    "googleInfoError": "No s'ha pogut obtenir la info de l'usuari de Google.",
+    "unknownError": "Error desconegut"
+  },
   "ResetPasswordPage": {
     "title": "Crea una nova contrasenya",
     "passwordLabel": "Nova Contrasenya",

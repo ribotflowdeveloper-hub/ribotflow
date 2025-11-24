@@ -1942,6 +1942,66 @@
     "passwordResetSuccess": "If the email exists, you will receive a link to reset your password.",
     "passwordResetError": "Could not start the reset process."
   },
+  "AuthActions": {
+    "invalidToken": "Invalid invitation token.",
+    "expiredToken": "Your invitation is invalid or has expired.",
+    "serverError": "There was a server error.",
+    "loginRequired": "You must log in to accept.",
+    "wrongUser": "This invitation is intended for another user.",
+    "processingError": "Error processing the invitation."
+  },
+  "DepartmentActions": {
+    "nameRequired": "Department name is required.",
+    "nameTooLong": "Name cannot exceed 100 characters.",
+    "missingTeamId": "Team ID is missing.",
+    "invalidName": "Invalid department name.",
+    "duplicateName": "A department with the name \"{name}\" already exists in this team.",
+    "dbError": "Database error: {message}",
+    "fetchError": "Could not retrieve the new department data.",
+    "invalidId": "Invalid department ID.",
+    "usageCheckError": "Could not verify if the department is in use.",
+    "deleteConstraint": "Cannot delete. The department is assigned to {count} task(s). Unassign it first."
+  },
+  "TaskActions": {
+    "titleRequired": "Title is required.",
+    "invalidDueDate": "Due date must be a valid date.",
+    "invalidDuration": "Duration must be a positive number.",
+    "invalidDescriptionFormat": "Description content format is invalid.",
+    "invalidTaskId": "Task ID not found or invalid.",
+    "fetchError": "Could not retrieve current task: {message}",
+    "invalidTaskIdSimple": "Invalid or missing Task ID in updateSimpleTask.",
+    "noFileReceived": "No file received.",
+    "fileTooLarge": "File too large (max 5MB).",
+    "invalidFileFormat": "Format not allowed (images only).",
+    "imageProcessingError": "Unknown error processing image.",
+    "invalidSession": "Invalid session.",
+    "invalidFilePath": "No 'filePath' provided or invalid.",
+    "urlGenerationError": "Could not get URL: {message}",
+    "defaultDescription": "Ribotflow Task",
+    "unknownGoogleError": "Unknown Google API error",
+    "syncSuccess": "Synced successfully.",
+    "taskNotFound": "Task with ID {id} not found",
+    "syncSuccessMessage": "Task synced with Google Calendar!",
+    "unknownError": "Unknown error"
+  },
+  "ChatbotAPI": {
+    "noUserMessage": "No user message found.",
+    "embeddingError": "Could not generate embedding.",
+    "rpcError": "RPC Error: {message}",
+    "noContextFound": "No relevant context found.",
+    "promptSystemRole": "You are \"Ribot\", the AI assistant for RibotFlow.",
+    "promptInstructions": "Answer only using the context provided. If the answer is not there, say you don't know.",
+    "contextLabel": "CONTEXT",
+    "questionLabel": "QUESTION",
+    "internalServerError": "Internal Server Error"
+  },
+  "IntegrationsAPI": {
+    "encryptionKeyMissing": "Encryption key (ENCRYPTION_SECRET_KEY) is not configured on the server.",
+    "tokenFetchError": "Error fetching token from {provider}: {error}",
+    "activeTeamRequired": "An active team must be selected before connecting an integration.",
+    "googleInfoError": "Could not retrieve Google user info.",
+    "unknownError": "Unknown error"
+  },
   "ResetPasswordPage": {
     "title": "Create a new password",
     "passwordLabel": "New Password",

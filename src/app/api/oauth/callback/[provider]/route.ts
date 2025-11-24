@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 // ✅ NOU: Importem la nostra nova funció de xifratge ràpida
 import { encryptToken } from "@/lib/utils/crypto";
+import { getTranslations } from 'next-intl/server';
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ provider: string }> },
 ) {
+  const t = await getTranslations('IntegrationsAPI'); // 1. Inicialitzem t
   const { provider } = await params;
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
@@ -66,7 +68,7 @@ export async function GET(
     // ✅ NOU: Utilitzem el nom de variable consistent amb el worker
     const encryptionSecret = process.env.ENCRYPTION_SECRET_KEY;
     if (!encryptionSecret) {
-      throw new Error("La clau d'encriptació (ENCRYPTION_SECRET_KEY) no està configurada al servidor.");
+      throw new Error(t('encryptionKeyMissing'));
     }
 
     let tokenUrl = "";
@@ -129,8 +131,7 @@ export async function GET(
     });
     if (!tokenResponse.ok) {
       throw new Error(
-        `Error en obtenir el token de ${provider}: ${await tokenResponse
-          .text()}`,
+        t('tokenFetchError', { provider, error: await tokenResponse.text() }),
       );
     }
     const tokens = await tokenResponse.json();
@@ -148,9 +149,7 @@ export async function GET(
     const activeTeamId = user.app_metadata?.active_team_id;
 
     if (!activeTeamId) {
-      throw new Error(
-        "S'ha de seleccionar un equip actiu abans de connectar una integració.",
-      );
+      throw new Error(t('activeTeamRequired'));
     }
 
     // Preparem les dades base amb els tokens EN TEXT PLA
@@ -176,7 +175,7 @@ export async function GET(
         },
       );
       if (!userInfoResponse.ok) {
-        throw new Error("No s'ha pogut obtenir la info de l'usuari de Google.");
+        throw new Error(t('googleInfoError'));
       }
       const userInfo: GoogleUserInfo = await userInfoResponse.json();
       baseDataToUpsert.provider_user_id = userInfo.email;

@@ -4,6 +4,7 @@ import {
   HarmCategory,
 } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
+import { getTranslations } from 'next-intl/server';
 
 const geminiApiKey = process.env.GEMINI_API_KEY;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -38,12 +39,13 @@ type ContextChunk = {
 };
 
 export async function POST(req: Request) {
+  const t = await getTranslations('ChatbotAPI'); // 1. Inicialitzem t
   try {
     const { messages } = await req.json();
     const lastUserMessage = messages[messages.length - 1]?.content;
 
     if (!lastUserMessage) {
-      return new Response(JSON.stringify({ error: "No user message found" }), {
+      return new Response(JSON.stringify({ error: t('noUserMessage') }), {
         status: 400,
       });
     }
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
     const embeddingResult = await embeddingModel.embedContent(lastUserMessage);
     const queryEmbedding = embeddingResult.embedding.values;
 
-    if (!queryEmbedding) throw new Error("No s'ha pogut generar l'embedding.");
+if (!queryEmbedding) throw new Error(t('embeddingError'));
 
     // 2️⃣ Fer cerca de context a Supabase
     const { data: contextChunks, error: rpcError } = await supabaseClient.rpc(
@@ -64,13 +66,13 @@ export async function POST(req: Request) {
       },
     );
 
-    if (rpcError) throw new Error(`Error RPC: ${rpcError.message}`);
+    if (rpcError) throw new Error(t('rpcError', { message: rpcError.message }));
 
     const context = contextChunks?.length
       ? contextChunks.map((chunk: ContextChunk) => chunk.content).join(
         "\n---\n",
       )
-      : "No s'ha trobat context rellevant.";
+      : t('noContextFound');
 
     // 3️⃣ Crear prompt
     const prompt = `
@@ -123,7 +125,7 @@ ${lastUserMessage}
   } catch (error) {
     console.error("Error a l’API chatbot:", error);
     return new Response(
-      JSON.stringify({ error: "Error intern del servidor" }),
+      JSON.stringify({ error: t('internalServerError') }),
       {
         status: 500,
         headers: { "Content-Type": "application/json" },

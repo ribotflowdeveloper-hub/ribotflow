@@ -1943,6 +1943,66 @@
     "passwordResetSuccess": "Si el email existe, recibirás un enlace para restablecer tu contraseña.",
     "passwordResetError": "No se ha podido iniciar el proceso de restablecimiento."
   },
+  "AuthActions": {
+    "invalidToken": "Token de invitación inválido.",
+    "expiredToken": "Tu invitación es inválida o ha caducado.",
+    "serverError": "Ha ocurrido un error en el servidor.",
+    "loginRequired": "Debes iniciar sesión para aceptar.",
+    "wrongUser": "Esta invitación está destinada a otro usuario.",
+    "processingError": "Error al procesar la invitación."
+  },
+  "DepartmentActions": {
+    "nameRequired": "El nombre del departamento es obligatorio.",
+    "nameTooLong": "El nombre no puede superar los 100 caracteres.",
+    "missingTeamId": "Falta el identificador del equipo.",
+    "invalidName": "Nombre de departamento inválido.",
+    "duplicateName": "Ya existe un departamento con el nombre \"{name}\" en este equipo.",
+    "dbError": "Error de base de datos: {message}",
+    "fetchError": "No se han podido obtener los datos del nuevo departamento.",
+    "invalidId": "ID de departamento inválido.",
+    "usageCheckError": "No se ha podido verificar si el departamento está en uso.",
+    "deleteConstraint": "No se puede eliminar. El departamento está asignado a {count} tarea(s). Desasígnalo primero."
+  },
+  "TaskActions": {
+    "titleRequired": "El título es obligatorio.",
+    "invalidDueDate": "La fecha de vencimiento debe ser una fecha válida.",
+    "invalidDuration": "La duración debe ser un número positivo.",
+    "invalidDescriptionFormat": "El formato del contenido de la descripción es inválido.",
+    "invalidTaskId": "ID de la tarea no encontrado o inválido.",
+    "fetchError": "No se ha podido obtener la tarea actual: {message}",
+    "invalidTaskIdSimple": "ID de tarea inválido o no proporcionado a updateSimpleTask.",
+    "noFileReceived": "No se ha recibido ningún archivo.",
+    "fileTooLarge": "Archivo demasiado grande (máx 5MB).",
+    "invalidFileFormat": "Formato no permitido (solo imágenes).",
+    "imageProcessingError": "Error desconocido procesando la imagen.",
+    "invalidSession": "Sesión inválida.",
+    "invalidFilePath": "No se ha proporcionado ningún 'filePath' o es inválido.",
+    "urlGenerationError": "No se ha podido obtener la URL: {message}",
+    "defaultDescription": "Tarea de Ribotflow",
+    "unknownGoogleError": "Error desconocido de Google API",
+    "syncSuccess": "Sincronizado correctamente.",
+    "taskNotFound": "No se ha encontrado la tarea con ID {id}",
+    "syncSuccessMessage": "¡Tarea sincronizada con Google Calendar!",
+    "unknownError": "Error desconocido"
+  },
+  "ChatbotAPI": {
+    "noUserMessage": "No se ha encontrado ningún mensaje del usuario.",
+    "embeddingError": "No se ha podido generar el embedding.",
+    "rpcError": "Error RPC: {message}",
+    "noContextFound": "No se ha encontrado contexto relevante.",
+    "promptSystemRole": "Eres \"Ribot\", el asistente de IA de RibotFlow.",
+    "promptInstructions": "Responde solo con la información del contexto. Si no está, di que no lo sabes.",
+    "contextLabel": "CONTEXTO",
+    "questionLabel": "PREGUNTA",
+    "internalServerError": "Error interno del servidor"
+  },
+  "IntegrationsAPI": {
+    "encryptionKeyMissing": "La clave de encriptación (ENCRYPTION_SECRET_KEY) no está configurada en el servidor.",
+    "tokenFetchError": "Error al obtener el token de {provider}: {error}",
+    "activeTeamRequired": "Se debe seleccionar un equipo activo antes de conectar una integración.",
+    "googleInfoError": "No se ha podido obtener la info del usuario de Google.",
+    "unknownError": "Error desconocido"
+  },
   "ResetPasswordPage": {
     "title": "Crea una nueva contraseña",
     "passwordLabel": "Nueva Contraseña",
